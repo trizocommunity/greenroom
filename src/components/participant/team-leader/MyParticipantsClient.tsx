@@ -4,23 +4,24 @@ import {
   Crown,
   ExternalLink,
   Eye,
-  Link as LinkIcon,
   MoreVertical,
   Plus,
   QrCode,
-  Share2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import {
+  AppEmptyState,
+  AppPageHeader,
+  StatusPill,
+} from "@/components/app/AppSection";
 import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
+import { DeadlineWindowGate } from "@/components/festival/pre-event-works/DeadlineWindowGate";
 import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/participants/ParticipantDetailsDialog";
 import { AddParticipantDialog } from "@/components/participant/team-leader/AddParticipantDialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -40,11 +41,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { APP_URL } from "@/config/routes";
-import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
+import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
 import {
   getParticipantProfilePath,
-  getParticipantProfileUrl,
   getQrCodeContent,
 } from "@/features/participants/services/participant-profile-url";
 
@@ -70,6 +69,7 @@ export function MyParticipantsClient({
   festivalSlug,
   participants,
   allCategories = [],
+  windowStart,
   deadline,
   isReadOnly,
 }: {
@@ -77,11 +77,17 @@ export function MyParticipantsClient({
   festivalSlug: string;
   participants: ParticipantForMyParticipants[];
   allCategories?: { id: string; name: string }[];
+  windowStart?: string | Date | null;
   deadline?: string | Date | null;
   isReadOnly?: boolean;
 }) {
   const router = useRouter();
-  const { isLocked } = useDeadlineLock(deadline ?? null);
+  const {
+    isLocked,
+    isUpcoming,
+    start: windowStartDate,
+    end: windowEndDate,
+  } = useDeadlineWindow(windowStart ?? null, deadline ?? null);
   const runtimeIsReadOnly = Boolean(isReadOnly) || isLocked;
 
   const categories = useMemo(() => {
@@ -106,106 +112,134 @@ export function MyParticipantsClient({
     return participants.filter((s) => s.category?.id === selectedCategoryId);
   }, [participants, selectedCategoryId]);
 
+  if (isUpcoming) {
+    return (
+      <div className="space-y-8">
+        <AppPageHeader
+          eyebrow="Team leader"
+          title="My participants"
+          description="Everyone in your group, with their category and chest number."
+        />
+        <DeadlineWindowGate
+          title="Participant registration hasn't opened yet"
+          description="You'll be able to add and manage your participants as soon as the window opens."
+          start={windowStartDate}
+          end={windowEndDate}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">My Participants</h1>
-          <Select
-            value={selectedCategoryId}
-            onValueChange={setSelectedCategoryId}
-          >
-            <SelectTrigger className="h-9 w-full sm:w-[200px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-          <DeadlinesCard
-            label="Participants"
-            deadline={deadline}
-            isLockedOverride={runtimeIsReadOnly}
-          />
-          <AddParticipantDialog
-            festivalId={festivalId}
-            categories={allCategories}
-            disabled={runtimeIsReadOnly}
-            onCreated={() => router.refresh()}
-            trigger={
-              <Button
-                size="sm"
-                disabled={runtimeIsReadOnly}
-                className="w-full sm:w-auto h-9"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Participant
-              </Button>
-            }
-          />
-        </div>
+    <div className="space-y-8">
+      <AppPageHeader
+        eyebrow="Team leader"
+        title="My participants"
+        description="Everyone in your group, with their category and chest number."
+        actions={
+          <>
+            <DeadlinesCard
+              label="Participants"
+              start={windowStart}
+              end={deadline}
+            />
+            <AddParticipantDialog
+              festivalId={festivalId}
+              categories={allCategories}
+              disabled={runtimeIsReadOnly}
+              onCreated={() => router.refresh()}
+              trigger={
+                <Button
+                  size="sm"
+                  disabled={runtimeIsReadOnly}
+                  className="h-9 rounded-full"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add participant
+                </Button>
+              }
+            />
+          </>
+        }
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Select
+          value={selectedCategoryId}
+          onValueChange={setSelectedCategoryId}
+        >
+          <SelectTrigger className="h-9 w-full rounded-full sm:w-[200px]">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {visibleParticipants.length} of {participants.length}
+        </p>
       </div>
 
       {visibleParticipants.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground text-sm">
-            No participants found for this category.
-          </CardContent>
-        </Card>
+        <AppEmptyState
+          title="No participants here"
+          description="Nobody in your group matches this category yet."
+        />
       ) : (
-        <div className="space-y-2">
+        <ul className="divide-y divide-border border-y border-border">
           {visibleParticipants.map((s) => (
-            <Card key={s.id}>
-              <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{s.name}</span>
-                    {s.isTeamLeader ? (
-                      <Badge className="bg-amber-500/15 text-amber-800 border-amber-500/30">
-                        <span className="inline-flex items-center gap-1">
-                          <Crown className="h-3.5 w-3.5" />
-                          Team Leader
-                        </span>
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {s.category?.name ?? "—"} · {s.chestNumber ?? "—"}
-                  </div>
-                </div>
+            <li key={s.id} className="flex items-center gap-4 py-3.5">
+              <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                {s.chestNumber ?? "—"}
+              </span>
 
-                <div className="w-full sm:w-auto flex items-center justify-end">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="outline" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onSelect={() => setDetailsParticipant(s)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setQrParticipant(s)}>
-                        <QrCode className="h-4 w-4 mr-2" />
-                        View QR (Chest #)
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-[15px] font-medium text-heading">
+                    {s.name}
+                  </span>
+                  {s.isTeamLeader && (
+                    <StatusPill tone="warning" icon={Crown}>
+                      Leader
+                    </StatusPill>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {s.category?.name ?? "No category"}
+                </p>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                    aria-label={`Actions for ${s.name}`}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setDetailsParticipant(s)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setQrParticipant(s)}>
+                    <QrCode className="mr-2 h-4 w-4" />
+                    Chest number QR
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {detailsParticipant ? (
@@ -226,11 +260,11 @@ export function MyParticipantsClient({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {qrParticipant?.name ?? "Participant"} - Chest Number QR
+              {qrParticipant?.name ?? "Participant"} — chest number QR
             </DialogTitle>
           </DialogHeader>
           {qrParticipant ? (
-            <div className="flex flex-col items-center gap-4 py-1">
+            <div className="flex flex-col items-center gap-5 py-2">
               <QrCodeWithActions
                 url={getQrCodeContent(qrParticipant)}
                 qrContent={getQrCodeContent(qrParticipant)}
@@ -238,18 +272,15 @@ export function MyParticipantsClient({
                 fileName={`${qrParticipant.name.replace(/\s+/g, "-").toLowerCase()}-chest-${qrParticipant.chestNumber || "unknown"}.png`}
                 shareMessage={`Chest number: ${qrParticipant.chestNumber || getQrCodeContent(qrParticipant)}`}
               />
-              <div className="text-sm text-muted-foreground text-center">
-                <p>This QR code contains the chest number</p>
-                <p className="text-xs mt-1">
-                  Used for programme reporting and attendance
-                </p>
-              </div>
-              <Button asChild className="w-full">
+              <p className="text-center text-xs text-muted-foreground">
+                Scanned at the stage to mark attendance.
+              </p>
+              <Button asChild variant="outline" className="w-full rounded-full">
                 <Link
                   href={getParticipantProfilePath(festivalSlug, qrParticipant)}
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open Profile
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open profile
                 </Link>
               </Button>
             </div>

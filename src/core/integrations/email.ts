@@ -22,34 +22,42 @@
 
 import { sendEmail } from "./email/index";
 
-export async function sendMagicLinkEmail(to: string, token: string): Promise<void> {
-	await sendEmail({
-		to,
-		kind: { kind: "magic_link", token },
-	});
+export async function sendMagicLinkEmail(
+  to: string,
+  token: string,
+): Promise<void> {
+  await sendEmail({
+    to,
+    kind: { kind: "magic_link", token },
+  });
 }
 
 export async function sendInvitationEmail(
-	to: string,
-	token: string,
-	festivalName: string,
-	role: string,
+  to: string,
+  token: string,
+  festivalName: string,
+  role: string,
 ): Promise<void> {
-	await sendEmail({
-		to,
-		kind: { kind: "festival_invitation", token, festivalName, role },
-	});
+  await sendEmail({
+    to,
+    kind: { kind: "festival_invitation", token, festivalName, role },
+  });
 }
 
 export async function sendTeamLeaderOtpEmail(
-	to: string,
-	otp: string,
-	festivalName: string,
+  to: string,
+  otp: string,
+  festivalName: string,
 ): Promise<void> {
-	await sendEmail({
-		to,
-		kind: { kind: "team_leader_otp", otp, festivalName },
-	});
+  await sendEmail({
+    to,
+    kind: { kind: "team_leader_otp", otp, festivalName },
+  });
 }
 
-export type { EmailKind, EmailTheme, SendEmailOpts, SendEmailResult } from "./email/index";
+export type {
+  EmailKind,
+  EmailTheme,
+  SendEmailOpts,
+  SendEmailResult,
+} from "./email/index";

@@ -18,7 +18,10 @@ import type { ActionResponse } from "@/core/types/actions";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
 const profileSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters").optional(),
+  fullName: z
+    .string()
+    .min(2, "Full name must be at least 2 characters")
+    .optional(),
   displayName: z
     .string()
     .min(2, "Display name must be at least 2 characters")
@@ -45,12 +48,16 @@ export async function updateProfile(
     const update: Partial<typeof userTable.$inferInsert> = {
       updatedAt: serverNowIso(),
     };
-    if (parsedData.fullName !== undefined) update.fullName = parsedData.fullName;
+    if (parsedData.fullName !== undefined)
+      update.fullName = parsedData.fullName;
     if (parsedData.displayName !== undefined)
       update.displayName = parsedData.displayName;
     if (parsedData.timezone !== undefined) update.timezone = timezone;
 
-    await db.update(userTable).set(update).where(eq(userTable.id, session.userId));
+    await db
+      .update(userTable)
+      .set(update)
+      .where(eq(userTable.id, session.userId));
 
     clearUserTimezoneCache(session.userId);
 

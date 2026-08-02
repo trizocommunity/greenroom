@@ -60,9 +60,7 @@ export async function getStagePortalLoginAction(input: {
       .update(credentialTable)
       .set({
         attempts: shouldLock ? 0 : nextAttempts,
-        lockedUntil: shouldLock
-          ? fromNow(LOCK_DURATION_MS)
-          : null,
+        lockedUntil: shouldLock ? fromNow(LOCK_DURATION_MS) : null,
       } as any)
       .where(eq(credentialTable.id, credential.id));
 

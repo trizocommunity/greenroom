@@ -1,10 +1,10 @@
 import { and, count, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  group as groupTable,
-  programmeAssignment,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
+  group as groupTable,
+  programmeAssignment,
   programmeReportedParticipant,
   programme as programmeTable,
   programmeReportingSession as reportingSessionTable,
@@ -209,8 +209,7 @@ export async function updateProgrammeStatus(
 
     const expectedAssignmentIds = programmeReportedParticipants
       .filter(
-        (r) =>
-          !(r.participantId && absentParticipantIds.has(r.participantId)),
+        (r) => !(r.participantId && absentParticipantIds.has(r.participantId)),
       )
       .map((r) => r.assignmentId);
     const reportedTotal = expectedAssignmentIds.length;

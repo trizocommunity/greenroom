@@ -1,23 +1,31 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { ChevronRight, Crown, Medal, Search, Trophy } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { ChevronRight, Loader2, Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PublicResultPosterSection } from "@/components/festival/posters/PublicResultPosterSection";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { LoadMore } from "@/components/festival/public/LoadMore";
+import {
+  EmptyState,
+  PublicSection,
+} from "@/components/festival/public/PublicSection";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/core/utils/cn";
+import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
+import type {
+  PublicProgrammeResults,
+  PublicResultsPage,
+} from "@/features/festivals/loaders/festival-results.loader";
+import { TeamStandingsSection } from "./TeamStandingsSection";
 
 export interface Result {
   id: string;
@@ -41,28 +49,35 @@ export interface TeamStanding {
 }
 
 interface ResultsListProps {
-  festivalId?: string;
   festivalName: string;
-  festivalSlug?: string;
-  accentColor: string; // We'll essentially use this as the primary active color
-  results: Result[];
+  festivalSlug: string;
+  accentColor: string;
+  /** Server-rendered first page of programme results. */
+  initialResults: PublicResultsPage;
   teamStandings?: TeamStanding[];
   publicDisplayMode?: "programme_results" | "team_standings";
   scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
 }
 
+/** Matches `PUBLIC_RESULTS_PAGE_SIZE`; kept local so this file stays client-safe. */
+const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 350;
+const REFRESH_MS = 30_000;
+
+const selectProgrammes = (data: unknown) =>
+  (data as { programmes: PublicProgrammeResults[] }).programmes;
+
 export function ResultsList({
-  festivalId,
   festivalName,
+  festivalSlug,
   accentColor,
-  results,
+  initialResults,
   teamStandings: initialTeamStandings,
   publicDisplayMode = "programme_results",
-  festivalSlug,
 }: ResultsListProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const standingsOnly = publicDisplayMode === "team_standings";
+
   const [activeTab, setActiveTab] = useState<"program" | "team">(
     standingsOnly ? "team" : "program",
   );
@@ -70,233 +85,216 @@ export function ResultsList({
   const [programTypeFilter, setProgramTypeFilter] = useState<
     "ALL" | "INDIVIDUAL" | "GROUP"
   >("ALL");
-  const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+  const [selectedProgram, setSelectedProgram] =
+    useState<PublicProgrammeResults | null>(null);
   const [selectedTemplateCode, setSelectedTemplateCode] = useState<
     string | null
   >(null);
+  const [isLoadingDeepLink, setIsLoadingDeepLink] = useState(false);
 
-  const openProgramDialog = useCallback(
-    (programmeId: string, templateCode?: string | null) => {
-      setSelectedProgram(programmeId);
-      setSelectedTemplateCode(templateCode ?? null);
+  const {
+    items: programmes,
+    total,
+    page,
+    hasMore,
+    isLoadingMore,
+    isRefiltering,
+    error,
+    loadMore,
+    refilter,
+    refreshFirstPage,
+  } = usePublicPages<PublicProgrammeResults>({
+    endpoint: `/api/festivals/${festivalSlug}/results`,
+    select: selectProgrammes,
+    pageSize: PAGE_SIZE,
+    initial: {
+      items: initialResults.programmes,
+      total: initialResults.total,
+      page: initialResults.page,
+      hasMore: initialResults.hasMore,
     },
-    [],
-  );
+  });
 
-  // Polling refresh every 15 seconds for updates
-  useEffect(() => {
-    if (!festivalId) return;
-    const id = window.setInterval(() => {
-      router.refresh();
-    }, 15000);
-    return () => window.clearInterval(id);
-  }, [festivalId, router]);
-
-  // Honour ?programmeId&template deep links from shared posters
+  /* Search and type filtering run on the server, so a visitor searching a
+     large festival still only downloads one page of matches. */
+  const isFirstFilterRun = useRef(true);
   useEffect(() => {
     if (standingsOnly) return;
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
+    const id = window.setTimeout(() => {
+      refilter({
+        search: searchQuery.trim() || undefined,
+        type: programTypeFilter === "ALL" ? undefined : programTypeFilter,
+      });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(id);
+  }, [searchQuery, programTypeFilter, refilter, standingsOnly]);
+
+  /* Live results used to poll `router.refresh()`, which re-ran every loader
+     on the page. Now only page 1 is re-read, and only while the visitor is
+     actually looking at page 1 — paging or filtering suspends it. */
+  const canRefresh =
+    !standingsOnly &&
+    activeTab === "program" &&
+    page === 1 &&
+    !searchQuery.trim() &&
+    programTypeFilter === "ALL";
+
+  useEffect(() => {
+    if (!canRefresh) return;
+    const id = window.setInterval(refreshFirstPage, REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [canRefresh, refreshFirstPage]);
+
+  /* Shared poster links land on ?programmeId=…, which may point at a
+     programme outside the loaded page — so fetch just that one. */
+  const openProgrammeById = useCallback(
+    async (programmeId: string, templateCode?: string | null) => {
+      setSelectedTemplateCode(templateCode ?? null);
+
+      const loaded = programmes.find((p) => p.id === programmeId);
+      if (loaded) {
+        setSelectedProgram(loaded);
+        return;
+      }
+
+      setIsLoadingDeepLink(true);
+      try {
+        const url = new URL(
+          `/api/festivals/${festivalSlug}/results`,
+          window.location.origin,
+        );
+        url.searchParams.set("programmeId", programmeId);
+        url.searchParams.set("pageSize", "1");
+        const response = await fetch(url);
+        const body = await response.json();
+        const programme = body?.data?.programmes?.[0];
+        if (programme) setSelectedProgram(programme);
+      } catch {
+        // A dead deep link simply leaves the dialog closed.
+      } finally {
+        setIsLoadingDeepLink(false);
+      }
+    },
+    [programmes, festivalSlug],
+  );
+
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (standingsOnly || deepLinkHandled.current) return;
     const programmeId = searchParams.get("programmeId");
     if (!programmeId) return;
-    const template = searchParams.get("template");
-    openProgramDialog(programmeId, template);
-  }, [searchParams, openProgramDialog, standingsOnly]);
+    deepLinkHandled.current = true;
+    void openProgrammeById(programmeId, searchParams.get("template"));
+  }, [searchParams, openProgrammeById, standingsOnly]);
 
-  // --- Data Processing ---
-
-  // 1. Group results by Programme ID
-  const resultsByProgram = useMemo(() => {
-    return results.reduce(
-      (acc, result) => {
-        const key = result.programmeId;
-        if (!acc[key]) {
-          acc[key] = [];
-        }
-        acc[key].push(result);
-        return acc;
-      },
-      {} as Record<string, Result[]>,
-    );
-  }, [results]);
-
-  // 2. Convert to array for searching & display
-  const programs = useMemo(() => {
-    return Object.values(resultsByProgram).map((progResults) => {
-      const first = progResults[0];
-      return {
-        id: first.programmeId,
-        name: first.programName,
-        category: first.category,
-        type: first.programmeType,
-        results: progResults.sort((a, b) => a.position - b.position),
-      };
-    });
-  }, [resultsByProgram]);
-
-  // 3. Filter Programs
-  const filteredPrograms = useMemo(() => {
-    let filtered = programs;
-
-    // Filter by Type
-    if (programTypeFilter !== "ALL") {
-      filtered = filtered.filter((p) => p.type === programTypeFilter);
-    }
-
-    // Filter by Search
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(lowerQuery) ||
-          p.category.toLowerCase().includes(lowerQuery),
-      );
-    }
-    return filtered;
-  }, [programs, searchQuery, programTypeFilter]);
-
-  // 4. Calculate Team Points (or use provided snapshot)
-  const teamStandings = useMemo(() => {
-    if (initialTeamStandings && initialTeamStandings.length > 0) {
-      return initialTeamStandings.map((team, index) => ({
-        ...team,
-        rank: team.rank || index + 1,
-      }));
-    }
-
-    if (standingsOnly) {
-      return [];
-    }
-
-    const standings: Record<string, { name: string; points: number }> = {};
-
-    results.forEach((r) => {
-      // Only count valid points; assume `team` is the group name
-      // If team is empty or null, skip? The Interface says string.
-      if (!r.team) return;
-
-      if (!standings[r.team]) {
-        standings[r.team] = { name: r.team, points: 0 };
-      }
-      standings[r.team].points += r.points;
-    });
-
-    return Object.values(standings)
-      .sort((a, b) => b.points - a.points)
-      .map((team, index) => ({ ...team, rank: index + 1 }));
-  }, [results, initialTeamStandings, standingsOnly]);
+  const teamStandings = (initialTeamStandings ?? []).map((team, index) => ({
+    ...team,
+    rank: team.rank || index + 1,
+  }));
 
   useEffect(() => {
     if (standingsOnly) setActiveTab("team");
   }, [standingsOnly]);
 
-  // --- UI Helpers ---
-
-  // Helper for ordinal suffix (1st, 2nd, 3rd)
-  const getOrdinal = (n: number) => {
-    const s = ["th", "st", "nd", "rd"];
-    const v = n % 100;
-    return n + (s[(v - 20) % 10] || s[v] || s[0]);
-  };
-
   return (
-    <section className="min-h-[60vh] space-y-6 sm:space-y-8">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-6 py-8 sm:py-12 lg:py-24">
-        {/* Header Section */}
-        <div className="space-y-4">
-          <p className="text-eyebrow">Live results</p>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-heading">
-            {activeTab === "program" ? `Program results` : `Team status`}
-          </h1>
-          <p className="text-muted-foreground">
-            {activeTab === "program" ? (
-              <>
-                Published results for{" "}
-                <span className="font-medium text-foreground">
-                  {festivalName}
-                </span>
-              </>
-            ) : (
-              <>
-                Team points status for{" "}
-                <span className="font-medium text-foreground">
-                  {festivalName}
-                </span>
-              </>
-            )}
+    <PublicSection className="min-h-[60vh]">
+      <div>
+        {/* Header */}
+        <div className="max-w-2xl text-left">
+          <p className="text-eyebrow justify-start mb-3">
+            <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-primary" />
+            Live results
           </p>
-
-          {/* Tabs - Creating custom segmented control look */}
-          <div className="flex gap-2 pt-2">
-            {!standingsOnly && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("program")}
-                className={cn(
-                  "px-5 py-2 rounded-full font-medium text-sm transition-all duration-200",
-                  activeTab === "program"
-                    ? "text-white shadow-premium"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80",
-                )}
-                style={{
-                  backgroundColor:
-                    activeTab === "program" ? accentColor : undefined,
-                }}
-              >
-                Program
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setActiveTab("team")}
-              className={cn(
-                "px-5 py-2 rounded-full font-medium text-sm transition-all duration-200",
-                activeTab === "team"
-                  ? "text-white shadow-premium"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80",
-              )}
-              style={{
-                backgroundColor: activeTab === "team" ? accentColor : undefined,
-              }}
-            >
-              Team
-            </button>
-          </div>
+          <h1 className="text-2xl sm:text-3xl md:text-[2rem] font-semibold tracking-tight text-heading text-balance">
+            {activeTab === "program" ? "Programme results" : "Team standings"}
+          </h1>
+          <p className="mt-2.5 text-[15px] text-muted-foreground leading-relaxed">
+            {activeTab === "program"
+              ? "Published results, updating as programmes are announced."
+              : `Team points status across ${festivalName}.`}
+          </p>
         </div>
-        <AnimatePresence mode="wait">
-          {activeTab === "program" ? (
-            <motion.div
-              key="program-view"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-6"
-            >
-              {/* Search & Filter Bar */}
-              <div className="flex flex-col md:flex-row gap-4 pt-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by program or category..."
-                    className="pl-10 h-11 rounded-lg bg-card border-border transition-all focus:ring-2"
-                    style={{ "--ring": accentColor } as React.CSSProperties}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
 
-                {/* Programme Type Filter */}
-                <div className="flex bg-muted p-1 rounded-full shrink-0">
-                  {(["ALL", "INDIVIDUAL", "GROUP"] as const).map((type) => (
+        {/* Views */}
+        {!standingsOnly && (
+          <div
+            role="tablist"
+            aria-label="Result views"
+            className="mt-8 flex gap-1 border-b border-border"
+          >
+            {(
+              [
+                { id: "program", label: "By programme" },
+                { id: "team", label: "By team" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "relative px-4 py-3 text-sm font-medium transition-colors",
+                  activeTab === tab.id
+                    ? "text-heading"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {tab.label}
+                {activeTab === tab.id && (
+                  <motion.span
+                    layoutId="results-tab-underline"
+                    className="absolute inset-x-2 -bottom-px h-0.5 rounded-full"
+                    style={{ backgroundColor: accentColor }}
+                    transition={{ type: "spring", stiffness: 400, damping: 34 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "program" ? (
+          <div className="pt-8">
+            {/* Search & filter */}
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative w-full sm:max-w-xs">
+                {isRefiltering ? (
+                  <Loader2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                ) : (
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                )}
+                <Input
+                  placeholder="Search programmes"
+                  className="h-10 rounded-full border-transparent bg-muted/60 pl-9 text-sm focus-visible:border-border"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="scrollbar-hide flex shrink-0 gap-1 overflow-x-auto">
+                {(["ALL", "INDIVIDUAL", "GROUP"] as const).map((type) => {
+                  const isActive = programTypeFilter === type;
+                  return (
                     <button
                       type="button"
                       key={type}
+                      aria-pressed={isActive}
                       onClick={() => setProgramTypeFilter(type)}
                       className={cn(
-                        "px-4 py-2 rounded-full text-xs font-medium transition-all",
-                        programTypeFilter === type
-                          ? "bg-background shadow-premium text-foreground"
-                          : "text-muted-foreground hover:text-foreground",
+                        "shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors",
+                        isActive
+                          ? "text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:text-foreground",
                       )}
+                      style={
+                        isActive ? { backgroundColor: accentColor } : undefined
+                      }
                     >
                       {type === "ALL"
                         ? "All"
@@ -304,180 +302,105 @@ export function ResultsList({
                           ? "Individual"
                           : "Group"}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
+            </div>
 
-              {/* Program Grid */}
-              {filteredPrograms.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredPrograms.map((program, idx) => (
-                    <motion.div
-                      key={program.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.05 }}
-                      onClick={() => openProgramDialog(program.id)}
-                      className="group relative bg-card hover:border-primary/30 cursor-pointer border border-border rounded-xl p-4 flex items-center gap-4 shadow-premium hover:shadow-premium-lg transition-all duration-300 border-l-4"
-                      style={{
-                        borderLeftColor:
-                          idx % 2 === 0 ? accentColor : undefined,
-                      }} // Optional: alternate border colors or keep distinct
-                    >
-                      {/* Number Circle */}
-                      <div className="w-9 h-9 rounded-full bg-muted text-foreground font-semibold text-sm flex items-center justify-center shrink-0 group-hover:bg-primary/8 group-hover:text-primary transition-colors">
-                        {idx + 1}
-                      </div>
-
-                      {/* Text Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-base truncate tracking-tight text-heading">
-                            {program.name}
-                          </h3>
-                          <Badge
-                            variant={
-                              program.type === "GROUP" ? "secondary" : "outline"
-                            }
-                            className="text-[10px] font-normal"
-                          >
-                            {program.type === "GROUP" ? "Team" : "Individual"}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {program.category}
-                        </p>
-                      </div>
-
-                      {/* Chevron for affordance */}
-                      <ChevronRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-foreground/60 transition-colors" />
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-20 text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border">
-                  <p>No programs found matching "{searchQuery}"</p>
-                </div>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="team-view"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-12"
-            >
-              {/* Top 3 Teams (Podium) */}
-              {teamStandings.length > 0 && (
-                <div className="text-center space-y-8">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <h2 className="text-2xl font-semibold tracking-tight text-heading flex items-center gap-2">
-                      <Crown className="w-6 h-6 text-yellow-500 fill-current" />
-                      Final status
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Live team point status
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-end">
-                    {/* 2nd Place (Silver) */}
-                    {teamStandings[1] && (
-                      <div className="order-2 md:order-1 bg-card border-t-4 border-border rounded-2xl p-6 shadow-premium transform hover:-translate-y-1 transition-transform duration-300">
-                        <div className="flex justify-center mb-4">
-                          <Medal className="w-9 h-9 text-gray-400" />
-                        </div>
-                        <h3 className="font-semibold text-lg mb-2 truncate text-heading">
-                          {teamStandings[1].name}
-                        </h3>
-                        <div className="text-3xl font-semibold tracking-tight text-foreground mb-2">
-                          {teamStandings[1].points}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          #2 position — first runners-up
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 1st Place (Gold) */}
-                    {teamStandings[0] && (
-                      <div className="order-1 md:order-2 bg-card border-t-4 border-yellow-500 rounded-2xl p-8 shadow-premium-lg transform md:scale-105 hover:-translate-y-1 transition-transform duration-300 z-10">
-                        <div className="flex justify-center mb-4">
-                          <Crown className="w-11 h-11 text-yellow-500 fill-yellow-400/60" />
-                        </div>
-                        <h3 className="font-semibold text-xl mb-2 truncate text-heading">
-                          {teamStandings[0].name}
-                        </h3>
-                        <div className="text-4xl font-semibold tracking-tight text-primary mb-2">
-                          {teamStandings[0].points}
-                        </div>
-                        <div className="text-xs font-medium text-yellow-700 bg-yellow-100 inline-block px-3 py-1 rounded-full">
-                          #1 position — champions
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 3rd Place (Bronze) */}
-                    {teamStandings[2] && (
-                      <div className="order-3 md:order-3 bg-card border-t-4 border-orange-400 rounded-2xl p-6 shadow-premium transform hover:-translate-y-1 transition-transform duration-300">
-                        <div className="flex justify-center mb-4">
-                          <Medal className="w-9 h-9 text-orange-500" />
-                        </div>
-                        <h3 className="font-semibold text-lg mb-2 truncate text-heading">
-                          {teamStandings[2].name}
-                        </h3>
-                        <div className="text-3xl font-semibold tracking-tight text-foreground mb-2">
-                          {teamStandings[2].points}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          #3 position — second runners-up
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Other Teams */}
-              {teamStandings.length > 3 && (
-                <div className="space-y-4">
-                  <h3 className="text-center text-lg font-semibold tracking-tight text-heading">
-                    Other teams
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {teamStandings.slice(3).map((team) => (
-                      <div
-                        key={team.name}
-                        className="bg-card border border-border rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-premium hover:shadow-premium-lg transition-all"
+            {/* Programme rows */}
+            {programmes.length > 0 ? (
+              <>
+                <ul
+                  className={cn(
+                    "divide-y divide-border border-y border-border transition-opacity",
+                    isRefiltering && "opacity-50",
+                  )}
+                >
+                  {programmes.map((programme, idx) => {
+                    const first = programme.results[0];
+                    return (
+                      <motion.li
+                        key={programme.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.35,
+                          delay: Math.min(idx % PAGE_SIZE, 10) * 0.03,
+                        }}
                       >
-                        <h4 className="font-medium text-sm truncate w-full mb-2 text-heading">
-                          {team.name}
-                        </h4>
-                        <div className="text-2xl font-semibold tracking-tight text-primary mb-1">
-                          {team.points}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          #{team.rank} position
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProgram(programme)}
+                          className="group flex w-full items-center gap-4 py-4 text-left"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h3 className="truncate text-[15px] font-medium text-heading transition-opacity group-hover:opacity-70">
+                              {programme.name}
+                            </h3>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {programme.category} ·{" "}
+                              {programme.type === "GROUP"
+                                ? "Team"
+                                : "Individual"}
+                            </p>
+                          </div>
 
-              {teamStandings.length === 0 && (
-                <div className="text-center py-20 text-muted-foreground">
-                  No results available yet.
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {/* Program Details Modal */}
+                          {first && (
+                            <p className="hidden max-w-[38%] shrink-0 truncate text-right text-sm text-muted-foreground sm:block">
+                              <span className="text-heading">
+                                {first.winner}
+                              </span>
+                            </p>
+                          )}
+
+                          <ChevronRight
+                            className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                            style={{ color: accentColor }}
+                          />
+                        </button>
+                      </motion.li>
+                    );
+                  })}
+                </ul>
+
+                <LoadMore
+                  shown={programmes.length}
+                  total={total}
+                  hasMore={hasMore}
+                  isLoading={isLoadingMore}
+                  error={error}
+                  onLoadMore={loadMore}
+                  noun="programmes"
+                  accentColor={accentColor}
+                />
+              </>
+            ) : (
+              <EmptyState>
+                {searchQuery.trim()
+                  ? `No programmes match “${searchQuery.trim()}”.`
+                  : "No results published yet."}
+              </EmptyState>
+            )}
+          </div>
+        ) : (
+          <motion.div
+            key="team-view"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="pt-8"
+          >
+            <TeamStandingsSection
+              standings={teamStandings}
+              accentColor={accentColor}
+              bare
+            />
+          </motion.div>
+        )}
+
+        {/* Programme detail */}
         <Dialog
-          open={!!selectedProgram}
+          open={!!selectedProgram || isLoadingDeepLink}
           onOpenChange={(open) => {
             if (!open) {
               setSelectedProgram(null);
@@ -485,116 +408,107 @@ export function ResultsList({
             }
           }}
         >
-          <DialogContent className="max-w-md md:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
-            {(() => {
-              const program = programs.find((p) => p.id === selectedProgram);
-              if (!program) return null;
+          <DialogContent className="flex max-h-[88vh] max-w-md flex-col gap-0 overflow-hidden p-0 md:max-w-2xl">
+            {selectedProgram ? (
+              <>
+                <DialogHeader className="space-y-1 border-b border-border p-6 pb-5 text-left">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    {selectedProgram.category} ·{" "}
+                    {selectedProgram.type === "GROUP" ? "Team" : "Individual"}
+                  </p>
+                  <DialogTitle className="text-xl font-semibold tracking-tight text-heading md:text-2xl">
+                    {selectedProgram.name}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm">
+                    {selectedProgram.results.length} published{" "}
+                    {selectedProgram.results.length === 1 ? "place" : "places"}
+                  </DialogDescription>
+                </DialogHeader>
 
-              return (
-                <>
-                  <DialogHeader className="p-6 pb-2 border-b bg-muted/10">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <Badge
-                        variant="outline"
-                        className="uppercase text-[10px] tracking-widest"
-                      >
-                        {program.category}
-                      </Badge>
-                      <Badge
-                        variant={
-                          program.type === "GROUP" ? "secondary" : "outline"
-                        }
-                        className="uppercase text-[10px]"
-                      >
-                        {program.type === "GROUP" ? "Team" : "Individual"}
-                      </Badge>
-                    </div>
-                    <DialogTitle className="text-xl md:text-2xl font-semibold tracking-tight text-heading">
-                      {program.name}
-                    </DialogTitle>
-                    <DialogDescription>
-                      Basic result view: Rank, Team, Code, Grade, Points
-                    </DialogDescription>
-                  </DialogHeader>
+                <ScrollArea className="flex-1 overflow-y-auto px-6 py-5">
+                  <div className="mb-5">
+                    <PublicResultPosterSection
+                      programmeId={selectedProgram.id}
+                      festivalSlug={festivalSlug}
+                      initialTemplateCode={selectedTemplateCode ?? undefined}
+                    />
+                  </div>
 
-                  <ScrollArea className="flex-1 overflow-y-auto p-6 bg-card">
-                    <div className="space-y-3">
-                      {festivalSlug && (
-                        <PublicResultPosterSection
-                          programmeId={program.id}
-                          festivalSlug={festivalSlug}
-                          initialTemplateCode={
-                            selectedTemplateCode ?? undefined
-                          }
-                        />
-                      )}
-                      {program.results.map((result, _idx) => {
-                        const isTop3 = result.position <= 3;
-                        return (
-                          <div
-                            key={result.id}
+                  <ol className="divide-y divide-border border-y border-border">
+                    {selectedProgram.results.map((result) => {
+                      const isWinner = result.position === 1;
+                      return (
+                        <li
+                          key={result.id}
+                          className="flex items-center gap-4 py-3.5"
+                        >
+                          <span
                             className={cn(
-                              "flex items-center justify-between p-3 rounded-lg border",
-                              isTop3
-                                ? "bg-accent/5 border-accent/20"
-                                : "bg-background border-border",
+                              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                              isWinner
+                                ? "text-primary-foreground"
+                                : "bg-muted text-muted-foreground",
                             )}
+                            style={
+                              isWinner
+                                ? { backgroundColor: accentColor }
+                                : undefined
+                            }
                           >
-                            <div className="flex items-center gap-4">
-                              <div
-                                className={cn(
-                                  "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
-                                  result.position === 1
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : result.position === 2
-                                      ? "bg-gray-100 text-gray-700"
-                                      : result.position === 3
-                                        ? "bg-orange-100 text-orange-700"
-                                        : "bg-muted text-muted-foreground",
-                                )}
-                              >
-                                {result.position}
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                  Team
-                                </p>
-                                <p className="font-bold text-sm">
-                                  {result.winner}
-                                </p>
-                                {result.codeLetter ? (
-                                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                                    Code {result.codeLetter}
-                                  </p>
-                                ) : null}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div
-                                className="font-mono font-bold text-sm"
-                                style={{ color: accentColor }}
-                              >
-                                {result.points} pts
-                              </div>
-                              <div className="flex items-center justify-end gap-2 mt-1">
-                                {result.grade && (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-green-100 text-green-700 rounded border border-green-200">
-                                    {result.grade}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                            {result.position}
+                          </span>
+
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={cn(
+                                "truncate text-heading",
+                                isWinner
+                                  ? "text-[15px] font-semibold"
+                                  : "text-sm font-medium",
+                              )}
+                            >
+                              {result.winner}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {[
+                                result.team,
+                                result.codeLetter
+                                  ? `Code ${result.codeLetter}`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                </>
-              );
-            })()}
+
+                          <div className="shrink-0 text-right">
+                            <p className="text-sm font-semibold tabular-nums text-foreground">
+                              {result.points}
+                              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                pts
+                              </span>
+                            </p>
+                            {result.grade && (
+                              <p className="mt-0.5 text-[11px] font-medium text-success">
+                                Grade {result.grade}
+                              </p>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </ScrollArea>
+              </>
+            ) : (
+              <div className="flex min-h-[240px] items-center justify-center">
+                <DialogTitle className="sr-only">Loading result</DialogTitle>
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
-    </section>
+    </PublicSection>
   );
 }

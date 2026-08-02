@@ -527,7 +527,10 @@ export function ResultsExploreClient({
                           </span>
                         )}
                         {row.isAbsent ? (
-                          <Badge variant="destructive" className="font-mono font-semibold">
+                          <Badge
+                            variant="destructive"
+                            className="font-mono font-semibold"
+                          >
                             Absent
                           </Badge>
                         ) : (
@@ -614,7 +617,10 @@ export function ResultsExploreClient({
                         </TableCell>
                         <TableCell className="text-center">
                           {row.isAbsent ? (
-                            <Badge variant="destructive" className="font-mono font-semibold">
+                            <Badge
+                              variant="destructive"
+                              className="font-mono font-semibold"
+                            >
                               Absent
                             </Badge>
                           ) : (

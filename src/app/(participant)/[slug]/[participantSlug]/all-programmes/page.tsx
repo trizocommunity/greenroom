@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { APP_CONTAINER, AppPageHeader } from "@/components/app/AppSection";
 import { AllProgrammesClient } from "@/components/participant/team-leader/AllProgrammesClient";
 import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import { db } from "@/core/database/client";
@@ -9,6 +10,7 @@ import {
   programmeCodeLetter as codeLetterTable,
   group as groupTable,
   programme as programmeTable,
+  programmeTeamLead as programmeTeamLeadTable,
   programmeReportedParticipant as reportedParticipantTable,
   programmeReportingSession as sessionTable,
 } from "@/core/database/schema";
@@ -117,6 +119,34 @@ export default async function AllProgrammesPage({
     assignmentCountsRaw.map((r) => [r.programmeId, Number(r.count)]),
   );
 
+  /* Counted straight from the assignment table for this leader's group.
+     Deriving it from `myParticipants` under-reported INDIVIDUAL programmes,
+     because that list is scoped more narrowly than the group itself. */
+  const groupAssignmentCountsRaw =
+    programmes.length > 0 && participant.groupId
+      ? await db
+          .select({
+            programmeId: assignmentTable.programmeId,
+            count: sql`count(*)`,
+          })
+          .from(assignmentTable)
+          .where(
+            and(
+              eq(assignmentTable.festivalId, festival.id),
+              eq(assignmentTable.groupId, participant.groupId),
+              inArray(
+                assignmentTable.programmeId,
+                programmes.map((p) => p.id),
+              ),
+            ),
+          )
+          .groupBy(assignmentTable.programmeId)
+      : [];
+
+  const groupAssignedCountByProgramme = new Map<string, number>(
+    groupAssignmentCountsRaw.map((r) => [r.programmeId, Number(r.count)]),
+  );
+
   const myAssignments = myParticipantIds.length
     ? await db.query.programmeAssignment.findMany({
         where: and(
@@ -144,6 +174,32 @@ export default async function AllProgrammesPage({
             eq(assignmentTable.festivalId, festival.id),
             inArray(assignmentTable.programmeId, groupProgrammeIds),
             eq(assignmentTable.groupId, participant.groupId!),
+            isNotNull(assignmentTable.participantId),
+          ),
+          with: {
+            participant: {
+              columns: { id: true, name: true, chestNumber: true },
+            },
+            group: true,
+          },
+        })
+      : [];
+
+  /* INDIVIDUAL programmes used to be read from `myAssignments`, which is
+     scoped to `getTeamLeaderMyParticipants` — a narrower set than the group.
+     GROUP programmes already had their own group-scoped query, which is why
+     only individual programmes came back empty. Both are group-scoped now. */
+  const individualProgrammeIds = programmes
+    .filter((p) => p.type !== "GROUP")
+    .map((p) => p.id);
+
+  const individualProgrammeAssignments =
+    individualProgrammeIds.length > 0 && participant.groupId
+      ? await db.query.programmeAssignment.findMany({
+          where: and(
+            eq(assignmentTable.festivalId, festival.id),
+            inArray(assignmentTable.programmeId, individualProgrammeIds),
+            eq(assignmentTable.groupId, participant.groupId),
             isNotNull(assignmentTable.participantId),
           ),
           with: {
@@ -330,19 +386,26 @@ export default async function AllProgrammesPage({
         : [];
 
     const myIndividualMembers =
-      p.type !== "GROUP" && entry?.individualMembers
-        ? (entry.individualMembers ?? []).map((m: any) => ({
-            id: m.id,
-            name: m.name,
-            chestNumber: m.chestNumber ?? null,
-            assignmentId: m.assignmentId as string,
-            reportingNote: reportingNoteForMember(
-              p.type,
-              latestSession,
-              m.assignmentId,
-              m.id,
-            ),
-          }))
+      p.type !== "GROUP"
+        ? (individualProgrammeAssignments as any[])
+            .filter((a) => a.programmeId === p.id && a.participant)
+            .map((a) => ({
+              id: a.participant.id,
+              name: a.participant.name,
+              chestNumber: a.participant.chestNumber ?? null,
+              assignmentId: a.id as string,
+              reportingNote: reportingNoteForMember(
+                p.type,
+                latestSession,
+                a.id,
+                a.participant.id,
+              ),
+            }))
+            .sort((x, y) =>
+              (x.name ?? "").localeCompare(y.name ?? "", undefined, {
+                sensitivity: "base",
+              }),
+            )
         : [];
 
     const myParticipantCount =
@@ -350,9 +413,12 @@ export default async function AllProgrammesPage({
         ? myGroupTeams.reduce((sum, t) => sum + (t.members?.length ?? 0), 0)
         : myIndividualMembers.length;
 
-    const myAssignmentIdsForProgramme = myAssignments
-      .filter((row: any) => row.programmeId === p.id)
-      .map((row: any) => row.id as string);
+    /* Derived from the same group-scoped lists the drawer renders, so the
+       reported/pending pill can't disagree with the members shown. */
+    const myAssignmentIdsForProgramme =
+      p.type === "GROUP"
+        ? myGroupTeams.flatMap((t) => t.members.map((m) => m.assignmentId))
+        : myIndividualMembers.map((m) => m.assignmentId);
     const reportedOnTeam = myAssignmentIdsForProgramme.filter((id) =>
       reportedAssignmentIds.has(id),
     ).length;
@@ -433,10 +499,12 @@ export default async function AllProgrammesPage({
               total: myAssignmentIdsForProgramme.length,
             }
           : null,
-      assignedCount: assignmentCountByProgramme.get(p.id) ?? 0,
+      /* Counts are scoped to the leader's own group — a festival-wide
+         "12/240 assigned" told a team leader nothing about their own work. */
+      assignedCount: groupAssignedCountByProgramme.get(p.id) ?? 0,
       expectedAssignments: getExpectedAssignmentsTotal({
         programmeType: p.type as any,
-        groupCount,
+        groupCount: 1,
         maxParticipantsPerGroup: p.maxParticipantsPerGroup,
         maxTeamsPerGroup: p.maxTeamsPerGroup,
         maxParticipantsPerTeam: p.maxParticipantsPerTeam,
@@ -445,6 +513,21 @@ export default async function AllProgrammesPage({
       myIndividualMembers,
     };
   });
+
+  /* Who leads each of this group's teams, keyed `${programmeId}:${teamNumber}`.
+     Loaded once for the whole board rather than per programme. */
+  const teamLeadRows = participant.groupId
+    ? await db.query.programmeTeamLead.findMany({
+        where: eq(programmeTeamLeadTable.groupId, participant.groupId),
+        with: { participant: { columns: { id: true, name: true } } },
+      })
+    : [];
+
+  const teamLeadByKey: Record<string, string> = {};
+  for (const row of teamLeadRows as any[]) {
+    teamLeadByKey[`${row.programmeId}:${row.teamNumber}`] =
+      row.participant?.name ?? "Unknown";
+  }
 
   const categoryOptionsMap = new Map<string, string>();
   for (const p of programmes as any[]) {
@@ -459,16 +542,15 @@ export default async function AllProgrammesPage({
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">All Programmes</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          All festival programmes with live reporting, code letters, and your
-          team’s attendance per programme.
-        </p>
-      </div>
+    <div className={`${APP_CONTAINER} space-y-6 py-8`}>
+      <AppPageHeader
+        eyebrow="Team leader"
+        title="All programmes"
+        description="Every programme at the festival, with live reporting, code letters and your group's attendance."
+      />
 
       <AllProgrammesClient
+        teamLeadByKey={teamLeadByKey}
         items={programmeCards as any[]}
         categoryOptions={categoryOptions.sort((a, b) =>
           a.name.localeCompare(b.name),

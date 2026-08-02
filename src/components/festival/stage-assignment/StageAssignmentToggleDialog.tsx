@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,

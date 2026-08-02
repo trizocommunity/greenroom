@@ -23,6 +23,9 @@ import { toast } from "sonner";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
+import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import {
   Accordion,
   AccordionContent,
@@ -32,7 +35,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 import {
   Drawer,
   DrawerContent,
@@ -53,15 +55,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { formatDateTime, parseInstant } from "@/core/datetime";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
-import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
-import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
-import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
   getJudgementDashboardDataAction,
   restartJudgementAction,
   startJudgementAction,
 } from "@/features/judgement/actions/judgement.actions";
+import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 
 type Judge = { id: string; name: string; description?: string | null };
 type Programme = {
@@ -834,7 +833,8 @@ export function JudgementWizardClient({
                       : `Reported participants (${reportedParticipantsView.details.reportedCount})`}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Category: {reportedParticipantsView.programmeCategory ?? "—"}
+                    Category:{" "}
+                    {reportedParticipantsView.programmeCategory ?? "—"}
                   </p>
                   {reportedParticipantsView.details.reportedEntries.length ===
                   0 ? (

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-
-import { serverNowIso } from "../server";
 import { parseInstant, parseInstantOrThrow, toDateOrNull } from "../parse";
+import { serverNowIso } from "../server";
 
 describe("parseInstant", () => {
   it("parses Z-suffixed ISO string", () => {
@@ -135,7 +134,9 @@ describe("parseInstant — last-resort fallback (numeric epoch ms only)", () => 
 
   it("rejects 9- and 14-digit numbers (out of accepted ms range)", () => {
     expect(parseInstant("123456789")).toBeNull();
-    expect(parseInstant(Date.parse("2026-08-15T09:00:00.000Z").toString() + "0")).toBeNull();
+    expect(
+      parseInstant(Date.parse("2026-08-15T09:00:00.000Z").toString() + "0"),
+    ).toBeNull();
   });
 });
 
@@ -174,7 +175,9 @@ describe("parseInstant — legacy UTC coercion (the case behind the 'NaNd ago' b
 
   it("still accepts date-only input when legacyLocalFormat === 'reject'", () => {
     expect(
-      parseInstant("2026-08-15", { legacyLocalFormat: "reject" })?.toISOString(),
+      parseInstant("2026-08-15", {
+        legacyLocalFormat: "reject",
+      })?.toISOString(),
     ).toBe("2026-08-15T00:00:00.000Z");
   });
 
@@ -192,9 +195,11 @@ describe("parseInstant — debug warn fires once per unique unparseable value", 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       for (let i = 0; i < 3; i += 1) {
-        expect(parseInstant("totally-bogus-string-xyz", {
-          debugUnparseable: true,
-        })).toBeNull();
+        expect(
+          parseInstant("totally-bogus-string-xyz", {
+            debugUnparseable: true,
+          }),
+        ).toBeNull();
       }
       const matches = warnSpy.mock.calls.filter((args) =>
         String(args[0]).includes("totally-bogus-string-xyz"),

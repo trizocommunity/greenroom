@@ -132,10 +132,7 @@ function coerceLegacyLocalFormatToUtc(raw: string): string {
  *   "2026-08-15T09:00:00.000+05:30" → "2026-08-15T09:00:00.000+05:30" (unchanged)
  */
 function normaliseZeroOffsetToZ(raw: string): string {
-  return raw.replace(
-    /([+-])00(?::?00)?(?=[T ]|\.|$)/,
-    () => "Z",
-  );
+  return raw.replace(/([+-])00(?::?00)?(?=[T ]|\.|$)/, () => "Z");
 }
 
 /**

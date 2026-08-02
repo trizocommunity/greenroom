@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useCreateExport } from "@/api/client/exports";
 import { Button } from "@/components/ui/button";
+import { DrawerFooter } from "@/components/ui/drawer";
 import {
   Sheet,
   SheetContent,
@@ -29,7 +30,6 @@ import { JudgeListFilters } from "./filters/JudgeListFilters";
 import { ResultsFilters } from "./filters/ResultsFilters";
 import { TeamResultFilters } from "./filters/TeamResultFilters";
 import { ValuationSheetFilters } from "./filters/ValuationSheetFilters";
-import { DrawerFooter } from "@/components/ui/drawer";
 
 interface NewExportDrawerProps {
   festivalId: string;
@@ -121,9 +121,7 @@ export function NewExportDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        className="w-full sm:max-w-xl flex flex-col p-0 gap-0"
-      >
+      <SheetContent className="w-full sm:max-w-xl flex flex-col p-0 gap-0">
         <SheetHeader className="px-1 pb-4 border-b">
           <SheetTitle>Create Export</SheetTitle>
         </SheetHeader>

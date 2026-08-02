@@ -25,6 +25,7 @@ export const festivalLifecycleEventType = pgEnum("FestivalLifecycleEventType", [
   "CREATED",
   "ACTIVATED",
   "EXPIRED",
+  "EXPIRATION_WARNING",
 ]);
 export const festivalRole = pgEnum("FestivalRole", [
   "ADMIN",
@@ -297,6 +298,7 @@ export const festival = pgTable(
     slug: text().notNull(),
     category: text(),
     description: text(),
+    tagline: text(),
     orgName: text(),
     orgDescription: text(),
     orgWebsite: text(),
@@ -317,10 +319,12 @@ export const festival = pgTable(
     institutionType: institutionType(),
     judgesCount: integer().default(0).notNull(),
     location: text(),
+    programmeAssignmentStartDate: tzTimestamp(),
     programmeAssignmentDeadline: tzTimestamp(),
     storageUsedMb: integer().default(0).notNull(),
     tier: tier().default("STANDARD").notNull(),
     tierLabel: text().default("Standard").notNull(),
+    participantCreationStartDate: tzTimestamp(),
     participantCreationDeadline: tzTimestamp(),
     teamLeaderLimit: integer().default(2).notNull(),
     participantsCount: integer().default(0).notNull(),
@@ -343,16 +347,20 @@ export const festival = pgTable(
     institutionId: text(),
     festivalType: festivalTypeEnum().default("INDEPENDENT").notNull(),
     timezone: text().default("UTC").notNull(),
+    archivedAt: tzTimestamp(),
   },
   (table) => [
     index("festival_expiresAt_idx").using(
       "btree",
       table.expiresAt.asc().nullsLast(),
     ),
-    uniqueIndex("festival_ownerId_key").using(
+    index("festival_archivedAt_idx").using(
       "btree",
-      table.ownerId.asc().nullsLast(),
+      table.archivedAt.asc().nullsLast(),
     ),
+    uniqueIndex("festival_ownerId_active_key")
+      .using("btree", table.ownerId.asc().nullsLast())
+      .where(sql`${table.status} <> 'EXPIRED'`),
     uniqueIndex("festival_slug_key").using(
       "btree",
       table.slug.asc().nullsLast(),
@@ -1522,6 +1530,29 @@ export const festivalMediaImage = pgTable(
   ],
 );
 
+// ─── 19b. festival_media_video (depends on: festival) ────────────────────────
+
+export const festivalMediaVideo = pgTable(
+  "festival_media_video",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text().notNull(),
+    url: text().notNull(),
+    order: integer().default(0).notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_media_video_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
 // ─── 20. payment (depends on: user, festival) ────────────────────────────────
 
 export const payment = pgTable(
@@ -1669,61 +1700,14 @@ export const festivalCategoryPreference = pgTable(
   ],
 );
 
-// ─── 24. expired_festival_result (depends on: festival) ──────────────────────
-
-export const expiredFestivalResult = pgTable(
-  "expired_festival_result",
-  {
-    id: text().primaryKey().notNull(),
-    festivalId: text().notNull(),
-    programmeName: text().notNull(),
-    categoryName: text(),
-    participantName: text().notNull(),
-    position: integer(),
-    grade: text(),
-    score: doublePrecision(),
-    points: integer(),
-    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
-  },
-  (table) => [
-    index("expired_festival_result_festivalId_idx").using(
-      "btree",
-      table.festivalId.asc().nullsLast(),
-    ),
-    foreignKey({
-      columns: [table.festivalId],
-      foreignColumns: [festival.id],
-      name: "expired_festival_result_festivalId_fkey",
-    })
-      .onUpdate("cascade")
-      .onDelete("cascade"),
-  ],
-);
-
-// ─── 24b. expired_festival_manual_book (depends on: festival) ──────────────────
-
-export const expiredFestivalManualBook = pgTable(
-  "expired_festival_manual_book",
-  {
-    id: text().primaryKey().notNull(),
-    festivalId: text().notNull(),
-    data: jsonb().notNull(),
-    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
-  },
-  (table) => [
-    index("expired_festival_manual_book_festivalId_idx").using(
-      "btree",
-      table.festivalId.asc().nullsLast(),
-    ),
-    foreignKey({
-      columns: [table.festivalId],
-      foreignColumns: [festival.id],
-      name: "expired_festival_manual_book_festivalId_fkey",
-    })
-      .onUpdate("cascade")
-      .onDelete("cascade"),
-  ],
-);
+// ─── 24. expired_festival_result / expired_festival_manual_book ───────────
+//
+// Removed in ISSUE-15 §1.3. The expiry flow no longer snapshots results or
+// the manual-book JSON blob; the live kept tables (`programme`, `participant`,
+// `result`, `group`, `category`, `stage`, `scheduleEntry`,
+// `programmeAssignment`, `festivalMember`, `festivalNews`, `festivalMediaImage`)
+// are the source of truth, and the Manual Book PDF is regenerated on demand
+// from them. See drizzle/0029_drop_expired_festival_snapshot_tables.sql.
 
 // ─── 25. festival_lifecycle_event (depends on: festival) ─────────────────────
 

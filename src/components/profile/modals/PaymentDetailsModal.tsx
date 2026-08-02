@@ -34,9 +34,7 @@ export function PaymentDetailsModal({
 }: PaymentDetailsModalProps) {
   const displayTz = useDisplayTimezone();
   if (!payment) return null;
-  const createdAt = payment.createdAt
-    ? parseInstant(payment.createdAt)
-    : null;
+  const createdAt = payment.createdAt ? parseInstant(payment.createdAt) : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

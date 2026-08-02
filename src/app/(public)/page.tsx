@@ -1,18 +1,20 @@
-import Benefits from "@/components/home/Benefits";
 import CTASection from "@/components/home/CTASection";
 import Hero from "@/components/home/Hero";
-import ProblemSolution from "@/components/home/ProblemSolution";
-import TargetAudience from "@/components/home/TargetAudience";
+import { Lifecycle } from "@/components/home/Lifecycle";
+import { Marquee } from "@/components/home/Marquee";
+import { Reviews } from "@/components/home/Reviews";
+import { Roles } from "@/components/home/Roles";
 
 export const dynamic = "force-static";
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <Hero />
-      <ProblemSolution />
-      <Benefits />
-      <TargetAudience />
+      <Marquee />
+      <Lifecycle />
+      <Roles />
+      <Reviews />
       <CTASection />
     </div>
   );

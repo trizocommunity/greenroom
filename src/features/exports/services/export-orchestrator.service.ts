@@ -43,9 +43,21 @@ async function runGenerator(
     case "TEAM_RESULT":
       return generateTeamResult(festivalId, config, format);
     case "CALL_LIST":
-      return generateCallList(festivalId, config, format, festivalName, festivalTz);
+      return generateCallList(
+        festivalId,
+        config,
+        format,
+        festivalName,
+        festivalTz,
+      );
     case "RESULTS":
-      return generateResults(festivalId, config, format, festivalName, festivalTz);
+      return generateResults(
+        festivalId,
+        config,
+        format,
+        festivalName,
+        festivalTz,
+      );
     case "JUDGE_LIST":
       return generateJudgeList(festivalId, config, format, festivalName);
     case "VALUATION_SHEET":

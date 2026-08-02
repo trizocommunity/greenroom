@@ -78,7 +78,10 @@ export function GroupsClient({ festivalId, children }: GroupsClientProps) {
                 {/* Top: name + actions */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: groupColor }} />
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: groupColor }}
+                    />
                     <h3
                       className="font-semibold text-base leading-tight text-foreground line-clamp-2"
                       title={group.name}

@@ -1,15 +1,13 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-
+import { toast } from "sonner";
+import { queryKeys } from "@/api/client/_query-keys";
+import { useProfile, useUpdateProfile } from "@/api/client/profile";
 import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";
 import { Button } from "@/components/ui/button";
-import { useProfile, useUpdateProfile } from "@/api/client/profile";
-import { queryKeys } from "@/api/client/_query-keys";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 interface TimezoneFieldProps {
   initialTimezone?: string | null;
@@ -24,7 +22,9 @@ export function TimezoneField({ initialTimezone }: TimezoneFieldProps) {
   const { data: userData } = useProfile();
   const qc = useQueryClient();
   const update = useUpdateProfile();
-  const [value, setValue] = useState(initialTimezone ?? userData?.timezone ?? "");
+  const [value, setValue] = useState(
+    initialTimezone ?? userData?.timezone ?? "",
+  );
 
   useEffect(() => {
     if (userData?.timezone && !initialTimezone) {

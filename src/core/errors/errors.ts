@@ -40,6 +40,7 @@ export const ERROR_MESSAGES = {
     "The selected group does not belong to this festival.",
   PARTICIPANT_INVALID_CATEGORY:
     "The selected category does not belong to this festival.",
+  PARTICIPANT_INVALID_DOB: "The date of birth you entered does not match.",
   PARTICIPANT_EMAIL_DUPLICATE:
     "A participant with this email is already registered for this festival.",
   PARTICIPANT_NAME_DUPLICATE:
@@ -89,8 +90,12 @@ export const ERROR_MESSAGES = {
   ASSIGNMENT_DEPENDENCIES_MISSING:
     "Please create categories, groups, programmes, and participants before making assignments.",
   ASSIGNMENT_DEADLINE_PASSED_ADMIN: "Deadline passed. Assignments are closed.",
+  ASSIGNMENT_WINDOW_NOT_OPEN:
+    "Assignments haven't opened yet. Please wait for the start date.",
   PARTICIPANT_CREATION_DEADLINE_PASSED:
     "Deadline passed. Adding new participants is closed.",
+  PARTICIPANT_CREATION_WINDOW_NOT_OPEN:
+    "Participant registration hasn't opened yet. Please wait for the start date.",
 
   // ─── Usage / Limits ───────────────────────────────────────────────────────
   USAGE_LIMIT_EXCEEDED:

@@ -43,7 +43,9 @@ interface ResultRow {
 
 function formatDob(iso: string | null, festivalTz: string): string {
   if (!iso) return "";
-  return parseInstant(iso) ? formatDate(iso, { tz: festivalTz, style: "medium" }) : "";
+  return parseInstant(iso)
+    ? formatDate(iso, { tz: festivalTz, style: "medium" })
+    : "";
 }
 
 async function loadResultRows(
@@ -155,7 +157,11 @@ export async function generateResults(
   festivalName: string,
   festivalTz: string = "UTC",
 ): Promise<GeneratedExport> {
-  const { rows, codeByProgramme } = await loadResultRows(festivalId, config, festivalTz);
+  const { rows, codeByProgramme } = await loadResultRows(
+    festivalId,
+    config,
+    festivalTz,
+  );
   const teamWise = config.listType === "TEAM_WISE";
 
   const cols = (): string[] => [

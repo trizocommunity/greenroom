@@ -8,8 +8,8 @@ import {
   ok,
   tooManyRequests,
 } from "@/api/lib";
-import { checkRateLimit } from "@/core/http/rate-limit";
 import { MS, serverNowMs } from "@/core/datetime/server";
+import { checkRateLimit } from "@/core/http/rate-limit";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -23,11 +23,7 @@ const handler = createProtectedHandler({
       return badRequest("INVALID_INPUT", parsed.error.message);
     }
 
-    const rateLimit = checkRateLimit(
-      `upload:${user!.userId}`,
-      10,
-      MS.hour,
-    );
+    const rateLimit = checkRateLimit(`upload:${user!.userId}`, 10, MS.hour);
     if (!rateLimit.allowed) {
       return tooManyRequests("Upload limit exceeded. Please try again later.");
     }

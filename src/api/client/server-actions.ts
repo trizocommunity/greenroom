@@ -657,7 +657,9 @@ export function useUpdateFestivalSettings() {
     mutationFn: async (input: {
       festivalId: string;
       data: {
+        programmeAssignmentStartDate?: string | null;
         programmeAssignmentDeadline?: string | null;
+        participantCreationStartDate?: string | null;
         participantCreationDeadline?: string | null;
         teamLeaderLimit?: number;
         announcerResultsPerStandings?: number;

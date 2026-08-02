@@ -2,21 +2,17 @@
 
 import { CreditCard, LayoutDashboard, Settings, Tent } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { LogoutButton } from "@/components/auth/LogoutButton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import type { UserProfile } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 
 interface ProfileSidebarContentProps {
-  user: UserProfile;
+  user?: UserProfile;
   planLabel?: string | null;
   className?: string;
   onLinkClick?: () => void;
 }
 
 export function ProfileSidebarContent({
-  user,
   className,
   onLinkClick,
 }: ProfileSidebarContentProps) {
@@ -24,18 +20,6 @@ export function ProfileSidebarContent({
   const router = useRouter();
   const pathname = usePathname();
   const activeTab = searchParams.get("tab") || "overview";
-
-  const initials = user.fullName
-    ? user.fullName
-        .split(" ")
-        .map((n: string) => n[0])
-        .join("")
-        .toUpperCase()
-        .substring(0, 2)
-    : user.email.substring(0, 2).toUpperCase();
-
-  const displayName =
-    user.displayName || user.fullName || user.email.split("@")[0];
 
   const navigate = (tab: string) => {
     const params = new URLSearchParams(searchParams);
@@ -68,71 +52,38 @@ export function ProfileSidebarContent({
   ];
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
-      {/* User Info & Avatar Header */}
-      <div className="flex flex-col items-start gap-4 mb-8 px-4 md:px-0">
-        <Avatar className="h-16 w-16 border border-border shadow-premium">
-          <AvatarImage src="" />
-          <AvatarFallback className="text-lg font-semibold bg-primary/8 text-primary">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-
-        {/* Name, Email & Badge */}
-        <div className="space-y-1 w-full">
-          <h1 className="text-base font-semibold tracking-tight text-heading truncate">
-            {displayName}
-          </h1>
-          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-
-          {user.accountType && (
-            <div className="pt-1.5">
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[11px] font-medium px-2.5 py-0.5",
-                  user.accountType === "INSTITUTIONAL"
-                    ? "bg-primary/8 text-primary border-primary/20"
-                    : "bg-muted text-muted-foreground",
-                )}
-              >
-                {user.accountType}
-              </Badge>
-              {user.accountType === "PERSONAL" && (
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Upgrade to Institutional for campus features
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex flex-col space-y-1 flex-1">
-        <div className="mb-3 px-4 md:px-0 text-xs font-medium text-muted-foreground">
+    <div className={cn("flex h-full flex-col", className)}>
+      <nav className="flex-1">
+        <p className="mb-3 px-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:px-0">
           Account
-        </div>
-        <div className="flex flex-col space-y-0.5 px-2 md:px-0">
+        </p>
+        {/* A hairline rail rather than a stack of pills — the active item is
+            marked by a bar on the divider, so the nav reads as one object. */}
+        <div className="flex flex-col md:border-l md:border-border">
           {items.map((item) => (
             <button
               type="button"
               key={item.value}
               onClick={() => navigate(item.value)}
+              aria-current={activeTab === item.value ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors w-full text-left",
+                "relative flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium transition-colors md:-ml-px md:border-l-2",
                 activeTab === item.value
-                  ? "bg-primary/8 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "text-heading md:border-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
+              <item.icon
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-colors",
+                  activeTab === item.value
+                    ? "text-primary"
+                    : "text-muted-foreground/70",
+                )}
+              />
               {item.label}
             </button>
           ))}
-        </div>
-        <div className="md:hidden mt-auto pt-6 px-4 border-t border-border">
-          <LogoutButton />
         </div>
       </nav>
     </div>

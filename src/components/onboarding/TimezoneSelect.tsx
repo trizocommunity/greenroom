@@ -12,14 +12,18 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/core/utils/cn";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   getBrowserTimezone,
   groupedTimezones,
   labelForTimezone,
   TZ_OPTIONS,
 } from "@/core/datetime";
+import { cn } from "@/core/utils/cn";
 
 interface TimezoneSelectProps {
   value: string;

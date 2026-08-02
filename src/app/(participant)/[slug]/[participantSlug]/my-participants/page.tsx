@@ -1,5 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { APP_CONTAINER } from "@/components/app/AppSection";
 import { MyParticipantsClient } from "@/components/participant/team-leader/MyParticipantsClient";
 import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import { db } from "@/core/database/client";
@@ -7,6 +8,7 @@ import {
   category as categoryTable,
   participant as participantTable,
 } from "@/core/database/schema";
+import { isDeadlineWindowOpen } from "@/features/festivals/services/deadline-window";
 
 export default async function MyParticipantsPage({
   params,
@@ -37,11 +39,15 @@ export default async function MyParticipantsPage({
     }),
   ]);
 
+  const windowStart = festival.participantCreationStartDate;
   const deadline = festival.participantCreationDeadline;
-  const isReadOnly = deadline ? new Date() > new Date(deadline) : false;
+  const isReadOnly = !isDeadlineWindowOpen({
+    start: windowStart,
+    end: deadline,
+  });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-4">
+    <div className={`${APP_CONTAINER} space-y-6 py-8`}>
       <MyParticipantsClient
         festivalId={festival.id}
         festivalSlug={festival.slug}
@@ -49,6 +55,7 @@ export default async function MyParticipantsPage({
         allCategories={categories
           .filter((c) => c.type === "SINGLE")
           .map((c) => ({ id: c.id, name: c.name }))}
+        windowStart={windowStart}
         deadline={deadline}
         isReadOnly={isReadOnly}
       />

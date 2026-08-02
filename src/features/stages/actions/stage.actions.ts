@@ -7,8 +7,8 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable, stage, user } from "@/core/database/schema";
-import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { serverNowIso } from "@/core/datetime/server";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 

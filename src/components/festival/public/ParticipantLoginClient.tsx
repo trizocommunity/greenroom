@@ -50,7 +50,10 @@ export function ParticipantLoginClient({
       return;
     }
 
-    const identifierValue = dateOfBirth.toISOString();
+    const yyyy = dateOfBirth.getFullYear();
+    const mm = String(dateOfBirth.getMonth() + 1).padStart(2, "0");
+    const dd = String(dateOfBirth.getDate()).padStart(2, "0");
+    const identifierValue = `${yyyy}-${mm}-${dd}`;
 
     requestAccess.mutate(
       { festivalSlug, chestNumber, identifierKind: "DOB", identifierValue },

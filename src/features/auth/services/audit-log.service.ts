@@ -35,7 +35,9 @@ type AuditAction =
   | "MARK_ABSENT"
   | "SAVE_RESULT"
   | "PUBLISH_RESULTS"
-  | "ANNOUNCE_RESULTS";
+  | "ANNOUNCE_RESULTS"
+  | "EXPIRE_FESTIVAL"
+  | "REPLACE_FESTIVAL_LIFECYCLE";
 
 type TargetType =
   | "FESTIVAL"

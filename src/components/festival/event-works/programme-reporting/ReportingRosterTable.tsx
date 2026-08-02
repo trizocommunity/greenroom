@@ -1,6 +1,6 @@
 "use client";
 
-import { Dices, Loader2 } from "lucide-react";
+import { Crown, Dices, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/core/utils/cn";
 import type { RosterTableRow } from "./types";
@@ -53,9 +53,7 @@ export function ReportingRosterTable({
                 key={row.key}
                 className={cn(
                   "grid grid-cols-12 items-center px-3 py-2.5 text-sm transition-colors",
-                  row.isReported
-                    ? "bg-emerald-500/[0.05]"
-                    : "hover:bg-muted/30",
+                  row.isReported ? "bg-success/[0.06]" : "hover:bg-muted/30",
                 )}
               >
                 <div className="col-span-1 flex justify-center">
@@ -91,6 +89,12 @@ export function ReportingRosterTable({
                   >
                     {row.nameColumn}
                   </p>
+                  {row.mode === "team" && row.teamLeadName ? (
+                    <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                      <Crown className="h-3 w-3 shrink-0 text-primary" />
+                      {row.teamLeadName}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="col-span-2 truncate text-muted-foreground text-xs">
                   {row.groupName ?? "—"}
@@ -136,7 +140,10 @@ export function ReportingRosterTable({
           const issuedCode = getIssuedCodeForRow(row);
           const showCode = (isClosed || !!issuedCode) && row.isReported;
           const title = row.nameColumn;
-          const subtitle = row.groupName ?? "—";
+          const subtitle =
+            row.mode === "team" && row.teamLeadName
+              ? `${row.groupName ?? "—"} · Lead: ${row.teamLeadName}`
+              : (row.groupName ?? "—");
           const isMarking = markingIds.has(row.assignmentId);
           const isSpinPending = spinPendingAssignmentId === row.assignmentId;
 
@@ -145,7 +152,7 @@ export function ReportingRosterTable({
               key={row.key}
               className={cn(
                 "bg-background px-3 py-3 flex items-center gap-4 transition-colors",
-                row.isReported && "bg-emerald-500/[0.05]",
+                row.isReported && "bg-success/[0.06]",
               )}
             >
               {isInProgress ? (
@@ -154,14 +161,15 @@ export function ReportingRosterTable({
                   tabIndex={0}
                   onClick={() => !isMarking && onMark(row, !row.isReported)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       if (!isMarking) onMark(row, !row.isReported);
                     }
                   }}
                   className={cn(
                     "-my-3 flex min-w-0 flex-1 items-center gap-4 py-3 text-left cursor-pointer",
-                    isMarking && "opacity-50 cursor-not-allowed pointer-events-none"
+                    isMarking &&
+                      "opacity-50 cursor-not-allowed pointer-events-none",
                   )}
                 >
                   <span className="shrink-0">

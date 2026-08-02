@@ -37,23 +37,35 @@ export function StagePortalLoginClient({
 
   return (
     <AuthLayout
-      title="Stage Judge Portal"
-      description="Sign in to STAGE PORTAL"
+      title="Stage judge portal"
+      description="Enter the access code and PIN from your stage manager."
       variant="centered"
       showLogo={false}
     >
-      <div className="space-y-3">
+      {/* A real form, so the on-screen keyboard shows "go" and Enter submits —
+          this is typed on a phone at the side of a stage. */}
+      <form
+        className="space-y-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
         <div className="space-y-2">
           <Label htmlFor="accessCode">Access code</Label>
           <Input
             id="accessCode"
             value={accessCode}
-            onChange={(e) => setAccessCode(e.target.value)}
-            placeholder="e.g. AB12CD"
+            onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+            placeholder="AB12CD"
             autoCapitalize="characters"
-            className="h-9 text-center font-mono text-lg tracking-widest"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="next"
+            className="h-12 rounded-xl text-center font-mono text-lg tracking-[0.3em]"
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="pin">PIN</Label>
           <Input
@@ -65,17 +77,19 @@ export function StagePortalLoginClient({
             placeholder="••••"
             inputMode="numeric"
             autoComplete="one-time-code"
-            className="h-9 text-center font-mono text-xl tracking-[0.35em]"
+            enterKeyHint="go"
+            className="h-12 rounded-xl text-center font-mono text-xl tracking-[0.4em]"
           />
         </div>
+
         <Button
-          className="h-9 w-full mt-3"
-          onClick={submit}
+          type="submit"
+          className="h-12 w-full rounded-full text-base font-medium shadow-primary-glow"
           disabled={login.isPending}
         >
           {login.isPending ? "Checking…" : "Unlock portal"}
         </Button>
-      </div>
+      </form>
     </AuthLayout>
   );
 }

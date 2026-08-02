@@ -2,6 +2,7 @@
 
 import { CalendarOff } from "lucide-react";
 import { useJoinedFestivals } from "@/api/client";
+import { AppEmptyState, AppPageHeader } from "@/components/app/AppSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
 
@@ -12,47 +13,32 @@ interface FestivalsTabProps {
 export function FestivalsTab({ userId: _userId }: FestivalsTabProps) {
   const { data: joinedFestivals, isLoading } = useJoinedFestivals();
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4 animate-in fade-in duration-500">
-        <Skeleton className="h-32 w-full rounded-lg" />
-        <Skeleton className="h-32 w-full rounded-lg" />
-      </div>
-    );
-  }
-
-  if (!joinedFestivals || joinedFestivals.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center animate-in fade-in duration-500 border border-dashed border-border rounded-2xl bg-muted/20">
-        <div className="bg-muted p-4 rounded-full mb-4">
-          <CalendarOff className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold tracking-tight text-heading">
-          No festivals found
-        </h3>
-        <p className="text-muted-foreground max-w-sm mt-2">
-          You haven't joined any festivals as a team member yet. Contact a
-          festival admin to get added.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="space-y-2">
-        <h2 className="text-3xl font-semibold tracking-tight text-heading">
-          My festivals
-        </h2>
-        <p className="text-muted-foreground">
-          Manage festivals you are a part of.
-        </p>
-      </div>
-      <div className="grid gap-6">
-        {joinedFestivals.map((festival: any) => (
-          <JoinedFestivalCard key={festival.id} festival={festival} />
-        ))}
-      </div>
+    <div className="animate-in fade-in space-y-8 duration-500">
+      <AppPageHeader
+        eyebrow="Membership"
+        title="My festivals"
+        description="Festivals you have been invited into as a team member."
+      />
+
+      {isLoading ? (
+        <div className="space-y-px">
+          <Skeleton className="h-16 w-full rounded-none" />
+          <Skeleton className="h-16 w-full rounded-none" />
+        </div>
+      ) : !joinedFestivals || joinedFestivals.length === 0 ? (
+        <AppEmptyState
+          icon={CalendarOff}
+          title="No festivals yet"
+          description="You haven't joined any festivals as a team member. A festival owner needs to invite you."
+        />
+      ) : (
+        <ul className="divide-y divide-border border-y border-border">
+          {joinedFestivals.map((festival: any) => (
+            <JoinedFestivalCard key={festival.id} festival={festival} />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

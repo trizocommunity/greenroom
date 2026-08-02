@@ -1,11 +1,9 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/core/utils/cn";
-import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown } from "lucide-react";
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Command,
   CommandEmpty,
@@ -14,12 +12,14 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import React from "react";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/core/utils/cn";
 
 export function SegmentedControl<T extends string>({
   label,

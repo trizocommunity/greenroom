@@ -1,59 +1,71 @@
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
-import Values from "@/components/about/Values";
-import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
+import { Principles } from "@/components/about/Principles";
+import CTASection from "@/components/home/CTASection";
+import {
+  PageHeader,
+  Section,
+  SectionHeading,
+} from "@/components/layout/Section";
+
+export const metadata: Metadata = {
+  title: "About | Greenroom",
+  description:
+    "Greenroom is built for the institutions that stage cultural festivals — and for the people who used to tabulate them by hand.",
+};
+
+const STORY = [
+  "Greenroom started in a hall at two in the morning, with four people, a stack of score sheets and a calculator. The results were due at nine. Everything about that night was avoidable.",
+  "Cultural festivals here are run by institutions, not software teams. A madrasa, a school, a college. The programmes are complex, the judging is genuinely subjective, and the person coordinating it all is usually a teacher with a day job. The tooling they get is a spreadsheet and goodwill.",
+  "So we built the thing that should have existed: one system that holds the participants, the programmes, the stages, the judges and the scoring rules — and turns a judge pressing save into a published, defensible result.",
+];
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen relative overflow-hidden bg-background">
-      {/* Background blobs */}
-      <div className="absolute inset-x-0 top-0 h-96 bg-primary/8 blur-[130px] -z-10" />
-      <div className="absolute right-0 bottom-0 h-96 w-96 bg-secondary/8 blur-[130px] -z-10" />
-
-      {/* Hero / Intro */}
-      <section className="py-24 min-h-[70vh] flex items-center container max-w-7xl px-4 md:px-6 mx-auto">
-        <div className="flex flex-col gap-10 text-center md:text-left max-w-3xl">
-          <p className="text-eyebrow md:justify-start justify-center">
-            About Greenroom
-          </p>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.08] text-heading">
-            We are{" "}
-            <span className="font-display italic font-normal text-primary">
-              Greenroom
+    <>
+      <PageHeader
+        eyebrow="About Greenroom"
+        title={
+          <>
+            Built by people who have{" "}
+            <span className="font-display font-normal italic text-primary">
+              stayed up counting.
             </span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed">
-            Born from chaos. Built for control. We exist to bring order, speed,
-            and fairness to the world of cultural festivals.
-          </p>
-          <div className="flex gap-4 justify-center md:justify-start">
-            <Link href="/contact">
-              <Button
-                size="lg"
-                className="h-13 px-8 text-base font-medium rounded-full shadow-primary-glow hover:opacity-90 transition-opacity"
+          </>
+        }
+        lede="Greenroom exists so no organizer has to choose between finishing on time and getting it right."
+      />
+
+      <Section>
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-20">
+          <SectionHeading eyebrow="Origin" title="Why we started" />
+          <div className="space-y-6">
+            {STORY.map((paragraph) => (
+              <p
+                key={paragraph.slice(0, 24)}
+                className="text-[15px] leading-relaxed text-muted-foreground sm:text-base"
               >
-                Join the mission <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+                {paragraph}
+              </p>
+            ))}
           </div>
         </div>
-      </section>
+      </Section>
 
-      {/* Values */}
-      <Values />
+      <Principles />
 
-      {/* Origin Story */}
-      <section className="py-24 md:py-32 text-foreground border-y border-border relative">
-        <div className="absolute inset-0 bg-primary/4 -z-10" />
-        <div className="container max-w-4xl px-4 md:px-6 mx-auto text-center">
-          <p className="text-2xl md:text-4xl font-display italic leading-snug text-heading">
-            &quot;To simplify festival operations so organizers can focus on the
-            art, and staff can focus on the talent.&quot;
+      <Section bordered className="py-20 md:py-24">
+        <blockquote className="mx-auto max-w-3xl text-center">
+          <p className="font-display text-2xl italic leading-snug text-heading md:text-4xl">
+            &ldquo;Simplify festival operations so organizers can focus on the
+            art, and judges can focus on the talent.&rdquo;
           </p>
-        </div>
-      </section>
+          <footer className="mt-6 text-sm text-muted-foreground">
+            The one line we test every feature against.
+          </footer>
+        </blockquote>
+      </Section>
 
-      <div className="h-16" />
-    </div>
+      <CTASection />
+    </>
   );
 }

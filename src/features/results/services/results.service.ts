@@ -14,7 +14,9 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
     id: string;
     assignments: Array<{
       participant?: { id: string } | null;
-      result?: { codeLetter?: { code: string; isAbsent?: boolean } | null } | null;
+      result?: {
+        codeLetter?: { code: string; isAbsent?: boolean } | null;
+      } | null;
     }>;
   },
 >(programmes: T[]): Promise<T[]> {
@@ -59,7 +61,10 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
     },
   });
 
-  const participantCodeByProgramme = new Map<string, Map<string, { code: string; isAbsent: boolean }>>();
+  const participantCodeByProgramme = new Map<
+    string,
+    Map<string, { code: string; isAbsent: boolean }>
+  >();
   for (const progId of programmeIds) {
     participantCodeByProgramme.set(progId, new Map());
   }

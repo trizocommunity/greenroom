@@ -2,9 +2,9 @@
 
 import { formatInTimeZone } from "date-fns-tz";
 import { CheckCircle2, Clock, Users } from "lucide-react";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { parseInstant } from "@/core/datetime";
 
 interface ReportingStatsProps {

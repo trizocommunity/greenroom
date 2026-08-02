@@ -1,11 +1,11 @@
 import {
-	Body,
-	Container,
-	Font,
-	Head,
-	Html,
-	Preview,
-	Tailwind,
+  Body,
+  Container,
+  Font,
+  Head,
+  Html,
+  Preview,
+  Tailwind,
 } from "@react-email/components";
 import type { ReactNode } from "react";
 import { getEmailConfig } from "../theme";
@@ -26,36 +26,36 @@ import type { EmailTheme } from "../tokens";
  * override on the `sendEmail` public API.
  */
 export function BrandedLayout({
-	theme,
-	preview,
-	children,
+  theme,
+  preview,
+  children,
 }: {
-	theme: EmailTheme;
-	preview: string;
-	children: ReactNode;
+  theme: EmailTheme;
+  preview: string;
+  children: ReactNode;
 }) {
-	return (
-		<Tailwind config={getEmailConfig(theme)}>
-			<Html lang="en">
-				<Head>
-					<Font
-						fontFamily="Outfit"
-						fallbackFontFamily="sans-serif"
-						webFont={{
-							url: "https://fonts.gstatic.com/s/outfit/v11/QGYvz_MVcBeNP4NJtEtq.woff2",
-							format: "woff2",
-						}}
-						fontWeight={400}
-						fontStyle="normal"
-					/>
-				</Head>
-				<Preview>{preview}</Preview>
-				<Body className="bg-canvas m-0 p-0 font-sans">
-					<Container className="bg-surface border border-solid border-stroke rounded-xl max-w-[480px] mx-auto my-10 p-10">
-						{children}
-					</Container>
-				</Body>
-			</Html>
-		</Tailwind>
-	);
+  return (
+    <Tailwind config={getEmailConfig(theme)}>
+      <Html lang="en">
+        <Head>
+          <Font
+            fontFamily="Outfit"
+            fallbackFontFamily="sans-serif"
+            webFont={{
+              url: "https://fonts.gstatic.com/s/outfit/v11/QGYvz_MVcBeNP4NJtEtq.woff2",
+              format: "woff2",
+            }}
+            fontWeight={400}
+            fontStyle="normal"
+          />
+        </Head>
+        <Preview>{preview}</Preview>
+        <Body className="bg-canvas m-0 p-0 font-sans">
+          <Container className="bg-surface border border-solid border-stroke rounded-xl max-w-[480px] mx-auto my-10 p-10">
+            {children}
+          </Container>
+        </Body>
+      </Html>
+    </Tailwind>
+  );
 }

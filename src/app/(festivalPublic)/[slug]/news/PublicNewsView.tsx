@@ -1,10 +1,14 @@
 "use client";
 
 import { format } from "date-fns";
-import { Newspaper } from "lucide-react";
-import Image from "next/image";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown } from "lucide-react";
+import { useCallback, useState } from "react";
+import { LoadMore } from "@/components/festival/public/LoadMore";
+import { NewsImage } from "@/components/festival/public/NewsImage";
+import { EmptyState } from "@/components/festival/public/PublicSection";
 import { cn } from "@/core/utils/cn";
+import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
 
 type Post = {
   id: string;
@@ -17,85 +21,160 @@ type Post = {
 };
 
 interface PublicNewsViewProps {
+  /** Server-rendered first page. */
   posts: Post[];
+  total: number;
+  hasMore: boolean;
+  pageSize: number;
   festivalSlug: string;
+  accentColor?: string;
 }
 
+const selectPosts = (data: unknown) => (data as { posts: Post[] }).posts;
+
+/**
+ * News as an expandable list. The old grid truncated every post to four
+ * lines with no way to read the rest; here the full post opens in place,
+ * which is both more compact when closed and actually complete when open.
+ */
 export function PublicNewsView({
-  posts,
-  festivalSlug: _festivalSlug,
+  posts: initialPosts,
+  total: initialTotal,
+  hasMore: initialHasMore,
+  pageSize,
+  festivalSlug,
+  accentColor = "var(--primary)",
 }: PublicNewsViewProps) {
+  const [openId, setOpenId] = useState<string | null>(
+    initialPosts[0]?.id ?? null,
+  );
+
+  const {
+    items: posts,
+    total,
+    hasMore,
+    isLoadingMore,
+    error,
+    loadMore,
+  } = usePublicPages<Post>({
+    endpoint: `/api/festivals/${festivalSlug}/news`,
+    select: selectPosts,
+    pageSize,
+    initial: {
+      items: initialPosts,
+      total: initialTotal,
+      page: 1,
+      hasMore: initialHasMore,
+    },
+  });
+
+  const toggle = useCallback(
+    (id: string) => setOpenId((current) => (current === id ? null : id)),
+    [],
+  );
+
   if (posts.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-border bg-muted/30 py-24 text-center">
-        <Newspaper
-          className="h-10 w-10 text-muted-foreground mx-auto mb-3"
-          strokeWidth={1.5}
-        />
-        <p className="text-muted-foreground">No news posts yet.</p>
-      </div>
-    );
+    return <EmptyState>No news posts yet.</EmptyState>;
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {posts.map((post) => (
-          <article
-            key={post.id}
-            id={`post-${post.id}`}
-            className="overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-premium"
-          >
-            {post.imageUrl && (
-              <div className="relative aspect-video w-full bg-muted">
-                <Image
+    <>
+      <ol className="divide-y divide-border border-y border-border">
+        {posts.map((post, i) => {
+          const isOpen = openId === post.id;
+
+          return (
+            <motion.li
+              key={post.id}
+              id={`post-${post.id}`}
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{
+                duration: 0.35,
+                delay: Math.min(i % pageSize, 8) * 0.04,
+              }}
+            >
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => toggle(post.id)}
+                className="flex w-full items-start gap-4 py-5 text-left"
+              >
+                <NewsImage
                   src={post.imageUrl}
-                  alt={post.title}
-                  fill
-                  className="object-cover"
+                  title={post.title}
+                  accentColor={accentColor}
+                  sizes="64px"
+                  className="h-14 w-14 shrink-0 rounded-md sm:h-16 sm:w-16"
                 />
-              </div>
-            )}
-            <div className="p-5 space-y-2">
-              <h2 className="text-lg font-semibold tracking-tight leading-tight line-clamp-2 text-heading">
-                {post.title}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {post.publishedAt
-                  ? format(new Date(post.publishedAt), "MMMM d, yyyy")
-                  : ""}
-              </p>
-              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-                {post.excerpt || post.content}
-              </p>
-            </div>
-          </article>
-        ))}
-      </div>
-      <div className="lg:col-span-1">
-        <p className="text-sm font-medium text-foreground mb-3">All updates</p>
-        <ScrollArea className="h-[420px] rounded-2xl border border-border bg-card p-4">
-          <ul className="space-y-2 pr-4">
-            {posts.map((post) => (
-              <li key={post.id}>
-                <a
-                  href={`#post-${post.id}`}
-                  className={cn(
-                    "block rounded-xl p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted",
+
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-[15px] font-semibold leading-snug tracking-tight text-heading sm:text-base">
+                    {post.title}
+                  </h2>
+                  {post.publishedAt && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {format(new Date(post.publishedAt), "MMMM d, yyyy")}
+                    </p>
                   )}
-                >
-                  <span className="line-clamp-2">{post.title}</span>
-                  <span className="text-xs text-muted-foreground mt-1 block">
-                    {post.publishedAt
-                      ? format(new Date(post.publishedAt), "MMM d, yyyy")
-                      : ""}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </ScrollArea>
-      </div>
-    </div>
+                  {!isOpen && (
+                    <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                      {post.excerpt || post.content}
+                    </p>
+                  )}
+                </div>
+
+                <ChevronDown
+                  className={cn(
+                    "mt-1 h-4 w-4 shrink-0 transition-transform duration-300",
+                    isOpen && "rotate-180",
+                  )}
+                  style={{
+                    color: isOpen ? accentColor : "var(--muted-foreground)",
+                  }}
+                />
+              </button>
+
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pb-6 sm:pl-20">
+                      <NewsImage
+                        src={post.imageUrl}
+                        title={post.title}
+                        accentColor={accentColor}
+                        sizes="(max-width: 768px) 100vw, 700px"
+                        className="mb-5 aspect-[16/7] w-full rounded-lg"
+                      />
+                      <p className="max-w-2xl whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground">
+                        {post.content}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.li>
+          );
+        })}
+      </ol>
+
+      <LoadMore
+        shown={posts.length}
+        total={total}
+        hasMore={hasMore}
+        isLoading={isLoadingMore}
+        error={error}
+        onLoadMore={loadMore}
+        noun="posts"
+        accentColor={accentColor}
+      />
+    </>
   );
 }

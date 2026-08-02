@@ -36,18 +36,18 @@ import { serverNow, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
-import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
-import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import {
   getScoringPolicyWithRules,
   resolveScoringPolicy,
   upsertScoringPolicyActionData,
 } from "@/features/judgement/services/scoring-policy.service";
+import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import { getStageIdForReportingSession } from "@/features/programmes/actions/programme-reporting.actions";
 import { assertStageManagerAccessForStage } from "@/features/programmes/actions/reporting-access";
-import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { calculatePosition } from "@/features/results/services/results-calculator";
+import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
+import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
 
 async function allAssignedJudgesHaveCompleteScores(
   configId: string,
@@ -449,46 +449,74 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
   }
 
   const reportingSessionIds = Array.from(
-    new Set(Array.from(latestWithScoresByProgramme.values()).map((c) => c.reportingSessionId))
+    new Set(
+      Array.from(latestWithScoresByProgramme.values()).map(
+        (c) => c.reportingSessionId,
+      ),
+    ),
   );
-  
-  const allCodeLetters = reportingSessionIds.length > 0
-    ? await db.query.programmeCodeLetter.findMany({
-        where: inArray(codeLetterTable.reportingSessionId, reportingSessionIds),
-        columns: { id: true, code: true, isAbsent: true, reportingSessionId: true },
-        with: {
-          programmeCodeLetterRecipients: {
-            columns: { participantId: true },
+
+  const allCodeLetters =
+    reportingSessionIds.length > 0
+      ? await db.query.programmeCodeLetter.findMany({
+          where: inArray(
+            codeLetterTable.reportingSessionId,
+            reportingSessionIds,
+          ),
+          columns: {
+            id: true,
+            code: true,
+            isAbsent: true,
+            reportingSessionId: true,
           },
-        },
-      })
-    : [];
+          with: {
+            programmeCodeLetterRecipients: {
+              columns: { participantId: true },
+            },
+          },
+        })
+      : [];
 
   const programmeIds = Array.from(latestWithScoresByProgramme.keys());
-  
-  const allAssignments = programmeIds.length > 0
-    ? await db.query.programmeAssignment.findMany({
-        where: inArray(assignmentTable.programmeId, programmeIds),
-        columns: { id: true, participantId: true, programmeId: true },
-      })
-    : [];
 
-  const allResults = programmeIds.length > 0
-    ? await db.query.result.findMany({
-        where: inArray(resultTable.programmeId, programmeIds),
-        columns: { assignmentId: true, grade: true, awardPoints: true, programmeId: true },
-      })
-    : [];
+  const allAssignments =
+    programmeIds.length > 0
+      ? await db.query.programmeAssignment.findMany({
+          where: inArray(assignmentTable.programmeId, programmeIds),
+          columns: { id: true, participantId: true, programmeId: true },
+        })
+      : [];
 
-  const resultByCodeLetterId = new Map<string, { grade: string | null; awardPoints: number }>();
+  const allResults =
+    programmeIds.length > 0
+      ? await db.query.result.findMany({
+          where: inArray(resultTable.programmeId, programmeIds),
+          columns: {
+            assignmentId: true,
+            grade: true,
+            awardPoints: true,
+            programmeId: true,
+          },
+        })
+      : [];
+
+  const resultByCodeLetterId = new Map<
+    string,
+    { grade: string | null; awardPoints: number }
+  >();
   for (const cl of allCodeLetters) {
     const participantId = cl.programmeCodeLetterRecipients[0]?.participantId;
     if (participantId) {
-      const assignment = allAssignments.find(a => a.participantId === participantId);
+      const assignment = allAssignments.find(
+        (a) => a.participantId === participantId,
+      );
       if (assignment) {
-        const result = allResults.find(r => r.assignmentId === assignment.id);
+        const result = allResults.find((r) => r.assignmentId === assignment.id);
         if (result) {
-          resultByCodeLetterId.set(cl.id, { grade: result.grade, awardPoints: result.awardPoints });
+          resultByCodeLetterId.set(cl.id, {
+            grade: result.grade,
+            awardPoints: result.awardPoints,
+          });
         }
       }
     }
@@ -515,7 +543,8 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         }
       >();
 
-      const sessionCodeLetters = codeLettersBySession.get(config.reportingSessionId) ?? [];
+      const sessionCodeLetters =
+        codeLettersBySession.get(config.reportingSessionId) ?? [];
       for (const cl of sessionCodeLetters) {
         byCodeLetter.set(cl.id, {
           codeLetterId: cl.id,
@@ -535,10 +564,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         }
 
         const prevSubmittedAt = judgeSubmittedAt.get(score.judgeId);
-        if (
-          !prevSubmittedAt ||
-          isAfter(score.updatedAt, prevSubmittedAt)
-        ) {
+        if (!prevSubmittedAt || isAfter(score.updatedAt, prevSubmittedAt)) {
           judgeSubmittedAt.set(score.judgeId, score.updatedAt);
         }
 
@@ -992,14 +1018,12 @@ export async function getStagePortalBoardAction(day?: string) {
   });
 
   const programmes = stageEntries
-    .filter(
-      (e) => {
-        const start = parseInstant(e.startTime);
-        return (
-          e.programme && start && dateKeyLocal(start, festivalTz) === selectedDay
-        );
-      },
-    )
+    .filter((e) => {
+      const start = parseInstant(e.startTime);
+      return (
+        e.programme && start && dateKeyLocal(start, festivalTz) === selectedDay
+      );
+    })
     .map((e) => {
       const p = e.programme!;
       const judged = ["ENDED", "JUDGED", "PUBLISHED", "ANNOUNCED"].includes(
@@ -1073,7 +1097,8 @@ export async function getStagePortalBoardAction(day?: string) {
           existingScores
             .filter(
               (s) =>
-                s.judgeId === j.judge.id && activeCodeIds.includes(s.codeLetterId),
+                s.judgeId === j.judge.id &&
+                activeCodeIds.includes(s.codeLetterId),
             )
             .map((s) => s.codeLetterId),
         );
@@ -1384,7 +1409,8 @@ export async function submitJudgeScoresAction(
     for (const [codeLetterId, score] of Object.entries(
       input.scoresByCodeLetterId,
     )) {
-      const remark = input.remarksByCodeLetterId?.[codeLetterId]?.trim() || null;
+      const remark =
+        input.remarksByCodeLetterId?.[codeLetterId]?.trim() || null;
       await tx
         .insert(judgementScoreTable)
         .values({

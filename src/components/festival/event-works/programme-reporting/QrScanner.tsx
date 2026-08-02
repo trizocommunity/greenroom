@@ -6,11 +6,11 @@ import {
   Camera,
   CheckCircle,
   Loader2,
+  SwitchCamera,
   Upload,
   X,
   Zap,
   ZapOff,
-  SwitchCamera,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";

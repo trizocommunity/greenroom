@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { db } from "@/core/database/client";
 import {
   festivalLifecycleEvent as lifecycleEventTable,
-  expiredFestivalResult as resultTable,
+  result as resultTable,
 } from "@/core/database/schema";
 import { formatDate, formatDateTime } from "@/core/datetime";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
@@ -38,9 +38,9 @@ export default async function AdminFestivalDetailPage({
   const isExpired = derivedStatus === "EXPIRED";
 
   const expiredResults = isExpired
-    ? await db.query.expiredFestivalResult.findMany({
+    ? await db.query.result.findMany({
         where: eq(resultTable.festivalId, festivalId),
-        orderBy: [asc(resultTable.programmeName), asc(resultTable.position)],
+        orderBy: [asc(resultTable.position)],
       })
     : [];
 
@@ -174,9 +174,11 @@ export default async function AdminFestivalDetailPage({
           <Separator />
           <Card className="rounded-2xl">
             <CardHeader>
-              <CardTitle>Retained results snapshot</CardTitle>
+              <CardTitle>Retained results</CardTitle>
               <p className="text-sm text-muted-foreground">
-                {expiredResults.length} result row(s) retained after expiration.
+                {expiredResults.length} result row(s) retained on the live
+                <code className="px-1 mx-1 rounded bg-muted">result</code>
+                table after expiration.
               </p>
             </CardHeader>
             <CardContent>
@@ -184,8 +186,8 @@ export default async function AdminFestivalDetailPage({
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 sticky top-0">
                     <tr>
-                      <th className="text-left p-2">Programme</th>
-                      <th className="text-left p-2">Participant</th>
+                      <th className="text-left p-2">Programme ID</th>
+                      <th className="text-left p-2">Assignment ID</th>
                       <th className="text-left p-2">Position</th>
                       <th className="text-left p-2">Grade</th>
                       <th className="text-left p-2">Points</th>
@@ -194,8 +196,12 @@ export default async function AdminFestivalDetailPage({
                   <tbody>
                     {expiredResults.map((r) => (
                       <tr key={r.id} className="border-t">
-                        <td className="p-2">{r.programmeName}</td>
-                        <td className="p-2">{r.participantName}</td>
+                        <td className="p-2 font-mono text-xs">
+                          {r.programmeId}
+                        </td>
+                        <td className="p-2 font-mono text-xs">
+                          {r.assignmentId}
+                        </td>
                         <td className="p-2">{r.position ?? "—"}</td>
                         <td className="p-2">{r.grade ?? "—"}</td>
                         <td className="p-2">{r.points ?? "—"}</td>

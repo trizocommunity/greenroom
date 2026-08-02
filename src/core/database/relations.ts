@@ -2,12 +2,11 @@ import { relations } from "drizzle-orm/relations";
 import {
   accountType,
   category,
-  expiredFestivalManualBook,
-  expiredFestivalResult,
   festival,
   festivalCategoryPreference,
   festivalLifecycleEvent,
   festivalMediaImage,
+  festivalMediaVideo,
   festivalMember,
   festivalNews,
   festivalPosterTemplate,
@@ -17,10 +16,10 @@ import {
   group,
   institution,
   judge,
-  judgeStageAssignment,
   judgementConfig,
   judgementConfigJudge,
   judgementScore,
+  judgeStageAssignment,
   magicLinkToken,
   participant,
   payment,
@@ -79,6 +78,7 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   participants: many(participant),
   festivalNews: many(festivalNews),
   festivalMediaImages: many(festivalMediaImage),
+  festivalMediaVideos: many(festivalMediaVideo),
   assignments: many(programmeAssignment),
   user: one(user, {
     fields: [festival.ownerId],
@@ -91,8 +91,6 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   results: many(result),
   stages: many(stage),
   scheduleEntries: many(scheduleEntry),
-  expiredFestivalResults: many(expiredFestivalResult),
-  expiredFestivalManualBooks: many(expiredFestivalManualBook),
   festivalLifecycleEvents: many(festivalLifecycleEvent),
   programmeReportingSessions: many(programmeReportingSession),
   programmeCodeLetters: many(programmeCodeLetter),
@@ -552,6 +550,16 @@ export const festivalMediaImageRelations = relations(
   }),
 );
 
+export const festivalMediaVideoRelations = relations(
+  festivalMediaVideo,
+  ({ one }) => ({
+    festival: one(festival, {
+      fields: [festivalMediaVideo.festivalId],
+      references: [festival.id],
+    }),
+  }),
+);
+
 export const userLoginEventRelations = relations(userLoginEvent, ({ one }) => ({
   user: one(user, {
     fields: [userLoginEvent.userId],
@@ -575,26 +583,6 @@ export const festivalCategoryPreferenceRelations = relations(
     user: one(user, {
       fields: [festivalCategoryPreference.userId],
       references: [user.id],
-    }),
-  }),
-);
-
-export const expiredFestivalResultRelations = relations(
-  expiredFestivalResult,
-  ({ one }) => ({
-    festival: one(festival, {
-      fields: [expiredFestivalResult.festivalId],
-      references: [festival.id],
-    }),
-  }),
-);
-
-export const expiredFestivalManualBookRelations = relations(
-  expiredFestivalManualBook,
-  ({ one }) => ({
-    festival: one(festival, {
-      fields: [expiredFestivalManualBook.festivalId],
-      references: [festival.id],
     }),
   }),
 );

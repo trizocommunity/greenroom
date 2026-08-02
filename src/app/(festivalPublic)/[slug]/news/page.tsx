@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import {
+  PublicSection,
+  SectionHeader,
+} from "@/components/festival/public/PublicSection";
 import { getPublicNewsData } from "@/features/news/loaders/news-public.loader";
 import { PublicNewsView } from "./PublicNewsView";
 
@@ -38,20 +42,30 @@ export default async function NewsPage({ params }: Props) {
   const data = await getPublicNewsData(slug);
   if (!data) return notFound();
 
+  const branding = data.festival.branding;
+  const accentColor =
+    branding && typeof branding === "object" && "colors" in branding
+      ? ((branding as { colors?: { primary?: string } }).colors?.primary ??
+        "var(--primary)")
+      : "var(--primary)";
+
   return (
-    <div className="min-h-screen bg-background">
-      <section className="max-w-7xl mx-auto px-4 md:px-6 py-16 md:py-20">
-        <div className="text-center mb-12">
-          <p className="text-eyebrow justify-center mb-3">Updates</p>
-          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-heading">
-            News &amp; updates
-          </h1>
-          <p className="mt-3 max-w-xl mx-auto text-muted-foreground leading-relaxed">
-            Latest announcements and stories from {data.festival.name}.
-          </p>
-        </div>
-        <PublicNewsView posts={data.posts} festivalSlug={data.festival.slug} />
-      </section>
-    </div>
+    <PublicSection>
+      <SectionHeader
+        as="h1"
+        eyebrow="Updates"
+        title="News & updates"
+        subtitle={`Announcements and stories from ${data.festival.name}.`}
+        className="mb-10"
+      />
+      <PublicNewsView
+        posts={data.posts}
+        total={data.total}
+        hasMore={data.hasMore}
+        pageSize={data.pageSize}
+        festivalSlug={data.festival.slug}
+        accentColor={accentColor}
+      />
+    </PublicSection>
   );
 }

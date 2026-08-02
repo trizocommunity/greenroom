@@ -1,8 +1,8 @@
 "use client";
 
 import { formatInTimeZone } from "date-fns-tz";
-import { Badge } from "@/components/ui/badge";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import { Badge } from "@/components/ui/badge";
 import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import type { ReportingBoardItem } from "./types";
@@ -93,9 +93,7 @@ export function ReportingBoardList({
                   <span className="text-xs text-muted-foreground font-mono">
                     {(() => {
                       const d = parseInstant(item.startTime);
-                      return d
-                        ? formatInTimeZone(d, displayTz, "h:mm a")
-                        : "—";
+                      return d ? formatInTimeZone(d, displayTz, "h:mm a") : "—";
                     })()}
                   </span>
                   {item.stage?.name && (

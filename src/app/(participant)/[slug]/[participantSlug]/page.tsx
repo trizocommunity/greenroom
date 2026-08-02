@@ -1,26 +1,27 @@
 import { format } from "date-fns";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import {
+  ArrowRight,
   Bell,
   Crown,
-  Download,
   LayoutDashboard,
   ListChecks,
-  MapPin,
-  Trophy,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
+import {
+  APP_CONTAINER,
+  AppPageHeader,
+  AppSectionHeading,
+  DataRow,
+  StatusPill,
+} from "@/components/app/AppSection";
 import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
 import { CopyProfileLinkButton } from "@/components/participant/CopyProfileLinkButton";
 import { ParticipantAssignedProgrammeCards } from "@/components/participant/ParticipantAssignedProgrammeCards";
 import { ParticipantQrDialogButton } from "@/components/participant/ParticipantQrDialogButton";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_URL } from "@/config/routes";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
@@ -50,6 +51,40 @@ const RESERVED_SLUGS = new Set([
   "sessions",
   "about",
 ]);
+
+/** Keyed by the sub-route each tool lives at. */
+const TEAM_LEADER_TOOLS = [
+  {
+    key: "dashboard",
+    icon: LayoutDashboard,
+    label: "Dashboard",
+    hint: "Live summary and quick links",
+  },
+  {
+    key: "assign-programmes",
+    icon: ListChecks,
+    label: "Assign programmes",
+    hint: "Pick programmes for your participants",
+  },
+  {
+    key: "my-participants",
+    icon: Users,
+    label: "My participants",
+    hint: "Roster and chest numbers",
+  },
+  {
+    key: "all-programmes",
+    icon: ListChecks,
+    label: "All programmes",
+    hint: "Everything running at the festival",
+  },
+  {
+    key: "notifications",
+    icon: Bell,
+    label: "Notifications",
+    hint: "Programme updates",
+  },
+] as const;
 
 function isSessionTimedOut(session: any): boolean {
   return Boolean(
@@ -189,359 +224,187 @@ export default async function ParticipantMainPage({
   const liveSessions = ongoingSessions.filter(
     (s) => s.status === "IN_PROGRESS" && !isSessionTimedOut(s),
   );
-  const topLiveSession = liveSessions[0];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-      {liveSessions.length > 1 ? (
-        <div className="w-full rounded-xl border border-emerald-600/30 bg-emerald-500/10 p-3 sm:p-4">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+    <div className={`${APP_CONTAINER} space-y-10 py-8 md:py-10`}>
+      {/* Live reporting — the one thing that must be seen first on the day */}
+      {liveSessions.length > 0 && (
+        <section className="rounded-2xl border border-success/30 bg-success/[0.07] p-4 sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <StatusPill tone="live" pulse>
               Live reporting
-            </p>
-            <Badge className="bg-emerald-600 text-white">
-              {liveSessions.length} active
-            </Badge>
+            </StatusPill>
+            {liveSessions.length > 1 && (
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {liveSessions.length} active
+              </span>
+            )}
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
+
+          <ul className="divide-y divide-success/20">
             {liveSessions.slice(0, 4).map((session: any) => (
-              <div
+              <li
                 key={session.id}
-                className="rounded-md border border-emerald-700/20 bg-background/50 px-2.5 py-2"
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
               >
-                <p className="truncate text-sm font-medium">
-                  {session.programme?.name ?? "Programme"}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {session.stage?.name ?? "No stage"}
-                </p>
-                {session.windowEndsAt ? (
-                  <div className="mt-1">
-                    <ReportingEndsInCountdown
-                      endsAt={session.windowEndsAt}
-                      autoRefreshOnExpire
-                    />
-                  </div>
-                ) : null}
-              </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] font-medium text-heading">
+                    {session.programme?.name ?? "Programme"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {session.stage?.name ?? "No stage"} · report to the stage
+                    manager
+                  </p>
+                </div>
+                {session.windowEndsAt && (
+                  <ReportingEndsInCountdown
+                    endsAt={session.windowEndsAt}
+                    autoRefreshOnExpire
+                  />
+                )}
+              </li>
             ))}
-          </div>
-          <div className="mt-2 text-right">
-            <Link
-              href={`/${slug}/${participantSlug}/assigned-programmes`}
-              className="text-xs font-medium underline underline-offset-4"
-            >
-              View all programmes
-            </Link>
-          </div>
-        </div>
-      ) : liveSessions.length === 1 ? (
-        <div className="w-full rounded-xl border px-4 min-h-20 border-emerald-600/30 bg-emerald-500/10 py-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Current programme
-            </p>
-            <p className="text-sm font-medium truncate">
-              {topLiveSession?.programme?.name ?? "Programme"}
-              {topLiveSession?.stage?.name ? (
-                <span className="font-normal text-muted-foreground">
-                  {" "}
-                  · {topLiveSession.stage.name}
-                </span>
-              ) : null}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Live reporting — report to the stage manager.
-            </p>
-            {topLiveSession?.windowEndsAt ? (
-              <div className="mt-2">
-                <ReportingEndsInCountdown
-                  endsAt={topLiveSession.windowEndsAt}
-                  autoRefreshOnExpire
-                />
-              </div>
-            ) : null}
-          </div>
+          </ul>
+
           <Link
             href={`/${slug}/${participantSlug}/assigned-programmes`}
-            className="text-sm font-medium underline underline-offset-4"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-opacity hover:opacity-70"
           >
             View all programmes
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-        </div>
-      ) : null}
+        </section>
+      )}
 
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
-          {participant.name}
-        </h1>
-        <div className="flex items-center gap-2">
-          <ParticipantQrDialogButton
-            qrContent={getQrCodeContent(participant as any)}
-            participantName={participant.name}
-          />
-          {isOwnerSession ? (
-            <ParticipantLogoutButton festivalSlug={slug} />
-          ) : null}
-        </div>
-      </div>
+      {/* Identity */}
+      <AppPageHeader
+        eyebrow={group?.name ?? "Participant"}
+        title={participant.name}
+        actions={
+          <>
+            <ParticipantQrDialogButton
+              qrContent={getQrCodeContent(participant as any)}
+              participantName={participant.name}
+            />
+            {isOwnerSession ? (
+              <ParticipantLogoutButton festivalSlug={slug} />
+            ) : null}
+          </>
+        }
+      />
 
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardHeader className="pb-3 text-center">
-          <CardTitle className="text-lg flex items-center justify-center gap-2">
-            <Download className="h-5 w-5 text-primary" />
-            Your Chest Number QR Code
-          </CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            ⭐ Used for programme reporting - scan to mark attendance
-          </p>
-        </CardHeader>
-        <CardContent className="flex justify-center pb-4">
-          <QrCodeWithActions
-            url={participant.chestNumber || participant.name || participant.id}
-            qrContent={getQrCodeContent(participant as any)}
-            size={220}
-            downloadLabel="Download"
-            shareLabel="WhatsApp"
-            fileName={`${participant.name.replace(/\s+/g, "-").toLowerCase()}-chest-${participant.chestNumber || "unknown"}.png`}
-            shareMessage={`My chest number: ${participant.chestNumber || getQrCodeContent(participant as any)} - ${festival.name}`}
-            sizeVariant="lg"
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Festival
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">Start</span>
-            <span className="font-medium">
-              {format(new Date(startDate), "PPpp")}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground">End</span>
-            <span className="font-medium">
-              {format(new Date(endDate), "PPpp")}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Venue:</span>
-            <span className="font-medium">{venue}</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Participant</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Group</span>
-              <span className="font-medium">{group?.name ?? "—"}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Category</span>
-              <span className="font-medium">{category?.name ?? "—"}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Chest No</span>
-              <span className="font-mono">
-                {participant.chestNumber ?? "—"}
-              </span>
-            </div>
-
-            <div className="pt-3 mt-3 border-t">
-              <p className="text-xs font-medium mb-2">Your Profile Link</p>
-              <div className="flex items-center gap-1">
-                <CopyProfileLinkButton profileUrl={profileUrl} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Your Team</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Who’s our Team Leader?
-              </p>
-              {teamLeaders.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {teamLeaders.map((tl) => (
-                    <Badge
-                      key={tl.id}
-                      variant={tl.id === participant.id ? "default" : "outline"}
-                      className={
-                        tl.id === participant.id
-                          ? "bg-amber-600 text-white border-transparent"
-                          : "bg-amber-500/10 border-amber-500/30 text-amber-800"
-                      }
-                    >
-                      {tl.name}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No team leaders assigned.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <p className="text-sm text-muted-foreground">Quick actions</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <p className="text-sm text-muted-foreground">
-                  Team leader login is only available for assigned team leaders.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {participant.isTeamLeader ? (
-        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Crown className="h-5 w-5 text-amber-600" />
-              Team Leader Tools
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              You manage this group. Use these to assign programmes, track your
-              participants and stay on top of live reporting.
+      {/* Details. The QR lives behind the "View QR" button above rather than
+          being printed inline — it is only needed at the moment of reporting,
+          and inline it pushed everything else below the fold. */}
+      <div className="grid gap-10 md:grid-cols-2 md:gap-14">
+        <section>
+          <AppSectionHeading title="Your details" />
+          <dl className="border-t border-border">
+            <DataRow label="Chest number" value={participant.chestNumber} />
+            <DataRow label="Group" value={group?.name} />
+            <DataRow label="Category" value={category?.name} />
+            <DataRow
+              label="Programmes"
+              value={
+                assignedProgrammes.length > 0
+                  ? `${assignedProgrammes.length} assigned`
+                  : "None yet"
+              }
+            />
+          </dl>
+          <div className="mt-5">
+            <p className="mb-2 text-xs text-muted-foreground">
+              Your public profile link
             </p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <Button asChild className="h-auto py-3 justify-start">
+            <CopyProfileLinkButton profileUrl={profileUrl} />
+          </div>
+        </section>
+
+        <section>
+          <AppSectionHeading title="Festival" />
+          <dl className="border-t border-border">
+            <DataRow label="Festival" value={festival.name} />
+            <DataRow
+              label="Dates"
+              value={`${format(new Date(startDate), "PP")} – ${format(new Date(endDate), "PP")}`}
+            />
+            {venue !== "—" && <DataRow label="Venue" value={venue} />}
+          </dl>
+
+          <div className="mt-6">
+            <p className="mb-2.5 text-xs text-muted-foreground">
+              Team leaders for {group?.name ?? "your group"}
+            </p>
+            {teamLeaders.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {teamLeaders.map((tl) => (
+                  <StatusPill
+                    key={tl.id}
+                    tone={tl.id === participant.id ? "ready" : "muted"}
+                    icon={Crown}
+                  >
+                    {tl.name}
+                    {tl.id === participant.id ? " (you)" : ""}
+                  </StatusPill>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No team leader assigned yet.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Team leader tools */}
+      {participant.isTeamLeader ? (
+        <section>
+          <AppSectionHeading
+            title="Team leader tools"
+            description="You manage this group — assign programmes, track your roster and follow live reporting."
+          />
+          <ul className="divide-y divide-border border-y border-border">
+            {TEAM_LEADER_TOOLS.map((tool) => (
+              <li key={tool.key}>
                 <Link
-                  href={`/${slug}/${participantSlug}/dashboard`}
-                  className="flex flex-col items-start gap-0.5 text-left"
+                  href={`/${slug}/${participantSlug}/${tool.key}`}
+                  className="group flex items-center gap-4 py-3.5 transition-opacity hover:opacity-70"
                 >
-                  <span className="inline-flex items-center gap-2 font-semibold">
-                    <LayoutDashboard className="h-4 w-4" /> Dashboard
+                  <tool.icon
+                    className="h-4 w-4 shrink-0 text-primary"
+                    strokeWidth={1.75}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-medium text-heading">
+                      {tool.label}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {tool.hint}
+                    </span>
                   </span>
-                  <span className="text-xs font-normal opacity-80">
-                    Live summary & quick links
-                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="h-auto py-3 justify-start"
-              >
-                <Link
-                  href={`/${slug}/${participantSlug}/assign-programmes`}
-                  className="flex flex-col items-start gap-0.5 text-left"
-                >
-                  <span className="inline-flex items-center gap-2 font-semibold">
-                    <ListChecks className="h-4 w-4" /> Assign Programmes
-                  </span>
-                  <span className="text-xs font-normal opacity-80">
-                    Pick programmes for your participants
-                  </span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="h-auto py-3 justify-start"
-              >
-                <Link
-                  href={`/${slug}/${participantSlug}/my-participants`}
-                  className="flex flex-col items-start gap-0.5 text-left"
-                >
-                  <span className="inline-flex items-center gap-2 font-semibold">
-                    <Users className="h-4 w-4" /> My Participants
-                  </span>
-                  <span className="text-xs font-normal opacity-80">
-                    Roster & chest numbers
-                  </span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="h-auto py-3 justify-start"
-              >
-                <Link
-                  href={`/${slug}/${participantSlug}/all-programmes`}
-                  className="flex flex-col items-start gap-0.5 text-left"
-                >
-                  <span className="inline-flex items-center gap-2 font-semibold">
-                    <ListChecks className="h-4 w-4" /> All Programmes
-                  </span>
-                  <span className="text-xs font-normal opacity-80">
-                    Reporting in progress
-                  </span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="h-auto py-3 justify-start"
-              >
-                <Link
-                  href={`/${slug}/${participantSlug}/leaderboard`}
-                  className="flex flex-col items-start gap-0.5 text-left"
-                >
-                  <span className="inline-flex items-center gap-2 font-semibold">
-                    <Trophy className="h-4 w-4" /> Leaderboard
-                  </span>
-                  <span className="text-xs font-normal opacity-80">
-                    Group standings
-                  </span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="h-auto py-3 justify-start"
-              >
-                <Link
-                  href={`/${slug}/${participantSlug}/notifications`}
-                  className="flex flex-col items-start gap-0.5 text-left"
-                >
-                  <span className="inline-flex items-center gap-2 font-semibold">
-                    <Bell className="h-4 w-4" /> Notifications
-                  </span>
-                  <span className="text-xs font-normal opacity-80">
-                    Programme updates
-                  </span>
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
+      {/* Programmes */}
       {assignedProgrammes.length > 0 ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Your programmes
-            </h2>
-            <Link
-              href={`/${slug}/${participantSlug}/assigned-programmes`}
-              className="text-sm font-medium underline underline-offset-4"
-            >
-              View all
-            </Link>
-          </div>
+        <section>
+          <AppSectionHeading
+            title="Your programmes"
+            actions={
+              <Link
+                href={`/${slug}/${participantSlug}/assigned-programmes`}
+                className="text-sm font-medium text-primary transition-opacity hover:opacity-70"
+              >
+                View all
+              </Link>
+            }
+          />
           <ParticipantAssignedProgrammeCards
             programmes={assignedProgrammes.slice(0, 6)}
             latestReportingByProgrammeId={latestByProgrammeId}
@@ -550,7 +413,7 @@ export default async function ParticipantMainPage({
             participantId={participant.id}
             emptyMessage="No assigned programmes yet."
           />
-        </div>
+        </section>
       ) : null}
     </div>
   );

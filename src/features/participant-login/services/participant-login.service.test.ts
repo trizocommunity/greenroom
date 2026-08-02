@@ -44,7 +44,12 @@ vi.mock("@/core/auth/participant-session", () => ({
 
 import { ParticipantLoginService } from "./participant-login.service";
 
-const festival = { id: "fest-1", name: "Demo Fest", slug: "demo-fest" };
+const festival = {
+  id: "fest-1",
+  name: "Demo Fest",
+  slug: "demo-fest",
+  timezone: "UTC",
+};
 const group = { id: "group-1", name: "Al-Qurtuba" };
 
 function makeParticipant(overrides: Record<string, unknown> = {}) {
@@ -145,7 +150,7 @@ describe("ParticipantLoginService.requestAccess", () => {
     expect(result.status).toBe("AUTHENTICATED");
   });
 
-  it("throws PARTICIPANT_NOT_FOUND when date of birth mismatches", async () => {
+  it("throws INVALID_DOB when date of birth mismatches", async () => {
     const participant = makeParticipant({ isTeamLeader: false });
     mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
@@ -157,8 +162,43 @@ describe("ParticipantLoginService.requestAccess", () => {
         identifierValue: "1999-01-01T00:00:00.000Z",
       }),
     ).rejects.toMatchObject({
-      message: expect.stringMatching(/participant/i),
+      message: expect.stringMatching(/date of birth/i),
     });
+  });
+
+  it("authenticates when stored DOB is at non-midnight hour in festival TZ (rolls back to correct day)", async () => {
+    mockFindFestivalBySlug.mockResolvedValueOnce({
+      id: "fest-ist",
+      name: "IST Fest",
+      slug: "ist-fest",
+      timezone: "Asia/Kolkata",
+    });
+    const participant = makeParticipant({
+      isTeamLeader: false,
+      dateOfBirth: "2008-05-12T18:30:00.000Z",
+    });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
+
+    const result = await ParticipantLoginService.requestAccess({
+      festivalSlug: "ist-fest",
+      chestNumber: "101",
+      identifierKind: "DOB",
+      identifierValue: "2008-05-13",
+    });
+    expect(result.status).toBe("AUTHENTICATED");
+  });
+
+  it("accepts user input as either a YYYY-MM-DD string or an ISO instant", async () => {
+    const participant = makeParticipant({ isTeamLeader: false });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
+
+    const result = await ParticipantLoginService.requestAccess({
+      festivalSlug: festival.slug,
+      chestNumber: "101",
+      identifierKind: "DOB",
+      identifierValue: "2008-05-12",
+    });
+    expect(result.status).toBe("AUTHENTICATED");
   });
 
   it("throws PARTICIPANT_NOT_FOUND when group does not match", async () => {

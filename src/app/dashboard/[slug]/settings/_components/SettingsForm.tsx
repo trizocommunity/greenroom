@@ -30,6 +30,19 @@ interface SettingsFormProps {
   activeTab: "general" | "configuration";
 }
 
+/** "5/8/2026 09:00 → 20/8/2026 17:00", or just the close time when no start. */
+function formatWindow(
+  start: string | Date | null | undefined,
+  end: string | Date | null | undefined,
+) {
+  const stamp = (value: string | Date) =>
+    format(new Date(value), "dd/MM/yyyy HH:mm");
+  if (!end && !start) return "—";
+  if (!start) return `Until ${stamp(end as string | Date)}`;
+  if (!end) return `From ${stamp(start)}`;
+  return `${stamp(start)} → ${stamp(end)}`;
+}
+
 export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
   const router = useRouter();
   const resolvedTier = getResolvedTier(festival.tier);
@@ -196,12 +209,10 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
                   Programme Assignment
                 </p>
                 <p className="font-medium">
-                  {festival.programmeAssignmentDeadline
-                    ? format(
-                        new Date(festival.programmeAssignmentDeadline),
-                        "dd/MM/yyyy HH:mm",
-                      )
-                    : "—"}
+                  {formatWindow(
+                    festival.programmeAssignmentStartDate,
+                    festival.programmeAssignmentDeadline,
+                  )}
                 </p>
               </div>
               <div>
@@ -209,12 +220,10 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
                   Participant Registration
                 </p>
                 <p className="font-medium">
-                  {festival.participantCreationDeadline
-                    ? format(
-                        new Date(festival.participantCreationDeadline),
-                        "dd/MM/yyyy HH:mm",
-                      )
-                    : "—"}
+                  {formatWindow(
+                    festival.participantCreationStartDate,
+                    festival.participantCreationDeadline,
+                  )}
                 </p>
               </div>
             </div>

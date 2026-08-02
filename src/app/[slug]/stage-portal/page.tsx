@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { StagePortalHomeClient } from "@/components/judge/StagePortalHomeClient";
+import { StagePortalLoginClient } from "@/components/judge/StagePortalLoginClient";
 import { getStagePortalSessionFromCookie } from "@/core/auth/stage-portal-session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
-import { StagePortalHomeClient } from "@/components/judge/StagePortalHomeClient";
-import { StagePortalLoginClient } from "@/components/judge/StagePortalLoginClient";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 
 export const metadata: Metadata = {

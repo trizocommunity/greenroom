@@ -19,9 +19,9 @@ vi.mock("next/headers", () => ({
 vi.mock("@/core/database/client", () => ({
   db: {
     select: ((...args: unknown[]) =>
-      (mockSelect as unknown as (...a: unknown[]) => unknown)(...args)) as unknown as (
-      ...args: unknown[]
-    ) => unknown,
+      (mockSelect as unknown as (...a: unknown[]) => unknown)(
+        ...args,
+      )) as unknown as (...args: unknown[]) => unknown,
   },
 }));
 

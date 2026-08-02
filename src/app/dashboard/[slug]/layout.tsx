@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { DashboardCelebration } from "@/components/festival/dashboard/DashboardCelebration";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
+import { ExpiryWarningBanner } from "@/components/festival/dashboard/ExpiryWarningBanner";
 import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { StageContextSelector } from "@/components/festival/dashboard/StageContextSelector";
@@ -22,10 +23,10 @@ import { getCurrentUser } from "@/core/auth/current-user";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { stage as stageTable } from "@/core/database/schema";
-import { serverNowMs } from "@/core/datetime/server";
-import { MS } from "@/core/datetime/server";
+import { MS, serverNowMs } from "@/core/datetime/server";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
+import { getInAppBannerState } from "@/features/notifications/services/in-app-banner.service";
 import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
@@ -106,7 +107,9 @@ export default async function FestivalDashboardLayout({
       maxStages: tierLimits.stages,
       maxStorageMB: tierLimits.storageMB,
     },
+    participantCreationStartDate: festival.participantCreationStartDate,
     participantCreationDeadline: festival.participantCreationDeadline,
+    programmeAssignmentStartDate: festival.programmeAssignmentStartDate,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
     effectiveFeatures,
   };
@@ -209,7 +212,9 @@ export default async function FestivalDashboardLayout({
                       storageUsedMB: festival.storageUsedMb ?? 0,
                     }}
                     limits={festivalData.limits}
-                    tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
+                    tierLabel={
+                      TIER_CONFIG[getResolvedTier(festival.tier)].label
+                    }
                     canAccessSettings={effectiveFeatures.festivalSettings}
                   />
                 </div>
@@ -219,6 +224,27 @@ export default async function FestivalDashboardLayout({
                 <Suspense fallback={null}>
                   <DashboardCelebration />
                 </Suspense>
+                {(() => {
+                  const bannerState = getInAppBannerState({
+                    expiresAt: festival.expiresAt,
+                    status: festival.status,
+                  });
+                  if (
+                    !bannerState.visible ||
+                    bannerState.daysRemaining === null
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <ExpiryWarningBanner
+                      daysRemaining={bannerState.daysRemaining}
+                      expiresAtIso={
+                        bannerState.expiresAtIso ?? festival.expiresAt ?? ""
+                      }
+                      festivalName={festival.name}
+                    />
+                  );
+                })()}
                 {children}
               </main>
             </SidebarInset>

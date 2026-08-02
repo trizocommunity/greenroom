@@ -1,11 +1,10 @@
 import "server-only";
 
 import { eq } from "drizzle-orm";
-
+import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { user } from "@/core/database/schema";
 import { isValidTimezone } from "@/core/datetime/user-tz";
-import { getSession } from "@/core/auth/session";
 
 /**
  * Return the current authenticated user's IANA timezone, or `null` when

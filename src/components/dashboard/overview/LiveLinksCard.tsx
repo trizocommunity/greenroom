@@ -105,7 +105,12 @@ export function LiveLinksCard({
                     <Copy className="mr-1 h-3.5 w-3.5" />
                     Copy
                   </Button>
-                  <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                  >
                     <a href={r.path} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="h-4 w-4" />
                       <span className="sr-only">Open {r.label}</span>

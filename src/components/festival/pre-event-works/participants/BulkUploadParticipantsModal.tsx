@@ -72,6 +72,14 @@ function dateOfBirthToIsoString(date: Date | undefined): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function dateOfBirthToIsoStringUtc(date: Date | undefined): string {
+  if (!date) return "";
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function isoStringToDate(value: string | undefined): Date | undefined {
   if (!value) return undefined;
   const d = new Date(value);
@@ -82,22 +90,24 @@ function parseDateOfBirthFromCell(raw: unknown): string | undefined {
   if (raw === undefined || raw === null || raw === "") return undefined;
   // Excel cells can come in as a number (Excel serial), a Date, or a string.
   if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
-    return dateOfBirthToIsoString(raw);
+    return dateOfBirthToIsoStringUtc(raw);
   }
   if (typeof raw === "number" && Number.isFinite(raw)) {
     // Excel date serial: days since 1900-01-01 (taking the 1900 leap bug into
-    // account). Treat as midnight UTC to avoid timezone drift on the day.
+    // account). Treat as midnight UTC and read the date back via UTC
+    // components — using local components here would silently shift the day
+    // for any organizer whose browser TZ isn't UTC.
     const serial = Math.floor(raw);
     const epoch = Date.UTC(1899, 11, 30);
     const ms = epoch + serial * 24 * 60 * 60 * 1000;
     const d = new Date(ms);
-    if (!Number.isNaN(d.getTime())) return dateOfBirthToIsoString(d);
+    if (!Number.isNaN(d.getTime())) return dateOfBirthToIsoStringUtc(d);
   }
   const text = String(raw).trim();
   if (!text) return undefined;
   const candidate = new Date(text);
   if (!Number.isNaN(candidate.getTime())) {
-    return dateOfBirthToIsoString(candidate);
+    return dateOfBirthToIsoStringUtc(candidate);
   }
   return undefined;
 }

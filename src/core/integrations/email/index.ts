@@ -6,13 +6,12 @@
  * implementation detail that may move between PRs.
  */
 
-export type {
-	EmailContext,
-	EmailKind,
-	EmailTheme,
-	SendEmailOpts,
-	SendEmailResult,
-} from "./types";
+export { renderEmail, resolveTheme } from "./render";
 export { sendEmail } from "./send";
-export { renderEmail } from "./render";
-export { resolveTheme } from "./render";
+export type {
+  EmailContext,
+  EmailKind,
+  EmailTheme,
+  SendEmailOpts,
+  SendEmailResult,
+} from "./types";

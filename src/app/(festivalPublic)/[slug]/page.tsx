@@ -1,20 +1,24 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { FeaturedPrograms } from "@/components/festival/landing/FeaturedPrograms";
+import { ExploreNav } from "@/components/festival/landing/ExploreNav";
 import { HeroSection } from "@/components/festival/landing/HeroSection";
+import { LatestWinners } from "@/components/festival/landing/LatestWinners";
 import { MediaPreview } from "@/components/festival/landing/MediaPreview";
+import { NewsPreview } from "@/components/festival/landing/NewsPreview";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
-import { ResultsTeaser } from "@/components/festival/landing/ResultsTeaser";
-import { StatsSection } from "@/components/festival/landing/StatsSection";
+import { TeamStandingsSection } from "@/components/festival/landing/TeamStandingsSection";
 import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
-import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
+import {
+  getPublicProgrammeResults,
+  getPublicTopResults,
+} from "@/features/festivals/loaders/festival-results.loader";
 import { getPublicMediaData } from "@/features/media/loaders/media-public.loader";
+import { getPublicNewsData } from "@/features/news/loaders/news-public.loader";
 import {
   FeatureService,
   getTierForFeatureCheck,
 } from "@/features/plan-features/services/features";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
-import { findProgrammesByFestival } from "@/features/programmes/repositories/programme.repository";
 
 export async function generateMetadata({
   params,
@@ -28,13 +32,14 @@ export async function generateMetadata({
 
   const { festival } = data;
   const title = festival.name;
+  const description = festival.tagline || festival.description || undefined;
 
   return {
     title: title,
-    description: festival.description,
+    description,
     openGraph: {
       title: title,
-      description: festival.description || undefined,
+      description,
       images: [],
     },
   };
@@ -53,7 +58,6 @@ export default async function FestivalPage({
     notFound();
   }
 
-  // ...
   const { festival, event } = data;
 
   // Check Feature Access
@@ -71,36 +75,44 @@ export default async function FestivalPage({
     );
   }
 
-  // Fetch published results, programmes, and media for display
-  const [publishedResults, programmes, mediaData] = await Promise.all([
-    getPublicFestivalResults(festival.id, {
-      publicDisplayMode: festival.publicDisplayMode ?? "programme_results",
-    }),
+  const publicDisplayMode = festival.publicDisplayMode ?? "programme_results";
+
+  /* The landing page only ever shows teasers, so each loader is asked for
+     exactly what is rendered — three winners, three posts, eight photos —
+     rather than the whole festival. BASIC additionally needs the first page
+     of the full results list it renders inline. */
+  const [latestResults, mediaData, newsData, basicResults] = await Promise.all([
+    getPublicTopResults(festival.id, { limit: 3, publicDisplayMode }),
     fullLandingPage
-      ? findProgrammesByFestival(festival.id)
-      : Promise.resolve([]),
-    fullLandingPage ? getPublicMediaData(festival.slug) : Promise.resolve(null),
+      ? getPublicMediaData(festival.slug, { page: 1, pageSize: 8 })
+      : Promise.resolve(null),
+    fullLandingPage
+      ? getPublicNewsData(festival.slug, { page: 1, pageSize: 3 })
+      : Promise.resolve(null),
+    fullLandingPage
+      ? Promise.resolve(null)
+      : getPublicProgrammeResults(festival.id, { page: 1, publicDisplayMode }),
   ]);
 
-  // MERGE DATA FOR COMPONENTS
+  const accentColor =
+    festival.branding &&
+    typeof festival.branding === "object" &&
+    "colors" in festival.branding
+      ? (festival.branding as any).colors?.primary || "#000000"
+      : "#000000";
+
   const displayData = {
     id: festival.id,
     name: festival.name,
     slug: festival.slug,
     description: festival.description || "",
-    tagline: "",
+    tagline: festival.tagline || "",
     startDate: event.startDate,
     endDate: event.endDate,
     location: event.location || festival.orgLocation || "",
     status: festival.status,
     tier: getResolvedTier(festival.tier),
-    accentColor:
-      festival.branding &&
-      typeof festival.branding === "object" &&
-      "colors" in festival.branding
-        ? (festival.branding as any).colors?.primary || "#000000"
-        : "#000000",
-
+    accentColor,
     logo:
       festival.branding &&
       typeof festival.branding === "object" &&
@@ -112,60 +124,67 @@ export default async function FestivalPage({
     orgWebsite: festival.orgWebsite || "",
     orgLocation: festival.orgLocation || "",
     establishedYear: festival.establishedYear || null,
+    participantCreationStartDate: festival.participantCreationStartDate,
     participantCreationDeadline: festival.participantCreationDeadline,
+    programmeAssignmentStartDate: festival.programmeAssignmentStartDate,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
   };
+
+  const teamStandings = (festival.teamStandings as any[]) ?? [];
+
   return (
     <div className="flex flex-col min-h-screen relative">
-      <HeroSection festival={displayData} basicMode={!fullLandingPage} />
+      <HeroSection
+        festival={displayData}
+        basicMode={!fullLandingPage}
+        accentColor={accentColor}
+      />
 
-      {fullLandingPage && (
-        <StatsSection accentColor={displayData.accentColor} />
-      )}
+      {fullLandingPage ? (
+        <>
+          <TeamStandingsSection
+            standings={teamStandings}
+            accentColor={accentColor}
+            viewAllHref={`/${displayData.slug}/results`}
+          />
 
-      {/* About Section */}
-      {fullLandingPage && displayData.description && (
-        <section className="py-16 md:py-20 px-4 bg-background border-t border-border">
-          <div className="max-w-3xl mx-auto text-center space-y-4">
-            <p className="text-eyebrow justify-center">About</p>
-            <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-heading">
-              {festival.name}
-            </h2>
-            <p className="text-base text-muted-foreground leading-relaxed">
-              {displayData.description}
-            </p>
-          </div>
-        </section>
-      )}
-
-      {fullLandingPage && programmes.length > 0 && (
-        <FeaturedPrograms
-          accentColor={displayData.accentColor}
-          slug={displayData.slug}
-          programmes={programmes}
-        />
-      )}
-
-      <section id="results">
-        {fullLandingPage ? (
-          <ResultsTeaser
-            accentColor={displayData.accentColor}
+          <LatestWinners
             slug={displayData.slug}
-            results={publishedResults as any}
+            results={latestResults}
+            accentColor={accentColor}
           />
-        ) : (
-          <ResultsList
-            festivalName={displayData.name}
-            festivalSlug={displayData.slug}
-            accentColor={displayData.accentColor}
-            results={publishedResults}
-            teamStandings={festival.teamStandings as any}
-          />
-        )}
-      </section>
 
-      {fullLandingPage && mediaData && mediaData.images.length > 0 && (
-        <MediaPreview slug={displayData.slug} images={mediaData.images} />
+          {newsData && (
+            <NewsPreview
+              slug={displayData.slug}
+              posts={newsData.posts}
+              accentColor={accentColor}
+            />
+          )}
+
+          {mediaData && mediaData.images.length > 0 && (
+            <MediaPreview
+              slug={displayData.slug}
+              images={mediaData.images}
+              accentColor={accentColor}
+            />
+          )}
+
+          <ExploreNav slug={displayData.slug} accentColor={accentColor} />
+        </>
+      ) : (
+        basicResults && (
+          <div id="results">
+            <ResultsList
+              festivalName={displayData.name}
+              festivalSlug={displayData.slug}
+              accentColor={accentColor}
+              initialResults={basicResults}
+              teamStandings={teamStandings}
+              publicDisplayMode={publicDisplayMode}
+            />
+          </div>
+        )
       )}
     </div>
   );

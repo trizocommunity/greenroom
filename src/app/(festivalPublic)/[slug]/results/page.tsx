@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
-import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
+import { getPublicProgrammeResults } from "@/features/festivals/loaders/festival-results.loader";
 
 export async function generateMetadata({
   params,
@@ -46,24 +46,22 @@ export default async function ResultsPage({
       ? (festival.branding as any).colors?.primary || "#000000"
       : "#000000";
 
-  // Fetch published results
+  // Only the first page of programmes is rendered server-side; the client
+  // pulls further pages from /api/festivals/[slug]/results on demand.
   const publicDisplayMode = festival.publicDisplayMode ?? "programme_results";
-  const results = await getPublicFestivalResults(festival.id, {
+  const initialResults = await getPublicProgrammeResults(festival.id, {
+    page: 1,
     publicDisplayMode,
   });
-  const teamStandings =
-    publicDisplayMode === "team_standings"
-      ? ((festival.teamStandings as any[]) ?? [])
-      : [];
+  const teamStandings = (festival.teamStandings as any[]) ?? [];
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background">
       <ResultsList
-        festivalId={festival.id}
         festivalName={festival.name}
         festivalSlug={slug}
         accentColor={accentColor}
-        results={results}
+        initialResults={initialResults}
         teamStandings={teamStandings}
         publicDisplayMode={publicDisplayMode}
         scoringSystem={festival.scoringSystem || "POSITION_BASED"}

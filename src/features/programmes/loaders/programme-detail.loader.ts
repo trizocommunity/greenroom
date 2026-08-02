@@ -5,9 +5,9 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   auditLog,
-  judge as judgeTable,
   judgementConfig as judgementConfigTable,
   judgementScore as judgementScoreTable,
+  judge as judgeTable,
   participant as participantTable,
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,

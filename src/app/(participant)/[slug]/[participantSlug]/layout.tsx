@@ -74,7 +74,9 @@ export default async function ParticipantLayout({
     programmesCount: festival.programmesCount,
     stagesCount: festival.stagesCount,
     limits: null,
+    participantCreationStartDate: festival.participantCreationStartDate ?? null,
     participantCreationDeadline: festival.participantCreationDeadline ?? null,
+    programmeAssignmentStartDate: festival.programmeAssignmentStartDate ?? null,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline ?? null,
     effectiveFeatures: undefined,
   } as any;

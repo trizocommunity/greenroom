@@ -1,8 +1,8 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  judge as judgeTable,
   judgementScore as judgementScoreTable,
+  judge as judgeTable,
   stage as stageTable,
 } from "@/core/database/schema";
 

@@ -1,76 +1,93 @@
-# Greenroom - Festival Management
+# Greenroom
 
-Festival-management SaaS (Next.js 16, React 19, Drizzle ORM, PostgreSQL on Neon).
+A festival-management SaaS that helps organizers run events end-to-end — tickets, schedules, teams, payments, the lot.
 
-## Local Development
+Built with Next.js 16, React 19, Drizzle ORM, and PostgreSQL (Neon in production).
+
+---
+
+## Run it locally
+
+You'll need Node.js 20+ and either a Neon account or Docker.
 
 ```bash
 npm install
 cp .env.example .env.local
-# fill in DATABASE_URL / DATABASE_URL_UNPOOLED / JWT_SECRET / CRON_SECRET
-npm run dev
 ```
 
-The app expects a real PostgreSQL — provision one of the following:
+Open `.env.local` and fill in at least `JWT_SECRET` and your database URL:
 
-### Option A — Neon (recommended, matches production)
 ```bash
-# install neonctl: https://neon.tech/docs/reference/cli-install
+openssl rand -hex 32   # paste into JWT_SECRET (32+ chars)
+```
+
+Pick **one** database option below, then come back and start the app:
+
+```bash
+npm run dev   # http://localhost:3000
+```
+
+### Option A — Neon (recommended, mirrors production)
+
+```bash
 neonctl projects create --name greenroom-dev
-neonctl connection-string main --pooled
-neonctl connection-string main        # unpooled
+neonctl connection-string main --pooled       # → DATABASE_URL
+neonctl connection-string main                # → DATABASE_URL_UNPOOLED
 ```
-Paste both strings into `.env.local` as `DATABASE_URL` and `DATABASE_URL_UNPOOLED`, then:
+
+Drop both into `.env.local`, then:
+
 ```bash
-npm run db:push       # apply schema to your branch
-npm run db:seed       # optional: seed Super Admin + sample festival
+npm run db:push   # apply the schema
+npm run db:seed   # optional: creates a Super Admin + sample festival
+```
+
+### Option B — Local Postgres via Docker
+
+Zero config — the defaults in `.env.example` already point at the container:
+
+```bash
+npm run db:setup   # starts Postgres on :5433, pushes schema, seeds
 npm run dev
 ```
 
-### Option B — Local Docker Postgres (legacy)
-```bash
-npm run db:setup      # starts container, pushes schema, seeds
-npm run dev
-```
-Local Postgres runs on `localhost:5433`; default `DATABASE_URL` in `.env.example` points there.
+Stop the database whenever: `npm run db:stop`.
 
-## Environment Variables
+---
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string (Neon pooled endpoint in prod, or local Docker). |
-| `DATABASE_URL_UNPOOLED` | Prod only | Direct Postgres endpoint for drizzle-kit migrations. |
-| `JWT_SECRET` | Yes | Secret used to sign/verify session cookies (≥ 32 chars). |
-| `NEXT_PUBLIC_APP_URL` | Yes | Public origin used in emails, redirects, magic links. |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | For payments | Razorpay API keys. |
-| `RESEND_API_KEY` / `EMAIL_FROM` | For email | Magic-link + invitation emails. |
-| `CLOUDINARY_*` | For uploads | Cloudinary cloud + presets. |
-| `SENTRY_DSN` | Optional | Frontend / server error reporting. |
-| `CRON_SECRET` | Prod only | Secret sent by Vercel Cron in the `x-cron-secret` header. |
+## Deploy to production (Vercel)
 
-## Database scripts (`package.json`)
+1. Create a Neon project + branch.
+2. In Vercel, add these env vars for **Production** and **Preview**:
+   - `DATABASE_URL` and `DATABASE_URL_UNPOOLED` (the pooled + direct Neon strings).
+   - `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` (generate fresh ones per env).
+   - Anything you actually use: `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `CLOUDINARY_*`.
+3. Install the **Neon → Vercel** integration so each PR preview gets its own isolated DB branch.
+4. Push to your default branch — Vercel builds and deploys.
 
-- `npm run db:generate` — `drizzle-kit generate` (diff schema → SQL)
-- `npm run db:migrate` / `npm run db:push` — `drizzle-kit push` (apply schema directly)
-- `npm run db:studio` — `drizzle-kit studio`
-- `npm run db:seed` — `tsx scripts/seed.ts` (Super Admin + Ahlussuffa IGS Pro festival)
-- `npm run db:clean` — `tsx scripts/clean.ts` (drop schema; refuses to run against a non-local URL without `--force`)
-- `npm run db:reset` — clean + push + seed
-- `npm run db:setup` — Docker variant: start container + push + seed
+That's it. The cron in `vercel.json` calls `/api/v1/cron` once a day for festival expiry + pre-archival work; it authenticates against `CRON_SECRET`.
 
-## Cron / scheduled jobs
+---
 
-`vercel.json` schedules a daily call to `/api/v1/cron`, which runs the festival expiration + pre-archival cycles. The handler at `src/app/api/v1/cron/route.ts` validates the `x-cron-secret` header against `CRON_SECRET`.
+## Useful scripts
 
-## Deployment (Vercel)
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the app in dev mode |
+| `npm run build` / `npm run start` | Production build & serve |
+| `npm run lint` / `npm run format` / `npm run check` | Biome |
+| `npm test` | Vitest |
+| `npm run db:push` | Apply Drizzle schema to the DB |
+| `npm run db:generate` | Diff schema → SQL migration files |
+| `npm run db:studio` | Drizzle Studio (DB GUI) |
+| `npm run db:seed` | Seed Super Admin + sample festival |
+| `npm run db:reset` | Clean → push → seed (local only unless `--force`) |
+| `npm run db:setup` | Docker variant of `db:reset` |
 
-1. Provision a Neon project + branch.
-2. Set both `DATABASE_URL` and `DATABASE_URL_UNPOOLED` in Vercel environment variables (Production + Preview).
-3. Set `JWT_SECRET`, `CRON_SECRET`, and any third-party keys (`RAZORPAY_*`, `RESEND_API_KEY`, `CLOUDINARY_*`).
-4. Install the Neon–Vercel marketplace integration so each PR preview gets an isolated database branch.
-5. Deploy.
+---
 
-## Verification
+## A few notes
 
-- **Build safety**: `npm run build` must complete without DB-related warnings.
-- **Migrations**: prefer `db:migrate` over `db:push` once `drizzle/meta/_journal.json` covers all on-disk SQL files.
+- **Two database URLs, not one.** Production needs both the pooled string (for the app) and the unpooled string (for drizzle-kit, which issues DDL that doesn't play with PgBouncer).
+- **Don't commit `.env*`.** Only `.env.example` belongs in the repo.
+- **Schema changes** should land as generated migrations once the project has any real users — switch from `db:push` to `db:generate` + `db:migrate` at that point.

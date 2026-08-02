@@ -20,7 +20,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { getFestivalDurationDays } from "@/config/pricing";
 import { toDateOrNull } from "@/core/datetime";
+import { MS } from "@/core/datetime/constants";
 import { slugify } from "@/core/utils/slug";
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
@@ -30,6 +32,7 @@ interface FestivalDetailsDialogProps {
     id: string;
     name: string;
     description?: string | null;
+    tagline?: string | null;
     location?: string | null;
     startDate?: Date | string | null;
     endDate?: Date | string | null;
@@ -50,6 +53,7 @@ export function FestivalDetailsDialog({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(festival.name || "");
   const [description, setDescription] = useState(festival.description || "");
+  const [tagline, setTagline] = useState(festival.tagline || "");
   const [location, setLocation] = useState(festival.location || "");
   const [slug, setSlug] = useState(festival.slug || "");
   const [dateRange, setDateRange] = useState<{
@@ -81,10 +85,11 @@ export function FestivalDetailsDialog({
     ? toDateOrNull(festival.endDate)
     : null;
 
+  const totalDays = getFestivalDurationDays();
   const durationEnd = existingEndDate
-    ? new Date(existingEndDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+    ? new Date(existingEndDate.getTime() + totalDays * MS.day)
     : dateRange.from
-      ? new Date(dateRange.from.getTime() + 180 * 24 * 60 * 60 * 1000)
+      ? new Date(dateRange.from.getTime() + totalDays * 2 * MS.day)
       : undefined;
 
   const validateDates = () => {
@@ -121,6 +126,7 @@ export function FestivalDetailsDialog({
         id: festival.id,
         name: name.trim(),
         description: description.trim() || undefined,
+        tagline: tagline.trim() || undefined,
         location: location.trim() || undefined,
         startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
         endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
@@ -154,94 +160,107 @@ export function FestivalDetailsDialog({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>{trigger ?? defaultTrigger}</DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>Festival Details</DrawerTitle>
-          <DrawerDescription>
-            Core identity and timing of your festival.
-          </DrawerDescription>
-        </DrawerHeader>
+      <DrawerContent className="p-0 sm:p-0 gap-0">
+        <div className="mx-auto w-full max-w-2xl flex flex-col h-full overflow-hidden">
+          <DrawerHeader className="shrink-0 p-4 sm:p-6 pb-2 border-b">
+            <DrawerTitle>Festival Details</DrawerTitle>
+            <DrawerDescription>
+              Core identity and timing of your festival.
+            </DrawerDescription>
+          </DrawerHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Festival Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="E.g. Summer Arts 2025"
-            />
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Festival Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="E.g. Summer Arts 2025"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tagline">Tagline</Label>
+              <Input
+                id="tagline"
+                value={tagline}
+                maxLength={140}
+                onChange={(e) => setTagline(e.target.value)}
+                placeholder="A short motto shown on your public homepage"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Briefly describe your festival..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slug">Subdomain</Label>
+              <Input
+                id="slug"
+                value={slug}
+                onChange={(e) => setSlug(slugify(e.target.value))}
+                placeholder="summer-arts-2025"
+                className={slugError ? "border-destructive" : undefined}
+              />
+              {slugError ? (
+                <p className="text-xs text-destructive">{slugError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground truncate">
+                  {origin || "yourapp.com"}/{slug || "your-subdomain"}
+                </p>
+              )}
+              {slug !== festival.slug && !slugError && (
+                <p className="text-xs text-amber-600">
+                  Changing this will move your festival to a new URL and
+                  redirect you there after saving.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dateRange">Festival Dates</Label>
+              <DateRangePicker
+                id="dateRange"
+                value={dateRange}
+                onChange={setDateRange}
+                placeholder="Select date range"
+                from={durationStart}
+                to={durationEnd}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="location">Venue / City</Label>
+              <Input
+                id="location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="City, Country"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Briefly describe your festival..."
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="slug">Subdomain</Label>
-            <Input
-              id="slug"
-              value={slug}
-              onChange={(e) => setSlug(slugify(e.target.value))}
-              placeholder="summer-arts-2025"
-              className={slugError ? "border-destructive" : undefined}
-            />
-            {slugError ? (
-              <p className="text-xs text-destructive">{slugError}</p>
-            ) : (
-              <p className="text-xs text-muted-foreground truncate">
-                {origin || "yourapp.com"}/{slug || "your-subdomain"}
-              </p>
-            )}
-            {slug !== festival.slug && !slugError && (
-              <p className="text-xs text-amber-600">
-                Changing this will move your festival to a new URL and redirect
-                you there after saving.
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dateRange">Festival Dates</Label>
-            <DateRangePicker
-              id="dateRange"
-              value={dateRange}
-              onChange={setDateRange}
-              placeholder="Select date range"
-              from={durationStart}
-              to={durationEnd}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="location">Venue / City</Label>
-            <Input
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="City, Country"
-            />
-          </div>
+          <DrawerFooter className="shrink-0 border-t">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={updateFestival.isPending}>
+              {updateFestival.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Save Changes
+            </Button>
+          </DrawerFooter>
         </div>
-
-        <DrawerFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={updateFestival.isPending}>
-            {updateFestival.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Save Changes
-          </Button>
-        </DrawerFooter>
       </DrawerContent>
     </Drawer>
   );

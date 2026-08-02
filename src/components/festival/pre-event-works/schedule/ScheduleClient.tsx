@@ -24,6 +24,7 @@ import {
 } from "@/api/client/schedule";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -78,7 +79,6 @@ import {
   localWallClockToDate,
   parseStoredScheduleInstant,
 } from "@/features/schedule/utils/schedule-datetime";
-import { Badge } from "@/components/ui/badge";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -154,11 +154,7 @@ function getDateKey(d: Date): string {
  * time value" guard so date-fns' `format(...)` never receives a
  * `Date` whose `getTime()` is `NaN`. See ISSUE-13 followup.
  */
-function safeFormat(
-  d: Date,
-  pattern: string,
-  fallback: string = "—",
-): string {
+function safeFormat(d: Date, pattern: string, fallback: string = "—"): string {
   if (Number.isNaN(d.getTime())) return fallback;
   return format(d, pattern);
 }

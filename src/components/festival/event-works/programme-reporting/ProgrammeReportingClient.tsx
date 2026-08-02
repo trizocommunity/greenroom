@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   History,
@@ -15,7 +16,7 @@ import party from "party-js";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
-
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -57,16 +65,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/components/ui/drawer";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { formatDateTime, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
+import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
 import {
   assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
@@ -141,10 +142,7 @@ function generateCodeLetters(count: number): string[] {
   return letters;
 }
 
-function formatHistoryTime(
-  value: Date | string,
-  tz: string,
-): string {
+function formatHistoryTime(value: Date | string, tz: string): string {
   const date = parseInstant(value);
   if (!date) return "—";
   try {
@@ -370,11 +368,12 @@ export function ProgrammeReportingClient({
 
     const getHistoryTimestamp = (item: ReportingBoardItem) => {
       const endedAt = item.reportingSession?.endedAt
-        ? parseInstant(item.reportingSession.endedAt)?.getTime() ?? Number.NaN
+        ? (parseInstant(item.reportingSession.endedAt)?.getTime() ?? Number.NaN)
         : Number.NaN;
       if (Number.isFinite(endedAt)) return endedAt;
       const updatedAt = item.reportingSession?.updatedAt
-        ? parseInstant(item.reportingSession.updatedAt)?.getTime() ?? Number.NaN
+        ? (parseInstant(item.reportingSession.updatedAt)?.getTime() ??
+          Number.NaN)
         : Number.NaN;
       if (Number.isFinite(updatedAt)) return updatedAt;
       return parseInstant(item.startTime)?.getTime() ?? 0;
@@ -720,6 +719,25 @@ export function ProgrammeReportingClient({
     });
   }, [assignments, selected, optimisticReportedBySession]);
 
+  /* Team leads for the open programme. Returns {} for non-PRO tiers, so the
+     roster simply shows no lead rather than erroring. */
+  const { data: teamLeadsForProgramme } = useQuery({
+    queryKey: ["reporting-team-leads", festivalId, selected?.programme?.id],
+    queryFn: async () => {
+      const programmeId = selected?.programme?.id;
+      if (!programmeId) return {};
+      try {
+        return await getProgrammeTeamLeadsAction(festivalId, programmeId);
+      } catch {
+        return {};
+      }
+    },
+    enabled: Boolean(
+      selected?.programme?.id && selected?.programme?.type === "GROUP",
+    ),
+    staleTime: 30_000,
+  });
+
   const rosterTableRows = useMemo((): RosterTableRow[] => {
     const programme = selected?.programme;
     if (!programme?.id) return [];
@@ -767,6 +785,9 @@ export function ProgrammeReportingClient({
           groupName: lead.groupName,
           teamCell: teamNumber,
           isReported: members.some((m) => m.isReported),
+          teamLeadName:
+            (teamLeadsForProgramme as any)?.[lead.groupId ?? ""]?.[teamNumber]
+              ?.participantName ?? null,
         };
       },
     );
@@ -786,7 +807,7 @@ export function ProgrammeReportingClient({
         typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
       return aTeam - bTeam;
     });
-  }, [assignmentsWithReported, selected?.programme]);
+  }, [assignmentsWithReported, selected?.programme, teamLeadsForProgramme]);
 
   const reportedUnitsCount = useMemo(
     () => rosterTableRows.filter((r) => r.isReported).length,

@@ -14,12 +14,7 @@ import {
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
-import {
-  MS,
-  nowPlus,
-  serverNowIso,
-  serverNowMs,
-} from "@/core/datetime/server";
+import { MS, nowPlus, serverNowIso, serverNowMs } from "@/core/datetime/server";
 import { NotificationService } from "@/features/notifications/services/notification.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { CodeLetterGeneratorService } from "./code-letter-generator.service";
@@ -769,8 +764,7 @@ export const ProgrammeReportingService = {
       }
     }
 
-    const effectiveEndedAt =
-      session.scheduleEntry?.startTime || serverNowIso();
+    const effectiveEndedAt = session.scheduleEntry?.startTime || serverNowIso();
 
     const closed = await db.transaction(async (tx) => {
       const nowStr = serverNowIso();

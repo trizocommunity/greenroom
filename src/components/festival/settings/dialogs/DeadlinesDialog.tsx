@@ -21,7 +21,9 @@ import { updateFestivalSettingsAction } from "@/features/festivals/actions/festi
 interface DeadlinesDialogProps {
   festival: {
     id: string;
+    programmeAssignmentStartDate?: Date | string | null;
     programmeAssignmentDeadline?: Date | string | null;
+    participantCreationStartDate?: Date | string | null;
     participantCreationDeadline?: Date | string | null;
     startDate?: Date | string | null;
     createdAt?: Date | string | null;
@@ -40,17 +42,21 @@ export function DeadlinesDialog({
   isParticipantDeadlineFeatureEnabled = true,
 }: DeadlinesDialogProps) {
   const [open, setOpen] = useState(false);
+  const [programmeAssignmentStartDate, setProgrammeAssignmentStartDate] =
+    useState<Date | null>(() =>
+      parseInstant(festival.programmeAssignmentStartDate ?? null),
+    );
   const [programmeAssignmentDeadline, setProgrammeAssignmentDeadline] =
-    useState<Date | null>(
-      festival.programmeAssignmentDeadline
-        ? (parseInstant(festival.programmeAssignmentDeadline) ?? null)
-        : null,
+    useState<Date | null>(() =>
+      parseInstant(festival.programmeAssignmentDeadline ?? null),
+    );
+  const [participantCreationStartDate, setParticipantCreationStartDate] =
+    useState<Date | null>(() =>
+      parseInstant(festival.participantCreationStartDate ?? null),
     );
   const [participantCreationDeadline, setParticipantCreationDeadline] =
-    useState<Date | null>(
-      festival.participantCreationDeadline
-        ? (parseInstant(festival.participantCreationDeadline) ?? null)
-        : null,
+    useState<Date | null>(() =>
+      parseInstant(festival.participantCreationDeadline ?? null),
     );
   const [isSaving, setIsSaving] = useState(false);
 
@@ -70,15 +76,34 @@ export function DeadlinesDialog({
   }, [festivalStartDate]);
 
   const handleSave = async () => {
+    if (
+      programmeAssignmentStartDate &&
+      programmeAssignmentDeadline &&
+      programmeAssignmentStartDate >= programmeAssignmentDeadline
+    ) {
+      toast.error("Programme assignments must open before they close");
+      return;
+    }
+    if (
+      participantCreationStartDate &&
+      participantCreationDeadline &&
+      participantCreationStartDate >= participantCreationDeadline
+    ) {
+      toast.error("Participant registration must open before it closes");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const res = await updateFestivalSettingsAction(festival.id, {
-        programmeAssignmentDeadline: programmeAssignmentDeadline
-          ? programmeAssignmentDeadline.toISOString()
-          : null,
-        participantCreationDeadline: participantCreationDeadline
-          ? participantCreationDeadline.toISOString()
-          : null,
+        programmeAssignmentStartDate:
+          programmeAssignmentStartDate?.toISOString() ?? null,
+        programmeAssignmentDeadline:
+          programmeAssignmentDeadline?.toISOString() ?? null,
+        participantCreationStartDate:
+          participantCreationStartDate?.toISOString() ?? null,
+        participantCreationDeadline:
+          participantCreationDeadline?.toISOString() ?? null,
       });
 
       if (res.success) {
@@ -109,54 +134,93 @@ export function DeadlinesDialog({
         <DrawerHeader>
           <DrawerTitle>Deadlines</DrawerTitle>
           <DrawerDescription>
-            Set deadlines for programme assignments and participant
-            registration.
+            Set the windows during which Team Leaders can assign programmes and
+            register participants.
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-6 py-4">
           {isFeatureEnabled && (
-            <div className="space-y-2">
-              <Label htmlFor="programmeAssignmentDeadline">
-                Programme Assignment Deadline
-              </Label>
-              <DateTimePicker
-                id="programmeAssignmentDeadline"
-                value={programmeAssignmentDeadline}
-                onChange={(value) => {
-                  if (festivalHasStarted) return;
-                  setProgrammeAssignmentDeadline(value);
-                }}
-                placeholder="Pick deadline"
-                from={durationStart}
-                to={festivalStartDate ?? undefined}
-                disabled={festivalHasStarted}
-              />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="programmeAssignmentStartDate">
+                  Programme Assignment Opens
+                </Label>
+                <DateTimePicker
+                  id="programmeAssignmentStartDate"
+                  value={programmeAssignmentStartDate}
+                  onChange={(value) => {
+                    if (festivalHasStarted) return;
+                    setProgrammeAssignmentStartDate(value);
+                  }}
+                  placeholder="Pick start (optional)"
+                  from={durationStart}
+                  to={festivalStartDate ?? undefined}
+                  disabled={festivalHasStarted}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="programmeAssignmentDeadline">
+                  Programme Assignment Closes
+                </Label>
+                <DateTimePicker
+                  id="programmeAssignmentDeadline"
+                  value={programmeAssignmentDeadline}
+                  onChange={(value) => {
+                    if (festivalHasStarted) return;
+                    setProgrammeAssignmentDeadline(value);
+                  }}
+                  placeholder="Pick deadline"
+                  from={programmeAssignmentStartDate ?? durationStart}
+                  to={festivalStartDate ?? undefined}
+                  disabled={festivalHasStarted}
+                />
+              </div>
               <p className="text-sm text-muted-foreground">
-                Team Leaders cannot assign participants to programmes after this
-                time.
+                Team Leaders can assign participants to programmes only inside
+                this window. Leave the start empty to open it immediately.
               </p>
             </div>
           )}
           {isParticipantDeadlineFeatureEnabled && (
-            <div className="space-y-2">
-              <Label htmlFor="participantCreationDeadline">
-                Participant Registration Deadline
-              </Label>
-              <DateTimePicker
-                id="participantCreationDeadline"
-                value={participantCreationDeadline}
-                onChange={(value) => {
-                  if (festivalHasStarted) return;
-                  setParticipantCreationDeadline(value);
-                }}
-                placeholder="Pick deadline"
-                from={durationStart}
-                to={festivalStartDate ?? undefined}
-                disabled={festivalHasStarted}
-              />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="participantCreationStartDate">
+                  Participant Registration Opens
+                </Label>
+                <DateTimePicker
+                  id="participantCreationStartDate"
+                  value={participantCreationStartDate}
+                  onChange={(value) => {
+                    if (festivalHasStarted) return;
+                    setParticipantCreationStartDate(value);
+                  }}
+                  placeholder="Pick start (optional)"
+                  from={durationStart}
+                  to={festivalStartDate ?? undefined}
+                  disabled={festivalHasStarted}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="participantCreationDeadline">
+                  Participant Registration Closes
+                </Label>
+                <DateTimePicker
+                  id="participantCreationDeadline"
+                  value={participantCreationDeadline}
+                  onChange={(value) => {
+                    if (festivalHasStarted) return;
+                    setParticipantCreationDeadline(value);
+                  }}
+                  placeholder="Pick deadline"
+                  from={participantCreationStartDate ?? durationStart}
+                  to={festivalStartDate ?? undefined}
+                  disabled={festivalHasStarted}
+                />
+              </div>
               <p className="text-sm text-muted-foreground">
-                Team Leaders cannot add new participants after this time.
+                Team Leaders can add new participants only inside this window.
+                Leave the start empty to open it immediately.
               </p>
             </div>
           )}

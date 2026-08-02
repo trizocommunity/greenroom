@@ -6,21 +6,14 @@ import {
   MessageSquare,
   MessageSquarePlus,
   UserRound,
-  UserX,
   Users2,
+  UserX,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useMarkCodeLetterAbsence } from "@/api/client/server-actions";
-import { Badge } from "@/components/ui/badge";
+import { StatusPill } from "@/components/app/AppSection";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Drawer,
   DrawerContent,
@@ -30,7 +23,6 @@ import {
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/core/utils/cn";
 import {
@@ -57,8 +49,8 @@ function AbsentToggle({
       className={cn(
         "mt-1 h-auto gap-1.5 px-2 py-1 text-[11px] [&_svg]:size-3.5",
         isAbsent
-          ? "border-amber-500/50 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
-          : "border-border/70 text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+          ? "border-warning/50 bg-warning/10 text-warning hover:bg-warning/20"
+          : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
       <UserX aria-hidden />
@@ -190,50 +182,33 @@ function SubmissionSummaryView({
   onContinue: () => void;
 }) {
   const isPartial = variant === "partial";
+
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-6 py-6">
-      <div className="text-center">
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
-          <CheckCircle2 className="h-8 w-8" aria-hidden />
-        </div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {stageName}
-        </p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">
-          {programmeName}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {isPartial ? (
-            <>
-              Thanks! Your scores are saved. Other judges still need to submit.
-            </>
-          ) : (
-            <>Thank you! This programme's judgement has been submitted.</>
-          )}
-        </p>
+    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center py-10 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/15 text-success">
+        <CheckCircle2 className="h-8 w-8" aria-hidden />
       </div>
 
-      <Card className="border-border/70 shadow-sm">
-        <CardHeader className="pb-2 text-center">
-          <CardTitle className="text-base">Submission received</CardTitle>
-          <CardDescription>
-            {isPartial ? (
-              <>The programme stays live until every judge has submitted.</>
-            ) : (
-              <>This programme has left the live queue.</>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button
-            className="h-11 w-full sm:w-auto"
-            size="lg"
-            onClick={onContinue}
-          >
-            Back to portal
-          </Button>
-        </CardContent>
-      </Card>
+      <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {stageName}
+      </p>
+      <h1 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-heading">
+        {programmeName}
+      </h1>
+
+      <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+        {isPartial
+          ? "Your scores are saved. The programme stays live until every judge has submitted."
+          : "Judgement submitted. This programme has left the live queue."}
+      </p>
+
+      <Button
+        className="mt-8 h-12 w-full rounded-full text-base font-medium shadow-primary-glow"
+        size="lg"
+        onClick={onContinue}
+      >
+        Back to portal
+      </Button>
     </div>
   );
 }
@@ -276,177 +251,171 @@ function SubmissionReviewView({
       .length;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 pb-28">
-      <div className="pt-2 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          {stageName}
+    <div className="pb-28">
+      <header className="border-b border-border pb-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {stageName} · Review
         </p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">
-          Review before submit
+        <h1 className="mt-1.5 text-balance text-xl font-semibold tracking-tight text-heading sm:text-2xl">
+          {programmeName}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          {programmeName}
-          {" · "}
           {judgingMode === "GROUP"
-            ? "Full panel — all judges and code letters"
+            ? "Full panel — every judge and code letter"
             : `Judge: ${judges[0]?.name ?? ""}`}
         </p>
-      </div>
+      </header>
 
-      {/* Per-code result cards: scores, exact result, remarks */}
-      <div className="space-y-2.5">
+      {/* Two columns from tablet up — a 10-code programme is a lot of
+          scrolling on one narrow column. */}
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
         {codeLetters.map((c) => {
           const policy = policyByCode.get(c.id);
           const rCount = remarkCount(c.id);
+
           return (
-            <Card key={c.id} className="border-border/70 shadow-sm">
-              <CardContent className="space-y-3 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="rounded-md border bg-muted/40 px-2.5 py-1 font-mono text-base font-bold">
-                      {c.code}
-                    </span>
-                    {policy?.grade ? (
-                      <Badge className="rounded-md bg-emerald-500/15 font-semibold text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">
-                        {policy.grade}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="rounded-md font-normal">
-                        No grade
-                      </Badge>
-                    )}
+            <div
+              key={c.id}
+              className="flex flex-col gap-3 rounded-2xl border border-border p-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2">
+                  <span className="rounded-lg bg-muted px-2.5 py-1 font-mono text-base font-bold text-heading">
+                    {c.code}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-center">
-                      <p className="text-[9px] font-medium uppercase tracking-wide text-primary/90">
-                        Normalized
-                      </p>
-                      <p className="tabular-nums text-sm font-bold text-primary">
-                        {policy?.points ?? "—"}
-                      </p>
-                    </div>
-                    <div className="rounded-md border bg-muted/30 px-2.5 py-1 text-center">
-                      <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Points
-                      </p>
-                      <p className="tabular-nums text-sm font-bold">
-                        {policy?.awardPoints ?? "—"}
-                      </p>
-                    </div>
+                  {policy?.grade ? (
+                    <StatusPill tone="live">{policy.grade}</StatusPill>
+                  ) : (
+                    <StatusPill tone="muted">No grade</StatusPill>
+                  )}
+                </span>
+
+                <div className="flex items-center gap-3 text-right">
+                  <div>
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Normalised
+                    </p>
+                    <p className="text-sm font-bold tabular-nums text-primary">
+                      {policy?.points ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Points
+                    </p>
+                    <p className="text-sm font-bold tabular-nums text-heading">
+                      {policy?.awardPoints ?? "—"}
+                    </p>
                   </div>
                 </div>
+              </div>
 
-                {/* Judge scores */}
-                <div className="flex flex-wrap gap-1.5">
-                  {judges.map((j) => (
-                    <span
-                      key={j.id}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-xs"
-                    >
-                      {judges.length > 1 ? (
-                        <span className="text-muted-foreground">{j.name}</span>
-                      ) : null}
-                      <span className="tabular-nums font-semibold">
-                        {scoresByKey[`${j.id}:${c.id}`] ?? "—"}
-                      </span>
+              <div className="flex flex-wrap gap-1.5">
+                {judges.map((j) => (
+                  <span
+                    key={j.id}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs"
+                  >
+                    {judges.length > 1 && (
+                      <span className="text-muted-foreground">{j.name}</span>
+                    )}
+                    <span className="font-semibold tabular-nums text-heading">
+                      {scoresByKey[`${j.id}:${c.id}`] ?? "—"}
                     </span>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setRemarkCodeId(c.id)}
-                  className="flex w-full items-center gap-2 rounded-md border border-dashed border-border/70 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/30"
-                >
-                  {rCount > 0 ? (
-                    <MessageSquare className="h-3.5 w-3.5 text-primary" />
-                  ) : (
-                    <MessageSquarePlus className="h-3.5 w-3.5" />
-                  )}
-                  <span className="flex-1">
-                    {rCount > 0
-                      ? `${rCount} remark${rCount === 1 ? "" : "s"} added`
-                      : "Add remarks (optional)"}
                   </span>
-                  <span className="text-primary">Edit</span>
-                </button>
-              </CardContent>
-            </Card>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setRemarkCodeId(c.id)}
+                className="mt-auto flex w-full items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50"
+              >
+                {rCount > 0 ? (
+                  <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                ) : (
+                  <MessageSquarePlus className="h-3.5 w-3.5" />
+                )}
+                <span className="flex-1">
+                  {rCount > 0
+                    ? `${rCount} remark${rCount === 1 ? "" : "s"}`
+                    : "Add remarks (optional)"}
+                </span>
+                <span className="font-medium text-primary">Edit</span>
+              </button>
+            </div>
           );
         })}
       </div>
 
-      {submitError ? (
-        <p className="text-center text-xs font-medium text-destructive">
+      {submitError && (
+        <p
+          className="mt-4 text-center text-sm font-medium text-destructive"
+          role="alert"
+        >
           {submitError}
         </p>
-      ) : null}
+      )}
 
-      {/* Sticky confirm footer */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-3 py-2 backdrop-blur-md"
-        style={{ paddingBottom: "max(0.65rem, env(safe-area-inset-bottom,0px))" }}
-      >
-        <div className="mx-auto flex max-w-3xl gap-2">
-          <Button
-            variant="outline"
-            className="h-11 flex-1"
-            onClick={onEdit}
-            disabled={isPending}
-          >
-            Edit scores
-          </Button>
-          <Button
-            className="h-11 flex-[2]"
-            onClick={onConfirm}
-            disabled={isPending}
-          >
-            {isPending ? "Submitting..." : "Confirm and submit"}
-          </Button>
-        </div>
-      </div>
+      <StickyBar>
+        <Button
+          variant="outline"
+          className="h-11 flex-1 rounded-full"
+          onClick={onEdit}
+          disabled={isPending}
+        >
+          Edit scores
+        </Button>
+        <Button
+          className="h-11 flex-[2] rounded-full font-medium shadow-primary-glow"
+          onClick={onConfirm}
+          disabled={isPending}
+        >
+          {isPending ? "Submitting…" : "Confirm and submit"}
+        </Button>
+      </StickyBar>
 
-      {/* Remark drawer (per judge, per code) */}
+      {/* Remarks, per judge, per code */}
       <Drawer
         open={Boolean(drawerCode)}
         onOpenChange={(o) => !o && setRemarkCodeId(null)}
       >
         <DrawerContent>
-          <DrawerHeader>
+          <DrawerHeader className="text-left">
             <DrawerTitle>
-              Remarks · Code{" "}
+              Remarks · code{" "}
               <span className="font-mono">{drawerCode?.code}</span>
             </DrawerTitle>
             <DrawerDescription>
-              Optional. Add a note for this code letter{" "}
-              {judges.length > 1 ? "per judge" : ""}.
+              Optional note for this code letter
+              {judges.length > 1 ? ", per judge" : ""}.
             </DrawerDescription>
           </DrawerHeader>
+
           <div className="max-h-[60vh] space-y-4 overflow-y-auto px-4 pb-6">
-            {drawerCode
-              ? judges.map((j) => {
-                  const key = `${j.id}:${drawerCode.id}`;
-                  return (
-                    <div key={j.id} className="space-y-1.5">
-                      {judges.length > 1 ? (
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {j.name}
-                        </p>
-                      ) : null}
-                      <Textarea
-                        rows={3}
-                        placeholder="Remark (optional)…"
-                        value={remarksByKey[key] ?? ""}
-                        onChange={(e) =>
-                          onRemarkChange(j.id, drawerCode.id, e.target.value)
-                        }
-                      />
-                    </div>
-                  );
-                })
-              : null}
+            {drawerCode &&
+              judges.map((j) => {
+                const key = `${j.id}:${drawerCode.id}`;
+                return (
+                  <div key={j.id} className="space-y-1.5">
+                    {judges.length > 1 && (
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {j.name}
+                      </p>
+                    )}
+                    <Textarea
+                      rows={3}
+                      placeholder="Remark (optional)…"
+                      value={remarksByKey[key] ?? ""}
+                      onChange={(e) =>
+                        onRemarkChange(j.id, drawerCode.id, e.target.value)
+                      }
+                    />
+                  </div>
+                );
+              })}
             <Button
-              className="w-full"
+              className="w-full rounded-full"
               onClick={() => setRemarkCodeId(null)}
             >
               Done
@@ -454,6 +423,24 @@ function SubmissionReviewView({
           </div>
         </DrawerContent>
       </Drawer>
+    </div>
+  );
+}
+
+/**
+ * The action bar every scoring view docks to the bottom of the viewport.
+ * Judges work standing up with one thumb, so the primary action never
+ * scrolls out of reach, and it clears the iOS home indicator.
+ */
+function StickyBar({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-md"
+      style={{
+        paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-3xl gap-2">{children}</div>
     </div>
   );
 }
@@ -722,11 +709,7 @@ export function StagePortalScoringClient({
     return payload.judges;
   }, [payload.judgingMode, payload.judges, selectedJudgeId]);
 
-  const onRemarkChange = (
-    judgeId: string,
-    codeLetterId: string,
-    v: string,
-  ) => {
+  const onRemarkChange = (judgeId: string, codeLetterId: string, v: string) => {
     setRemarksByKey((prev) => ({ ...prev, [`${judgeId}:${codeLetterId}`]: v }));
   };
 
@@ -797,7 +780,9 @@ export function StagePortalScoringClient({
             scoresByCodeLetterId[c.id] = Number(
               scoresByKey[`${selectedJudgeId}:${c.id}`],
             );
-            const rm = (remarksByKey[`${selectedJudgeId}:${c.id}`] ?? "").trim();
+            const rm = (
+              remarksByKey[`${selectedJudgeId}:${c.id}`] ?? ""
+            ).trim();
             if (rm) remarksByCodeLetterId[c.id] = rm;
           }
           const res = await submitJudgeScoresAction({
@@ -880,65 +865,61 @@ export function StagePortalScoringClient({
   const progressPct = Math.min(100, Math.max(0, progress.pct));
 
   return (
-    <div className="space-y-6 pb-28 sm:space-y-8">
-      <header className="space-y-3 sm:space-y-4">
-        <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            {stageName}
-          </p>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
-            {payload.programme.name}
-          </h1>
+    <div className="pb-32">
+      {/* Sticky context bar: the programme, the mode and how far through you
+          are stay on screen while you scroll a long list of code letters.
+          Previously progress was a mobile-only card at the top and a
+          desktop-only bar in the footer, so neither width had it while
+          actually scoring. */}
+      <header className="sticky top-0 z-30 -mx-4 border-b border-border bg-background/95 px-4 pb-3 pt-4 backdrop-blur-md sm:-mx-6 sm:px-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {stageName}
+            </p>
+            <h1 className="mt-0.5 truncate text-lg font-semibold tracking-tight text-heading sm:text-xl">
+              {payload.programme.name}
+            </h1>
+          </div>
+          <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+            {progress.sub}
+          </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="rounded-md font-normal">
-            Max {payload.scoreLimit} pts
-          </Badge>
-          <Badge variant="outline" className="rounded-md font-normal">
-            {payload.programme.type === "GROUP"
-              ? "Group programme"
-              : "Individual programme"}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="gap-1.5 rounded-md border-primary/25 bg-primary/[0.06] pr-2.5 font-normal text-primary"
-          >
-            <ModeIcon className="h-3.5 w-3.5" aria-hidden />
+
+        <Progress value={progressPct} className="mt-2.5 h-1.5" />
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <StatusPill tone="ready" icon={ModeIcon}>
             {modeLabel}
-          </Badge>
+          </StatusPill>
+          <StatusPill tone="muted">Max {payload.scoreLimit} pts</StatusPill>
+          <StatusPill tone="muted">
+            {payload.programme.type === "GROUP" ? "Group" : "Individual"}
+          </StatusPill>
         </div>
       </header>
 
-      <Separator className="opacity-60" />
-
-      <Card className="border-primary/20 bg-primary/[0.04] sm:hidden">
-        <CardContent className="space-y-2 p-4">
-          <div className="flex items-center justify-between gap-2 text-xs font-medium">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="tabular-nums text-foreground">{progress.sub}</span>
-          </div>
-          <Progress value={progressPct} className="h-2.5" />
-        </CardContent>
-      </Card>
-
-      {payload.judgingMode === "SINGLE" && payload.judges.length > 1 ? (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+      {/* Judge picker — a grid rather than a scroll strip, so a tablet shows
+          the whole panel at once instead of hiding judges off-screen. */}
+      {payload.judgingMode === "SINGLE" && payload.judges.length > 1 && (
+        <section className="mt-6">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold tracking-tight">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Who are you?
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Tap your name — only your column becomes editable.
+              <p className="mt-1 text-xs text-muted-foreground">
+                Tap your name — only your scores become editable.
               </p>
             </div>
-            {judgesDoneCount !== null ? (
-              <p className="text-xs font-medium text-muted-foreground">
-                Finished: {judgesDoneCount}/{payload.judges.length} judges
+            {judgesDoneCount !== null && (
+              <p className="text-xs tabular-nums text-muted-foreground">
+                {judgesDoneCount}/{payload.judges.length} finished
               </p>
-            ) : null}
+            )}
           </div>
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {payload.judges.map((j) => {
               const done = judgeHasAllCodes(
                 j.id,
@@ -951,25 +932,26 @@ export function StagePortalScoringClient({
                   key={j.id}
                   type="button"
                   onClick={() => setSelectedJudgeId(j.id)}
+                  aria-pressed={active}
                   className={cn(
-                    "flex min-w-[10rem] shrink-0 flex-col items-start gap-1 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.99]",
+                    "flex min-h-[3.5rem] flex-col items-start justify-center gap-0.5 rounded-xl border px-3 py-2.5 text-left transition-colors active:scale-[0.99]",
                     active
-                      ? "border-primary bg-primary/[0.08] shadow-sm ring-2 ring-primary/20"
-                      : "border-border/80 bg-card hover:border-primary/30 hover:bg-muted/30",
+                      ? "border-primary bg-primary/[0.07]"
+                      : "border-border bg-card hover:border-primary/30",
                   )}
                 >
                   <span className="flex w-full items-center justify-between gap-2">
-                    <span className="truncate text-sm font-semibold">
+                    <span className="truncate text-sm font-medium text-heading">
                       {j.name}
                     </span>
                     {done ? (
                       <CheckCircle2
-                        className="h-4 w-4 shrink-0 text-emerald-600"
+                        className="h-4 w-4 shrink-0 text-success"
                         aria-label="Submitted"
                       />
                     ) : (
                       <Circle
-                        className="h-4 w-4 shrink-0 text-muted-foreground/50"
+                        className="h-4 w-4 shrink-0 text-muted-foreground/40"
                         aria-hidden
                       />
                     )}
@@ -982,30 +964,31 @@ export function StagePortalScoringClient({
             })}
           </div>
         </section>
-      ) : null}
+      )}
 
-      {payload.judgingMode === "SINGLE" && selectedJudgeAlreadySubmitted ? (
-        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+      {payload.judgingMode === "SINGLE" && selectedJudgeAlreadySubmitted && (
+        <div className="mt-6 rounded-2xl border border-success/40 bg-success/[0.08] p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-success">
             <CheckCircle2 className="h-4 w-4" aria-hidden />
-            You've already submitted
+            You&apos;ve already submitted
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Your scores are locked. The programme stays live until the other
-            judges finish. Your entries are shown below, read-only.
+            judges finish — your entries are shown below, read-only.
           </p>
         </div>
-      ) : null}
+      )}
 
-      {payload.judgingMode === "SINGLE" ? (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold tracking-tight">Scores</h2>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {progress.sub}
-            </span>
-          </div>
-          <div className="space-y-3">
+      {/* Scores */}
+      <section className="mt-6">
+        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {payload.judgingMode === "SINGLE" ? "Scores" : "Panel scores"}
+        </h2>
+
+        {payload.judgingMode === "SINGLE" ? (
+          /* Two columns from tablet up — one code letter per row wasted most
+             of the width on an iPad, which is what judges actually hold. */
+          <div className="grid gap-2.5 md:grid-cols-2">
             {payload.codeLetters.map((c) => {
               const isAbsent = absentIds.has(c.id);
               const effectiveJudgeId =
@@ -1031,204 +1014,180 @@ export function StagePortalScoringClient({
                       payload.scoreLimit,
                     )
                   : null;
+
               return (
-                <Card
+                <div
                   key={c.id}
                   className={cn(
-                    "border-border/70 transition-shadow",
-                    cellErr && "ring-1 ring-destructive/25",
-                    isAbsent && "bg-muted/30 opacity-70",
+                    "flex items-center gap-4 rounded-2xl border border-border p-4",
+                    cellErr && "border-destructive/40",
+                    isAbsent && "bg-muted/40 opacity-70",
                   )}
                 >
-                  <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Code letter
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={cn(
+                        "font-mono text-xl font-semibold tracking-tight text-heading",
+                        isAbsent && "text-muted-foreground line-through",
+                      )}
+                    >
+                      {c.code}
+                    </p>
+                    {others && (
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {others}
                       </p>
-                      <p
-                        className={cn(
-                          "font-mono text-lg font-semibold tracking-tight sm:text-xl",
-                          isAbsent && "line-through text-muted-foreground",
-                        )}
-                      >
-                        {c.code}
-                      </p>
-                      {others ? (
-                        <p className="text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground/80">
-                            Others:{" "}
-                          </span>
-                          {others}
-                        </p>
-                      ) : null}
-                      <AbsentToggle
-                        isAbsent={isAbsent}
-                        disabled={markAbsence.isPending}
-                        onToggle={() => onToggleAbsent(c.id, !isAbsent)}
-                      />
-                    </div>
-                    {isAbsent ? (
-                      <span className="text-xs font-medium text-muted-foreground sm:text-right">
-                        Excluded from scoring
-                      </span>
-                    ) : (
-                      <div className="flex w-full flex-col items-stretch gap-1 sm:w-auto sm:items-end">
-                        <ScoreField
-                          value={fieldKey ? (scoresByKey[fieldKey] ?? "") : ""}
-                          onChange={(v) => {
-                            if (!effectiveJudgeId) return;
-                            onScoreFieldChange(
-                              `${effectiveJudgeId}:${c.id}`,
-                              v,
-                              payload.scoreLimit,
-                            );
-                          }}
-                          disabled={
-                            isPending ||
-                            !effectiveJudgeId ||
-                            selectedJudgeAlreadySubmitted
-                          }
-                          max={payload.scoreLimit}
-                          invalid={Boolean(cellErr)}
-                        />
-                        {cellErr ? (
-                          <p className="text-[11px] font-medium text-destructive sm:text-right">
-                            {cellErr}
-                          </p>
-                        ) : null}
-                      </div>
                     )}
-                  </CardContent>
-                </Card>
+                    <AbsentToggle
+                      isAbsent={isAbsent}
+                      disabled={markAbsence.isPending}
+                      onToggle={() => onToggleAbsent(c.id, !isAbsent)}
+                    />
+                  </div>
+
+                  {isAbsent ? (
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                      Excluded
+                    </span>
+                  ) : (
+                    <div className="flex w-24 shrink-0 flex-col items-stretch gap-1">
+                      <ScoreField
+                        value={fieldKey ? (scoresByKey[fieldKey] ?? "") : ""}
+                        onChange={(v) => {
+                          if (!effectiveJudgeId) return;
+                          onScoreFieldChange(
+                            `${effectiveJudgeId}:${c.id}`,
+                            v,
+                            payload.scoreLimit,
+                          );
+                        }}
+                        disabled={
+                          isPending ||
+                          !effectiveJudgeId ||
+                          selectedJudgeAlreadySubmitted
+                        }
+                        max={payload.scoreLimit}
+                        invalid={Boolean(cellErr)}
+                      />
+                      {cellErr && (
+                        <p className="text-center text-[11px] font-medium text-destructive">
+                          {cellErr}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
-        </section>
-      ) : (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold tracking-tight">
-              Panel scores
-            </h2>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {progress.sub}
-            </span>
-          </div>
-          <div className="space-y-4">
+        ) : (
+          <div className="space-y-3">
             {payload.codeLetters.map((c) => {
               const isAbsent = absentIds.has(c.id);
               return (
-                <Card
+                <div
                   key={c.id}
                   className={cn(
-                    "border-border/70",
-                    isAbsent && "bg-muted/30 opacity-70",
+                    "rounded-2xl border border-border p-4",
+                    isAbsent && "bg-muted/40 opacity-70",
                   )}
                 >
-                  <CardHeader className="space-y-1 pb-2 pt-4 sm:pt-5">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Code letter
-                        </p>
-                        <CardTitle
-                          className={cn(
-                            "font-mono text-lg font-semibold sm:text-xl",
-                            isAbsent && "line-through text-muted-foreground",
-                          )}
-                        >
-                          {c.code}
-                        </CardTitle>
-                      </div>
-                      <AbsentToggle
-                        isAbsent={isAbsent}
-                        disabled={markAbsence.isPending}
-                        onToggle={() => onToggleAbsent(c.id, !isAbsent)}
-                      />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-4 pt-0 sm:pb-5">
-                    {isAbsent ? (
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Excluded from scoring — reported but did not perform.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3">
-                        {payload.judges.map((j) => {
-                          const key = `${j.id}:${c.id}`;
-                          const err = groupShowCellHints
-                            ? scoreCellErrorLabel(
-                                scoresByKey[key],
-                                payload.scoreLimit,
-                              )
-                            : null;
-                          return (
-                            <div
-                              key={j.id}
-                              className={cn(
-                                "flex min-w-0 flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/20 p-3",
-                                err && "ring-1 ring-destructive/30",
-                              )}
-                            >
-                              <span className="truncate text-xs font-medium text-muted-foreground">
-                                {j.name}
+                  <div className="flex items-start justify-between gap-3">
+                    <p
+                      className={cn(
+                        "font-mono text-xl font-semibold tracking-tight text-heading",
+                        isAbsent && "text-muted-foreground line-through",
+                      )}
+                    >
+                      {c.code}
+                    </p>
+                    <AbsentToggle
+                      isAbsent={isAbsent}
+                      disabled={markAbsence.isPending}
+                      onToggle={() => onToggleAbsent(c.id, !isAbsent)}
+                    />
+                  </div>
+
+                  {isAbsent ? (
+                    <p className="mt-3 text-xs font-medium text-muted-foreground">
+                      Excluded from scoring — reported but did not perform.
+                    </p>
+                  ) : (
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                      {payload.judges.map((j) => {
+                        const key = `${j.id}:${c.id}`;
+                        const err = groupShowCellHints
+                          ? scoreCellErrorLabel(
+                              scoresByKey[key],
+                              payload.scoreLimit,
+                            )
+                          : null;
+                        return (
+                          <div
+                            key={j.id}
+                            className={cn(
+                              "flex min-w-0 flex-col gap-1.5 rounded-xl border border-border bg-muted/30 p-2.5",
+                              err && "border-destructive/40",
+                            )}
+                          >
+                            <span className="truncate text-[11px] font-medium text-muted-foreground">
+                              {j.name}
+                            </span>
+                            <ScoreField
+                              compact
+                              value={scoresByKey[key] ?? ""}
+                              onChange={(v) =>
+                                onScoreFieldChange(key, v, payload.scoreLimit)
+                              }
+                              disabled={isPending}
+                              max={payload.scoreLimit}
+                              invalid={Boolean(err)}
+                            />
+                            {err && (
+                              <span className="text-center text-[10px] font-medium text-destructive">
+                                {err}
                               </span>
-                              <ScoreField
-                                compact
-                                value={scoresByKey[key] ?? ""}
-                                onChange={(v) =>
-                                  onScoreFieldChange(key, v, payload.scoreLimit)
-                                }
-                                disabled={isPending}
-                                max={payload.scoreLimit}
-                                invalid={Boolean(err)}
-                              />
-                              {err ? (
-                                <p className="text-[11px] font-medium text-destructive">
-                                  {err}
-                                </p>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/95 px-2 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-background/75 sm:px-3"
-        style={{
-          paddingBottom: "max(0.65rem, env(safe-area-inset-bottom, 0px))",
-        }}
-      >
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 rounded-xl border border-border/50 bg-background/90 p-2 shadow-sm sm:p-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-          <div className="hidden min-w-0 flex-1 space-y-1.5 sm:block">
-            <Progress value={progressPct} className="h-2" />
-            {submitError ? (
-              <p className="text-[10px] font-medium leading-tight text-destructive sm:text-xs">
-                {submitError}
-              </p>
-            ) : null}
-            {!submitError && !canSubmit ? (
-              <p className="text-[10px] font-medium leading-tight text-amber-600 dark:text-amber-400 sm:text-xs">
-                {submitValidationMessage ??
-                  "Complete scoring on all fields to preview submit."}
-              </p>
-            ) : null}
-          </div>
+      <StickyBar>
+        <div className="flex w-full flex-col gap-2">
+          {submitError && (
+            <p
+              className="text-xs font-medium leading-tight text-destructive"
+              role="alert"
+            >
+              {submitError}
+            </p>
+          )}
+          {!submitError && !canSubmit && (
+            <p className="text-xs font-medium leading-tight text-warning">
+              {submitValidationMessage ??
+                "Fill every score to preview the submission."}
+            </p>
+          )}
+
           <div className="flex gap-2">
-            <Button variant="outline" className="h-10 sm:h-11" onClick={onDone}>
+            <Button
+              variant="outline"
+              className="h-11 shrink-0 rounded-full px-5"
+              onClick={onDone}
+            >
               Back
             </Button>
             <Button
               size="lg"
-              className="h-10 w-full shrink-0 text-xs sm:h-11 sm:min-w-[12rem] sm:text-sm lg:w-auto"
+              className="h-11 flex-1 rounded-full font-medium shadow-primary-glow"
               onClick={onStartReview}
               disabled={
                 !canSubmit ||
@@ -1246,7 +1205,7 @@ export function StagePortalScoringClient({
             </Button>
           </div>
         </div>
-      </div>
+      </StickyBar>
     </div>
   );
 }

@@ -1,35 +1,29 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutDashboard, LogIn, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { PUBLIC_CONTAINER } from "@/components/festival/public/PublicSection";
 import { cn } from "@/core/utils/cn";
 import { isBasicTier } from "@/features/plan-features/services/tier";
 import type { FestivalPublicData } from "./FestivalContext";
 
 const navItems = [
   { name: "Home", href: "/" },
-  { name: "About", href: "/about" },
   { name: "News", href: "/news" },
   { name: "Media", href: "/media" },
-  { name: "Sessions", href: "/sessions" },
-  { name: "Programmes", href: "/programmes" },
+  { name: "Schedule", href: "/schedule" },
   { name: "Results", href: "/results" },
 ];
 
 interface FestivalNavbarProps {
   festival: FestivalPublicData;
-  isLoggedIn?: boolean;
 }
 
-export function FestivalNavbar({
-  festival,
-  isLoggedIn = false,
-}: FestivalNavbarProps) {
+export function FestivalNavbar({ festival }: FestivalNavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
@@ -60,37 +54,40 @@ export function FestivalNavbar({
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        // Height stays fixed so the page below never shifts on scroll; only
+        // the surface behind it changes.
+        "fixed top-0 left-0 right-0 z-50 h-16 transition-colors duration-300",
         isScrolled
-          ? "bg-background/90 backdrop-blur-xl border-b border-border shadow-premium h-14"
-          : "bg-transparent border-b border-transparent h-16",
+          ? "border-b border-border bg-background/85 backdrop-blur-xl"
+          : "border-b border-transparent bg-transparent",
       )}
     >
-      <div className="mx-auto max-w-7xl px-4 md:px-6 h-14 flex items-center justify-between">
-        {/* Festival Logo / Name */}
-        <Link href={linkBase} className="flex items-center gap-2.5 group">
+      <div
+        className={`${PUBLIC_CONTAINER} h-16 flex items-center justify-between gap-4`}
+      >
+        {/* Festival mark */}
+        <Link href={linkBase} className="flex min-w-0 items-center gap-2.5">
           {festival.logo ? (
             <Image
               src={festival.logo}
-              alt={festival.name}
-              width={36}
-              height={36}
-              className="h-9 w-9 object-contain rounded-lg"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border"
             />
           ) : (
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-sm text-primary-foreground bg-primary">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
               {festival.name.charAt(0)}
-            </div>
+            </span>
           )}
-          <span className="font-semibold text-base tracking-tight hidden sm:block text-heading">
+          <span className="hidden truncate text-[15px] font-semibold tracking-tight text-heading sm:block">
             {festival.name}
           </span>
         </Link>
 
-        {/* Desktop Nav - Center */}
-        <nav className="hidden md:flex items-center gap-1">
+        {/* Sections */}
+        <nav className="hidden h-16 items-center md:flex">
           {activeNavItems.map((item) => {
-            // Handle Home specially
             const href =
               item.href === "/" ? linkBase : `${linkBase}${item.href}`;
             const isActive =
@@ -98,65 +95,44 @@ export function FestivalNavbar({
               (currentPage === "/" && item.href === "/");
 
             return (
-              <Link key={item.href} href={href} className="relative">
+              <Link
+                key={item.href}
+                href={href}
+                className={cn(
+                  "relative flex h-full items-center px-3.5 text-sm font-medium transition-colors",
+                  isActive
+                    ? "text-heading"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {item.name}
                 {isActive && (
                   <motion.span
                     layoutId="festival-navbar-indicator"
-                    className="absolute inset-0 rounded-full bg-primary/8"
-                    transition={{ type: "spring", stiffness: 350, damping: 32 }}
+                    className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary"
+                    transition={{ type: "spring", stiffness: 400, damping: 34 }}
                   />
                 )}
-                <span
-                  className={cn(
-                    "relative block px-3.5 py-2 text-sm font-medium rounded-full transition-colors",
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {item.name}
-                </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Right Side - Auth */}
-        <div className="hidden md:flex items-center gap-3">
-          <Link href={`/${festival.slug}/login`}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 rounded-full font-medium border-border"
-            >
-              Participant Login
-            </Button>
+        <div className="hidden shrink-0 items-center md:flex">
+          <Link
+            href={`/${festival.slug}/login`}
+            className="text-sm font-medium text-primary transition-opacity hover:opacity-70"
+          >
+            Participant login
           </Link>
-          {isLoggedIn ? (
-            <Link href={`/dashboard/${festival.slug}`}>
-              <Button size="sm" className="gap-2 rounded-full font-medium">
-                <LayoutDashboard size={15} />
-                Dashboard
-              </Button>
-            </Link>
-          ) : (
-            <Link href={`/login?redirect=${encodeURIComponent(pathname)}`}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 rounded-full font-medium border-border"
-              >
-                <LogIn size={15} />
-                Log in
-              </Button>
-            </Link>
-          )}
         </div>
 
-        {/* Mobile Toggle */}
+        {/* Mobile toggle */}
         <button
           type="button"
-          className="md:hidden p-2 text-foreground hover:bg-muted rounded-full"
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isOpen}
+          className="-mr-2 shrink-0 rounded-full p-2 text-foreground md:hidden"
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? <X size={22} /> : <Menu size={22} />}
@@ -170,67 +146,36 @@ export function FestivalNavbar({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-background border-b border-border overflow-hidden"
+            className="md:hidden overflow-hidden border-b border-border bg-background/95 backdrop-blur-xl"
           >
-            <div className="p-4 flex flex-col gap-1">
-              {activeNavItems.map((item) => {
-                const href =
-                  item.href === "/" ? linkBase : `${linkBase}${item.href}`;
-                const isActive = currentPage === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={href}
-                    onClick={() => setIsOpen(false)}
-                    className={cn(
-                      "px-4 py-2.5 rounded-full font-medium transition-colors text-sm",
-                      isActive
-                        ? "text-primary bg-primary/8"
-                        : "text-muted-foreground hover:bg-muted",
-                    )}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              })}
-              <div className="border-t border-border pt-4 mt-2 flex flex-col gap-2">
+            <div className={`${PUBLIC_CONTAINER} py-3`}>
+              <nav className="divide-y divide-border">
+                {activeNavItems.map((item) => {
+                  const href =
+                    item.href === "/" ? linkBase : `${linkBase}${item.href}`;
+                  const isActive = currentPage === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={href}
+                      onClick={() => setIsOpen(false)}
+                      className={cn(
+                        "block py-3 text-[15px] font-medium transition-colors",
+                        isActive ? "text-primary" : "text-muted-foreground",
+                      )}
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })}
                 <Link
                   href={`/${festival.slug}/login`}
                   onClick={() => setIsOpen(false)}
+                  className="block py-3 text-[15px] font-medium text-primary"
                 >
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 rounded-full font-medium border-border"
-                  >
-                    Participant Login
-                  </Button>
+                  Participant login
                 </Link>
-                {isLoggedIn ? (
-                  <Button
-                    className="w-full gap-2 rounded-full font-medium"
-                    onClick={() => {
-                      setIsOpen(false);
-                      window.location.href = `/dashboard/${festival.slug}`;
-                    }}
-                  >
-                    <LayoutDashboard size={15} />
-                    Dashboard
-                  </Button>
-                ) : (
-                  <Link
-                    href={`/login?redirect=${encodeURIComponent(pathname)}`}
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 rounded-full font-medium border-border"
-                    >
-                      <LogIn size={15} />
-                      Log in
-                    </Button>
-                  </Link>
-                )}
-              </div>
+              </nav>
             </div>
           </motion.div>
         )}

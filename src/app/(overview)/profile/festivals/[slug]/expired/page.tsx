@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { ArrowLeft, FileDown } from "lucide-react";
+import { ArrowLeft, FileDown, RotateCcw } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { expiredFestivalResult as expiredTable } from "@/core/database/schema";
+import { result as resultTable } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -39,11 +39,11 @@ export default async function ExpiredFestivalPage({ params }: Props) {
   if (!isExpired || (!isOwner && !isSuperAdmin)) notFound();
 
   const hasPdf = !!festival.resultPdfUrl;
-  const [snapshotCount] = await db
+  const [resultCount] = await db
     .select({ count: sql`count(*)` })
-    .from(expiredTable)
-    .where(eq(expiredTable.festivalId, festival.id));
-  const hasSnapshot = Number(snapshotCount.count) > 0;
+    .from(resultTable)
+    .where(eq(resultTable.festivalId, festival.id));
+  const hasResults = Number(resultCount.count) > 0;
 
   return (
     <div className="container max-w-2xl py-12 space-y-6">
@@ -107,7 +107,7 @@ export default async function ExpiredFestivalPage({ params }: Props) {
               Results are not shown in the UI. Download the PDF to view final
               results.
             </p>
-            {hasPdf || hasSnapshot ? (
+            {hasPdf || hasResults ? (
               <Button
                 variant="outline"
                 className="gap-2 rounded-full font-medium border-border hover:bg-muted"
@@ -127,6 +127,24 @@ export default async function ExpiredFestivalPage({ params }: Props) {
                 No results document is available for this festival.
               </p>
             )}
+          </div>
+
+          <div className="pt-4 border-t border-border">
+            <p className="font-semibold tracking-tight text-heading text-sm mb-2">
+              Launch a new festival
+            </p>
+            <p className="text-muted-foreground text-sm mb-3">
+              Relaunch with a fresh plan — your previous festival's data stays
+              accessible from your profile.
+            </p>
+            <Button className="gap-2 rounded-full font-medium" asChild>
+              <Link
+                href={`/festivals/new?from=${encodeURIComponent(festival.slug)}`}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Relaunch festival
+              </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

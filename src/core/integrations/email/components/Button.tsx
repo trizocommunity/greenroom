@@ -5,18 +5,18 @@ import { Button } from "@react-email/components";
  * Keep label text short — button width is content-sized, not full-width.
  */
 export function EmailButton({
-	href,
-	children,
+  href,
+  children,
 }: {
-	href: string;
-	children: string;
+  href: string;
+  children: string;
 }) {
-	return (
-		<Button
-			href={href}
-			className="bg-brand text-fg-inverted rounded-md px-7 py-3 font-sans font-semibold text-15 no-underline"
-		>
-			{children}
-		</Button>
-	);
+  return (
+    <Button
+      href={href}
+      className="bg-brand text-fg-inverted rounded-md px-7 py-3 font-sans font-semibold text-15 no-underline"
+    >
+      {children}
+    </Button>
+  );
 }
