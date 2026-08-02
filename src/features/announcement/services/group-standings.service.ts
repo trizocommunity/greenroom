@@ -1,9 +1,13 @@
-import type { TeamStandingInput } from "@/features/announcement/actions/announcement.actions";
+export type TeamStandingInput = {
+  name: string;
+  points: number;
+  rank?: number;
+  isGroup?: boolean;
+};
 
 type LeaderboardResultRow = {
   id: string;
   isPublished: boolean;
-  isAnnounced: boolean;
   points?: number;
   awardPoints?: number | null;
   programme?: { id: string; type: "INDIVIDUAL" | "GROUP" } | null;
@@ -19,7 +23,7 @@ function resultPointsOf(r: LeaderboardResultRow) {
 }
 
 /**
- * Live team standings from announced results (for announcer preview before publish).
+ * Live team standings from published results.
  */
 export function computeAnnouncedTeamStandings(
   results: LeaderboardResultRow[],
@@ -32,7 +36,7 @@ export function computeAnnouncedTeamStandings(
   const countedGroupProgrammeTeams = new Set<string>();
 
   for (const r of results) {
-    if (!r.isAnnounced) continue;
+    if (!r.isPublished) continue;
 
     const assignment = r.programmeAssignment;
     const group = assignment?.group;

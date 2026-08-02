@@ -26,8 +26,7 @@ export type ProgrammeStatus =
   | "STARTED"
   | "ENDED"
   | "JUDGED"
-  | "PUBLISHED"
-  | "ANNOUNCED";
+  | "PUBLISHED";
 export type Tier = "BASIC" | "STANDARD" | "PRO";
 
 /**
@@ -39,7 +38,7 @@ export function getEventWorksMinimumStatus(tier: Tier): ProgrammeStatus {
 
 function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
   return tier === "BASIC"
-    ? new Set<ProgrammeStatus>(["ASSIGNED", "JUDGED", "PUBLISHED", "ANNOUNCED"])
+    ? new Set<ProgrammeStatus>(["ASSIGNED", "JUDGED", "PUBLISHED"])
     : new Set<ProgrammeStatus>([
         "SCHEDULED",
         "REPORTING",
@@ -47,7 +46,6 @@ function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
         "ENDED",
         "JUDGED",
         "PUBLISHED",
-        "ANNOUNCED",
       ]);
 }
 
@@ -55,17 +53,18 @@ function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
  * Returns true if the given programme status is allowed in Event Works for the tier.
  */
 export function isProgrammeInEventWorks(
-  status: ProgrammeStatus,
+  status: string,
   tier: Tier,
 ): boolean {
-  return getAllowedEventWorksStatuses(tier).has(status);
+  return getAllowedEventWorksStatuses(tier).has(status as ProgrammeStatus);
 }
 
 /**
  * Filter programmes to those that should appear in Event Works (Marks, Results, Leaderboard) for the given tier.
  */
-type ProgrammeForEventWorksFilter = {
-  status: ProgrammeStatus;
+export type ProgrammeForEventWorksFilter = {
+  status: string;
+  id: string;
   assignments?: readonly unknown[];
 };
 
@@ -216,7 +215,6 @@ export async function updateProgrammeStatus(
 
     let reportedScored = 0;
     let reportedPublished = 0;
-    let reportedAnnounced = 0;
 
     if (reportedTotal > 0) {
       const scoredCount = await db
@@ -241,24 +239,10 @@ export async function updateProgrammeStatus(
           ),
         );
       reportedPublished = publishedCount[0].c;
-
-      const announcedCount = await db
-        .select({ c: count() })
-        .from(resultTable)
-        .where(
-          and(
-            eq(resultTable.programmeId, programmeId),
-            inArray(resultTable.assignmentId, expectedAssignmentIds),
-            eq(resultTable.isAnnounced, true),
-          ),
-        );
-      reportedAnnounced = announcedCount[0].c;
     }
 
     let status: ProgrammeStatus = "STARTED";
-    if (reportedTotal > 0 && reportedAnnounced === reportedTotal) {
-      status = "ANNOUNCED";
-    } else if (reportedTotal > 0 && reportedPublished === reportedTotal) {
+    if (reportedTotal > 0 && reportedPublished === reportedTotal) {
       status = "PUBLISHED";
     } else if (reportedTotal > 0 && reportedScored === reportedTotal) {
       status = "ENDED";
@@ -268,10 +252,7 @@ export async function updateProgrammeStatus(
       .update(programmeTable)
       .set({
         status,
-        publishedAt:
-          status === "PUBLISHED" || status === "ANNOUNCED"
-            ? serverNowIso()
-            : null,
+        publishedAt: status === "PUBLISHED" ? serverNowIso() : null,
         updatedAt: serverNowIso(),
       })
       .where(eq(programmeTable.id, programmeId));
@@ -284,7 +265,6 @@ export async function updateProgrammeStatus(
     scheduleEntryCount,
     resultCount,
     publishedResultCount,
-    announcedResultCount,
     groupCountResult,
   ] = await Promise.all([
     db
@@ -315,15 +295,6 @@ export async function updateProgrammeStatus(
       ),
     db
       .select({ c: count() })
-      .from(resultTable)
-      .where(
-        and(
-          eq(resultTable.programmeId, programmeId),
-          eq(resultTable.isAnnounced, true),
-        ),
-      ),
-    db
-      .select({ c: count() })
       .from(groupTable)
       .where(eq(groupTable.festivalId, programme.festivalId)),
   ]);
@@ -345,17 +316,13 @@ export async function updateProgrammeStatus(
     assignmentCount[0].c > 0 && resultCount[0].c >= assignmentCount[0].c;
   const allResultsPublished =
     resultCount[0].c > 0 && publishedResultCount[0].c >= resultCount[0].c;
-  const allResultsAnnounced =
-    resultCount[0].c > 0 && announcedResultCount[0].c >= resultCount[0].c;
 
   const isBasic = isBasicTier(programme.festival.tier);
 
   let status: ProgrammeStatus;
 
   if (isBasic) {
-    if (allResultsAnnounced) {
-      status = "ANNOUNCED";
-    } else if (allResultsPublished) {
+    if (allResultsPublished) {
       status = "PUBLISHED";
     } else if (allAssignmentsHaveResult) {
       status = "JUDGED";
@@ -402,39 +369,12 @@ export async function updateProgrammeStatus(
     .update(programmeTable)
     .set({
       status,
-      publishedAt:
-        status === "PUBLISHED" || status === "ANNOUNCED"
-          ? serverNowIso()
-          : null,
+      publishedAt: status === "PUBLISHED" ? serverNowIso() : null,
       updatedAt: serverNowIso(),
     })
     .where(eq(programmeTable.id, programmeId));
 
   return status;
-}
-
-export async function setProgrammeAnnounced(
-  programmeId: string,
-  announced: boolean,
-): Promise<void> {
-  if (!announced) {
-    await db
-      .update(programmeTable)
-      .set({
-        status: "PUBLISHED",
-        updatedAt: serverNowIso(),
-      })
-      .where(eq(programmeTable.id, programmeId));
-    return;
-  }
-  await db
-    .update(programmeTable)
-    .set({
-      status: "ANNOUNCED",
-      publishedAt: serverNowIso(),
-      updatedAt: serverNowIso(),
-    })
-    .where(eq(programmeTable.id, programmeId));
 }
 
 export async function setProgrammePublished(

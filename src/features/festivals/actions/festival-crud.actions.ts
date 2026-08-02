@@ -176,11 +176,9 @@ export async function updateFestivalSettingsAction(
     participantCreationStartDate?: string | null;
     participantCreationDeadline?: string | null;
     teamLeaderLimit?: number;
-    announcerResultsPerStandings?: number;
     startDate?: string | null;
     endDate?: string | null;
     scoringSystem?: "POSITION_BASED" | "SCORE_BASED" | null;
-    publicDisplayMode?: "programme_results" | "team_standings" | null;
     chestNumberSettings?: {
       autoGenerate?: boolean;
       prefix?: string;
@@ -223,8 +221,7 @@ export async function updateFestivalSettingsAction(
       data.programmeAssignmentDeadline !== undefined ||
       data.participantCreationStartDate !== undefined ||
       data.participantCreationDeadline !== undefined ||
-      data.teamLeaderLimit !== undefined ||
-      data.announcerResultsPerStandings !== undefined;
+      data.teamLeaderLimit !== undefined;
     const isDateOnlyUpdate = hasDateField && !hasNonDateField;
     await assertFestivalMutationAllowed(festivalId, {
       allowPast: isDateOnlyUpdate,
@@ -306,15 +303,6 @@ export async function updateFestivalSettingsAction(
             Math.min(10, Number(data.teamLeaderLimit) || 2),
           ),
         }),
-        ...(data.announcerResultsPerStandings !== undefined && {
-          announcerResultsPerStandings: Math.max(
-            1,
-            Math.min(
-              100,
-              Math.floor(Number(data.announcerResultsPerStandings) || 10),
-            ),
-          ),
-        }),
         ...(data.startDate !== undefined && {
           startDate: incomingStart?.toISOString() ?? null,
         }),
@@ -324,12 +312,6 @@ export async function updateFestivalSettingsAction(
         ...(data.scoringSystem !== undefined && {
           scoringSystem:
             data.scoringSystem === null ? undefined : data.scoringSystem,
-        }),
-        ...(data.publicDisplayMode !== undefined && {
-          publicDisplayMode:
-            data.publicDisplayMode === null
-              ? undefined
-              : data.publicDisplayMode,
         }),
         ...(data.chestNumberSettings !== undefined && {
           chestNumberSettings: data.chestNumberSettings,

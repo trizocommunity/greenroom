@@ -48,6 +48,7 @@ export async function getResultPosterExportPayloadAction(
         id: true,
         name: true,
         festivalId: true,
+        resultNumber: true,
       },
     });
     if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
@@ -141,6 +142,7 @@ export async function getResultPosterExportPayloadAction(
       programmeName: programme.name,
       categoryName,
       programmeResultCode: codeLetter?.code ?? null,
+      resultNumber: programme.resultNumber,
       winners,
     };
 
@@ -179,7 +181,7 @@ export async function getPublicResultPosterPayloadAction(
     });
     if (!festival) return { success: true, data: null };
 
-    const hasAnnounced = await db
+    const hasPublished = await db
       .select({ id: resultTable.id })
       .from(resultTable)
       .innerJoin(
@@ -189,12 +191,12 @@ export async function getPublicResultPosterPayloadAction(
       .where(
         and(
           eq(programmeAssignment.programmeId, programmeId),
-          eq(resultTable.isAnnounced, true),
+          eq(resultTable.isPublished, true),
         ),
       )
       .limit(1);
 
-    if (hasAnnounced.length === 0) {
+    if (hasPublished.length === 0) {
       return { success: true, data: null };
     }
 

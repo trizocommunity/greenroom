@@ -4,65 +4,59 @@ import {
   isResultVisibleForLeaderboard,
 } from "./leaderboard-visibility.service";
 
-const row = (published: boolean, announced: boolean) => ({
+const row = (published: boolean) => ({
   isPublished: published,
-  isAnnounced: announced,
 });
 
 describe("isResultVisibleForLeaderboard", () => {
   it("BASIC standings: published only", () => {
     expect(
-      isResultVisibleForLeaderboard(row(true, false), "BASIC", "standings"),
+      isResultVisibleForLeaderboard(row(true), "BASIC", "standings"),
     ).toBe(true);
     expect(
-      isResultVisibleForLeaderboard(row(true, true), "BASIC", "standings"),
-    ).toBe(true);
-    expect(
-      isResultVisibleForLeaderboard(row(false, true), "BASIC", "standings"),
+      isResultVisibleForLeaderboard(row(false), "BASIC", "standings"),
     ).toBe(false);
     expect(
-      isResultVisibleForLeaderboard(row(true, true), "BASIC", "desk"),
+      isResultVisibleForLeaderboard(row(true), "BASIC", "desk"),
     ).toBe(false);
     expect(
-      isResultVisibleForLeaderboard(row(true, true), "BASIC", "onAir"),
+      isResultVisibleForLeaderboard(row(true), "BASIC", "onAir"),
     ).toBe(false);
   });
 
   it("Standard desk: published only", () => {
     expect(
-      isResultVisibleForLeaderboard(row(true, false), "STANDARD", "desk"),
+      isResultVisibleForLeaderboard(row(true), "STANDARD", "desk"),
     ).toBe(true);
     expect(
-      isResultVisibleForLeaderboard(row(false, true), "STANDARD", "desk"),
+      isResultVisibleForLeaderboard(row(false), "STANDARD", "desk"),
     ).toBe(false);
   });
 
-  it("Standard onAir: published and announced", () => {
+  it("Standard onAir: published only (no separate announce step)", () => {
     expect(
-      isResultVisibleForLeaderboard(row(true, true), "STANDARD", "onAir"),
+      isResultVisibleForLeaderboard(row(true), "STANDARD", "onAir"),
     ).toBe(true);
     expect(
-      isResultVisibleForLeaderboard(row(true, false), "STANDARD", "onAir"),
-    ).toBe(false);
-    expect(
-      isResultVisibleForLeaderboard(row(false, true), "STANDARD", "onAir"),
+      isResultVisibleForLeaderboard(row(false), "STANDARD", "onAir"),
     ).toBe(false);
   });
 });
 
 describe("filterResultsForLeaderboard", () => {
-  const results = [row(false, false), row(true, false), row(true, true)];
+  const results = [row(false), row(true), row(true)];
 
   it("filters BASIC to published rows only", () => {
     expect(filterResultsForLeaderboard(results, "BASIC", "standings")).toEqual([
-      row(true, false),
-      row(true, true),
+      row(true),
+      row(true),
     ]);
   });
 
-  it("filters Standard onAir to announced published rows", () => {
+  it("filters Standard onAir to published rows", () => {
     expect(filterResultsForLeaderboard(results, "STANDARD", "onAir")).toEqual([
-      row(true, true),
+      row(true),
+      row(true),
     ]);
   });
 });

@@ -154,13 +154,12 @@ export async function updateTeamStandings(festivalId: string, standings: any) {
   return result[0];
 }
 
-export async function updateFestivalAnnouncerState(
+export async function updateFestivalStandings(
   festivalId: string,
   data: {
-    publicDisplayMode?: "programme_results" | "team_standings";
-    announcedProgrammesSinceStandings?: number;
-    announcerResultsPerStandings?: number;
     teamStandings?: unknown;
+    standingsPublishedAtResultNumber?: number | null;
+    standingsPublishedAt?: string | null;
   },
 ) {
   const result = await db

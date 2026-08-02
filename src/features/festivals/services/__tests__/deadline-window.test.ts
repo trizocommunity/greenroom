@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  instantToWallClockParts,
-  wallClockToInstant,
-} from "@/core/datetime";
+import { instantToWallClockParts, wallClockToInstant } from "@/core/datetime";
 import {
   isDeadlineWindowOpen,
   nextDeadlineWindowTransition,
@@ -128,11 +125,7 @@ describe("deadline-window round-trip (regression for the team-leader display bug
       "00:00",
       "Asia/Kolkata",
     );
-    const endStored = wallClockToInstant(
-      "2026-08-10",
-      "23:00",
-      "Asia/Kolkata",
-    );
+    const endStored = wallClockToInstant("2026-08-10", "23:00", "Asia/Kolkata");
 
     expect(startStored).toBe("2026-08-08T18:30:00.000Z");
     expect(endStored).toBe("2026-08-10T17:30:00.000Z");

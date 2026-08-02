@@ -48,7 +48,6 @@ export interface PublicResultsQuery {
    * the linked programme may sit on a page the visitor has not loaded.
    */
   programmeId?: string;
-  publicDisplayMode?: "programme_results" | "team_standings";
 }
 
 export const PUBLIC_RESULTS_PAGE_SIZE = 20;
@@ -87,16 +86,12 @@ export async function getPublicProgrammeResults(
     Math.max(1, Math.trunc(query.pageSize ?? PUBLIC_RESULTS_PAGE_SIZE)),
   );
 
-  if (query.publicDisplayMode === "team_standings") {
-    return EMPTY_PAGE(page, pageSize);
-  }
-
   const search = query.search?.trim();
   const typeFilter = query.type && query.type !== "ALL" ? query.type : null;
 
   const filters = [
     eq(resultTable.festivalId, festivalId),
-    eq(resultTable.isAnnounced, true),
+    eq(resultTable.isPublished, true),
   ];
   if (typeFilter) {
     filters.push(eq(programmeTable.type, typeFilter));
@@ -171,7 +166,7 @@ export async function getPublicProgrammeResults(
   const rows = await db.query.result.findMany({
     where: and(
       eq(resultTable.festivalId, festivalId),
-      eq(resultTable.isAnnounced, true),
+      eq(resultTable.isPublished, true),
       inArray(resultTable.programmeId, programmeIds),
     ),
     with: {
@@ -211,20 +206,17 @@ export async function getPublicTopResults(
   festivalId: string,
   options?: {
     limit?: number;
-    publicDisplayMode?: "programme_results" | "team_standings";
   },
 ): Promise<PublicResult[]> {
-  if (options?.publicDisplayMode === "team_standings") return [];
-
   const limit = options?.limit ?? 3;
 
   const winners = await db.query.result.findMany({
     where: and(
       eq(resultTable.festivalId, festivalId),
-      eq(resultTable.isAnnounced, true),
+      eq(resultTable.isPublished, true),
       eq(resultTable.position, 1),
     ),
-    orderBy: [sql`${resultTable.announcedAt} DESC NULLS LAST`],
+    orderBy: [sql`${resultTable.updatedAt} DESC NULLS LAST`],
     limit: limit * 4, // headroom: GROUP programmes yield one row per member
     with: {
       programme: { with: { category: true } },

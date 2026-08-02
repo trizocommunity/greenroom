@@ -6,8 +6,8 @@ export interface ResultPosterBindingInput {
   festivalName: string;
   programmeName: string;
   categoryName: string;
-  /** Programme code letter (e.g. spin-wheel code) shown as result number on poster. */
   programmeResultCode?: string | null;
+  resultNumber?: number | null;
   winners: Array<{
     position: number;
     name: string;
@@ -27,8 +27,10 @@ export function buildResultPosterBindings(
     programmeName: input.programmeName,
     resultLabel: "Results",
     resultNo:
-      input.programmeResultCode?.trim() ||
-      String(input.winners[0]?.position ?? ""),
+      input.resultNumber != null
+        ? String(input.resultNumber)
+        : (input.programmeResultCode?.trim() ||
+          String(input.winners[0]?.position ?? "")),
   };
 
   const sorted = [...input.winners].sort((a, b) => a.position - b.position);

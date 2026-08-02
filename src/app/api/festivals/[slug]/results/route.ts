@@ -44,11 +44,6 @@ export async function GET(
     search: url.searchParams.get("search") ?? undefined,
     type,
     programmeId: url.searchParams.get("programmeId") ?? undefined,
-    publicDisplayMode:
-      (access.festival.publicDisplayMode as
-        | "programme_results"
-        | "team_standings"
-        | null) ?? "programme_results",
   });
 
   return ok(data, PUBLIC_CACHE_CONTROL);

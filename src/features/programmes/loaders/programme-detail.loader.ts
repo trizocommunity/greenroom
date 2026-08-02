@@ -35,7 +35,6 @@ export interface ProgrammeDetailForDrawer {
     judged: number;
     scored: number;
     published: number;
-    announced: number;
   };
   reportingSession: {
     startedAt: string | null;
@@ -52,8 +51,6 @@ export interface ProgrammeDetailForDrawer {
     savedByName: string | null;
     publishedAt: string | null;
     publishedByName: string | null;
-    announcedAt: string | null;
-    announcedByName: string | null;
   };
   teamLeads: Record<
     string,
@@ -119,7 +116,6 @@ export async function getProgrammeDetailForDrawer(
     scoredRows,
     judgedRows,
     publishedRows,
-    announcedRows,
     reportingSession,
     judgingConfig,
     teamLeadRows,
@@ -163,15 +159,6 @@ export async function getProgrammeDetailForDrawer(
           eq(resultTable.isPublished, true),
         ),
       ),
-    db
-      .select({ c: count() })
-      .from(resultTable)
-      .where(
-        and(
-          eq(resultTable.programmeId, programmeId),
-          eq(resultTable.isAnnounced, true),
-        ),
-      ),
     db.query.programmeReportingSession.findFirst({
       where: eq(reportingSessionTable.programmeId, programmeId),
       orderBy: [desc(reportingSessionTable.createdAt)],
@@ -202,9 +189,6 @@ export async function getProgrammeDetailForDrawer(
         savedByEmail: true,
         publishedByName: true,
         publishedByEmail: true,
-        announcedAt: true,
-        announcedByName: true,
-        announcedByEmail: true,
       },
       orderBy: [desc(resultTable.updatedAt)],
       limit: 1,
@@ -260,7 +244,6 @@ export async function getProgrammeDetailForDrawer(
       judged: judgedRows[0]?.c ?? 0,
       scored: scoredRows[0]?.c ?? 0,
       published: publishedRows[0]?.c ?? 0,
-      announced: announcedRows[0]?.c ?? 0,
     },
     reportingSession: reportingSession
       ? {
@@ -281,8 +264,6 @@ export async function getProgrammeDetailForDrawer(
       savedByName: latestResult?.savedByName ?? null,
       publishedAt: null,
       publishedByName: latestResult?.publishedByName ?? null,
-      announcedAt: latestResult?.announcedAt ?? null,
-      announcedByName: latestResult?.announcedByName ?? null,
     },
     teamLeads,
     auditTimeline,
