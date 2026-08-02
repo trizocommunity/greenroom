@@ -55,7 +55,6 @@ interface ResultsListProps {
   /** Server-rendered first page of programme results. */
   initialResults: PublicResultsPage;
   teamStandings?: TeamStanding[];
-  publicDisplayMode?: "programme_results" | "team_standings";
   scoringSystem?: "POSITION_BASED" | "SCORE_BASED";
 }
 
@@ -73,14 +72,10 @@ export function ResultsList({
   accentColor,
   initialResults,
   teamStandings: initialTeamStandings,
-  publicDisplayMode = "programme_results",
 }: ResultsListProps) {
   const searchParams = useSearchParams();
-  const standingsOnly = publicDisplayMode === "team_standings";
 
-  const [activeTab, setActiveTab] = useState<"program" | "team">(
-    standingsOnly ? "team" : "program",
-  );
+  const [activeTab, setActiveTab] = useState<"program" | "team">("program");
   const [searchQuery, setSearchQuery] = useState("");
   const [programTypeFilter, setProgramTypeFilter] = useState<
     "ALL" | "INDIVIDUAL" | "GROUP"
@@ -119,7 +114,6 @@ export function ResultsList({
      large festival still only downloads one page of matches. */
   const isFirstFilterRun = useRef(true);
   useEffect(() => {
-    if (standingsOnly) return;
     if (isFirstFilterRun.current) {
       isFirstFilterRun.current = false;
       return;
@@ -131,13 +125,12 @@ export function ResultsList({
       });
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(id);
-  }, [searchQuery, programTypeFilter, refilter, standingsOnly]);
+  }, [searchQuery, programTypeFilter, refilter]);
 
   /* Live results used to poll `router.refresh()`, which re-ran every loader
      on the page. Now only page 1 is re-read, and only while the visitor is
      actually looking at page 1 — paging or filtering suspends it. */
   const canRefresh =
-    !standingsOnly &&
     activeTab === "program" &&
     page === 1 &&
     !searchQuery.trim() &&
@@ -184,21 +177,17 @@ export function ResultsList({
 
   const deepLinkHandled = useRef(false);
   useEffect(() => {
-    if (standingsOnly || deepLinkHandled.current) return;
+    if (deepLinkHandled.current) return;
     const programmeId = searchParams.get("programmeId");
     if (!programmeId) return;
     deepLinkHandled.current = true;
     void openProgrammeById(programmeId, searchParams.get("template"));
-  }, [searchParams, openProgrammeById, standingsOnly]);
+  }, [searchParams, openProgrammeById]);
 
   const teamStandings = (initialTeamStandings ?? []).map((team, index) => ({
     ...team,
     rank: team.rank || index + 1,
   }));
-
-  useEffect(() => {
-    if (standingsOnly) setActiveTab("team");
-  }, [standingsOnly]);
 
   return (
     <PublicSection className="min-h-[60vh]">
@@ -220,44 +209,42 @@ export function ResultsList({
         </div>
 
         {/* Views */}
-        {!standingsOnly && (
-          <div
-            role="tablist"
-            aria-label="Result views"
-            className="mt-8 flex gap-1 border-b border-border"
-          >
-            {(
-              [
-                { id: "program", label: "By programme" },
-                { id: "team", label: "By team" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "relative px-4 py-3 text-sm font-medium transition-colors",
-                  activeTab === tab.id
-                    ? "text-heading"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {tab.label}
-                {activeTab === tab.id && (
-                  <motion.span
-                    layoutId="results-tab-underline"
-                    className="absolute inset-x-2 -bottom-px h-0.5 rounded-full"
-                    style={{ backgroundColor: accentColor }}
-                    transition={{ type: "spring", stiffness: 400, damping: 34 }}
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-        )}
+        <div
+          role="tablist"
+          aria-label="Result views"
+          className="mt-8 flex gap-1 border-b border-border"
+        >
+          {(
+            [
+              { id: "program", label: "By programme" },
+              { id: "team", label: "By team" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "relative px-4 py-3 text-sm font-medium transition-colors",
+                activeTab === tab.id
+                  ? "text-heading"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <motion.span
+                  layoutId="results-tab-underline"
+                  className="absolute inset-x-2 -bottom-px h-0.5 rounded-full"
+                  style={{ backgroundColor: accentColor }}
+                  transition={{ type: "spring", stiffness: 400, damping: 34 }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
 
         {activeTab === "program" ? (
           <div className="pt-8">

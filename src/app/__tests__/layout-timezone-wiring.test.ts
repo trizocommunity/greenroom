@@ -43,7 +43,9 @@ describe("route-group layouts wire UserTimezoneProviderClient", () => {
       const source = readLayout(path);
 
       it("imports UserTimezoneProviderClient", () => {
-        expect(source).toMatch(/from\s+["']@\/components\/providers\/user-timezone-provider-client["']/);
+        expect(source).toMatch(
+          /from\s+["']@\/components\/providers\/user-timezone-provider-client["']/,
+        );
       });
 
       it("renders <UserTimezoneProviderClient> in its JSX", () => {

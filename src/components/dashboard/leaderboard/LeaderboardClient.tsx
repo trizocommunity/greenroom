@@ -4,7 +4,6 @@ import { CheckCircle2, Crown, Loader2, Medal, Trophy, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { AnnouncerBlockProgressBanner } from "@/components/dashboard/announcement/AnnouncerBlockProgressBanner";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +26,6 @@ import {
 } from "@/components/ui/table";
 import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
-import type { AnnouncerBlockProgress } from "@/features/announcement/services/announcer-result-count.service";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   isBasicTier as checkBasicTier,
@@ -222,9 +220,7 @@ interface LeaderboardClientProps {
   hideParticipantFilters?: boolean;
   readOnly?: boolean;
   hideLiveStandings?: boolean;
-  publicDisplayMode?: "programme_results" | "team_standings";
   festivalRole?: string;
-  block?: AnnouncerBlockProgress | null;
   tier?: Tier | string | null;
   children?: React.ReactNode;
 }
@@ -240,9 +236,7 @@ export function LeaderboardClient({
   hideParticipantFilters = false,
   readOnly = false,
   hideLiveStandings = false,
-  publicDisplayMode = "programme_results",
   festivalRole,
-  block = null,
   tier: tierProp,
   children,
 }: LeaderboardClientProps) {
@@ -260,10 +254,6 @@ export function LeaderboardClient({
   const festivalContext = useFestival();
   const tier = getResolvedTier(tierProp ?? festivalContext.tier);
   const isBasicTier = checkBasicTier(tier);
-  const showTeamStandingsOnPublic =
-    !isBasicTier &&
-    (publicDisplayMode === "team_standings" ||
-      (block?.canPublishStandings ?? true));
 
   const teamStandings = useMemo(
     () =>
@@ -274,14 +264,6 @@ export function LeaderboardClient({
         participantFilterGroup,
       ),
     [results, tier, participantFilterGroup],
-  );
-
-  const announcedTeamStandings = useMemo(
-    () =>
-      isBasicTier
-        ? []
-        : buildTeamStandings(results, tier, "onAir", participantFilterGroup),
-    [results, tier, participantFilterGroup, isBasicTier],
   );
 
   // Top participants by points (published results only), filterable by category and group.
@@ -389,32 +371,8 @@ export function LeaderboardClient({
     return () => window.clearInterval(id);
   }, [router]);
 
-  const publicModeLabel =
-    publicDisplayMode === "team_standings"
-      ? "Team standings only (public site)"
-      : "Programme results (public site)";
-
   return (
     <div className="space-y-4">
-      {!isBasicTier &&
-        (block ? (
-          <AnnouncerBlockProgressBanner
-            block={block}
-            festivalSlug={festival.slug}
-            showStandingsLink={block.canPublishStandings}
-          />
-        ) : (
-          <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-            <span className="font-medium">Public display: </span>
-            <span className="text-muted-foreground">{publicModeLabel}</span>
-            {isAnnouncerOnly ? (
-              <span className="text-muted-foreground">
-                {" "}
-                — publish standings from Group Standings.
-              </span>
-            ) : null}
-          </div>
-        ))}
       {/* Header row: children left, Publish right — icon only on mobile */}
       <div className="flex flex-row items-center justify-between gap-4">
         {children ?? (
@@ -434,17 +392,13 @@ export function LeaderboardClient({
               description="Team standings from published programme results."
             >
               <p className="text-sm text-muted-foreground">
-                <strong>Desk preview</strong> totals include every published
-                programme result. They update when you publish or unpublish from
-                Marks or the announcement desk.
+                <strong>Live standings</strong> totals include every published
+                programme result. They update automatically as results are
+                announced.
               </p>
               <p className="text-sm text-muted-foreground">
-                <strong>On-air standings</strong> and top participants count
-                only results that are both published and announced on-air.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <strong>Publish Standings</strong> copies the desk snapshot to
-                the public festival page when team standings are shown there.
+                <strong>Publish Standings</strong> copies the current snapshot to
+                the public festival page.
               </p>
             </HowItWorksButton>
             <Button
@@ -505,20 +459,28 @@ export function LeaderboardClient({
               ? "md:grid-cols-1"
               : isBasicTier
                 ? "md:grid-cols-1"
-                : showTeamStandingsOnPublic
-                  ? "md:grid-cols-3"
-                  : "md:grid-cols-2",
+                : "md:grid-cols-2",
           )}
         >
-          {!hideLiveStandings && isBasicTier ? (
+          {!hideLiveStandings ? (
             <Card className="p-0 overflow-hidden border-primary/20">
               <div className="p-4 border-b flex items-center justify-between bg-primary/5 border-primary/10">
                 <div>
-                  <h3 className="font-bold text-foreground">Team standings</h3>
+                  <h3 className="font-bold text-foreground">
+                    {isBasicTier ? "Team standings" : "Live standings"}
+                  </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Published programme results
                   </p>
                 </div>
+                {!isBasicTier && (
+                  <Badge
+                    variant="outline"
+                    className="bg-primary/5 text-primary border-primary/20"
+                  >
+                    Live
+                  </Badge>
+                )}
               </div>
               {renderTeamStandingsTable(
                 teamStandings,
@@ -528,62 +490,7 @@ export function LeaderboardClient({
             </Card>
           ) : null}
 
-          {!hideLiveStandings && !isBasicTier ? (
-            <Card className="p-0 overflow-hidden border-yellow-500/20">
-              <div className="bg-yellow-500/10 p-4 border-b border-yellow-500/10 flex items-center justify-between">
-                <h3 className="font-bold flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Desk preview
-                </h3>
-                <Badge
-                  variant="outline"
-                  className="bg-yellow-50 text-yellow-700 border-yellow-200"
-                >
-                  Published
-                </Badge>
-              </div>
-              {renderTeamStandingsTable(
-                teamStandings,
-                "No desk results yet.",
-                "yellow",
-              )}
-            </Card>
-          ) : null}
-
-          {!hideLiveStandings && !isBasicTier && showTeamStandingsOnPublic ? (
-            <Card className="p-0 overflow-hidden border-amber-500/20">
-              <div className="bg-amber-500/10 p-4 border-b border-amber-500/10 flex items-center justify-between">
-                <h3 className="font-bold flex items-center gap-2 text-amber-700 dark:text-amber-500">
-                  On-air standings
-                </h3>
-                <Badge
-                  variant="outline"
-                  className="bg-amber-50 text-amber-800 border-amber-200"
-                >
-                  Published + announced
-                </Badge>
-              </div>
-              {renderTeamStandingsTable(
-                announcedTeamStandings,
-                "No on-air results yet.",
-                "amber",
-              )}
-            </Card>
-          ) : null}
-
-          {!isBasicTier && !showTeamStandingsOnPublic && block ? (
-            <Card className="p-6 border-dashed">
-              <p className="text-sm text-muted-foreground text-center">
-                Group standings on the public site appear after{" "}
-                {block.resultsPerBlock} results are announced on-air (
-                {block.announcedResultsSinceStandings}/{block.resultsPerBlock}{" "}
-                so far).
-              </p>
-            </Card>
-          ) : null}
-
-          {/* Published / public standings — only after Number of results */}
-          {!isBasicTier && showTeamStandingsOnPublic && (
+          {!isBasicTier && (
             <Card className="p-0 overflow-hidden border-green-500/20">
               <div className="bg-green-500/10 p-4 border-b border-green-500/10 flex items-center justify-between">
                 <h3 className="font-bold flex items-center gap-2 text-green-600 dark:text-green-500">

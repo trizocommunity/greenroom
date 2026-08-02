@@ -75,14 +75,8 @@ export default async function FestivalPage({
     );
   }
 
-  const publicDisplayMode = festival.publicDisplayMode ?? "programme_results";
-
-  /* The landing page only ever shows teasers, so each loader is asked for
-     exactly what is rendered — three winners, three posts, eight photos —
-     rather than the whole festival. BASIC additionally needs the first page
-     of the full results list it renders inline. */
   const [latestResults, mediaData, newsData, basicResults] = await Promise.all([
-    getPublicTopResults(festival.id, { limit: 3, publicDisplayMode }),
+    getPublicTopResults(festival.id, { limit: 3 }),
     fullLandingPage
       ? getPublicMediaData(festival.slug, { page: 1, pageSize: 8 })
       : Promise.resolve(null),
@@ -91,7 +85,7 @@ export default async function FestivalPage({
       : Promise.resolve(null),
     fullLandingPage
       ? Promise.resolve(null)
-      : getPublicProgrammeResults(festival.id, { page: 1, publicDisplayMode }),
+      : getPublicProgrammeResults(festival.id, { page: 1 }),
   ]);
 
   const accentColor =
@@ -181,7 +175,6 @@ export default async function FestivalPage({
               accentColor={accentColor}
               initialResults={basicResults}
               teamStandings={teamStandings}
-              publicDisplayMode={publicDisplayMode}
             />
           </div>
         )

@@ -254,14 +254,6 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
                   {festival.teamLeaderLimit ?? 2} per group
                 </p>
               </div>
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">
-                  Results per Standings
-                </p>
-                <p className="font-medium">
-                  {festival.announcerResultsPerStandings ?? 10}
-                </p>
-              </div>
             </div>
           </div>
           <div>
@@ -286,16 +278,6 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
                     {festival.scoringSystem === "POSITION_BASED"
                       ? "Position Based"
                       : "Score Based"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs mb-1">
-                    Public Display
-                  </p>
-                  <p className="font-medium">
-                    {festival.publicDisplayMode === "team_standings"
-                      ? "Team Standings"
-                      : "Programme Results"}
                   </p>
                 </div>
                 {festival.chestNumberSettings?.prefix && (

@@ -4,7 +4,10 @@ import { Loader2, Pencil } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { DateTimePicker } from "@/components/ui/date-picker";
+import {
+  DateRangePicker,
+  type DateRangeValue,
+} from "@/components/ui/date-range-picker";
 import {
   Drawer,
   DrawerContent,
@@ -49,22 +52,16 @@ export function DeadlinesDialog({
   isParticipantDeadlineFeatureEnabled = true,
 }: DeadlinesDialogProps) {
   const [open, setOpen] = useState(false);
-  const [programmeAssignmentStartDate, setProgrammeAssignmentStartDate] =
-    useState<Date | null>(() =>
-      parseInstant(festival.programmeAssignmentStartDate ?? null),
-    );
-  const [programmeAssignmentDeadline, setProgrammeAssignmentDeadline] =
-    useState<Date | null>(() =>
-      parseInstant(festival.programmeAssignmentDeadline ?? null),
-    );
-  const [participantCreationStartDate, setParticipantCreationStartDate] =
-    useState<Date | null>(() =>
-      parseInstant(festival.participantCreationStartDate ?? null),
-    );
-  const [participantCreationDeadline, setParticipantCreationDeadline] =
-    useState<Date | null>(() =>
-      parseInstant(festival.participantCreationDeadline ?? null),
-    );
+  const [programmeAssignment, setProgrammeAssignment] =
+    useState<DateRangeValue>(() => ({
+      start: parseInstant(festival.programmeAssignmentStartDate ?? null),
+      end: parseInstant(festival.programmeAssignmentDeadline ?? null),
+    }));
+  const [participantCreation, setParticipantCreation] =
+    useState<DateRangeValue>(() => ({
+      start: parseInstant(festival.participantCreationStartDate ?? null),
+      end: parseInstant(festival.participantCreationDeadline ?? null),
+    }));
   const [isSaving, setIsSaving] = useState(false);
 
   const durationStart = festival.createdAt
@@ -84,17 +81,17 @@ export function DeadlinesDialog({
 
   const handleSave = async () => {
     if (
-      programmeAssignmentStartDate &&
-      programmeAssignmentDeadline &&
-      programmeAssignmentStartDate >= programmeAssignmentDeadline
+      programmeAssignment.start &&
+      programmeAssignment.end &&
+      programmeAssignment.start >= programmeAssignment.end
     ) {
       toast.error("Programme assignments must open before they close");
       return;
     }
     if (
-      participantCreationStartDate &&
-      participantCreationDeadline &&
-      participantCreationStartDate >= participantCreationDeadline
+      participantCreation.start &&
+      participantCreation.end &&
+      participantCreation.start >= participantCreation.end
     ) {
       toast.error("Participant registration must open before it closes");
       return;
@@ -104,13 +101,13 @@ export function DeadlinesDialog({
     try {
       const res = await updateFestivalSettingsAction(festival.id, {
         programmeAssignmentStartDate:
-          programmeAssignmentStartDate?.toISOString() ?? null,
+          programmeAssignment.start?.toISOString() ?? null,
         programmeAssignmentDeadline:
-          programmeAssignmentDeadline?.toISOString() ?? null,
+          programmeAssignment.end?.toISOString() ?? null,
         participantCreationStartDate:
-          participantCreationStartDate?.toISOString() ?? null,
+          participantCreation.start?.toISOString() ?? null,
         participantCreationDeadline:
-          participantCreationDeadline?.toISOString() ?? null,
+          participantCreation.end?.toISOString() ?? null,
       });
 
       if (res.success) {
@@ -150,36 +147,18 @@ export function DeadlinesDialog({
           {isFeatureEnabled && (
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="programmeAssignmentStartDate">
-                  Programme Assignment Opens
+                <Label htmlFor="programmeAssignmentRange">
+                  Programme Assignment Window
                 </Label>
-                <DateTimePicker
-                  id="programmeAssignmentStartDate"
-                  value={programmeAssignmentStartDate}
+                <DateRangePicker
+                  id="programmeAssignmentRange"
+                  value={programmeAssignment}
                   onChange={(value) => {
                     if (festivalHasStarted) return;
-                    setProgrammeAssignmentStartDate(value);
+                    setProgrammeAssignment(value);
                   }}
-                  placeholder="Pick start (optional)"
+                  placeholder="Pick open → close (optional start)"
                   from={durationStart}
-                  to={festivalStartDate ?? undefined}
-                  disabled={festivalHasStarted}
-                  tz={festival.timezone ?? undefined}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="programmeAssignmentDeadline">
-                  Programme Assignment Closes
-                </Label>
-                <DateTimePicker
-                  id="programmeAssignmentDeadline"
-                  value={programmeAssignmentDeadline}
-                  onChange={(value) => {
-                    if (festivalHasStarted) return;
-                    setProgrammeAssignmentDeadline(value);
-                  }}
-                  placeholder="Pick deadline"
-                  from={programmeAssignmentStartDate ?? durationStart}
                   to={festivalStartDate ?? undefined}
                   disabled={festivalHasStarted}
                   tz={festival.timezone ?? undefined}
@@ -194,36 +173,18 @@ export function DeadlinesDialog({
           {isParticipantDeadlineFeatureEnabled && (
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="participantCreationStartDate">
-                  Participant Registration Opens
+                <Label htmlFor="participantCreationRange">
+                  Participant Registration Window
                 </Label>
-                <DateTimePicker
-                  id="participantCreationStartDate"
-                  value={participantCreationStartDate}
+                <DateRangePicker
+                  id="participantCreationRange"
+                  value={participantCreation}
                   onChange={(value) => {
                     if (festivalHasStarted) return;
-                    setParticipantCreationStartDate(value);
+                    setParticipantCreation(value);
                   }}
-                  placeholder="Pick start (optional)"
+                  placeholder="Pick open → close (optional start)"
                   from={durationStart}
-                  to={festivalStartDate ?? undefined}
-                  disabled={festivalHasStarted}
-                  tz={festival.timezone ?? undefined}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="participantCreationDeadline">
-                  Participant Registration Closes
-                </Label>
-                <DateTimePicker
-                  id="participantCreationDeadline"
-                  value={participantCreationDeadline}
-                  onChange={(value) => {
-                    if (festivalHasStarted) return;
-                    setParticipantCreationDeadline(value);
-                  }}
-                  placeholder="Pick deadline"
-                  from={participantCreationStartDate ?? durationStart}
                   to={festivalStartDate ?? undefined}
                   disabled={festivalHasStarted}
                   tz={festival.timezone ?? undefined}

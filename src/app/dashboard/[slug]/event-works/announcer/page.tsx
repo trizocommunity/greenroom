@@ -1,13 +1,17 @@
 import { notFound } from "next/navigation";
-import { AnnouncementDeskClient } from "@/components/dashboard/announcement/AnnouncementDeskClient";
+import { AnnouncerClient } from "@/components/dashboard/announcement/AnnouncerClient";
 import { getSession } from "@/core/auth/session";
 import type { Tier } from "@/core/types/app-enums";
-import { getAnnouncementDeskQueue } from "@/features/announcement/services/announcement-desk.service";
+import {
+  getAnnouncerQueue,
+  getNextResultNumber,
+} from "@/features/announcement/services/announcer.service";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
+import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
 
-export default async function AnnouncementDeskPage({
+export default async function AnnouncerPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -37,27 +41,32 @@ export default async function AnnouncementDeskPage({
   );
   if (!canUse) notFound();
 
-  const { queue, recentlyAnnounced, block } = await getAnnouncementDeskQueue(
-    festival.id,
-  );
+  const [queue, nextNumber, publishedTemplates] = await Promise.all([
+    getAnnouncerQueue(festival.id),
+    getNextResultNumber(festival.id),
+    PosterTemplateRepo.listPublishedResultTemplates(festival.id),
+  ]);
 
   return (
     <div className="pt-4 sm:pt-6 space-y-6">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Announcement
+          Announcer
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Announce published results on the mic; they go live on the public site
-          when programme-results mode is active.
+          Assign result numbers, select templates, and announce results to the
+          public site.
         </p>
       </div>
-      <AnnouncementDeskClient
+      <AnnouncerClient
         festivalId={festival.id}
         festivalSlug={slug}
         queue={queue}
-        announced={recentlyAnnounced}
-        block={block}
+        nextResultNumber={nextNumber}
+        publishedTemplates={publishedTemplates.map((t) => ({
+          code: t.code,
+          name: t.code,
+        }))}
       />
     </div>
   );

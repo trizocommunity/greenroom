@@ -48,10 +48,8 @@ export default async function ResultsPage({
 
   // Only the first page of programmes is rendered server-side; the client
   // pulls further pages from /api/festivals/[slug]/results on demand.
-  const publicDisplayMode = festival.publicDisplayMode ?? "programme_results";
   const initialResults = await getPublicProgrammeResults(festival.id, {
     page: 1,
-    publicDisplayMode,
   });
   const teamStandings = (festival.teamStandings as any[]) ?? [];
 
@@ -63,7 +61,6 @@ export default async function ResultsPage({
         accentColor={accentColor}
         initialResults={initialResults}
         teamStandings={teamStandings}
-        publicDisplayMode={publicDisplayMode}
         scoringSystem={festival.scoringSystem || "POSITION_BASED"}
       />
     </div>

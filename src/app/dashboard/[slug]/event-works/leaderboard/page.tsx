@@ -4,7 +4,6 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
 import { getSession } from "@/core/auth/session";
 import type { Tier } from "@/core/types/app-enums";
-import { getAnnouncerBlockProgress } from "@/features/announcement/services/announcer-result-count.service";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import {
@@ -77,10 +76,6 @@ export default async function LeaderboardPage({
     );
   }
 
-  const block = !isBasicTier(tier)
-    ? await getAnnouncerBlockProgress(festival.id)
-    : null;
-
   return (
     <div className="pt-4 sm:pt-6">
       <LeaderboardClient
@@ -90,13 +85,7 @@ export default async function LeaderboardPage({
         publishedStandings={festival.teamStandings as any[]}
         categories={festival.categories}
         groups={festival.groups}
-        publicDisplayMode={
-          (festival.publicDisplayMode as
-            | "programme_results"
-            | "team_standings") ?? "programme_results"
-        }
         festivalRole={context?.role}
-        block={block}
       >
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
@@ -105,7 +94,7 @@ export default async function LeaderboardPage({
           <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
             {isBasicTier(tier)
               ? "Internal team and participant standings from published results."
-              : "Desk preview (published) and on-air standings (published and announced)."}
+              : "Team and participant standings from published results."}
           </p>
         </div>
       </LeaderboardClient>

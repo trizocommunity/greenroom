@@ -19,8 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ANNOUNCER_FAQ_IDS = [
   "announcer-workflow",
-  "announcement-desk",
-  "group-standings-announcer",
+  "results-console",
   "leaderboard",
 ];
 
@@ -86,25 +85,19 @@ const allFaqs = [
     id: "announcer-workflow",
     question: "What is the announcer results workflow?",
     answer:
-      "Publish programme results to the desk from Event Works -> Results. On Announcement, mark each programme as announced on-air — only then do results appear on the public site (when in programme-results mode). After the configured number of results are announced (Settings -> Number of results, e.g. 10, 5, or 2), publish group standings from Group Standings; the public site then shows team standings only until you publish the next batch.",
+      "From Event Works -> Announcer, assign result numbers to judged programmes, select a poster template, and click Announce. This publishes the result and makes it visible on the public site in one step. Both results and standings are shown on the public site simultaneously.",
   },
   {
-    id: "announcement-desk",
-    question: "How does Announcement work?",
+    id: "results-console",
+    question: "How does the Results Console work?",
     answer:
-      "Event Works -> Announcement lists programmes ready to announce and programmes already announced on-air. Use 'Mark announced' after reading results on the mic. The programme status becomes Announced and results go live on the public page when display mode is programme results.",
-  },
-  {
-    id: "group-standings-announcer",
-    question: "When and how do I publish group standings?",
-    answer:
-      "Open Event Works -> Group Standings after announcing a block of programmes (default: every 10). Preview standings from announced results, then Publish to public. Visitors see team standings only until you publish the next programme to the desk, which resumes programme results on the public site.",
+      "Event Works -> Results shows all published results and team standings side by side. You can view result details, swap result numbers, unpublish results, and publish updated standings to the public site.",
   },
   {
     id: "leaderboard",
     question: "How can I view the leaderboard?",
     answer:
-      "The leaderboard is under Event Works -> Leaderboard. It shows desk totals (published) and what the public sees (announced results or published team standings, depending on display mode). Announcers publish team standings from Group Standings, not from the Leaderboard page.",
+      "The leaderboard is under Event Works -> Leaderboard. It shows live standings from all published results and the published standings snapshot visible on the public site.",
   },
   {
     id: "programme-status-event-works",

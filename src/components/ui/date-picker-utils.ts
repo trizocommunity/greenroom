@@ -1,8 +1,4 @@
-import {
-  DEFAULT_TZ,
-  wallClockToInstant,
-  zonedDayKey,
-} from "@/core/datetime";
+import { DEFAULT_TZ, wallClockToInstant, zonedDayKey } from "@/core/datetime";
 
 /**
  * Compose a `Date` (UTC instant) from a user-picked calendar day and
@@ -27,4 +23,26 @@ export function composePickerValue(
   const yyyymmdd = zonedDayKey(date, tz);
   const iso = wallClockToInstant(yyyymmdd, hhmm, tz);
   return new Date(iso);
+}
+
+/**
+ * Compose a (start, end) `Date` pair from a user-picked calendar range
+ * and start/end times, anchored to `tz`. Either bound may be absent —
+ * when `from` or `to` is undefined the corresponding output is `null`
+ * (range is half-open). Used by `DateRangePicker` so the two halves of
+ * a deadline window stay in lockstep on a single TZ instead of bouncing
+ * off each other's `from`/`to` bounds (the source of the
+ * "picks 6, lands on 4" UX conflict on the old per-bound pickers).
+ */
+export function composePickerRange(
+  from: Date | undefined,
+  to: Date | undefined,
+  startTime: string,
+  endTime: string,
+  tz: string = DEFAULT_TZ,
+): { start: Date | null; end: Date | null } {
+  return {
+    start: from ? composePickerValue(from, startTime, tz) : null,
+    end: to ? composePickerValue(to, endTime, tz) : null,
+  };
 }

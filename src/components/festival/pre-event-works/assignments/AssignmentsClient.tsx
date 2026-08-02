@@ -895,8 +895,7 @@ export function AssignmentsClient({
                         )}
                       </div>
                       <div>
-                        Published: {programmeDetail.counts.published} ·
-                        Announced: {programmeDetail.counts.announced}
+                        Published: {programmeDetail.counts.published}
                       </div>
                     </div>
                   </div>
