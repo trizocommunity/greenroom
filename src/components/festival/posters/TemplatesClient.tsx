@@ -43,6 +43,8 @@ import { festivalEditorPath } from "@/features/posters/utils/poster-routes";
 const TYPE_LABELS: Record<string, string> = {
   RESULT: "Result poster",
   CANDIDATE_CARD: "Candidate card",
+  CERTIFICATE: "Certificate",
+  TEAM_POINTS: "Team points",
 };
 
 function formatUpdatedAt(iso: string) {

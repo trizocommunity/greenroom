@@ -40,7 +40,6 @@ import {
   publishStandings,
   swapResultNumbers,
   unpublishResult,
-  updateResultTemplates,
 } from "@/features/announcement/actions/announcer.actions";
 import type {
   PublishedResultProgramme,
@@ -59,7 +58,6 @@ interface ResultsConsoleClientProps {
     highestPublishedResultNumber: number | null;
   };
   canUnpublish: boolean;
-  publishedTemplates: { code: string; name: string }[];
 }
 
 export function ResultsConsoleClient({
@@ -69,7 +67,6 @@ export function ResultsConsoleClient({
   liveStandings,
   standingsContext,
   canUnpublish,
-  publishedTemplates,
 }: ResultsConsoleClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -153,25 +150,6 @@ export function ResultsConsoleClient({
     });
   }
 
-  function handleUpdateTemplates(
-    programmeId: string,
-    templateCodes: string[],
-  ) {
-    startTransition(async () => {
-      const res = await updateResultTemplates(
-        festivalId,
-        programmeId,
-        templateCodes,
-      );
-      if (!res.success) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success("Template updated.");
-      router.refresh();
-    });
-  }
-
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -219,19 +197,6 @@ export function ResultsConsoleClient({
                           >
                             {p.type}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {p.resultPosterTemplateCode
-                            ?.split(",")
-                            .map((code) => (
-                              <Badge
-                                key={code}
-                                variant="secondary"
-                                className="text-[10px] mr-1"
-                              >
-                                {code}
-                              </Badge>
-                            ))}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -414,46 +379,6 @@ export function ResultsConsoleClient({
                   ? ` on ${new Date(activeProgramme.publishedAt).toLocaleString()}`
                   : ""}
               </p>
-
-              {/* Template management */}
-              {publishedTemplates.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Template</p>
-                  <div className="flex flex-wrap gap-2">
-                    {publishedTemplates.map((t) => {
-                      const currentCodes =
-                        activeProgramme.resultPosterTemplateCode
-                          ?.split(",")
-                          .filter(Boolean) ?? [];
-                      const isSelected = currentCodes.includes(t.code);
-                      return (
-                        <button
-                          key={t.code}
-                          type="button"
-                          onClick={() => {
-                            const newCodes = isSelected
-                              ? currentCodes.filter((c) => c !== t.code)
-                              : [...currentCodes, t.code];
-                            if (newCodes.length > 0) {
-                              handleUpdateTemplates(
-                                activeProgramme.id,
-                                newCodes,
-                              );
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
-                            isSelected
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-muted/50 border-border hover:bg-muted"
-                          }`}
-                        >
-                          {t.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Result roster */}
               <div className="space-y-2">

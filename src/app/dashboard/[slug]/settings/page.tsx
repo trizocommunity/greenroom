@@ -15,8 +15,6 @@ import {
   getTierForFeatureCheck,
 } from "@/features/plan-features/services/features";
 import { isBasicTier } from "@/features/plan-features/services/tier";
-import { listPosterTemplatesAction } from "@/features/posters/actions/poster-template.actions";
-import { canManageTemplates as checkCanManageTemplates } from "@/features/posters/auth/poster-access";
 import { SettingsTabs } from "./_components/SettingsTabs";
 
 export default async function SettingsPage({
@@ -64,10 +62,9 @@ export default async function SettingsPage({
   // Permissions
   const canManageScoring = true; // Settings is only accessible to ADMIN/OWNER, who can manage scoring
   const canManageFestivalLive = !isBasicTier(festival.tier as any);
-  const canManageTemplates = checkCanManageTemplates(userRole as any);
 
   // Fetch Data for Tabs
-  const [policy, categories, programmes, listRes] = await Promise.all([
+  const [policy, categories, programmes] = await Promise.all([
     canManageScoring
       ? getScoringPolicyAction(festival.id)
       : Promise.resolve(null),
@@ -85,12 +82,7 @@ export default async function SettingsPage({
           orderBy: [asc(programmeTable.name)],
         })
       : Promise.resolve([]),
-    canManageTemplates
-      ? listPosterTemplatesAction(festival.id)
-      : Promise.resolve({ success: false, data: [] }),
   ]);
-
-  const templates = listRes?.success ? listRes.data : [];
 
   // Public URL for Festival Live
   const headersList = await headers();
@@ -108,8 +100,6 @@ export default async function SettingsPage({
       categories={categories}
       programmes={programmes}
       publicUrl={publicUrl}
-      templates={templates}
-      canManageTemplates={canManageTemplates}
       canManageScoring={canManageScoring}
       canManageFestivalLive={canManageFestivalLive}
     />

@@ -37,6 +37,14 @@ export const posterTemplateType = pgEnum("PosterTemplateType", [
   "RESULT",
   "TEAM_POINTS",
   "CANDIDATE_CARD",
+  "CERTIFICATE",
+]);
+
+export const templateAssignmentKind = pgEnum("TemplateAssignmentKind", [
+  "RESULT_RANGE",
+  "CERTIFICATE_TYPE",
+  "BADGE",
+  "TEAM_POINTS",
 ]);
 export const posterTemplateStatus = pgEnum("PosterTemplateStatus", [
   "DRAFT",
@@ -676,6 +684,7 @@ export const stage = pgTable(
     name: text().notNull(),
     description: text(),
     createdBy: text(),
+    isOffStage: boolean("is_off_stage").default(false).notNull(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
@@ -689,6 +698,9 @@ export const stage = pgTable(
       "btree",
       table.festivalId.asc().nullsLast(),
     ),
+    uniqueIndex("stage_festivalId_isOffStage_key")
+      .using("btree", table.festivalId.asc().nullsLast())
+      .where(sql`${table.isOffStage} = true`),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
@@ -1925,6 +1937,38 @@ export const festivalPosterTemplate = pgTable(
       columns: [table.festivalId],
       foreignColumns: [festival.id],
       name: "festival_poster_template_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const festivalTemplateAssignment = pgTable(
+  "festival_template_assignment",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    templateCode: text("template_code").notNull(),
+    assignmentKind: templateAssignmentKind("assignment_kind").notNull(),
+    fromResultNo: integer("from_result_no"),
+    toResultNo: integer("to_result_no"),
+    certificateType: text("certificate_type"),
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
+      .notNull(),
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
+      .notNull(),
+  },
+  (table) => [
+    index("festival_template_assignment_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_template_assignment_festivalId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),

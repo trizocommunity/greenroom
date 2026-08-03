@@ -18,7 +18,6 @@ export type AnnouncerQueueProgramme = {
   status: string;
   categoryName: string | null;
   resultNumber: number | null;
-  resultPosterTemplateCode: string | null;
   results: {
     id: string;
     position: number | null;
@@ -122,7 +121,6 @@ export async function getAnnouncerQueue(
         status: p.status,
         categoryName: p.category?.name ?? null,
         resultNumber: p.resultNumber,
-        resultPosterTemplateCode: p.resultPosterTemplateCode,
         results: progResults.map((r) => ({
           id: r.id,
           position: r.position,
@@ -146,7 +144,6 @@ export type PublishedResultProgramme = {
   type: string;
   categoryName: string | null;
   resultNumber: number | null;
-  resultPosterTemplateCode: string | null;
   publishedAt: string | null;
   publishedByName: string | null;
   results: {
@@ -223,7 +220,6 @@ export async function getPublishedResults(
       type: p.type,
       categoryName: p.category?.name ?? null,
       resultNumber: p.resultNumber,
-      resultPosterTemplateCode: p.resultPosterTemplateCode,
       publishedAt: p.publishedAt,
       publishedByName: progResults[0]?.publishedByName ?? null,
       results: progResults.map((r) => ({

@@ -11,7 +11,7 @@ import {
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
-import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
+
 
 export const metadata: Metadata = {
   title: "Results",
@@ -48,13 +48,11 @@ export default async function ResultsConsolePage({
   );
   if (!canUse) notFound();
 
-  const [published, standingsContext, liveStandings, publishedTemplates] =
-    await Promise.all([
-      getPublishedResults(festival.id),
-      getStandingsContext(festival.id),
-      computeStandings(festival.id, "published"),
-      PosterTemplateRepo.listPublishedResultTemplates(festival.id),
-    ]);
+  const [published, standingsContext, liveStandings] = await Promise.all([
+    getPublishedResults(festival.id),
+    getStandingsContext(festival.id),
+    computeStandings(festival.id, "published"),
+  ]);
 
   const canUnpublish =
     context.role === "ADMIN" ||
@@ -78,10 +76,6 @@ export default async function ResultsConsolePage({
         liveStandings={liveStandings}
         standingsContext={standingsContext}
         canUnpublish={canUnpublish}
-        publishedTemplates={publishedTemplates.map((t) => ({
-          code: t.code,
-          name: t.code,
-        }))}
       />
     </div>
   );

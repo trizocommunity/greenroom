@@ -114,6 +114,7 @@ export {
   useMarkProgrammeParticipant,
   usePosterTemplate,
   usePreviewJudgeSubmission,
+  useProvisionOffStage,
   usePublishedResultTemplates,
   usePublishPosterTemplate,
   useReopenProgrammeReporting,

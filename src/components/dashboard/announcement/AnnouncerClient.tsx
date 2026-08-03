@@ -37,7 +37,6 @@ interface AnnouncerClientProps {
   festivalSlug: string;
   queue: AnnouncerQueueProgramme[];
   nextResultNumber: number;
-  publishedTemplates: { code: string; name: string }[];
 }
 
 export function AnnouncerClient({
@@ -45,13 +44,11 @@ export function AnnouncerClient({
   festivalSlug,
   queue,
   nextResultNumber,
-  publishedTemplates,
 }: AnnouncerClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeProgramme, setActiveProgramme] =
     useState<AnnouncerQueueProgramme | null>(null);
-  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [editingNumber, setEditingNumber] = useState<{
     programmeId: string;
     value: string;
@@ -61,19 +58,6 @@ export function AnnouncerClient({
     const interval = setInterval(() => router.refresh(), 15_000);
     return () => clearInterval(interval);
   }, [router]);
-
-  useEffect(() => {
-    if (activeProgramme && publishedTemplates.length > 0) {
-      const existing = activeProgramme.resultPosterTemplateCode
-        ?.split(",")
-        .filter(Boolean);
-      if (existing && existing.length > 0) {
-        setSelectedTemplates(existing);
-      } else {
-        setSelectedTemplates([publishedTemplates[0].code]);
-      }
-    }
-  }, [activeProgramme, publishedTemplates]);
 
   const sorted = useMemo(() => {
     return [...queue].sort((a, b) => {
@@ -114,7 +98,6 @@ export function AnnouncerClient({
       const res = await announceResult(
         festivalId,
         activeProgramme.id,
-        selectedTemplates,
       );
       if (!res.success) {
         toast.error(res.error);
@@ -126,14 +109,6 @@ export function AnnouncerClient({
       setActiveProgramme(null);
       router.refresh();
     });
-  }
-
-  function toggleTemplate(code: string) {
-    setSelectedTemplates((prev) =>
-      prev.includes(code)
-        ? prev.filter((c) => c !== code)
-        : [...prev, code],
-    );
   }
 
   if (sorted.length === 0) {
@@ -299,29 +274,6 @@ export function AnnouncerClient({
                 </DialogDescription>
               </DialogHeader>
 
-              {/* Template selection */}
-              {publishedTemplates.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Result Template</p>
-                  <div className="flex flex-wrap gap-2">
-                    {publishedTemplates.map((t) => (
-                      <button
-                        key={t.code}
-                        type="button"
-                        onClick={() => toggleTemplate(t.code)}
-                        className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
-                          selectedTemplates.includes(t.code)
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-muted/50 border-border hover:bg-muted"
-                        }`}
-                      >
-                        {t.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Result roster */}
               <div className="space-y-2">
                 <p className="text-sm font-medium">Result Roster</p>
@@ -391,8 +343,7 @@ export function AnnouncerClient({
                   onClick={handleAnnounce}
                   disabled={
                     isPending ||
-                    activeProgramme.resultNumber == null ||
-                    selectedTemplates.length === 0
+                    activeProgramme.resultNumber == null
                   }
                 >
                   {isPending ? (
@@ -408,12 +359,6 @@ export function AnnouncerClient({
                   Assign a result number first.
                 </p>
               )}
-              {selectedTemplates.length === 0 &&
-                publishedTemplates.length > 0 && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    Select a result template first.
-                  </p>
-                )}
             </>
           )}
         </DialogContent>

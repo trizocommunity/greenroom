@@ -623,6 +623,9 @@ export function JudgementWizardClient({
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filteredJudgeProgrammes.map((p) => {
               const active = activeByProgrammeId.get(p.id);
+              const isUnscheduled = Boolean(
+                p.reportingDetails && p.reportingDetails.stageId === null,
+              );
               return (
                 <Card
                   key={p.id}
@@ -633,12 +636,22 @@ export function JudgementWizardClient({
                       <CardTitle className="text-base font-semibold leading-snug line-clamp-2 sm:text-lg">
                         {p.name}
                       </CardTitle>
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 text-[11px]"
-                      >
-                        {p.status}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge
+                          variant="secondary"
+                          className="text-[11px]"
+                        >
+                          {p.status}
+                        </Badge>
+                        {isUnscheduled && (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/60 bg-amber-500/10 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300"
+                          >
+                            Off-Stage
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {p.programmeType === "GROUP" ? "Group" : "Individual"}
@@ -719,6 +732,11 @@ export function JudgementWizardClient({
                             className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
                             onClick={() =>
                               openWizardForProgramme(p.id, "create")
+                            }
+                            title={
+                              isUnscheduled
+                                ? "This programme is unscheduled. It will be judged using the Off-Stage portal."
+                                : undefined
                             }
                           >
                             <Play className="mr-1.5 h-3.5 w-3.5" />

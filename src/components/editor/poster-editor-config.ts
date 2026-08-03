@@ -1,4 +1,6 @@
-export type PosterTemplateType = "RESULT" | "TEAM_POINTS" | "CANDIDATE_CARD";
+import type { PosterTemplateType } from "@/features/posters/types/poster-template.types";
+
+export type { PosterTemplateType };
 
 export interface CreatePresetOptions {
   withBackground?: boolean;
@@ -61,6 +63,24 @@ export const TEMPLATE_TYPES: TemplateTypeMeta[] = [
     width: 1050,
     height: 600,
   },
+  {
+    type: "CERTIFICATE",
+    emoji: "📜",
+    title: "Certificate",
+    description:
+      "Landscape A4 certificate for participation, prizes, and grades (2100×1485 px).",
+    width: 2100,
+    height: 1485,
+  },
+  {
+    type: "TEAM_POINTS",
+    emoji: "🏆",
+    title: "Team Points",
+    description:
+      "Team standings poster with ranks, names, and points (1200×1600 px).",
+    width: 1200,
+    height: 1600,
+  },
 ];
 
 export const FEST_ADMIN_FIELDS: FestAdminFieldDef[] = [
@@ -69,35 +89,42 @@ export const FEST_ADMIN_FIELDS: FestAdminFieldDef[] = [
     label: "Fest Name",
     icon: "Aa",
     preview: "Greenroom Arts Fest",
-    templateTypes: ["RESULT", "TEAM_POINTS", "CANDIDATE_CARD"],
+    templateTypes: ["RESULT", "TEAM_POINTS", "CANDIDATE_CARD", "CERTIFICATE"],
   },
   {
     key: "festDate",
     label: "Date",
     icon: "📅",
     preview: "21 May 2026",
-    templateTypes: ["RESULT", "TEAM_POINTS", "CANDIDATE_CARD"],
+    templateTypes: ["RESULT", "TEAM_POINTS", "CANDIDATE_CARD", "CERTIFICATE"],
   },
   {
     key: "festLocation",
     label: "Location",
     icon: "📍",
     preview: "Main Auditorium",
-    templateTypes: ["RESULT", "TEAM_POINTS", "CANDIDATE_CARD"],
+    templateTypes: ["RESULT", "TEAM_POINTS", "CANDIDATE_CARD", "CERTIFICATE"],
+  },
+  {
+    key: "certificateTitle",
+    label: "Certificate Title",
+    icon: "📜",
+    preview: "Certificate of Participation",
+    templateTypes: ["CERTIFICATE"],
   },
   {
     key: "categoryName",
     label: "Category",
     icon: "🏷",
     preview: "Category A",
-    templateTypes: ["RESULT", "CANDIDATE_CARD"],
+    templateTypes: ["RESULT", "CANDIDATE_CARD", "CERTIFICATE"],
   },
   {
     key: "programmeName",
     label: "Item Title",
     icon: "🎭",
     preview: "Folk Dance — Group",
-    templateTypes: ["RESULT"],
+    templateTypes: ["RESULT", "CERTIFICATE"],
   },
   {
     key: "resultNo",
@@ -111,7 +138,7 @@ export const FEST_ADMIN_FIELDS: FestAdminFieldDef[] = [
     label: "Result Label",
     icon: "🏆",
     preview: "1st Prize",
-    templateTypes: ["RESULT"],
+    templateTypes: ["RESULT", "CERTIFICATE"],
   },
   {
     key: "winnerName",
@@ -146,21 +173,21 @@ export const FEST_ADMIN_FIELDS: FestAdminFieldDef[] = [
     label: "Place",
     icon: "🏫",
     preview: "St. Mary's School",
-    templateTypes: ["RESULT", "CANDIDATE_CARD"],
+    templateTypes: ["RESULT", "CANDIDATE_CARD", "CERTIFICATE"],
   },
   {
     key: "chestNumber",
     label: "Chest No",
     icon: "123",
     preview: "0000",
-    templateTypes: ["CANDIDATE_CARD"],
+    templateTypes: ["CANDIDATE_CARD", "CERTIFICATE"],
   },
   {
     key: "teamName",
     label: "Team",
     icon: "🏫",
     preview: "House Blue",
-    templateTypes: ["CANDIDATE_CARD", "TEAM_POINTS"],
+    templateTypes: ["CANDIDATE_CARD", "TEAM_POINTS", "CERTIFICATE"],
   },
   {
     key: "teamRank",
@@ -181,7 +208,7 @@ export const FEST_ADMIN_FIELDS: FestAdminFieldDef[] = [
     label: "Name",
     icon: "Aa",
     preview: "Candidate Name",
-    templateTypes: ["CANDIDATE_CARD"],
+    templateTypes: ["CANDIDATE_CARD", "CERTIFICATE"],
   },
   {
     key: "qrCode",
@@ -196,6 +223,7 @@ export const MOCK_BINDINGS: Record<string, string> = {
   festName: "Greenroom Arts Fest 2026",
   festDate: "21 May 2026",
   festLocation: "Central Campus Hall",
+  certificateTitle: "Certificate of Participation",
   categoryName: "Category A — Junior",
   programmeName: "Folk Dance (Group)",
   resultNo: "34",

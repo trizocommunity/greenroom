@@ -6,13 +6,12 @@ describe("createCronHandler", () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
-    process.env.CRON_SECRET = "test-cron-secret-32bytes-12345678";
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("CRON_SECRET", "test-cron-secret-32bytes-12345678");
+    vi.stubEnv("NODE_ENV", "test");
   });
 
   afterEach(() => {
-    process.env.CRON_SECRET = originalEnv;
-    process.env.NODE_ENV = originalNodeEnv;
+    vi.unstubAllEnvs();
   });
 
   const buildHandler = (inner = vi.fn().mockResolvedValue(new Response("ok"))) => {
@@ -76,8 +75,8 @@ describe("createCronHandler", () => {
   });
 
   it("rejects when CRON_SECRET is unset in production at module load", async () => {
-    process.env.NODE_ENV = "production";
-    delete process.env.CRON_SECRET;
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("CRON_SECRET", "");
 
     expect(() =>
       createCronHandler({
@@ -87,8 +86,8 @@ describe("createCronHandler", () => {
   });
 
   it("does not throw when CRON_SECRET is unset outside production", () => {
-    process.env.NODE_ENV = "development";
-    delete process.env.CRON_SECRET;
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("CRON_SECRET", "");
 
     expect(() =>
       createCronHandler({

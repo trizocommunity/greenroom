@@ -10,7 +10,6 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
 import { ScoringPolicyClient } from "@/components/dashboard/judgement/ScoringPolicyClient";
-import { TemplatesClient } from "@/components/festival/posters/TemplatesClient";
 import { cn } from "@/core/utils/cn";
 import { FestivalLiveClient } from "./FestivalLiveClient";
 import { SettingsForm } from "./SettingsForm";
@@ -21,8 +20,6 @@ interface SettingsTabsProps {
   categories: any[];
   programmes: any[];
   publicUrl: string;
-  templates: any[];
-  canManageTemplates: boolean;
   canManageScoring: boolean;
   canManageFestivalLive: boolean;
 }
@@ -41,8 +38,6 @@ export function SettingsTabs({
   categories,
   programmes,
   publicUrl,
-  templates,
-  canManageTemplates,
   canManageScoring,
   canManageFestivalLive,
 }: SettingsTabsProps) {
@@ -71,13 +66,6 @@ export function SettingsTabs({
 
   if (canManageScoring) {
     navItems.push({ value: "scoring", label: "Scoring Policy", icon: Gavel });
-  }
-  if (canManageTemplates) {
-    navItems.push({
-      value: "templates",
-      label: "Templates",
-      icon: LayoutTemplate,
-    });
   }
   if (canManageFestivalLive) {
     navItems.push({
@@ -159,14 +147,6 @@ export function SettingsTabs({
           />
         )}
 
-        {currentTab === "templates" && canManageTemplates && (
-          <TemplatesClient
-            festivalId={festival.id}
-            festivalSlug={festival.slug}
-            initialTemplates={templates}
-            readOnly={false}
-          />
-        )}
 
         {currentTab === "festival-live" && canManageFestivalLive && (
           <FestivalLiveClient

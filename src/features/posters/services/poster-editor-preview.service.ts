@@ -14,11 +14,13 @@ import { parseInstant } from "@/core/datetime";
 import { serverNow } from "@/core/datetime/server";
 import {
   buildCandidateCardBindings,
+  buildCertificateBindings,
   buildResultPosterBindings,
   buildTeamPointsBindings,
 } from "@/features/posters/services/poster-bindings.service";
 import {
   buildCandidatePlaceholderBindings,
+  buildCertificatePlaceholderBindings,
   buildRealPreviewPayload,
   buildResultPlaceholderBindings,
   buildTeamPointsPlaceholderBindings,
@@ -355,6 +357,83 @@ async function loadTeamPointsPreview(
   );
 }
 
+const CERTIFICATE_TITLE_MAP: Record<string, string> = {
+  PARTICIPATION: "Certificate of Participation",
+  FIRST: "Certificate of First Place",
+  SECOND: "Certificate of Second Place",
+  THIRD: "Certificate of Third Place",
+  COMMON_PRIZE: "Certificate of Common Prize",
+  GRADE: "Certificate of Grade",
+};
+
+async function loadCertificatePreview(
+  festivalId: string,
+  festivalName: string,
+  festDate: string,
+  festLocation: string,
+): Promise<EditorPreviewBindingsPayload> {
+  const resultRow = await db
+    .select({
+      position: resultTable.position,
+      grade: resultTable.grade,
+      participantName: participantTable.name,
+      groupName: groupTable.name,
+      chestNumber: participantTable.chestNumber,
+      programmeId: programmeAssignment.programmeId,
+    })
+    .from(resultTable)
+    .innerJoin(
+      programmeAssignment,
+      eq(resultTable.assignmentId, programmeAssignment.id),
+    )
+    .leftJoin(
+      participantTable,
+      eq(programmeAssignment.participantId, participantTable.id),
+    )
+    .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
+    .where(
+      and(
+        eq(resultTable.festivalId, festivalId),
+        eq(resultTable.isPublished, true),
+      ),
+    )
+    .orderBy(desc(resultTable.updatedAt))
+    .limit(1);
+
+  const r = resultRow[0];
+  if (!r) {
+    return buildCertificatePlaceholderBindings(
+      festivalName,
+      festDate,
+      festLocation,
+    );
+  }
+
+  const programme = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, r.programmeId),
+    columns: { name: true },
+    with: { category: { columns: { name: true } } },
+  });
+
+  const position = r.position ?? 1;
+  const certType =
+    position === 1 ? "FIRST" : position === 2 ? "SECOND" : "THIRD";
+
+  const bindings = buildCertificateBindings({
+    festivalName,
+    certificateTitle: CERTIFICATE_TITLE_MAP[certType] ?? "Certificate",
+    participantName: r.participantName ?? r.groupName ?? "Candidate Name",
+    programmeName: programme?.name ?? "Programme",
+    categoryName: programme?.category?.name ?? "Category",
+    placeName: r.groupName ?? "—",
+    resultLabel: `${position === 1 ? "1st" : position === 2 ? "2nd" : "3rd"} Prize`,
+    chestNumber: r.chestNumber ?? "0000",
+    teamName: r.groupName ?? "—",
+  });
+
+  return buildRealPreviewPayload({ ...bindings, festDate, festLocation });
+}
+
 /** Festival editor preview: real data when available, honest placeholders otherwise. */
 export async function getFestivalEditorPreviewBindings(
   festivalId: string,
@@ -385,6 +464,13 @@ export async function getFestivalEditorPreviewBindings(
       );
     case "CANDIDATE_CARD":
       return loadCandidatePreview(
+        festivalId,
+        festivalName,
+        festDate,
+        festLocation,
+      );
+    case "CERTIFICATE":
+      return loadCertificatePreview(
         festivalId,
         festivalName,
         festDate,

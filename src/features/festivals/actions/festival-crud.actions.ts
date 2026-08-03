@@ -28,6 +28,7 @@ import { assertFestivalMutationAllowed } from "@/features/festivals/services/fes
 import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
 import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
+import { ensureOffStageStage } from "@/features/stages/services/off-stage.service";
 
 export async function createFestival(input: CreateFestivalInput) {
   try {
@@ -134,6 +135,10 @@ export async function createFestival(input: CreateFestivalInput) {
 
       return festival;
     });
+
+    // Provision the per-festival Off-Stage stage outside the festival
+    // transaction (it provisions its own portal credential). Idempotent.
+    await ensureOffStageStage(result.id);
 
     await createAuditLog({
       action: "CREATE_FESTIVAL",
@@ -580,6 +585,9 @@ export async function relaunchFestival(input: {
 
       return festival;
     });
+
+    // Provision the per-festival Off-Stage stage. Idempotent.
+    await ensureOffStageStage(result.id);
 
     await createAuditLog({
       action: "REPLACE_FESTIVAL_LIFECYCLE",

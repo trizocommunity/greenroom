@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Search, Upload } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
   FONT_CATEGORY_LABELS,
   type FontCategory,
   filterFonts,
+  buildGoogleFontsCssUrl,
 } from "./editor-font-catalog";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
@@ -35,8 +36,34 @@ function FontRow({
   active: boolean;
   onSelect: () => void;
 }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  
+  useEffect(() => {
+    if (!font.googleFamily) return;
+    const el = ref.current;
+    if (!el) return;
+    
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        const id = `greenroom-editor-font-${font.id}`;
+        if (!document.getElementById(id)) {
+           const link = document.createElement("link");
+           link.id = id;
+           link.rel = "stylesheet";
+           link.href = buildGoogleFontsCssUrl([font]);
+           document.head.appendChild(link);
+        }
+        observer.disconnect();
+      }
+    }, { rootMargin: '200px' });
+    
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [font.googleFamily, font.id]);
+
   return (
     <button
+      ref={ref}
       type="button"
       className={cn(
         "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors",

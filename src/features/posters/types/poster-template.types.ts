@@ -1,6 +1,10 @@
 import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 
-export type PosterTemplateType = "RESULT" | "TEAM_POINTS" | "CANDIDATE_CARD";
+export type PosterTemplateType =
+  | "RESULT"
+  | "TEAM_POINTS"
+  | "CANDIDATE_CARD"
+  | "CERTIFICATE";
 export type PosterTemplateStatus = "DRAFT" | "PUBLISHED";
 
 export const RESULT_SLOT_CODES = ["RESULT-A", "RESULT-B"] as const;

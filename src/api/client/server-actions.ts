@@ -59,6 +59,7 @@ import {
   getStagePortalCredentialAction,
   resetStagePortalCredentialAction,
 } from "@/features/stage-portal/actions/stage-portal-credential.actions";
+import { provisionOffStageAction } from "@/features/stages/actions/off-stage.actions";
 import { queryKeys } from "./_query-keys";
 
 export function useStagePortalLogin() {
@@ -235,6 +236,24 @@ export function useResetStagePortalCredential() {
       qc.invalidateQueries({
         queryKey: ["stage-portal-credential", input.festivalId, input.stageId],
       });
+    },
+  });
+}
+
+export function useProvisionOffStage() {
+  const qc = useQueryClient();
+  return useMutation<
+    { stageId: string; name: string },
+    Error,
+    { festivalId: string }
+  >({
+    mutationFn: async ({ festivalId }) =>
+      provisionOffStageAction(festivalId),
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.stages.all(festivalId) });
     },
   });
 }

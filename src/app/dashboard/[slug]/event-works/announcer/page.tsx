@@ -9,7 +9,7 @@ import {
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
-import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
+
 
 export default async function AnnouncerPage({
   params,
@@ -41,10 +41,9 @@ export default async function AnnouncerPage({
   );
   if (!canUse) notFound();
 
-  const [queue, nextNumber, publishedTemplates] = await Promise.all([
+  const [queue, nextNumber] = await Promise.all([
     getAnnouncerQueue(festival.id),
     getNextResultNumber(festival.id),
-    PosterTemplateRepo.listPublishedResultTemplates(festival.id),
   ]);
 
   return (
@@ -54,8 +53,7 @@ export default async function AnnouncerPage({
           Announcer
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Assign result numbers, select templates, and announce results to the
-          public site.
+          Assign result numbers and announce results to the public site.
         </p>
       </div>
       <AnnouncerClient
@@ -63,10 +61,6 @@ export default async function AnnouncerPage({
         festivalSlug={slug}
         queue={queue}
         nextResultNumber={nextNumber}
-        publishedTemplates={publishedTemplates.map((t) => ({
-          code: t.code,
-          name: t.code,
-        }))}
       />
     </div>
   );

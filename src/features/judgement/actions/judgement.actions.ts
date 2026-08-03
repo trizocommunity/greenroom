@@ -49,6 +49,7 @@ import { updateProgrammeStatus } from "@/features/programmes/services/programme-
 import { calculatePosition } from "@/features/results/services/results-calculator";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
+import { getOffStageStage } from "@/features/stages/services/off-stage.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 async function allAssignedJudgesHaveCompleteScores(
@@ -793,15 +794,46 @@ export async function getJudgementDashboardDataAction(festivalId: string) {
 }
 
 /**
+ * Resolves the stage id to use when starting or restarting judgement.
+ *
+ * Returns the supplied stageId when the reporting session already has one
+ * (a scheduled programme). When it does not (an unscheduled programme),
+ * looks up the festival's Off-Stage stage and returns its id — flagging
+ * the resolution as auto-assigned so callers can audit it. Throws when
+ * the festival has no Off-Stage stage provisioned; the caller surfaces
+ * a friendly message to the operator.
+ */
+async function resolveStageIdForJudgement(
+  festivalId: string,
+  currentStageId: string | null,
+): Promise<{ stageId: string; autoAssigned: boolean }> {
+  if (currentStageId) {
+    return { stageId: currentStageId, autoAssigned: false };
+  }
+  const offStage = await getOffStageStage(festivalId);
+  if (!offStage) {
+    throw new AppError(
+      "This festival has no Off-Stage stage provisioned. Please contact an administrator to set one up.",
+    );
+  }
+  return { stageId: offStage.id, autoAssigned: true };
+}
+
+/**
  * Archives any LIVE config on the given stage (across all its programmes)
  * and inserts a fresh LIVE config + judge assignments. Shared by
  * startJudgementAction and restartJudgementAction so only one programme is
  * ever "live" per stage at a time, matching the single-live-card portal UI.
+ *
+ * If `previousReportingSessionStageId` differs from `stageId`, the reporting
+ * session's stageId is updated inside the same transaction (atomic
+ * auto-assign for unscheduled programmes).
  */
 async function insertLiveJudgementConfig(input: {
   festivalId: string;
   programmeId: string;
   reportingSessionId: string;
+  previousReportingSessionStageId: string | null;
   stageId: string;
   judgeIds: string[];
   scoreLimit: number;
@@ -826,6 +858,16 @@ async function insertLiveJudgementConfig(input: {
     );
 
   await db.transaction(async (tx) => {
+    if (input.previousReportingSessionStageId !== input.stageId) {
+      // Either auto-assigning from null (unscheduled programme) or
+      // correcting a stale stage id. Persist the resolved stageId on the
+      // reporting session in the same transaction as the config insert.
+      await tx
+        .update(reportingSessionTable)
+        .set({ stageId: input.stageId } as any)
+        .where(eq(reportingSessionTable.id, input.reportingSessionId));
+    }
+
     if (liveConfigsOnStage.length > 0) {
       await tx
         .update(judgementConfigTable)
@@ -890,27 +932,50 @@ export async function startJudgementAction(input: {
   if (!latestClosedReportingSession) {
     throw new AppError("No closed reporting session found for this programme.");
   }
-  if (!latestClosedReportingSession.stageId) {
-    throw new AppError(
-      "This programme isn't linked to a stage; the judge portal requires a stage assignment.",
-    );
-  }
+
+  // Resolve the stageId: scheduled programmes keep theirs; unscheduled
+  // programmes are routed through the festival's Off-Stage stage so the
+  // judge portal still has a stage to pin to.
+  const { stageId, autoAssigned } = await resolveStageIdForJudgement(
+    input.festivalId,
+    latestClosedReportingSession.stageId,
+  );
 
   const actorName = await assertStageManagerAccessForStage(
     input.festivalId,
-    latestClosedReportingSession.stageId,
+    stageId,
   );
 
   const configId = await insertLiveJudgementConfig({
     festivalId: input.festivalId,
     programmeId: input.programmeId,
     reportingSessionId: latestClosedReportingSession.id,
-    stageId: latestClosedReportingSession.stageId,
+    previousReportingSessionStageId: latestClosedReportingSession.stageId,
+    stageId,
     judgeIds: input.judgeIds,
     scoreLimit: input.scoreLimit,
     judgingMode: input.judgingMode ?? "GROUP",
     startedBy: actorName,
   });
+
+  if (autoAssigned) {
+    await createAuditLog({
+      action: "JUDGEMENT_AUTO_ASSIGN_OFF_STAGE",
+      targetType: "REPORTING_SESSION",
+      targetId: latestClosedReportingSession.id,
+      metadata: {
+        festivalId: input.festivalId,
+        programmeId: input.programmeId,
+        offStageStageId: stageId,
+        configId,
+      },
+    }).catch((err) =>
+      console.error(
+        "[AuditLog] JUDGEMENT_AUTO_ASSIGN_OFF_STAGE failed",
+        err,
+      ),
+    );
+  }
 
   await createAuditLog({
     action: "START_JUDGEMENT",
@@ -969,14 +1034,13 @@ export async function restartJudgementAction(input: {
     throw new AppError("Please select at least one judge.");
   }
 
-  const stageId = await getStageIdForReportingSession(
+  const previousStageId = await getStageIdForReportingSession(
     priorConfig.reportingSessionId,
   );
-  if (!stageId) {
-    throw new AppError(
-      "This programme isn't linked to a stage; the judge portal requires a stage assignment.",
-    );
-  }
+  const { stageId, autoAssigned } = await resolveStageIdForJudgement(
+    input.festivalId,
+    previousStageId,
+  );
 
   const actorName = await assertStageManagerAccessForStage(
     input.festivalId,
@@ -987,12 +1051,33 @@ export async function restartJudgementAction(input: {
     festivalId: input.festivalId,
     programmeId: input.programmeId,
     reportingSessionId: priorConfig.reportingSessionId,
+    previousReportingSessionStageId: previousStageId,
     stageId,
     judgeIds,
     scoreLimit: priorConfig.scoreLimit,
     judgingMode: priorConfig.judgingMode as "SINGLE" | "GROUP",
     startedBy: actorName,
   });
+
+  if (autoAssigned) {
+    await createAuditLog({
+      action: "JUDGEMENT_AUTO_ASSIGN_OFF_STAGE",
+      targetType: "REPORTING_SESSION",
+      targetId: priorConfig.reportingSessionId,
+      metadata: {
+        festivalId: input.festivalId,
+        programmeId: input.programmeId,
+        offStageStageId: stageId,
+        configId,
+        restarted: true,
+      },
+    }).catch((err) =>
+      console.error(
+        "[AuditLog] JUDGEMENT_AUTO_ASSIGN_OFF_STAGE failed",
+        err,
+      ),
+    );
+  }
 
   await createAuditLog({
     action: "START_JUDGEMENT",
@@ -1059,7 +1144,10 @@ export async function getStagePortalBoardAction(day?: string) {
   if (!stagePortalSession) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   const stageId = stagePortalSession.stageId;
-  const stage = { name: stagePortalSession.stage.name };
+  const stage = {
+    name: stagePortalSession.stage.name,
+    isOffStage: stagePortalSession.stage.isOffStage,
+  };
 
   // Day range from the festival's start–end; default to today (clamped).
   const festival = await db.query.festival.findFirst({

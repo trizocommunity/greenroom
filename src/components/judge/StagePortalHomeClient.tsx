@@ -57,6 +57,7 @@ export function StagePortalHomeClient() {
   const [scoring, setScoring] = useState<StagePortalLivePayload | null>(null);
 
   const stageName = data?.stage?.name ?? "Stage";
+  const isOffStage = data?.stage?.isOffStage ?? false;
   const days = data?.days ?? [];
   const selectedDay = data?.selectedDay;
 
@@ -105,8 +106,13 @@ export function StagePortalHomeClient() {
             Stage judge portal
           </p>
           <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight text-heading">
-            {stageName}
+            {isOffStage ? "Off-Stage" : stageName}
           </h1>
+          {isOffStage && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Programmes without a scheduled time are judged here.
+            </p>
+          )}
         </div>
         <Button
           variant="ghost"

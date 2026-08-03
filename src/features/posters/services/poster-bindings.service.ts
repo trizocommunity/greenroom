@@ -90,6 +90,34 @@ export function buildCandidateCardBindings(input: {
   };
 }
 
+export interface CertificateBindingInput {
+  festivalName: string;
+  certificateTitle: string;
+  participantName: string;
+  programmeName: string;
+  categoryName: string;
+  placeName: string;
+  resultLabel: string;
+  chestNumber: string;
+  teamName: string;
+}
+
+export function buildCertificateBindings(
+  input: CertificateBindingInput,
+): PosterBindings {
+  return {
+    festName: input.festivalName,
+    certificateTitle: input.certificateTitle,
+    participantName: input.participantName,
+    programmeName: input.programmeName,
+    categoryName: input.categoryName,
+    placeName: input.placeName,
+    resultLabel: input.resultLabel,
+    chestNumber: input.chestNumber,
+    teamName: input.teamName,
+  };
+}
+
 export function resolveBindingText(
   bindingKey: string | undefined,
   bindings: PosterBindings,

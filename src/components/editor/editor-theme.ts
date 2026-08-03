@@ -41,6 +41,6 @@ export const BACKGROUND_SWATCHES = [
   EDITOR_COLORS.foreground,
   "#22c55e",
   EDITOR_COLORS.muted,
-  EDITOR_COLORS.backgroundSoft,
+  "#3b82f6",
   EDITOR_COLORS.gradientTo,
 ] as const;

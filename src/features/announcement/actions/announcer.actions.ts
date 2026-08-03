@@ -119,7 +119,6 @@ export async function setProgrammeResultNumber(
 export async function announceResult(
   festivalId: string,
   programmeId: string,
-  templateCodes: string[],
 ): Promise<ActionResponse<void>> {
   try {
     const actorName = await assertAnnouncerAccess(festivalId);
@@ -147,13 +146,6 @@ export async function announceResult(
       };
     }
 
-    if (templateCodes.length === 0) {
-      return {
-        success: false,
-        error: "Select at least one result template.",
-      };
-    }
-
     const session = await getSession();
     const now = serverNowIso();
 
@@ -174,7 +166,6 @@ export async function announceResult(
         publishedAt: now,
         publishedByEmail: (session?.email as string) ?? null,
         publishedByName: actorName,
-        resultPosterTemplateCode: templateCodes.join(","),
         updatedAt: now,
       })
       .where(eq(programmeTable.id, programmeId));
@@ -186,7 +177,7 @@ export async function announceResult(
       action: "ANNOUNCE_RESULTS",
       targetType: "RESULT",
       targetId: programmeId,
-      metadata: { festivalId, programmeId, templateCodes },
+      metadata: { festivalId, programmeId },
     }).catch((err) =>
       console.error("[AuditLog] ANNOUNCE_RESULTS failed", err),
     );
@@ -294,37 +285,6 @@ export async function swapResultNumbers(
       "updatedAt" = ${now}
       WHERE "id" IN (${programmeIdA}, ${programmeIdB})
     `);
-
-    const slug = await getFestivalSlug(festivalId);
-    if (slug) revalidateAnnouncerPaths(slug);
-
-    return { success: true, data: undefined };
-  } catch (error) {
-    return handleActionError(error);
-  }
-}
-
-export async function updateResultTemplates(
-  festivalId: string,
-  programmeId: string,
-  templateCodes: string[],
-): Promise<ActionResponse<void>> {
-  try {
-    await assertAnnouncerAccess(festivalId);
-    await ensureFestivalWritable(festivalId);
-
-    await db
-      .update(programmeTable)
-      .set({
-        resultPosterTemplateCode: templateCodes.join(","),
-        updatedAt: serverNowIso(),
-      })
-      .where(
-        and(
-          eq(programmeTable.id, programmeId),
-          eq(programmeTable.festivalId, festivalId),
-        ),
-      );
 
     const slug = await getFestivalSlug(festivalId);
     if (slug) revalidateAnnouncerPaths(slug);

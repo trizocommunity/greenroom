@@ -252,6 +252,12 @@ export const getFestivalDashboardSidebarConfig = (
           disabled: !canUseResultsPage,
         },
         {
+          title: "Templates",
+          href: `${basePath}/templates`,
+          icon: LayoutTemplate,
+          allowedRoles: ["ADMIN", "OWNER", "MEDIA"] as FestivalRole[],
+        },
+        {
           title: "Leaderboard",
           href: `${basePath}/event-works/leaderboard`,
           icon: Trophy,

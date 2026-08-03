@@ -169,6 +169,7 @@ export default function DashboardNavbar({ user }: DashboardNavbarProps) {
                     <div className="flex flex-col space-y-1">
                       {items.map((item) => (
                         <button
+                          type="button"
                           key={item.value}
                           onClick={() => navigateMobile(item.value)}
                           className={cn(

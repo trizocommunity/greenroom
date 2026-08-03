@@ -55,6 +55,15 @@ const CERT_TYPE_LABELS: Record<string, string> = {
   GRADE: "Grade",
 };
 
+const CERT_TITLE_MAP: Record<string, string> = {
+  PARTICIPATION: "Certificate of Participation",
+  FIRST: "Certificate of First Place",
+  SECOND: "Certificate of Second Place",
+  THIRD: "Certificate of Third Place",
+  COMMON_PRIZE: "Certificate of Common Prize",
+  GRADE: "Certificate of Grade",
+};
+
 export async function resolveBadgePayload(
   festivalId: string,
   config: BadgeConfig,
@@ -145,6 +154,7 @@ export async function resolveCertificatePayload(
           teamName: r.teamName ?? "",
           categoryName: r.categoryName ?? "",
           certificateType: CERT_TYPE_LABELS.PARTICIPATION,
+          certificateTitle: CERT_TITLE_MAP.PARTICIPATION,
         }),
       });
     }
@@ -213,6 +223,7 @@ export async function resolveCertificatePayload(
             categoryName: r.categoryName ?? "",
             programmeName: r.programmeName,
             certificateType: CERT_TYPE_LABELS[wonPlacement],
+            certificateTitle: CERT_TITLE_MAP[wonPlacement] ?? "Certificate",
             position: String(r.position ?? ""),
           }),
         });
@@ -224,6 +235,7 @@ export async function resolveCertificatePayload(
             categoryName: r.categoryName ?? "",
             programmeName: r.programmeName,
             certificateType: CERT_TYPE_LABELS.GRADE,
+            certificateTitle: CERT_TITLE_MAP.GRADE,
             grade: r.grade,
           }),
         });

@@ -40,12 +40,10 @@ export async function listExportTemplatesAction(
     await assertFestivalAccess(session, festivalId);
     const all = await PosterTemplateRepo.listByFestival(festivalId);
     const published = all.filter((t) => t.status === "PUBLISHED");
-    // Badges come from candidate-card templates; certificates have no dedicated
-    // template type yet, so any published template may be used.
     const filtered =
       kind === "BADGE"
         ? published.filter((t) => t.type === "CANDIDATE_CARD")
-        : published;
+        : published.filter((t) => t.type === "CERTIFICATE");
     return {
       success: true,
       data: filtered.map((t) => ({

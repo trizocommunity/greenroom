@@ -61,7 +61,7 @@ export async function getStagePortalSessionFromCookie() {
       ),
     with: {
       stage: {
-        columns: { id: true, festivalId: true, name: true },
+        columns: { id: true, festivalId: true, name: true, isOffStage: true },
       },
       festival: {
         columns: { id: true, slug: true, tier: true },

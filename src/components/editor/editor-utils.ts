@@ -4,7 +4,7 @@ import type {
 } from "./poster-editor-types";
 
 export function cloneDoc(doc: PosterEditorDocument): PosterEditorDocument {
-  return JSON.parse(JSON.stringify(doc)) as PosterEditorDocument;
+  return structuredClone(doc);
 }
 
 /** Coerce invalid numeric state (e.g. mid-transform) to a safe fallback. */

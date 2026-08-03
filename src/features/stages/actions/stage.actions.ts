@@ -94,6 +94,12 @@ export async function deleteStage(stageId: string) {
 
   if (!stageRecord) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
+  if (stageRecord.isOffStage) {
+    throw new AppError(
+      "The Off-Stage stage cannot be deleted. It is required for judging programmes without a scheduled time slot.",
+    );
+  }
+
   await assertFestivalAccess(session, stageRecord.festivalId, {
     requireWritable: true,
   });

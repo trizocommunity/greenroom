@@ -110,6 +110,7 @@ export function EditorTemplatesPanel({
       RESULT: [],
       TEAM_POINTS: [],
       CANDIDATE_CARD: [],
+      CERTIFICATE: [],
     };
     for (const t of savedTemplates) {
       map[t.type].push(t);

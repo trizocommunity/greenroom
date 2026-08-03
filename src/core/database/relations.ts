@@ -10,6 +10,7 @@ import {
   festivalMember,
   festivalNews,
   festivalPosterTemplate,
+  festivalTemplateAssignment,
   festivalScoringAwardRule,
   festivalScoringPolicy,
   festivalTypeEnum,
@@ -100,6 +101,7 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   scoringPolicies: many(festivalScoringPolicy),
   scoringAwardRules: many(festivalScoringAwardRule),
   posterTemplates: many(festivalPosterTemplate),
+  templateAssignments: many(festivalTemplateAssignment),
   pendingInvitations: many(pendingInvitation),
   stagePortalCredentials: many(stagePortalCredential),
   stagePortalSessions: many(stagePortalSession),
@@ -662,3 +664,13 @@ export const participantOtpRelations = relations(participantOtp, ({ one }) => ({
     references: [participant.id],
   }),
 }));
+
+export const festivalTemplateAssignmentRelations = relations(
+  festivalTemplateAssignment,
+  ({ one }) => ({
+    festival: one(festival, {
+      fields: [festivalTemplateAssignment.festivalId],
+      references: [festival.id],
+    }),
+  }),
+);

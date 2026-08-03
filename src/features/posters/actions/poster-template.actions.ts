@@ -166,13 +166,6 @@ export async function savePosterTemplateDraftAction(
 
     const type = templateTypeFromCode(parsed.code);
     if (!type) return { success: false, error: "Invalid template code" };
-    if (type === "TEAM_POINTS") {
-      return {
-        success: false,
-        error: "Team points templates are no longer supported.",
-      };
-    }
-
     const doc = parsed.document;
     const existing = await PosterTemplateRepo.findByFestivalAndCode(
       parsed.festivalId,
@@ -215,13 +208,6 @@ export async function publishPosterTemplateAction(
     );
     if (!existing) {
       return { success: false, error: "Save a draft before publishing" };
-    }
-
-    if (existing.type === "TEAM_POINTS") {
-      return {
-        success: false,
-        error: "Team points templates are no longer supported.",
-      };
     }
 
     if (existing.type === "RESULT" && isResultSlotCode(code)) {
