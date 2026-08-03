@@ -39,6 +39,7 @@ export interface Result {
   points: number;
   grade?: string | null;
   codeLetter?: string | null;
+  chestNo?: string | null;
 }
 
 export interface TeamStanding {
@@ -318,8 +319,23 @@ export function ResultsList({
                         <button
                           type="button"
                           onClick={() => setSelectedProgram(programme)}
-                          className="group flex w-full items-center gap-4 py-4 text-left"
+                          className="group flex w-full items-center gap-3 py-4 text-left"
                         >
+                          {programme.resultNumber ? (
+                            <div className="flex w-5 shrink-0 justify-center">
+                              <div
+                                className="text-[13px] font-bold text-muted-foreground/50 tracking-widest"
+                                style={{
+                                  writingMode: "vertical-rl",
+                                  transform: "rotate(180deg)",
+                                }}
+                              >
+                                #{programme.resultNumber}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-5 shrink-0" />
+                          )}
                           <div className="min-w-0 flex-1">
                             <h3 className="truncate text-[15px] font-medium text-heading transition-opacity group-hover:opacity-70">
                               {programme.name}
@@ -398,29 +414,28 @@ export function ResultsList({
           <DialogContent className="flex max-h-[88vh] max-w-md flex-col gap-0 overflow-hidden p-0 md:max-w-2xl">
             {selectedProgram ? (
               <>
-                <DialogHeader className="space-y-1 border-b border-border p-6 pb-5 text-left">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    {selectedProgram.category} ·{" "}
-                    {selectedProgram.type === "GROUP" ? "Team" : "Individual"}
-                  </p>
-                  <DialogTitle className="text-xl font-semibold tracking-tight text-heading md:text-2xl">
-                    {selectedProgram.name}
-                  </DialogTitle>
-                  <DialogDescription className="text-sm">
-                    {selectedProgram.results.length} published{" "}
-                    {selectedProgram.results.length === 1 ? "place" : "places"}
-                  </DialogDescription>
+                <DialogHeader className="border-b border-border p-6 pb-5 text-left">
+                  <div className="flex gap-4">
+                    {selectedProgram.resultNumber && (
+                      <div className="text-5xl font-bold tracking-widest text-primary">
+                        #{selectedProgram.resultNumber}
+                      </div>
+                    )}
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        {selectedProgram.category} ·{" "}
+                        {selectedProgram.type === "GROUP"
+                          ? "Team"
+                          : "Individual"}
+                      </p>
+                      <DialogTitle className="text-xl font-semibold tracking-tight text-heading md:text-2xl">
+                        {selectedProgram.name}
+                      </DialogTitle>
+                    </div>
+                  </div>
                 </DialogHeader>
 
                 <ScrollArea className="flex-1 overflow-y-auto px-6 py-5">
-                  <div className="mb-5">
-                    <PublicResultPosterSection
-                      programmeId={selectedProgram.id}
-                      festivalSlug={festivalSlug}
-                      initialTemplateCode={selectedTemplateCode ?? undefined}
-                    />
-                  </div>
-
                   <ol className="divide-y divide-border border-y border-border">
                     {selectedProgram.results.map((result) => {
                       const isWinner = result.position === 1;
@@ -455,6 +470,11 @@ export function ResultsList({
                               )}
                             >
                               {result.winner}
+                              {result.chestNo && (
+                                <span className="ml-1.5 text-muted-foreground font-normal text-xs">
+                                  #{result.chestNo}
+                                </span>
+                              )}
                             </p>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {[
@@ -485,6 +505,13 @@ export function ResultsList({
                       );
                     })}
                   </ol>
+                  <div className="mt-5">
+                    <PublicResultPosterSection
+                      programmeId={selectedProgram.id}
+                      festivalSlug={festivalSlug}
+                      initialTemplateCode={selectedTemplateCode ?? undefined}
+                    />
+                  </div>
                 </ScrollArea>
               </>
             ) : (

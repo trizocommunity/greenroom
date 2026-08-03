@@ -13,6 +13,8 @@ export interface LatestResult {
   programName: string;
   winner: string;
   team: string;
+  chestNo?: string | null;
+  resultNumber?: number | string | null;
 }
 
 /**
@@ -44,13 +46,30 @@ export function LatestWinners({
             transition={{ duration: 0.4, delay: i * 0.06 }}
             className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4"
           >
-            <div className="min-w-0">
-              <p className="truncate text-lg font-semibold tracking-tight text-heading">
-                {result.winner}
-              </p>
-              <p className="truncate text-sm text-muted-foreground">
-                {result.team}
-              </p>
+            <div className="flex items-center gap-3 min-w-0">
+              {result.resultNumber ? (
+                <div className="flex w-5 shrink-0 justify-center">
+                  <div
+                    className="text-[13px] font-bold text-muted-foreground/50 tracking-widest"
+                    style={{
+                      writingMode: "vertical-rl",
+                      transform: "rotate(180deg)",
+                    }}
+                  >
+                    #{result.resultNumber}
+                  </div>
+                </div>
+              ) : (
+                <div className="w-5 shrink-0" />
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-lg font-semibold tracking-tight text-heading">
+                  {result.winner}
+                </p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {result.team}
+                </p>
+              </div>
             </div>
             <p
               className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.16em]"

@@ -127,7 +127,7 @@ export function PosterExportCanvas({
 }: {
   doc: PosterEditorDocument;
   bindings: PosterBindings;
-  stageRef: React.RefObject<Konva.Stage | null>;
+  stageRef?: React.RefObject<Konva.Stage | null>;
   scale?: number;
   /** Render in normal layout (e.g. publish preview dialog) instead of off-screen. */
   inline?: boolean;

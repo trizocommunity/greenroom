@@ -26,7 +26,9 @@ export function ExpiredFestivalView({
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="bg-grid mask-radial-fade absolute inset-0 opacity-40" />
+        <div className="bg-grid mask-radial-fade absolute inset-0" />
+      </div>
+      <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="animate-aurora absolute left-1/2 top-1/2 h-[26rem] w-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/8 blur-[130px]" />
       </div>
 

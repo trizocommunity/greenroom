@@ -170,10 +170,16 @@ export function ProgrammeDialog({
   useEffect(() => {
     if (open) {
       if (programme) {
+        if (!programme.type) {
+          toast.error(
+            "This programme has no type assigned. Fix the data before editing.",
+          );
+          return;
+        }
         form.reset({
           name: programme.name || "",
           categoryId: programme.categoryId || "",
-          type: programme.type || "INDIVIDUAL",
+          type: programme.type,
           stageType: programme.stageType || "STAGE",
           maxParticipantsPerGroup: programme.maxParticipantsPerGroup || 1,
           maxTeamsPerGroup: programme.maxTeamsPerGroup || 1,

@@ -39,6 +39,7 @@ export interface Member {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  metadata?: { additionalRoles?: string[] } | null;
   user?: {
     fullName: string | null;
     email: string | null;

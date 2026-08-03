@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ArrowRight, Bell, Crown, ListChecks, Users } from "lucide-react";
 import Link from "next/link";
 import {
@@ -20,6 +20,7 @@ import { db } from "@/core/database/client";
 import { MS } from "@/core/datetime/server";
 import {
   programmeAssignment as assignmentTable,
+  programmeAssignmentMember as assignmentMemberTable,
   participant as participantTable,
   result as resultTable,
   programmeReportingSession as sessionTable,
@@ -69,7 +70,7 @@ export default async function TeamLeaderDashboardPage({
 
   let publishedResultsCount = 0;
   if (myParticipantIds.length > 0) {
-    const results = await db
+    const individualResults = await db
       .select({ count: sql`count(*)` })
       .from(resultTable)
       .innerJoin(
@@ -83,7 +84,29 @@ export default async function TeamLeaderDashboardPage({
           inArray(assignmentTable.participantId, myParticipantIds),
         ),
       );
-    publishedResultsCount = Number(results[0]?.count ?? 0);
+    const totalIndividual = Number(individualResults[0]?.count ?? 0);
+
+    const memberResults = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${resultTable.id})` })
+      .from(resultTable)
+      .innerJoin(
+        assignmentTable,
+        eq(resultTable.assignmentId, assignmentTable.id),
+      )
+      .innerJoin(
+        assignmentMemberTable,
+        eq(assignmentMemberTable.assignmentId, assignmentTable.id),
+      )
+      .where(
+        and(
+          eq(resultTable.festivalId, festival.id),
+          eq(resultTable.isPublished, true),
+          inArray(assignmentMemberTable.participantId, myParticipantIds),
+          isNull(assignmentTable.participantId),
+        ),
+      );
+    const totalMember = Number(memberResults[0]?.count ?? 0);
+    publishedResultsCount = totalIndividual + totalMember;
   }
 
   const teamLeadersInGroup = await db.query.participant.findMany({

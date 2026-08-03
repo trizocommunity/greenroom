@@ -18,11 +18,9 @@ import {
   StatusPill,
 } from "@/components/app/AppSection";
 import { ParticipantLogoutButton } from "@/components/festival/public/ParticipantLogoutButton";
-import { CopyProfileLinkButton } from "@/components/participant/CopyProfileLinkButton";
 import { ParticipantAssignedProgrammeCards } from "@/components/participant/ParticipantAssignedProgrammeCards";
-import { ParticipantQrDialogButton } from "@/components/participant/ParticipantQrDialogButton";
+import { ParticipantBadgeOrQr } from "@/components/participant/ParticipantBadgeOrQr";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
-import { APP_URL } from "@/config/routes";
 import { getFestivalDurationDays } from "@/config/pricing";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
@@ -34,14 +32,12 @@ import {
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
-import {
-  getParticipantProfileUrl,
-  getQrCodeContent,
-} from "@/features/participants/services/participant-profile-url";
+import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
 import {
   FeatureService,
   getTierForFeatureCheck,
 } from "@/features/plan-features/services/features";
+import { getBadgePayloadAction } from "@/features/posters/actions/badge.actions";
 import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
@@ -218,15 +214,22 @@ export default async function ParticipantMainPage({
     ["IN_PROGRESS", "CLOSED"].includes(s.status),
   );
 
-  const profileUrl = getParticipantProfileUrl(
-    APP_URL.replace(/\/$/, ""),
-    festival.slug,
-    participant as any,
-  );
+
 
   const liveSessions = ongoingSessions.filter(
     (s) => s.status === "IN_PROGRESS" && !isSessionTimedOut(s),
   );
+
+  const badgeResult = await getBadgePayloadAction({
+    festivalId: festival.id,
+    festivalName: festival.name,
+    participantName: participant.name,
+    chestNumber: participant.chestNumber ?? "",
+    teamName: group?.name ?? "",
+    categoryName: category?.name ?? "",
+    qrPayload: getQrCodeContent(participant as any),
+  });
+  const badge = badgeResult.success ? badgeResult.data ?? null : null;
 
   return (
     <div className={`${APP_CONTAINER} space-y-10 py-8 md:py-10`}>
@@ -285,7 +288,8 @@ export default async function ParticipantMainPage({
         title={participant.name}
         actions={
           <>
-            <ParticipantQrDialogButton
+            <ParticipantBadgeOrQr
+              badge={badge}
               qrContent={getQrCodeContent(participant as any)}
               participantName={participant.name}
             />
@@ -315,12 +319,6 @@ export default async function ParticipantMainPage({
               }
             />
           </dl>
-          <div className="mt-5">
-            <p className="mb-2 text-xs text-muted-foreground">
-              Your public profile link
-            </p>
-            <CopyProfileLinkButton profileUrl={profileUrl} />
-          </div>
         </section>
 
         <section>

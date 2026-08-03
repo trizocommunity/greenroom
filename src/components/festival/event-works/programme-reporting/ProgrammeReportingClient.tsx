@@ -79,6 +79,7 @@ import {
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
 import { getCodeForParticipantFromLetters } from "@/features/programmes/services/programme-reporting-code";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
 import { QrScanner } from "./QrScanner";
 import { ReportingBoardList } from "./ReportingBoardList";
@@ -410,7 +411,10 @@ export function ProgrammeReportingClient({
         );
       })
       .map(({ item, status }) => {
-        const programmeType = item.programme?.type ?? "INDIVIDUAL";
+        const programmeType = requireProgrammeType(
+          item.programme?.type,
+          `programme reporting: programme ${item.programme?.id ?? "unknown"}`,
+        );
         const programmeStatus = (item.programme?.status ?? "").toUpperCase();
         const reportedRows =
           item.reportingSession?.programmeReportedParticipants ?? [];

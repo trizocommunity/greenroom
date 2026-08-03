@@ -17,6 +17,8 @@ export function EditorCanvasSizeSetup({
   const { doc, resizeCanvas } = editor;
   const [width, setWidth] = useState(1200);
   const [height, setHeight] = useState(1600);
+  const [widthInput, setWidthInput] = useState("1200");
+  const [heightInput, setHeightInput] = useState("1600");
   const [lockAspect, setLockAspect] = useState(true);
   const [aspect, setAspect] = useState(1200 / 1600);
 
@@ -24,6 +26,8 @@ export function EditorCanvasSizeSetup({
     if (!doc) return;
     setWidth(doc.width);
     setHeight(doc.height);
+    setWidthInput(String(doc.width));
+    setHeightInput(String(doc.height));
     setAspect(doc.width / doc.height);
   }, [doc?.width, doc?.height, doc]);
 
@@ -36,28 +40,30 @@ export function EditorCanvasSizeSetup({
     const ch = clampCanvasDimension(h);
     setWidth(cw);
     setHeight(ch);
+    setWidthInput(String(cw));
+    setHeightInput(String(ch));
     setAspect(cw / ch);
     resizeCanvas(cw, ch);
   };
 
-  const onWidthChange = (raw: number) => {
-    const w = clampCanvasDimension(raw);
-    const h = lockAspect
-      ? clampCanvasDimension(Math.round(w / aspect))
-      : height;
-    setWidth(w);
-    if (lockAspect) setHeight(h);
+  const onWidthChange = (val: string) => {
+    setWidthInput(val);
+    const w = parseInt(val, 10);
+    if (!isNaN(w) && w > 0 && lockAspect) {
+      setHeightInput(String(Math.round(w / aspect)));
+    }
   };
 
-  const onHeightChange = (raw: number) => {
-    const h = clampCanvasDimension(raw);
-    const w = lockAspect ? clampCanvasDimension(Math.round(h * aspect)) : width;
-    setHeight(h);
-    if (lockAspect) setWidth(w);
+  const onHeightChange = (val: string) => {
+    setHeightInput(val);
+    const h = parseInt(val, 10);
+    if (!isNaN(h) && h > 0 && lockAspect) {
+      setWidthInput(String(Math.round(h * aspect)));
+    }
   };
 
   const commitFields = () => {
-    applySize(width, height);
+    applySize(parseInt(widthInput, 10) || width, parseInt(heightInput, 10) || height);
   };
 
   return (
@@ -79,8 +85,8 @@ export function EditorCanvasSizeSetup({
             className={editorInput}
             min={320}
             max={5000}
-            value={width}
-            onChange={(e) => onWidthChange(Number(e.target.value))}
+            value={widthInput}
+            onChange={(e) => onWidthChange(e.target.value)}
             onBlur={commitFields}
             onKeyDown={(e) => e.key === "Enter" && commitFields()}
           />
@@ -94,8 +100,8 @@ export function EditorCanvasSizeSetup({
             className={editorInput}
             min={320}
             max={5000}
-            value={height}
-            onChange={(e) => onHeightChange(Number(e.target.value))}
+            value={heightInput}
+            onChange={(e) => onHeightChange(e.target.value)}
             onBlur={commitFields}
             onKeyDown={(e) => e.key === "Enter" && commitFields()}
           />

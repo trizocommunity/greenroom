@@ -99,7 +99,7 @@ export function ExportsTable({
           return (
             <div
               key={e.id}
-              className="rounded-lg border p-4 flex flex-col gap-3"
+              className="rounded-lg border p-4 flex flex-col bg-card gap-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 font-medium">
@@ -198,7 +198,7 @@ export function ExportsTable({
         })}
       </div>
       <div className="hidden md:block rounded-lg border overflow-x-auto">
-        <Table>
+        <Table className="bg-card">
           <TableHeader>
             <TableRow>
               <TableHead>Export Type</TableHead>

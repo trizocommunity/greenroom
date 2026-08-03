@@ -2,9 +2,7 @@ import { Calendar, Trophy } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
-import { getSession } from "@/core/auth/session";
 import type { Tier } from "@/core/types/app-enums";
-import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import {
   getResolvedTier,
@@ -19,12 +17,6 @@ export default async function LeaderboardPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const session = await getSession();
-  const context = await getFestivalContext({
-    slugOrId: slug,
-    userId: session?.userId ?? null,
-    globalRole: session?.role ?? null,
-  });
 
   const { festival, assignmentCount } =
     await getFestivalLeaderboardDataBySlug(slug);
@@ -85,7 +77,6 @@ export default async function LeaderboardPage({
         publishedStandings={festival.teamStandings as any[]}
         categories={festival.categories}
         groups={festival.groups}
-        festivalRole={context?.role}
       >
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">

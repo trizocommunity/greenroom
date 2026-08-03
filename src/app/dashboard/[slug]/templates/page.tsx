@@ -34,14 +34,7 @@ export default async function TemplatesPage({
 
   return (
     <div className="pt-4 sm:pt-6 space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Templates & Assignments
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Design your templates and assign them to results, certificates, and badges.
-        </p>
-      </div>
+
       <TemplatesPageClient
         festivalId={festival.id}
         festivalSlug={festival.slug}

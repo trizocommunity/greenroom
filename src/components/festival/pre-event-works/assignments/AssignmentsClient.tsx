@@ -814,7 +814,7 @@ export function AssignmentsClient({
               }
               className="flex min-h-0 flex-1 flex-col"
             >
-              <TabsList className="mx-4 w-fit shrink-0 gap-1">
+              <TabsList className=" w-fit shrink-0 gap-1">
                 <TabsTrigger value="OVERVIEW">Overview</TabsTrigger>
                 <TabsTrigger value="ASSIGNMENTS">
                   Assignments
@@ -826,7 +826,7 @@ export function AssignmentsClient({
 
               <TabsContent
                 value="OVERVIEW"
-                className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4"
+                className="min-h-0 flex-1 space-y-4 overflow-y-auto py-4"
               >
                 {/* Panel A — lifecycle summary (always visible) */}
                 {programmeDetailLoading ? (
@@ -894,9 +894,7 @@ export function AssignmentsClient({
                           </span>
                         )}
                       </div>
-                      <div>
-                        Published: {programmeDetail.counts.published}
-                      </div>
+                      <div>Published: {programmeDetail.counts.published}</div>
                     </div>
                   </div>
                 ) : null}
@@ -1078,7 +1076,7 @@ export function AssignmentsClient({
 
               <TabsContent
                 value="ASSIGNMENTS"
-                className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4"
+                className="min-h-0 flex-1 space-y-4 overflow-y-auto py-4"
               >
                 <Input
                   inputSize="s"

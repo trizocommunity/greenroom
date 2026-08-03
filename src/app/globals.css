@@ -322,6 +322,7 @@ h6 {
   .animate-pulse-dot {
     animation: gr-pulse-dot 2s ease-in-out infinite;
   }
+
 }
 
 @keyframes gr-marquee {
@@ -367,6 +368,7 @@ h6 {
     box-shadow: 0 0 0 6px transparent;
   }
 }
+
 
 /* Unlayered on purpose: rules outside a cascade layer beat the layered
    utilities above, so this disables the decorative motion without

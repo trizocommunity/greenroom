@@ -79,14 +79,20 @@ export default async function SchedulePage({
     {},
   );
 
-  const sortedDays = Object.keys(groupedByDay).sort();
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+  const todayEntries = groupedByDay[todayKey] || [];
 
-  const days = sortedDays.map((dateKey, index) => ({
-    dateKey,
-    tabLabel: `Day ${index + 1}`,
-    label: format(parseISO(dateKey), "EEEE, MMM d, yyyy"),
-    entries: groupedByDay[dateKey],
-  }));
+  const days =
+    todayEntries.length > 0
+      ? [
+          {
+            dateKey: todayKey,
+            tabLabel: "Today",
+            label: format(parseISO(todayKey), "EEEE, MMM d, yyyy"),
+            entries: todayEntries,
+          },
+        ]
+      : [];
 
   const accentColor =
     festival.branding &&

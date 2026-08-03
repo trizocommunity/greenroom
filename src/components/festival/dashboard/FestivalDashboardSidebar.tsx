@@ -1,6 +1,5 @@
 "use client";
 
-import { GalleryVerticalEnd } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
@@ -25,14 +24,21 @@ interface FestivalDashboardSidebarProps {
   festival: {
     id: string;
     name: string;
-    slug: string; // Used for links
+    slug: string;
     status: FestivalStatus | string;
     accentColor?: string;
     expiresAt?: Date | string | null;
   };
   role: string;
+  /** The user's actual/original role before any switch */
+  actualRole: string;
+  /** All roles this member is assigned to */
+  memberRoles: string[];
+  /** Whether the current view is a switched role */
+  isSwitchedRole: boolean;
 }
 
+import { RoleSwitcher } from "@/components/festival/dashboard/RoleSwitcher";
 import { useFestival } from "@/components/festival/FestivalContext";
 import {
   useFeatures,
@@ -42,6 +48,9 @@ import {
 export function FestivalDashboardSidebar({
   festival,
   role,
+  actualRole,
+  memberRoles,
+  isSwitchedRole,
 }: FestivalDashboardSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -149,31 +158,16 @@ export function FestivalDashboardSidebar({
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link
-                href={dashboardPath}
-                onClick={(e) => onNavClick(e, dashboardPath)}
-              >
-                <div
-                  className="flex aspect-square size-9 items-center justify-center rounded-lg text-sidebar-primary-foreground"
-                  style={{ backgroundColor: festival.accentColor }}
-                >
-                  <GalleryVerticalEnd className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold capitalize">
-                    {festival.name}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {role} View
-                  </span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <RoleSwitcher
+          festivalId={festival.id}
+          festivalSlug={festival.slug}
+          festivalName={festival.name}
+          accentColor={festival.accentColor}
+          actualRole={actualRole}
+          activeRole={role}
+          memberRoles={memberRoles}
+          isSwitched={isSwitchedRole}
+        />
       </SidebarHeader>
 
       <SidebarContent>

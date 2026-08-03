@@ -7,7 +7,7 @@ import { getFestivalContext } from "@/features/festivals/services/festival-conte
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import {
   getSchedulableProgrammesAction,
-  getScheduleEntries,
+  getScheduleEntriesEnriched,
 } from "@/features/schedule/actions/schedule.actions";
 import { getStages } from "@/features/stages/actions/stage.actions";
 import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
@@ -33,7 +33,7 @@ export default async function SchedulePage({ params }: PageProps) {
   }
 
   const [entries, stages, programmes] = await Promise.all([
-    getScheduleEntries(festival.id),
+    getScheduleEntriesEnriched(festival.id),
     getStages(festival.id),
     getSchedulableProgrammesAction(festival.id),
   ]);

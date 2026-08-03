@@ -29,6 +29,11 @@ import { getDerivedFestivalStatus } from "@/features/festivals/services/festival
 import { getInAppBannerState } from "@/features/notifications/services/in-app-banner.service";
 import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
+import {
+  ALL_FESTIVAL_ROLES,
+  PRIVILEGED_ROLES,
+} from "@/features/role-switch/constants";
+import { getActiveRoleCookie } from "@/features/role-switch/role-switch-cookie.server";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
@@ -52,7 +57,7 @@ export default async function FestivalDashboardLayout({
 
   if (!festivalContext) notFound();
 
-  const { festival, role, isExpired } = festivalContext;
+  const { festival, role, memberRoles, isExpired } = festivalContext;
 
   if (role === "NONE") {
     redirect("/");
@@ -62,6 +67,15 @@ export default async function FestivalDashboardLayout({
   if (isExpired) {
     redirect("/profile?error=expired");
   }
+
+  // 2b. Role Switch — determine effective role for sidebar view
+  const isPrivileged = PRIVILEGED_ROLES.includes(role as any);
+  const activeRoleCookie = await getActiveRoleCookie(
+    festival.id,
+    isPrivileged ? [...ALL_FESTIVAL_ROLES] : memberRoles,
+  );
+  const effectiveRole = activeRoleCookie ?? role;
+  const isSwitchedRole = activeRoleCookie !== null && activeRoleCookie !== role;
 
   // 4. Prepare Data
   const tierLimits = TIER_CONFIG[getResolvedTier(festival.tier)].limits;
@@ -114,7 +128,8 @@ export default async function FestivalDashboardLayout({
     effectiveFeatures,
   };
 
-  const userRole = role;
+  const userRole = effectiveRole;
+  const actualRole = role;
 
   // 4c. Stage manager's own stage filter (banner selector) — only relevant
   // when they're assigned more than one stage.
@@ -154,7 +169,13 @@ export default async function FestivalDashboardLayout({
       <SidebarProvider defaultOpen={false}>
         <FestivalProvider festival={festivalData}>
           <FestivalDashboardClientShell>
-            <FestivalDashboardSidebar festival={festivalData} role={userRole} />
+            <FestivalDashboardSidebar
+              festival={festivalData}
+              role={userRole}
+              actualRole={actualRole}
+              memberRoles={memberRoles}
+              isSwitchedRole={isSwitchedRole}
+            />
 
             <SidebarInset>
               <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-card/95 backdrop-blur px-2 md:px-8 shadow-sm">
@@ -187,7 +208,7 @@ export default async function FestivalDashboardLayout({
                     user={userData}
                     festivalSlug={slug}
                     showStatusAndUsage={
-                      userRole === "OWNER" || userRole === "SUPER_ADMIN"
+                      actualRole === "OWNER" || actualRole === "SUPER_ADMIN"
                     }
                     festivalName={festival.name}
                     festivalStatus={derivedStatus}

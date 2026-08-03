@@ -19,6 +19,11 @@ import {
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import {
+  ALL_FESTIVAL_ROLES,
+  PRIVILEGED_ROLES,
+} from "@/features/role-switch/constants";
+import { getActiveRoleCookie } from "@/features/role-switch/role-switch-cookie.server";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 import { StageManagerLiveMetrics } from "./_components/StageManagerLiveMetrics";
 
@@ -35,7 +40,16 @@ export default async function StageManagerOverviewPage({
     globalRole: session?.role ?? null,
   });
 
-  if (!context || context.role !== "STAGE_MANAGER") notFound();
+  if (!context) notFound();
+
+  const isPrivileged = PRIVILEGED_ROLES.includes(context.role as any);
+  const activeRoleCookie = await getActiveRoleCookie(
+    context.festival.id,
+    isPrivileged ? [...ALL_FESTIVAL_ROLES] : context.memberRoles,
+  );
+  const effectiveRole = activeRoleCookie ?? context.role;
+
+  if (effectiveRole !== "STAGE_MANAGER") notFound();
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.slug, slug),

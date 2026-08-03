@@ -1,6 +1,7 @@
 "use client";
 
 import { FileImage, Plus, Trash2, Upload } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -80,15 +81,74 @@ function TemplateCard({
   );
 }
 
+function DbTemplateCard({
+  item,
+  isActive,
+  onLoad,
+}: {
+  item: any;
+  isActive: boolean;
+  onLoad: () => void;
+}) {
+  const isPublished = item.status === "PUBLISHED";
+  return (
+    <div
+      className={cn(
+        "rounded-xl border bg-background p-3 transition-colors",
+        isActive
+          ? "border-primary ring-2 ring-primary/30"
+          : "border-border hover:border-primary/40",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-lg">
+            {TEMPLATE_TYPES.find((t) => t.type === item.type)?.emoji ?? "📄"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold text-sm">{item.code}</p>
+            <p className="text-xs text-muted-foreground">
+              Updated {formatDate(item.updatedAt)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {item.width}×{item.height} px
+            </p>
+          </div>
+        </div>
+        <div
+          className={cn(
+            "shrink-0 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm",
+            isPublished
+              ? "bg-green-500/15 text-green-700 dark:text-green-400"
+              : "bg-primary/15 text-primary",
+          )}
+        >
+          {isPublished ? "PUB" : "DRAFT"}
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button size="sm" className="flex-1 h-8" onClick={onLoad}>
+          Open
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function EditorTemplatesPanel({
   editor,
   variant = "docked",
   onCollapsePanel,
+  dbTemplates,
 }: {
   editor: PosterEditorState;
-  variant?: "docked" | "drawer";
+  variant?: "docked" | "drawer" | "floating";
   onCollapsePanel?: () => void;
+  dbTemplates?: any[];
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const {
     savedTemplates,
     doc,
@@ -124,9 +184,22 @@ export function EditorTemplatesPanel({
     return map;
   }, [savedTemplates]);
 
-  const displayableTypes = TEMPLATE_TYPES.filter(
-    (meta) => meta.type !== "TEAM_POINTS",
-  );
+  const groupedDb = useMemo(() => {
+    const map: Record<PosterTemplateType, any[]> = {
+      RESULT: [],
+      TEAM_POINTS: [],
+      CANDIDATE_CARD: [],
+      CERTIFICATE: [],
+    };
+    if (dbTemplates) {
+      for (const t of dbTemplates) {
+        if (map[t.type]) map[t.type].push(t);
+      }
+    }
+    return map;
+  }, [dbTemplates]);
+
+  const displayableTypes = TEMPLATE_TYPES;
 
   return (
     <aside
@@ -155,7 +228,7 @@ export function EditorTemplatesPanel({
                 {meta.emoji} {meta.title}
               </span>
               <span className="text-[10px] font-normal text-muted-foreground">
-                {grouped[meta.type].length} saved
+                {groupedDb[meta.type].length} server, {grouped[meta.type].length} local
               </span>
             </TabsTrigger>
           ))}
@@ -202,7 +275,38 @@ export function EditorTemplatesPanel({
                   </Button>
                 </div>
 
-                {grouped[meta.type].length === 0 ? (
+                {groupedDb[meta.type].map((item) => (
+                  <DbTemplateCard
+                    key={item.id}
+                    item={item}
+                    isActive={searchParams.get("code") === item.code}
+                    onLoad={() => {
+                      const newParams = new URLSearchParams(searchParams.toString());
+                      newParams.set("code", item.code);
+                      router.push(`${pathname}?${newParams.toString()}`);
+                      if (window.innerWidth < 1024) {
+                        onCollapsePanel?.();
+                      }
+                    }}
+                  />
+                ))}
+
+                {grouped[meta.type].map((item) => (
+                  <TemplateCard
+                    key={item.id}
+                    item={item}
+                    isActive={doc?.savedTemplateId === item.id}
+                    onLoad={() => {
+                      loadSavedTemplate(item.id);
+                      if (window.innerWidth < 1024) {
+                        onCollapsePanel?.();
+                      }
+                    }}
+                    onDelete={() => deleteSavedTemplate(item.id)}
+                  />
+                ))}
+
+                {groupedDb[meta.type].length === 0 && grouped[meta.type].length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
                     <FileImage className="mx-auto h-8 w-8 text-muted-foreground/50" />
                     <p className="mt-2 text-sm font-medium">
@@ -212,17 +316,7 @@ export function EditorTemplatesPanel({
                       Design a poster, then click Save in the toolbar.
                     </p>
                   </div>
-                ) : (
-                  grouped[meta.type].map((item) => (
-                    <TemplateCard
-                      key={item.id}
-                      item={item}
-                      isActive={doc?.savedTemplateId === item.id}
-                      onLoad={() => loadSavedTemplate(item.id)}
-                      onDelete={() => deleteSavedTemplate(item.id)}
-                    />
-                  ))
-                )}
+                ) : null}
 
                 {doc?.templateType === meta.type && (
                   <Button

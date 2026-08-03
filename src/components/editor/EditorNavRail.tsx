@@ -46,7 +46,12 @@ export function EditorNavRail({
   brandHref?: string;
   brandLabel?: string;
 }) {
-  const brandContent = brandLabel?.trim() || "GR";
+  const brandContent = brandLabel
+    ? (brandLabel.trim().split(/\s+/).length > 1
+        ? brandLabel.trim().split(/\s+/).map((w) => w[0]).join("")
+        : brandLabel.trim()
+      ).substring(0, 2).toUpperCase()
+    : "GR";
 
   return (
     <nav className={editorNavAside}>

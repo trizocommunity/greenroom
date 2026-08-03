@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ComponentPropsWithoutRef } from "react";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { cn } from "@/core/utils/cn";
 import { AuthShowcase } from "./AuthShowcase";
 
@@ -36,6 +37,8 @@ export function AuthLayout({
   ...props
 }: AuthLayoutProps) {
   const [align, setAlign] = useState<"left" | "center">(initialAlign);
+  const pathname = usePathname();
+  const isRootLogin = pathname === "/login";
 
   useEffect(() => {
     setAlign(initialAlign);
@@ -107,10 +110,12 @@ export function AuthLayout({
             <div className="w-full">{children}</div>
           </div>
 
-          <div className="mt-8 text-center text-xs text-muted-foreground relative z-10">
-            <p>Need help? contact your administrator</p>
-            <p className="mt-1">Powered by GREENROOM</p>
-          </div>
+          {!isRootLogin && (
+            <div className="mt-8 text-center text-xs text-muted-foreground relative z-10">
+              <p>Need help? contact your administrator</p>
+              <p className="mt-1">Powered by GREENROOM</p>
+            </div>
+          )}
         </div>
       </AuthLayoutContext.Provider>
     );
@@ -155,10 +160,12 @@ export function AuthLayout({
               <div className="mt-8">{children}</div>
             </div>
 
-            <div className="mt-12 text-center lg:text-left text-xs text-muted-foreground">
-              <p>Need help? contact your administrator</p>
-              <p className="mt-1">Powered by GREENROOM</p>
-            </div>
+            {!isRootLogin && (
+              <div className="mt-12 text-center lg:text-left text-xs text-muted-foreground">
+                <p>Need help? contact your administrator</p>
+                <p className="mt-1">Powered by GREENROOM</p>
+              </div>
+            )}
           </div>
         </div>
 

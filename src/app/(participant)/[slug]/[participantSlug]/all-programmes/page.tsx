@@ -174,13 +174,16 @@ export default async function AllProgrammesPage({
             eq(assignmentTable.festivalId, festival.id),
             inArray(assignmentTable.programmeId, groupProgrammeIds),
             eq(assignmentTable.groupId, participant.groupId!),
-            isNotNull(assignmentTable.participantId),
           ),
           with: {
-            participant: {
-              columns: { id: true, name: true, chestNumber: true },
-            },
             group: true,
+            members: {
+              with: {
+                participant: {
+                  columns: { id: true, name: true, chestNumber: true },
+                },
+              },
+            },
           },
         })
       : [];
@@ -349,7 +352,7 @@ export default async function AllProgrammesPage({
             >();
 
             for (const a of groupProgrammeAssignments as any[]) {
-              if (a.programmeId !== p.id || !a.participant) continue;
+              if (a.programmeId !== p.id) continue;
               const gid = a.group?.id ?? "__unknown__";
               const teamNum = a.teamNumber ?? 1;
               const key = `${gid}:${teamNum}`;
@@ -361,18 +364,27 @@ export default async function AllProgrammesPage({
                   members: [],
                 });
               }
-              teamMap.get(key)!.members.push({
-                id: a.participant.id,
-                name: a.participant.name,
-                chestNumber: a.participant.chestNumber ?? null,
-                assignmentId: a.id,
-                reportingNote: reportingNoteForMember(
-                  p.type,
-                  latestSession,
-                  a.id,
-                  a.participant.id,
-                ),
-              });
+              const teamBucket = teamMap.get(key)!;
+              const teamAssignmentId = a.id;
+              for (const m of a.members ?? []) {
+                if (!m?.participant) continue;
+                if (
+                  teamBucket.members.some((mm: any) => mm.id === m.participant.id)
+                )
+                  continue;
+                teamBucket.members.push({
+                  id: m.participant.id,
+                  name: m.participant.name,
+                  chestNumber: m.participant.chestNumber ?? null,
+                  assignmentId: teamAssignmentId,
+                  reportingNote: reportingNoteForMember(
+                    p.type,
+                    latestSession,
+                    teamAssignmentId,
+                    m.participant.id,
+                  ),
+                });
+              }
             }
 
             return Array.from(teamMap.values()).sort((x, y) => {

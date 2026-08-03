@@ -4,18 +4,17 @@ import { CheckCircle2, Hash, Loader2, Megaphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ResultPosterActions } from "@/components/festival/posters/ResultPosterActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -25,12 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  announceResult,
-  setProgrammeResultNumber,
-} from "@/features/announcement/actions/announcer.actions";
+import { announceResult } from "@/features/announcement/actions/announcer.actions";
 import type { AnnouncerQueueProgramme } from "@/features/announcement/services/announcer.service";
-import { getResultPosterExportPayloadAction } from "@/features/posters/actions/poster-export.actions";
 
 interface AnnouncerClientProps {
   festivalId: string;
@@ -49,10 +44,6 @@ export function AnnouncerClient({
   const [isPending, startTransition] = useTransition();
   const [activeProgramme, setActiveProgramme] =
     useState<AnnouncerQueueProgramme | null>(null);
-  const [editingNumber, setEditingNumber] = useState<{
-    programmeId: string;
-    value: string;
-  } | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => router.refresh(), 15_000);
@@ -68,37 +59,10 @@ export function AnnouncerClient({
     });
   }, [queue]);
 
-  function handleSetNumber(programmeId: string, value: string) {
-    const num = parseInt(value, 10);
-    if (isNaN(num) || num < 1) {
-      toast.error("Enter a valid positive number.");
-      return;
-    }
-    startTransition(async () => {
-      const res = await setProgrammeResultNumber(festivalId, programmeId, num);
-      if (!res.success) {
-        toast.error(res.error);
-        return;
-      }
-      if (res.data.swappedWith) {
-        toast.success(
-          `Swapped with "${res.data.swappedWith.name}" — they now have #${res.data.swappedWith.previousNumber ?? "none"}.`,
-        );
-      } else {
-        toast.success(`Result number set to #${num}.`);
-      }
-      setEditingNumber(null);
-      router.refresh();
-    });
-  }
-
   function handleAnnounce() {
     if (!activeProgramme) return;
     startTransition(async () => {
-      const res = await announceResult(
-        festivalId,
-        activeProgramme.id,
-      );
+      const res = await announceResult(festivalId, activeProgramme.id);
       if (!res.success) {
         toast.error(res.error);
         return;
@@ -142,58 +106,25 @@ export function AnnouncerClient({
             {sorted.map((p) => (
               <TableRow key={p.id}>
                 <TableCell>
-                  {editingNumber?.programmeId === p.id ? (
-                    <Input
-                      type="number"
-                      className="w-16 h-8"
-                      autoFocus
-                      defaultValue={editingNumber.value}
-                      onBlur={(e) => {
-                        if (e.target.value && e.target.value !== String(p.resultNumber)) {
-                          handleSetNumber(p.id, e.target.value);
-                        } else {
-                          setEditingNumber(null);
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleSetNumber(p.id, e.currentTarget.value);
-                        } else if (e.key === "Escape") {
-                          setEditingNumber(null);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      className="font-mono text-sm hover:bg-muted rounded px-2 py-1 -mx-2 cursor-pointer"
-                      onClick={() =>
-                        setEditingNumber({
-                          programmeId: p.id,
-                          value: String(p.resultNumber ?? nextResultNumber),
-                        })
-                      }
-                    >
-                      {p.resultNumber != null ? (
-                        `#${p.resultNumber}`
-                      ) : (
-                        <span className="text-muted-foreground italic">
-                          assign
-                        </span>
-                      )}
-                    </button>
-                  )}
+                  <span className="font-mono text-sm font-bold">
+                    {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <div>
                     <span className="font-medium">{p.name}</span>
-                    <span className="text-muted-foreground text-xs ml-2">
-                      {p.categoryName}
-                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-muted-foreground text-xs">
+                        {p.categoryName}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
+                        {p.type === "GROUP" ? "Group" : "Individual"}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
+                        {p.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
+                      </Badge>
+                    </div>
                   </div>
-                  <Badge variant="outline" className="text-[10px] mt-0.5">
-                    {p.type}
-                  </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -233,9 +164,17 @@ export function AnnouncerClient({
                 </span>
                 <div>
                   <p className="font-medium text-sm">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.categoryName}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-xs text-muted-foreground">
+                      {p.categoryName}
+                    </p>
+                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 font-normal">
+                      {p.type === "GROUP" ? "Group" : "Individual"}
+                    </Badge>
+                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 font-normal">
+                      {p.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
+                    </Badge>
+                  </div>
                 </div>
               </div>
               <Badge
@@ -249,120 +188,126 @@ export function AnnouncerClient({
         ))}
       </div>
 
-      {/* Announcer drawer (dialog) */}
-      <Dialog
+      {/* Announcer drawer */}
+      <Drawer
         open={!!activeProgramme}
         onOpenChange={(open) => !open && setActiveProgramme(null)}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          {activeProgramme && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  {activeProgramme.resultNumber != null && (
-                    <span className="font-mono text-primary">
-                      #{activeProgramme.resultNumber}
-                    </span>
-                  )}
-                  <span>{activeProgramme.name}</span>
-                </DialogTitle>
-                <DialogDescription className="flex items-center gap-2">
-                  {activeProgramme.categoryName}
-                  <Badge variant="outline" className="text-[10px]">
-                    {activeProgramme.type}
-                  </Badge>
-                </DialogDescription>
-              </DialogHeader>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-4xl overflow-y-auto">
+            {activeProgramme && (
+              <>
+                <DrawerHeader>
+                  <DrawerTitle className="flex items-center gap-2">
+                    {activeProgramme.resultNumber != null && (
+                      <span className="font-mono text-primary text-xl">
+                        #{activeProgramme.resultNumber}
+                      </span>
+                    )}
+                    <span className="text-xl">{activeProgramme.name}</span>
+                  </DrawerTitle>
+                  <DrawerDescription className="flex items-center gap-2">
+                    {activeProgramme.categoryName}
+                    <Badge variant="outline" className="text-[10px]">
+                      {activeProgramme.type === "GROUP" ? "Group" : "Individual"}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {activeProgramme.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
+                    </Badge>
+                  </DrawerDescription>
+                </DrawerHeader>
 
-              {/* Result roster */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Result Roster</p>
-                <div className="border rounded-md overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">SI</TableHead>
-                        <TableHead>Participant</TableHead>
-                        <TableHead>Group</TableHead>
-                        <TableHead className="w-16">Grade</TableHead>
-                        <TableHead className="w-16">Prize</TableHead>
-                        <TableHead className="w-16 text-right">
-                          Points
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {activeProgramme.results
-                        .sort(
-                          (a, b) =>
-                            (a.position ?? 999) - (b.position ?? 999),
-                        )
-                        .map((r, idx) => (
-                          <TableRow key={r.id}>
-                            <TableCell className="text-muted-foreground">
-                              {idx + 1}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {r.participantName ?? "—"}
-                              {r.chestNumber && (
-                                <span className="text-xs text-muted-foreground ml-1">
-                                  ({r.chestNumber})
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {r.groupName ?? "—"}
-                            </TableCell>
-                            <TableCell>{r.grade ?? "—"}</TableCell>
-                            <TableCell>
-                              {r.position === 1
-                                ? "1st"
-                                : r.position === 2
-                                  ? "2nd"
-                                  : r.position === 3
-                                    ? "3rd"
-                                    : "—"}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {r.points}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
+                {/* Result roster */}
+                <div className="space-y-2 py-2">
+                  <p className="text-sm font-medium">Result Roster</p>
+                  <div className="border rounded-md overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">SI</TableHead>
+                          <TableHead>Participant</TableHead>
+                          <TableHead>Group</TableHead>
+                          <TableHead className="w-16">Grade</TableHead>
+                          <TableHead className="w-16">Prize</TableHead>
+                          <TableHead className="w-16 text-right">
+                            Points
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activeProgramme.results
+                          .sort(
+                            (a, b) => (a.position ?? 999) - (b.position ?? 999),
+                          )
+                          .map((r, idx) => (
+                            <TableRow key={r.id}>
+                              <TableCell className="text-muted-foreground">
+                                {idx + 1}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {r.participantName ?? "—"}
+                                {r.chestNumber && (
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    ({r.chestNumber})
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {r.groupName ?? "—"}
+                              </TableCell>
+                              <TableCell>{r.grade ?? "—"}</TableCell>
+                              <TableCell>
+                                {r.position === 1
+                                  ? "1st"
+                                  : r.position === 2
+                                    ? "2nd"
+                                    : r.position === 3
+                                      ? "3rd"
+                                      : "—"}
+                              </TableCell>
+                              <TableCell className="text-right font-mono">
+                                {r.points}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
-              </div>
 
-              <DialogFooter className="flex-col sm:flex-row gap-2">
-                <p className="text-xs text-muted-foreground flex-1">
-                  {activeProgramme.resultNumber != null
-                    ? `This publishes result #${activeProgramme.resultNumber} to the public site and generates the poster.`
-                    : "Assign a result number first."}
-                </p>
-                <Button
-                  onClick={handleAnnounce}
-                  disabled={
-                    isPending ||
-                    activeProgramme.resultNumber == null
-                  }
-                >
-                  {isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Megaphone className="h-4 w-4 mr-2" />
-                  )}
-                  Announce result
-                </Button>
-              </DialogFooter>
-              {activeProgramme.resultNumber == null && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Assign a result number first.
-                </p>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+                <DrawerFooter className="flex-col sm:flex-row gap-2 px-4 pb-8 pt-4">
+                  <p className="text-xs text-muted-foreground flex-1">
+                    {activeProgramme.resultNumber != null
+                      ? `This publishes result #${activeProgramme.resultNumber} to the public site and generates the poster.`
+                      : "Assign a result number first."}
+                  </p>
+                  <Button
+                    onClick={handleAnnounce}
+                    size="lg"
+                    disabled={isPending || activeProgramme.resultNumber == null}
+                    className="relative overflow-hidden font-bold"
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    ) : (
+                      <Megaphone className="h-5 w-5 mr-2" />
+                    )}
+                    Announce{" "}
+                    {activeProgramme.resultNumber != null
+                      ? `#${activeProgramme.resultNumber}`
+                      : ""}
+                  </Button>
+                </DrawerFooter>
+                {activeProgramme.resultNumber == null && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 px-4 pb-6">
+                    No result number assigned.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }

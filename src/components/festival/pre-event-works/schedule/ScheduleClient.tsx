@@ -2,37 +2,30 @@
 
 import { format, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { motion } from "framer-motion";
 import {
+  AlertTriangle,
   Calendar,
-  ChevronDown,
-  ChevronUp,
   Loader2,
-  MoreVertical,
-  Pencil,
   Plus,
   Search,
+  Settings2,
+  TableProperties,
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   useCreateScheduleItem,
   useDeleteScheduleItem,
   useUpdateScheduleItem,
 } from "@/api/client/schedule";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { ScheduleCalendarView, type CalendarGroupBy } from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
+import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
+import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Drawer,
@@ -43,14 +36,20 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -58,27 +57,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimePicker } from "@/components/ui/time-picker";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type ConflictParts,
+  type EnrichedScheduleEntry,
+  type SchedulableProgramme,
   checkScheduleConflict,
-  getScheduleEntries,
-  reorderScheduleEntries,
-  type ScheduleEntryWithRelations,
+  clearScheduleEntries,
+  getScheduleEntriesEnriched,
 } from "@/features/schedule/actions/schedule.actions";
 import {
   localWallClockToDate,
   parseStoredScheduleInstant,
 } from "@/features/schedule/utils/schedule-datetime";
+import {
+  calculateProgrammeDuration,
+  getEndTimeFromDuration,
+} from "@/features/schedule/utils/programme-duration";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -87,37 +86,24 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   CONCERT: "Concert",
 };
 
-type ProgrammeOption = {
-  id: string;
-  name: string;
-  categoryId?: string | null;
-  categoryName?: string | null;
-};
 type StageOption = { id: string; name: string; description?: string | null };
 
 interface ScheduleClientProps {
   festivalId: string;
-  initialEntries: ScheduleEntryWithRelations[];
-  programmes: ProgrammeOption[];
+  initialEntries: EnrichedScheduleEntry[];
+  programmes: SchedulableProgramme[];
   stages: StageOption[];
-  /** ISO date strings; used to restrict date picker to festival range */
   festivalStartDate: string | null;
   festivalEndDate: string | null;
-  /** Pre-selects the stage filter (e.g. from the stage manager's banner selector). */
   initialStageId?: string | null;
-  /** Hides the in-page stage filter — used when the banner selector already covers it. */
   hideStageFilter?: boolean;
 }
 
-function getEntryLabel(entry: ScheduleEntryWithRelations): string {
+function getEntryLabel(entry: EnrichedScheduleEntry): string {
   if (entry.type === "PROGRAMME" && entry.programme)
     return entry.programme.name;
   if (entry.type === "SESSION") return entry.title || "—";
   return "—";
-}
-
-function isProgrammeEntry(entry: ScheduleEntryWithRelations): boolean {
-  return entry.type === "PROGRAMME";
 }
 
 function getDateKey(d: Date): string {
@@ -125,12 +111,6 @@ function getDateKey(d: Date): string {
   return format(d, "yyyy-MM-dd");
 }
 
-/**
- * Format a `Date` produced from a stored instant, falling back to `"—"`
- * when the instant is missing/unparseable. Centralises the "Invalid
- * time value" guard so date-fns' `format(...)` never receives a
- * `Date` whose `getTime()` is `NaN`. See ISSUE-13 followup.
- */
 function safeFormat(d: Date, pattern: string, fallback: string = "—"): string {
   if (Number.isNaN(d.getTime())) return fallback;
   return format(d, pattern);
@@ -149,23 +129,30 @@ export function ScheduleClient({
   const { isReadOnly } = useFestivalReadOnly();
   const displayTz = useDisplayTimezone();
   const [entries, setEntries] =
-    useState<ScheduleEntryWithRelations[]>(initialEntries);
+    useState<EnrichedScheduleEntry[]>(initialEntries);
+  const [viewMode, setViewMode] = useState<"calendar" | "table">("calendar");
   const [addOpen, setAddOpen] = useState(false);
   const [addFormError, setAddFormError] = useState<string | null>(null);
   const [addFormConflictParts, setAddFormConflictParts] =
     useState<ConflictParts | null>(null);
-  const [editEntry, setEditEntry] = useState<ScheduleEntryWithRelations | null>(
+  const [editEntry, setEditEntry] = useState<EnrichedScheduleEntry | null>(
     null,
   );
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
-  /** Stage filter for the active day: "" = All stages (default), or stage id */
-  const [activeStageId, setActiveStageId] = useState<string>(
-    initialStageId ?? "",
-  );
   const [searchQuery, setSearchQuery] = useState("");
+  const [swapEntry, setSwapEntry] = useState<EnrichedScheduleEntry | null>(
+    null,
+  );
+  const [groupBy, setGroupBy] = useState<CalendarGroupBy>("date");
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearStageId, setClearStageId] = useState("");
+  const [clearDateKey, setClearDateKey] = useState("");
+  const [clearing, setClearing] = useState(false);
+  const [timelineStart, setTimelineStart] = useState<string>("07:00");
+  const [timelineEnd, setTimelineEnd] = useState<string>("23:00");
 
   const dayTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -179,12 +166,13 @@ export function ScheduleClient({
   const deleteScheduleItem = useDeleteScheduleItem();
 
   const refresh = useCallback(async () => {
-    const data = await getScheduleEntries(festivalId);
+    const data = await getScheduleEntriesEnriched(festivalId);
     setEntries(data);
   }, [festivalId]);
 
+  // Grouped by day
   const groupedByDay = entries.reduce<
-    Record<string, ScheduleEntryWithRelations[]>
+    Record<string, EnrichedScheduleEntry[]>
   >((acc, entry) => {
     const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
     if (!key) return acc;
@@ -210,24 +198,29 @@ export function ScheduleClient({
     });
   }, [effectiveActiveDay]);
 
-  const dayEntries = effectiveActiveDay
-    ? (groupedByDay[effectiveActiveDay] ?? [])
-    : [];
-  const filteredDayEntries =
-    activeStageId === ""
-      ? dayEntries
-      : dayEntries.filter((e) => e.stageId === activeStageId);
-
-  const finalFilteredEntries = filteredDayEntries.filter((e) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.trim().toLowerCase();
-    const label = getEntryLabel(e).toLowerCase();
-    return (
-      label.includes(q) ||
-      (e.description?.toLowerCase().includes(q) ?? false) ||
-      (e.stage?.name?.toLowerCase().includes(q) ?? false)
-    );
-  });
+  // Conflict count
+  const conflictCount = useMemo(() => {
+    let count = 0;
+    const checked = new Set<string>();
+    for (const entry of entries) {
+      if (!entry.stageId || !entry.endTime) continue;
+      const startA = new Date(entry.startTime).getTime();
+      const endA = new Date(entry.endTime).getTime();
+      for (const other of entries) {
+        if (other.id === entry.id || other.stageId !== entry.stageId) continue;
+        if (!other.endTime) continue;
+        const pairKey = [entry.id, other.id].sort().join(":");
+        if (checked.has(pairKey)) continue;
+        const startB = new Date(other.startTime).getTime();
+        const endB = new Date(other.endTime).getTime();
+        if (startA < endB && startB < endA) {
+          count++;
+          checked.add(pairKey);
+        }
+      }
+    }
+    return count;
+  }, [entries]);
 
   const handleCreate = async (data: {
     type: "PROGRAMME" | "SESSION";
@@ -329,446 +322,284 @@ export function ScheduleClient({
     }
   };
 
-  const moveEntry = async (
-    entry: ScheduleEntryWithRelations,
-    direction: "up" | "down",
-  ) => {
-    if (isReadOnly) return;
-    const dayKey = getDateKey(parseStoredScheduleInstant(entry.startTime));
-    const list =
-      activeStageId === ""
-        ? (groupedByDay[dayKey] ?? [])
-        : (groupedByDay[dayKey] ?? []).filter(
-            (e) => e.stageId === activeStageId,
-          );
-    const idx = list.findIndex((e) => e.id === entry.id);
-    if (idx < 0) return;
-    const newIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (newIdx < 0 || newIdx >= list.length) return;
-    const reordered = [...list];
-    [reordered[idx], reordered[newIdx]] = [reordered[newIdx], reordered[idx]];
-    const res = await reorderScheduleEntries(
-      festivalId,
-      reordered.map((e) => e.id),
-    );
-    if (res.success) {
-      refresh();
-    } else toast.error(res.error);
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
-        <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 md:pb-0">
-          <HowItWorksButton
-            title="How the Schedule works"
-            description="Build your festival programme by day, time, and stage."
-          >
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
             <p className="text-sm text-muted-foreground">
-              Add <strong>programme</strong> entries: pick a programme, date,
-              time, and stage. Create stages first in Stage Management and
-              programmes in Programmes.
+              Create and manage competition schedules
             </p>
-            <p className="text-sm text-muted-foreground">
-              Use the day tabs to switch dates. You can reorder entries, edit
-              times, or remove them. The same time can be used on different
-              stages (e.g. Stage A and Stage B both at 11:00); a conflict only
-              occurs when the same stage has two overlapping time ranges. Start
-              and end times must stay within your festival event dates and on
-              the same day.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Sessions (e.g. opening ceremony) are managed separately under Pre
-              Event Works → Sessions.
-            </p>
-          </HowItWorksButton>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search schedule..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
-            />
-            {searchQuery && (
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {conflictCount > 0 && (
+              <Badge variant="destructive" className="gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {conflictCount} Conflict{conflictCount !== 1 ? "s" : ""}
+              </Badge>
+            )}
+            {!isReadOnly && (
               <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                onClick={() => setSearchQuery("")}
+                size="sm"
+                onClick={() => {
+                  if (!hasStages) {
+                    toast.error("Create at least one stage first.");
+                    return;
+                  }
+                  if (!hasProgrammes) {
+                    toast.error("Create programmes first.");
+                    return;
+                  }
+                  if (!hasFestivalDates) {
+                    toast.error("Set festival dates first.");
+                    return;
+                  }
+                  setAddOpen(true);
+                }}
+                disabled={!canAdd}
+                className="gap-1.5"
               >
-                <X className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
+                Add Schedule
               </Button>
             )}
           </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              if (isReadOnly) {
-                toast.error("Festival is read-only.");
-                return;
-              }
-              if (!hasStages) {
-                toast.error(
-                  "Please create at least one stage before adding to the schedule.",
-                );
-                return;
-              }
-              if (!hasProgrammes) {
-                toast.error(
-                  "Please create programmes first before scheduling.",
-                );
-                return;
-              }
-              if (!hasFestivalDates) {
-                toast.error(
-                  "Set your festival start and end dates in Festival setup before scheduling.",
-                );
-                return;
-              }
-              setAddOpen(true);
-            }}
-            className="gap-2 h-9"
-            disabled={!canAdd}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden md:inline">Add to schedule</span>
-            <span className="md:hidden">Add</span>
-          </Button>
+        </div>
+
+        {/* Controls bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search competitions, categories, stages..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            <Tabs
+              value={viewMode}
+              onValueChange={(v) => setViewMode(v as "calendar" | "table")}
+            >
+              <TabsList className="h-9">
+                <TabsTrigger value="calendar" className="gap-1.5 text-xs">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Calendar
+                </TabsTrigger>
+                <TabsTrigger value="table" className="gap-1.5 text-xs">
+                  <TableProperties className="h-3.5 w-3.5" />
+                  Table
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {viewMode === "table" && (
+              <span className="text-xs text-muted-foreground hidden sm:inline-block">
+                All changes saved
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+
+            {viewMode === "calendar" && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                  >
+                    <Settings2 className="h-3.5 w-3.5" />
+                    Layout
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium">Timeline Layout</p>
+                      <p className="text-xs text-muted-foreground">
+                        Customize your schedule display.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">
+                        Group rows by
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setGroupBy("date")}
+                          className={cn(
+                            "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
+                            groupBy === "date"
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-muted-foreground hover:bg-muted",
+                          )}
+                        >
+                          Date
+                          <span className="block text-[10px] font-normal opacity-70 mt-0.5">
+                            Stages as rows
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGroupBy("stage")}
+                          className={cn(
+                            "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
+                            groupBy === "stage"
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-muted-foreground hover:bg-muted",
+                          )}
+                        >
+                          Stage
+                          <span className="block text-[10px] font-normal opacity-70 mt-0.5">
+                            Dates as rows
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Start Time</Label>
+                        <Input 
+                          type="time" 
+                          value={timelineStart} 
+                          onChange={(e) => setTimelineStart(e.target.value)} 
+                          className="h-8 text-xs" 
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">End Time</Label>
+                        <Input 
+                          type="time" 
+                          value={timelineEnd} 
+                          onChange={(e) => setTimelineEnd(e.target.value)} 
+                          className="h-8 text-xs" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+
+            {!isReadOnly && entries.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setClearOpen(true)}
+                disabled={isReadOnly}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {!isReadOnly && hasStages && hasProgrammes && !hasFestivalDates && (
-        <output className="block rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
-          <p className="font-medium">Set festival event dates</p>
-          <p className="text-muted-foreground mt-0.5">
-            Add a start and end date in{" "}
-            <span className="font-medium text-foreground">Festival setup</span>{" "}
-            so every schedule slot can be validated against your event days.
-          </p>
-        </output>
-      )}
-
-      {sortedDays.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Calendar className="h-12 w-12 text-muted-foreground mb-3" />
-            <p className="font-medium">
-              {isReadOnly
-                ? "Festival is read-only in past/expired mode."
-                : !hasStages
-                  ? "No stages yet"
-                  : !hasProgrammes
-                    ? "No programmes yet"
-                    : !hasFestivalDates
-                      ? "Set festival event dates"
-                      : "No schedule entries yet"}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {isReadOnly &&
-                "Create, edit, delete, and reorder are disabled in read-only mode."}
-              {!isReadOnly &&
-                !hasStages &&
-                "Please create a stage first in Pre Event Works → Stage Management."}
-              {!isReadOnly &&
-                hasStages &&
-                !hasProgrammes &&
-                "Please create programmes first in Pre Event Works → Programmes."}
-              {!isReadOnly &&
-                hasStages &&
-                hasProgrammes &&
-                !hasFestivalDates &&
-                "Add start and end dates for your festival in Festival setup, then return here to build the schedule."}
-              {!isReadOnly &&
-                hasStages &&
-                hasProgrammes &&
-                hasFestivalDates &&
-                "Add programmes to build your schedule."}
-            </p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => {
-                if (isReadOnly) {
-                  toast.error("Festival is read-only.");
-                  return;
-                }
-                if (!hasStages) {
-                  toast.error(
-                    "Please create at least one stage before adding to the schedule.",
-                  );
-                  return;
-                }
-                if (!hasProgrammes) {
-                  toast.error(
-                    "Please create programmes first before scheduling.",
-                  );
-                  return;
-                }
-                if (!hasFestivalDates) {
-                  toast.error(
-                    "Set your festival start and end dates in Festival setup before scheduling.",
-                  );
-                  return;
-                }
-                setAddOpen(true);
-              }}
-              disabled={!canAdd}
-            >
-              Add to schedule
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {/* Day tabs */}
-          <div
-            className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto gap-2 border-b border-border pb-3"
-            role="tablist"
-          >
-            {sortedDays.map((dayKey, index) => {
-              const dayEntries = groupedByDay[dayKey];
-              const isActive = effectiveActiveDay === dayKey;
-              return (
-                <button
-                  key={dayKey}
-                  ref={(node) => {
-                    dayTabRefs.current[dayKey] = node;
-                  }}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setActiveDayKey(dayKey)}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 snap-center",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  Day {index + 1}
-                  <span className="ml-2 opacity-80">({dayEntries.length})</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Active day content */}
-          {effectiveActiveDay && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h3 className="text-lg font-semibold tracking-tight">
-                  {format(parseISO(effectiveActiveDay), "EEEE, MMM d, yyyy")}
-                </h3>
-                <div className="flex items-center gap-4 flex-wrap">
-                  {hasStages && !hideStageFilter && (
-                    <Select
-                      value={activeStageId === "" ? "__all__" : activeStageId}
-                      onValueChange={(v) =>
-                        setActiveStageId(v === "__all__" ? "" : v)
-                      }
-                    >
-                      <SelectTrigger className="w-[180px] h-8 text-sm">
-                        <SelectValue placeholder="Stage" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem className="font-normal" value="__all__">
-                          All stages
-                        </SelectItem>
-                        {stages.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <Badge
-                    variant="outline"
-                    className="text-sm text-muted-foreground"
-                  >
-                    {finalFilteredEntries.length} item
-                    {finalFilteredEntries.length !== 1 ? "s" : ""}
-                    {(activeStageId !== "" || searchQuery.trim() !== "") &&
-                      dayEntries.length !== finalFilteredEntries.length && (
-                        <span className="text-muted-foreground">
-                          {" "}
-                          matching filters
-                        </span>
-                      )}
-                  </Badge>
-                </div>
-              </div>
-              <div className="pt-0">
-                <motion.ul
-                  className="space-y-2"
-                  layout
-                  transition={{ layout: { duration: 0.25 } }}
-                >
-                  {finalFilteredEntries.map((entry) => (
-                    <motion.li
-                      key={entry.id}
-                      layout
-                      initial={false}
-                      transition={{
-                        layout: { type: "spring", stiffness: 350, damping: 30 },
-                      }}
-                      className="flex items-center gap-3 rounded-lg border bg-card p-3"
-                    >
-                      <div className="flex flex-col gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => moveEntry(entry, "up")}
-                          disabled={
-                            isReadOnly ||
-                            finalFilteredEntries.indexOf(entry) === 0
-                          }
-                          aria-label="Move up"
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => moveEntry(entry, "down")}
-                          disabled={
-                            isReadOnly ||
-                            finalFilteredEntries.indexOf(entry) ===
-                              finalFilteredEntries.length - 1
-                          }
-                          aria-label="Move down"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium truncate">
-                            {getEntryLabel(entry)}
-                          </p>
-                          {entry.programme?.category?.name && (
-                            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                              {entry.programme.category.name}
-                            </span>
-                          )}
-                          {entry.type === "SESSION" && (
-                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                              Session
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {safeFormat(
-                            parseStoredScheduleInstant(entry.startTime),
-                            "h:mm a",
-                          )}
-                          {entry.endTime &&
-                            ` – ${safeFormat(
-                              parseStoredScheduleInstant(entry.endTime),
-                              "h:mm a",
-                            )}`}
-                          {entry.stage?.name && ` · ${entry.stage.name}`}
-                        </p>
-                        {(entry.createdBy || entry.updatedBy) && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {entry.updatedBy
-                                    ? `Updated by ${entry.updaterUser?.displayName || entry.updaterUser?.fullName || entry.updatedBy}`
-                                    : entry.createdBy
-                                      ? `Created by ${entry.creatorUser?.displayName || entry.creatorUser?.fullName || entry.createdBy}`
-                                      : ""}
-                                  {entry.updatedAt && (
-                                    <>
-                                      {" "}
-                                      ·{" "}
-                                      {entry.updatedAt
-                                        ? formatInTimeZone(
-                                            parseInstant(entry.updatedAt) ??
-                                              new Date(NaN),
-                                            displayTz,
-                                            "MMM d, h:mm a",
-                                          )
-                                        : ""}
-                                    </>
-                                  )}
-                                </p>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {entry.createdBy && (
-                                  <p>
-                                    Created by{" "}
-                                    {entry.creatorUser?.displayName ||
-                                      entry.creatorUser?.fullName ||
-                                      entry.createdBy}
-                                  </p>
-                                )}
-                                {entry.updatedBy && (
-                                  <p>
-                                    Updated by{" "}
-                                    {entry.updaterUser?.displayName ||
-                                      entry.updaterUser?.fullName ||
-                                      entry.updatedBy}{" "}
-                                    on{" "}
-                                    {entry.updatedAt &&
-                                      formatInTimeZone(
-                                        parseInstant(entry.updatedAt) ??
-                                          new Date(NaN),
-                                        displayTz,
-                                        "MMM d, yyyy 'at' h:mm a",
-                                      )}
-                                  </p>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {!isReadOnly && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => setEditEntry(entry)}
-                              >
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteEntryId(entry.id)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </motion.li>
-                  ))}
-                </motion.ul>
-              </div>
-            </div>
-          )}
+      {/* Day tabs for calendar view (date grouping only) */}
+      {viewMode === "calendar" && groupBy === "date" && sortedDays.length > 0 && (
+        <div
+          className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto gap-2 border-b border-border pb-3"
+          role="tablist"
+        >
+          {sortedDays.map((dayKey, index) => {
+            const dayCount = groupedByDay[dayKey].length;
+            const isActive = effectiveActiveDay === dayKey;
+            return (
+              <button
+                key={dayKey}
+                ref={(node) => {
+                  dayTabRefs.current[dayKey] = node;
+                }}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveDayKey(dayKey)}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 snap-center",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                Day {index + 1}
+                <span className="ml-2 opacity-80">({dayCount})</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
+      {/* Empty state */}
+      {entries.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center border rounded-lg bg-card">
+          <Calendar className="h-12 w-12 text-muted-foreground mb-3" />
+          <p className="font-medium">
+            {isReadOnly
+              ? "No schedule entries."
+              : !hasStages
+                ? "No stages yet"
+                : !hasProgrammes
+                  ? "No programmes yet"
+                  : !hasFestivalDates
+                    ? "Set festival event dates"
+                    : "No schedule entries yet"}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            {!isReadOnly &&
+              hasStages &&
+              hasProgrammes &&
+              hasFestivalDates &&
+              "Click 'Add Schedule' to start building your competition schedule."}
+          </p>
+        </div>
+      ) : viewMode === "calendar" ? (
+        <ScheduleCalendarView
+          entries={entries}
+          stages={stages}
+          activeDayKey={effectiveActiveDay}
+          onEntryClick={(entry) => {
+            if (isReadOnly) return;
+            setEditEntry(entry);
+          }}
+          searchQuery={searchQuery}
+          groupBy={groupBy}
+          sortedDays={sortedDays}
+          timelineStart={timelineStart}
+          timelineEnd={timelineEnd}
+        />
+      ) : (
+        <ScheduleTableView
+          entries={entries}
+          onEdit={(entry) => {
+            if (isReadOnly) return;
+            setEditEntry(entry);
+          }}
+          onSwap={(entry) => setSwapEntry(entry)}
+          isReadOnly={isReadOnly}
+          searchQuery={searchQuery}
+        />
+      )}
+
+      {/* Add Entry Drawer */}
       <AddEntryDialog
         festivalId={festivalId}
         open={addOpen}
@@ -788,6 +619,7 @@ export function ScheduleClient({
         festivalEndDate={festivalEndDate}
       />
 
+      {/* Delete Dialog */}
       {!isReadOnly && (
         <DeleteDialog
           title="Remove from schedule"
@@ -804,6 +636,7 @@ export function ScheduleClient({
         />
       )}
 
+      {/* Edit Entry Drawer */}
       {!isReadOnly && editEntry && (
         <EditEntryDialog
           festivalId={festivalId}
@@ -811,14 +644,132 @@ export function ScheduleClient({
           open={!!editEntry}
           onOpenChange={(open) => !open && setEditEntry(null)}
           onSubmit={(data) => handleUpdate(editEntry.id, data)}
+          onDelete={() => {
+            setEditEntry(null);
+            setDeleteEntryId(editEntry.id);
+          }}
           saving={saving}
           stages={stages}
           festivalEndDate={festivalEndDate}
         />
       )}
+
+      {/* Swap Drawer */}
+      <ScheduleSwapDrawer
+        festivalId={festivalId}
+        entry={swapEntry}
+        allEntries={entries}
+        open={!!swapEntry}
+        onOpenChange={(open) => !open && setSwapEntry(null)}
+        onSwapped={refresh}
+      />
+
+      {/* Clear Schedule Dialog */}
+      <Dialog
+        open={clearOpen}
+        onOpenChange={(open) => {
+          setClearOpen(open);
+          if (!open) {
+            setClearStageId("");
+            setClearDateKey("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clear Schedule</DialogTitle>
+            <DialogDescription>
+              Optionally filter which slots to remove. Leave both blank to clear
+              all slots for this event.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-sm">Stage (optional)</Label>
+              <Select value={clearStageId} onValueChange={setClearStageId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All stages" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All stages</SelectItem>
+                  {stages.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">Date (optional)</Label>
+              <Input
+                type="date"
+                value={clearDateKey}
+                onChange={(e) => setClearDateKey(e.target.value)}
+                placeholder="dd-mm-yyyy"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setClearOpen(false);
+                setClearStageId("");
+                setClearDateKey("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={clearing}
+              onClick={async () => {
+                setClearing(true);
+                try {
+                  const filters: { stageId?: string; dateKey?: string } = {};
+                  if (clearStageId && clearStageId !== "__all__")
+                    filters.stageId = clearStageId;
+                  if (clearDateKey) filters.dateKey = clearDateKey;
+                  const result = await clearScheduleEntries(
+                    festivalId,
+                    Object.keys(filters).length > 0 ? filters : undefined,
+                  );
+                  if (result.success) {
+                    toast.success(
+                      `Cleared ${result.count} schedule ${result.count === 1 ? "entry" : "entries"}.`,
+                    );
+                    setClearOpen(false);
+                    setClearStageId("");
+                    setClearDateKey("");
+                    refresh();
+                  } else {
+                    toast.error(result.error || "Failed to clear schedule.");
+                  }
+                } catch (error: any) {
+                  toast.error(error?.message || "Failed to clear schedule.");
+                } finally {
+                  setClearing(false);
+                }
+              }}
+            >
+              {clearing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                  Clearing…
+                </>
+              ) : (
+                "Clear"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+// ─── Add Entry Dialog ────────────────────────────────────────────────────────
 
 function AddEntryDialog({
   festivalId,
@@ -850,12 +801,11 @@ function AddEntryDialog({
   saving: boolean;
   formError: string | null;
   formConflictParts?: ConflictParts | null;
-  programmes: ProgrammeOption[];
+  programmes: SchedulableProgramme[];
   stages: StageOption[];
   festivalEndDate: string | null;
 }) {
   const today = format(new Date(), "yyyy-MM-dd");
-  const defaultDate = today;
   const [entryType, setEntryType] = useState<"PROGRAMME" | "SESSION">(
     "PROGRAMME",
   );
@@ -866,29 +816,57 @@ function AddEntryDialog({
   const [categoryId, setCategoryId] = useState<string>("");
   const [programmeId, setProgrammeId] = useState("");
   const [stageId, setStageId] = useState("");
-  const [dateStr, setDateStr] = useState(defaultDate);
+  const [dateStr, setDateStr] = useState(today);
   const [startTimeStr, setStartTimeStr] = useState("09:00");
   const [endTimeStr, setEndTimeStr] = useState("");
+  const [autoEndTime, setAutoEndTime] = useState(true);
   const [conflictError, setConflictError] = useState<string | null>(null);
   const [conflictParts, setConflictParts] = useState<ConflictParts | null>(
     null,
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const effectiveDate = dateStr;
+  const selectedProgramme = programmes.find((p) => p.id === programmeId);
 
+  // Auto-calculate end time when programme or start time changes
+  useEffect(() => {
+    if (!autoEndTime || entryType !== "PROGRAMME" || !selectedProgramme) return;
+    const dur = calculateProgrammeDuration({
+      type: selectedProgramme.type,
+      durationMode: selectedProgramme.durationMode,
+      timePerUnitMinutes: selectedProgramme.timePerUnitMinutes,
+      parallelDurationMinutes: selectedProgramme.parallelDurationMinutes,
+      unitCount:
+        selectedProgramme.type === "GROUP"
+          ? selectedProgramme.teamCount
+          : selectedProgramme.assignmentCount,
+    });
+    const startDate = localWallClockToDate(dateStr, startTimeStr);
+    const endDate = getEndTimeFromDuration(startDate, dur.totalMinutes);
+    if (!Number.isNaN(endDate.getTime())) {
+      setEndTimeStr(format(endDate, "HH:mm"));
+    }
+  }, [
+    autoEndTime,
+    entryType,
+    selectedProgramme,
+    dateStr,
+    startTimeStr,
+  ]);
+
+  // Conflict check
   useEffect(() => {
     if (!open) return;
     debounceRef.current = setTimeout(async () => {
-      const startTime = localWallClockToDate(effectiveDate, startTimeStr);
+      const startTime = localWallClockToDate(dateStr, startTimeStr);
       const endTime = endTimeStr
-        ? localWallClockToDate(effectiveDate, endTimeStr)
+        ? localWallClockToDate(dateStr, endTimeStr)
         : null;
       const res = await checkScheduleConflict(festivalId, {
         startTime,
         endTime,
         stageId: stageId || null,
-        scheduleDayKey: effectiveDate,
+        scheduleDayKey: dateStr,
         entryType,
       });
       if (res.ok) {
@@ -902,15 +880,7 @@ function AddEntryDialog({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [
-    festivalId,
-    open,
-    effectiveDate,
-    startTimeStr,
-    endTimeStr,
-    stageId,
-    entryType,
-  ]);
+  }, [festivalId, open, dateStr, startTimeStr, endTimeStr, stageId, entryType]);
 
   const categoryOptions = Array.from(
     new Map(
@@ -950,10 +920,9 @@ function AddEntryDialog({
       toast.error("Select a stage.");
       return;
     }
-    const effectiveDate = dateStr;
-    const startTime = localWallClockToDate(effectiveDate, startTimeStr);
+    const startTime = localWallClockToDate(dateStr, startTimeStr);
     const endTime = endTimeStr
-      ? localWallClockToDate(effectiveDate, endTimeStr)
+      ? localWallClockToDate(dateStr, endTimeStr)
       : undefined;
 
     await onSubmit({
@@ -966,13 +935,13 @@ function AddEntryDialog({
       stageId: stageId || undefined,
       startTime,
       endTime,
-      scheduleDayKey: effectiveDate,
+      scheduleDayKey: dateStr,
     });
   };
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className=" flex flex-col">
+      <DrawerContent className="flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 sm:p-5">
           <DrawerHeader className="pb-3 px-0 pt-0">
             <DrawerTitle className="text-base">Add to schedule</DrawerTitle>
@@ -1058,13 +1027,43 @@ function AddEntryDialog({
                         ) : (
                           visibleProgrammes.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
-                              {p.name}
+                              <div>
+                                <span>{p.name}</span>
+                                {p.nameSecondary && (
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    ({p.nameSecondary})
+                                  </span>
+                                )}
+                              </div>
                             </SelectItem>
                           ))
                         )}
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Duration preview */}
+                  {selectedProgramme && (
+                    <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                      {(() => {
+                        const dur = calculateProgrammeDuration({
+                          type: selectedProgramme.type,
+                          durationMode: selectedProgramme.durationMode,
+                          timePerUnitMinutes: selectedProgramme.timePerUnitMinutes,
+                          parallelDurationMinutes: selectedProgramme.parallelDurationMinutes,
+                          unitCount:
+                            selectedProgramme.type === "GROUP"
+                              ? selectedProgramme.teamCount
+                              : selectedProgramme.assignmentCount,
+                        });
+                        return (
+                          <span>
+                            Duration: <strong>{dur.label}</strong>
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -1177,14 +1176,19 @@ function AddEntryDialog({
               <div className="space-y-1.5">
                 <Label htmlFor="add-end" className="text-xs">
                   End{" "}
-                  <span className="text-muted-foreground font-normal">
-                    (opt)
-                  </span>
+                  {entryType === "PROGRAMME" && autoEndTime && (
+                    <span className="text-muted-foreground font-normal">
+                      (auto)
+                    </span>
+                  )}
                 </Label>
                 <TimePicker
                   id="add-end"
                   value={endTimeStr}
-                  onChange={setEndTimeStr}
+                  onChange={(v) => {
+                    setAutoEndTime(false);
+                    setEndTimeStr(v);
+                  }}
                   className="h-9 text-sm w-full"
                 />
               </div>
@@ -1253,18 +1257,21 @@ function AddEntryDialog({
   );
 }
 
+// ─── Edit Entry Dialog ───────────────────────────────────────────────────────
+
 function EditEntryDialog({
   festivalId,
   entry,
   open,
   onOpenChange,
   onSubmit,
+  onDelete,
   saving,
   stages,
   festivalEndDate,
 }: {
   festivalId: string;
-  entry: ScheduleEntryWithRelations;
+  entry: EnrichedScheduleEntry;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: {
@@ -1276,6 +1283,7 @@ function EditEntryDialog({
     endTime?: Date | null;
     scheduleDayKey: string;
   }) => Promise<void>;
+  onDelete: () => void;
   saving: boolean;
   stages: StageOption[];
   festivalEndDate: string | null;
@@ -1307,21 +1315,19 @@ function EditEntryDialog({
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const effectiveDate = dateStr;
-
   useEffect(() => {
     if (!open) return;
     debounceRef.current = setTimeout(async () => {
-      const startTime = localWallClockToDate(effectiveDate, startTimeStr);
+      const startTime = localWallClockToDate(dateStr, startTimeStr);
       const endTime = endTimeStr
-        ? localWallClockToDate(effectiveDate, endTimeStr)
+        ? localWallClockToDate(dateStr, endTimeStr)
         : null;
       const res = await checkScheduleConflict(festivalId, {
         startTime,
         endTime,
         stageId: stageId || null,
         excludeEntryId: entry.id,
-        scheduleDayKey: effectiveDate,
+        scheduleDayKey: dateStr,
         entryType: entry.type,
       });
       if (res.ok) {
@@ -1339,7 +1345,7 @@ function EditEntryDialog({
     festivalId,
     entry.id,
     open,
-    effectiveDate,
+    dateStr,
     startTimeStr,
     endTimeStr,
     stageId,
@@ -1356,9 +1362,9 @@ function EditEntryDialog({
       toast.error("Select a stage.");
       return;
     }
-    const startTime = localWallClockToDate(effectiveDate, startTimeStr);
+    const startTime = localWallClockToDate(dateStr, startTimeStr);
     const endTime = endTimeStr
-      ? localWallClockToDate(effectiveDate, endTimeStr)
+      ? localWallClockToDate(dateStr, endTimeStr)
       : null;
     await onSubmit({
       title: isSession ? title.trim() : undefined,
@@ -1367,13 +1373,13 @@ function EditEntryDialog({
       stageId: stageId || null,
       startTime,
       endTime,
-      scheduleDayKey: effectiveDate,
+      scheduleDayKey: dateStr,
     });
   };
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className=" flex flex-col">
+      <DrawerContent className="flex flex-col">
         <div className="flex-1 overflow-y-auto p-4 sm:p-5">
           <DrawerHeader className="px-0 pt-0">
             <DrawerTitle>Edit schedule entry</DrawerTitle>
@@ -1500,28 +1506,40 @@ function EditEntryDialog({
                 </span>
               </div>
             )}
-            <DrawerFooter className="px-0 pt-4 pb-0 gap-2 flex-col-reverse sm:flex-row sm:justify-end">
+            <DrawerFooter className="px-0 pt-4 pb-0 gap-2 flex-col-reverse sm:flex-row sm:justify-between">
               <Button
                 type="button"
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={() => onOpenChange(false)}
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={onDelete}
               >
-                Cancel
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Delete
               </Button>
-              <Button
-                type="submit"
-                className="w-full sm:w-auto"
-                disabled={
-                  saving ||
-                  (isSession && !title.trim()) ||
-                  !stageId ||
-                  !!conflictError
-                }
-              >
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Update
-              </Button>
+              <div className="flex gap-2 flex-col-reverse sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  disabled={
+                    saving ||
+                    (isSession && !title.trim()) ||
+                    !stageId ||
+                    !!conflictError
+                  }
+                >
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Update
+                </Button>
+              </div>
             </DrawerFooter>
           </form>
         </div>
