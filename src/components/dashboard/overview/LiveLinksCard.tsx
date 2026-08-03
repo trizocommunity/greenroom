@@ -90,7 +90,7 @@ export function LiveLinksCard({
                 <p className="truncate text-sm font-medium">{r.label}</p>
                 <p className="truncate text-xs text-muted-foreground">
                   {r.requiresLive && !publicSiteEnabled
-                    ? "Enable festival live to share"
+                    ? "Launch website to share"
                     : r.desc}
                 </p>
               </div>

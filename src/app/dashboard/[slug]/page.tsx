@@ -1,7 +1,10 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { AnnouncerOverview } from "@/components/dashboard/overview/AnnouncerOverview";
+import { MediaOverview } from "@/components/dashboard/overview/MediaOverview";
 import { OverviewSkeleton } from "@/components/dashboard/overview/OverviewSkeleton";
 import OverviewWidgets from "@/components/dashboard/overview/OverviewWidgets";
+import { StageManagerOverview } from "@/components/dashboard/overview/StageManagerOverview";
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
@@ -37,10 +40,30 @@ export default async function FestivalDashboardPage({
   const effectiveRole = activeRoleCookie ?? context.role;
 
   if (effectiveRole === "STAGE_MANAGER") {
-    redirect(`/dashboard/${slug}/stage-manager`);
+    return (
+      <Suspense fallback={<OverviewSkeleton />}>
+        <StageManagerOverview
+          festivalSlug={slug}
+          userId={session?.userId ?? ""}
+        />
+      </Suspense>
+    );
   }
+
   if (effectiveRole === "ANNOUNCER") {
-    redirect(`/dashboard/${slug}/announcer`);
+    return (
+      <Suspense fallback={<OverviewSkeleton />}>
+        <AnnouncerOverview festivalSlug={slug} />
+      </Suspense>
+    );
+  }
+
+  if (effectiveRole === "MEDIA") {
+    return (
+      <Suspense fallback={<OverviewSkeleton />}>
+        <MediaOverview festivalSlug={slug} />
+      </Suspense>
+    );
   }
 
   return (

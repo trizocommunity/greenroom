@@ -77,9 +77,9 @@ export function RoleSwitcher({
     return (
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" className="cursor-default">
+          <SidebarMenuButton size="lg" className="cursor-default focus:ring-0 focus-visible:ring-0 outline-none border-none">
             <div
-              className="flex aspect-square size-9 items-center justify-center rounded-lg text-white font-bold text-xs"
+              className="flex aspect-square size-8 items-center justify-center rounded-lg text-white font-bold text-xs"
               style={{ backgroundColor: accentColor || "#000" }}
             >
               {ROLE_ICONS[activeRole] || activeRole.slice(0, 2)}
@@ -98,13 +98,6 @@ export function RoleSwitcher({
     );
   }
 
-  const overviewPath = (role: string) => {
-    const base = `/dashboard/${festivalSlug}`;
-    if (role === "STAGE_MANAGER") return `${base}/stage-manager`;
-    if (role === "ANNOUNCER") return `${base}/announcer`;
-    return base;
-  };
-
   const handleSwitch = (targetRole: string) => {
     startTransition(async () => {
       await switchRoleAction(
@@ -114,7 +107,7 @@ export function RoleSwitcher({
         actualRole,
         memberRoles,
       );
-      router.push(overviewPath(targetRole));
+      router.push(`/dashboard/${festivalSlug}`);
       router.refresh();
     });
   };
@@ -122,7 +115,7 @@ export function RoleSwitcher({
   const handleReset = () => {
     startTransition(async () => {
       await clearRoleSwitchAction(festivalId, festivalSlug);
-      router.push(overviewPath(actualRole));
+      router.push(`/dashboard/${festivalSlug}`);
       router.refresh();
     });
   };
@@ -143,10 +136,10 @@ export function RoleSwitcher({
           <SelectPrimitive.Trigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground focus:ring-0 focus-visible:ring-0 outline-none border-none"
             >
               <div
-                className="flex aspect-square size-9 items-center justify-center rounded-lg text-white font-bold text-xs"
+                className="flex aspect-square size-8 items-center justify-center rounded-lg text-white font-bold text-xs"
                 style={{ backgroundColor: accentColor || "#000" }}
               >
                 {ROLE_ICONS[activeRole] || activeRole.slice(0, 2)}

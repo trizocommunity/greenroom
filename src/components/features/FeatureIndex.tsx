@@ -115,7 +115,7 @@ const MODULES: Module[] = [
         body: "Standings and per-programme results, ordered the way they need to be read out.",
       },
       {
-        name: "Festival Live",
+        name: "Launch Website",
         body: "A projector view for the hall showing the current programme and the team standings.",
       },
       {

@@ -70,7 +70,7 @@ export function SettingsTabs({
   if (canManageFestivalLive) {
     navItems.push({
       value: "festival-live",
-      label: "Festival Live",
+      label: "Launch Website",
       icon: Sparkles,
     });
   }
@@ -154,6 +154,7 @@ export function SettingsTabs({
             festivalSlug={festival.slug}
             publicSiteEnabled={festival.publicSiteEnabled ?? false}
             publicUrl={publicUrl}
+            onExit={() => handleTabChange("general")}
           />
         )}
       </main>

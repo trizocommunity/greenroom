@@ -122,7 +122,7 @@ const ROLES: Role[] = [
         body: "Standings and per-programme results laid out in the order you need to read them out, not in the order the database returned them.",
       },
       {
-        title: "Festival Live",
+        title: "Launch Website",
         body: "A projector view for the hall that follows the results as they are published, so the screen and the microphone never disagree.",
       },
       {

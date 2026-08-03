@@ -132,12 +132,7 @@ export const getFestivalDashboardSidebarConfig = (
       items: [
         {
           title: "Overview",
-          href:
-            normalizedRole === "STAGE_MANAGER"
-              ? `${basePath}/stage-manager`
-              : normalizedRole === "ANNOUNCER"
-                ? `${basePath}/announcer`
-                : basePath,
+          href: basePath,
           icon: LayoutDashboard,
         },
         {
