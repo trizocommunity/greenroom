@@ -27,6 +27,7 @@ import {
   pendingInvitation,
   programme,
   programmeAssignment,
+  programmeAssignmentMember,
   programmeCodeLetter,
   programmeCodeLetterRecipient,
   programmeNotification,
@@ -279,7 +280,26 @@ export const programmeAssignmentRelations = relations(
       fields: [programmeAssignment.id],
       references: [result.assignmentId],
     }),
+    members: many(programmeAssignmentMember),
     programmeReportedParticipants: many(programmeReportedParticipant),
+  }),
+);
+
+export const programmeAssignmentMemberRelations = relations(
+  programmeAssignmentMember,
+  ({ one }) => ({
+    assignment: one(programmeAssignment, {
+      fields: [programmeAssignmentMember.assignmentId],
+      references: [programmeAssignment.id],
+    }),
+    participant: one(participant, {
+      fields: [programmeAssignmentMember.participantId],
+      references: [participant.id],
+    }),
+    festival: one(festival, {
+      fields: [programmeAssignmentMember.festivalId],
+      references: [festival.id],
+    }),
   }),
 );
 

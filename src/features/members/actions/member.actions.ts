@@ -41,6 +41,30 @@ export async function addMemberAction(
   }
 }
 
+export async function updateMemberRolesAction(
+  festivalId: string,
+  memberId: string,
+  roles: string[],
+): Promise<ActionResponse<Awaited<ReturnType<typeof MemberService.updateMemberRoles>>>> {
+  try {
+    const session = await getSession();
+    await assertFestivalAccess(session, festivalId, { requireWritable: true });
+    const result = await MemberService.updateMemberRoles(
+      festivalId,
+      memberId,
+      roles,
+    );
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      columns: { slug: true },
+    });
+    if (festival) revalidatePath(`/dashboard/${festival.slug}/members`);
+    return { success: true, data: result };
+  } catch (error: unknown) {
+    return handleActionError(error);
+  }
+}
+
 export async function removeMemberAction(
   festivalId: string,
   memberId: string,

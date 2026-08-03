@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, exists, inArray, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
+  programmeAssignmentMember as assignmentMemberTable,
   category as categoryTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
@@ -598,8 +599,7 @@ export const ProgrammeReportingService = {
     if (isReported) {
       if (
         session.programme.type === "GROUP" &&
-        assignment.groupId &&
-        assignment.teamNumber
+        assignment.groupId
       ) {
         const existingTeamReport =
           await db.query.programmeReportedParticipant.findFirst({
@@ -608,62 +608,61 @@ export const ProgrammeReportingService = {
                 reportedParticipantTable.reportingSessionId,
                 reportingSessionId,
               ),
-              eq(reportedParticipantTable.groupId, assignment.groupId),
-              eq(reportedParticipantTable.teamNumber, assignment.teamNumber),
+              eq(reportedParticipantTable.assignmentId, assignmentId),
             ),
           });
 
         if (existingTeamReport) {
           throw new Error(
-            `Team ${assignment.teamNumber} has already been reported`,
+            `Team ${assignment.teamNumber ?? 1} has already been reported`,
           );
         }
 
-        const teamAssignments = await db.query.programmeAssignment.findMany({
-          where: and(
-            eq(assignmentTable.programmeId, session.programmeId),
-            eq(assignmentTable.groupId, assignment.groupId),
-            eq(assignmentTable.teamNumber, assignment.teamNumber),
-          ),
-          columns: { id: true, participantId: true },
+        const members = await db.query.programmeAssignmentMember.findMany({
+          where: eq(assignmentMemberTable.assignmentId, assignmentId),
+          columns: {
+            id: true,
+            participantId: true,
+          },
         });
-        for (const ta of teamAssignments) {
+        for (const m of members) {
           await assertAssignmentCategoryCompatibility({
             programmeId: session.programmeId,
-            participantId: ta.participantId,
+            participantId: m.participantId,
           });
         }
 
-        await db.transaction(async (tx) => {
-          for (const ta of teamAssignments) {
-            await tx
-              .insert(reportedParticipantTable)
-              .values({
-                id: randomUUID(),
-                reportingSessionId,
-                assignmentId: ta.id,
-                participantId: ta.participantId,
-                groupId: assignment.groupId,
-                teamNumber: assignment.teamNumber,
-                reportedBy: actorName,
-                reportedAt: now,
-              } as any)
-              .onConflictDoUpdate({
-                target: [
-                  reportedParticipantTable.reportingSessionId,
-                  reportedParticipantTable.assignmentId,
-                ],
-                set: {
-                  reportedAt: now,
+        if (members.length > 0) {
+          await db.transaction(async (tx) => {
+            for (const m of members) {
+              await tx
+                .insert(reportedParticipantTable)
+                .values({
+                  id: randomUUID(),
+                  reportingSessionId,
+                  assignmentId,
+                  participantId: m.participantId,
+                  groupId: assignment.groupId,
+                  teamNumber: assignment.teamNumber,
+                  assignmentMemberId: m.id,
                   reportedBy: actorName,
-                },
-              });
-          }
-        });
+                  reportedAt: now,
+                } as any)
+                .onConflictDoUpdate({
+                  target: [
+                    reportedParticipantTable.reportingSessionId,
+                    reportedParticipantTable.assignmentId,
+                  ],
+                  set: {
+                    reportedAt: now,
+                    reportedBy: actorName,
+                  },
+                });
+            }
+          });
+        }
 
-        const teamParticipantIds = teamAssignments
-          .map((a) => a.participantId)
-          .filter((id): id is string => id !== null);
+        const teamParticipantIds = members.map((m) => m.participantId);
 
         if (teamParticipantIds.length > 0) {
           await NotificationService.dispatch({
@@ -672,7 +671,7 @@ export const ProgrammeReportingService = {
             targets: { participantIds: teamParticipantIds },
             context: {
               title: "Team reporting confirmed",
-              body: `Your team (Team ${assignment.teamNumber}) has been marked as reported.`,
+              body: `Your team (Team ${assignment.teamNumber ?? 1}) has been marked as reported.`,
               payload: {
                 reportingSessionId,
                 teamNumber: assignment.teamNumber,
@@ -730,11 +729,24 @@ export const ProgrammeReportingService = {
           ),
         );
 
+      const notifyIds: string[] = [];
       if (assignment.participantId) {
+        notifyIds.push(assignment.participantId);
+      } else if (
+        session.programme.type === "GROUP" &&
+        assignment.groupId
+      ) {
+        const members = await db.query.programmeAssignmentMember.findMany({
+          where: eq(assignmentMemberTable.assignmentId, assignmentId),
+          columns: { participantId: true },
+        });
+        for (const m of members) notifyIds.push(m.participantId);
+      }
+      if (notifyIds.length > 0) {
         await NotificationService.dispatch({
           eventType: "REPORTING_PARTICIPANT_MARKED",
           festivalId: session.festivalId,
-          targets: { participantIds: [assignment.participantId] },
+          targets: { participantIds: notifyIds },
           context: {
             title: "Reporting attendance updated",
             body: "Your reporting mark was removed by stage manager.",

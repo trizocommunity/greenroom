@@ -13,9 +13,10 @@ import {
   findMemberByFestivalAndUser,
   findMemberById,
   findMembersByFestival,
+  updateMemberRoles,
 } from "@/features/members/repositories/member.repository";
 
-const MAGIC_LINK_EXPIRY_MS = 15 * MS.minute;
+const MAGIC_LINK_EXPIRY_MS = 30 * MS.minute;
 
 export const MemberService = {
   async getMembers(festivalId: string) {
@@ -67,6 +68,33 @@ export const MemberService = {
     }
 
     return member;
+  },
+
+  async updateMemberRoles(
+    festivalId: string,
+    memberId: string,
+    roles: string[],
+  ) {
+    await ensureFestivalWritable(festivalId);
+
+    const member = await findMemberById(memberId);
+    if (!member || member.festivalId !== festivalId) {
+      throw new AppError(ERROR_MESSAGES.MEMBER_NOT_FOUND);
+    }
+
+    if (roles.length === 0) {
+      throw new AppError("At least one role is required");
+    }
+
+    const validRoles = ["ADMIN", "ANNOUNCER", "STAGE_MANAGER", "MEDIA"];
+    for (const r of roles) {
+      if (!validRoles.includes(r)) {
+        throw new AppError(`Invalid role: ${r}`);
+      }
+    }
+
+    const [primaryRole, ...additionalRoles] = roles;
+    return updateMemberRoles(memberId, primaryRole, additionalRoles);
   },
 
   async removeMember(festivalId: string, memberId: string) {

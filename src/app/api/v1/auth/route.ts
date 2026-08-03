@@ -19,8 +19,9 @@ import { generateId } from "@/core/database/ids";
 import { user as userTable } from "@/core/database/schema";
 import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { findUserById } from "@/features/auth/repositories/user.repository";
+import { MS } from "@/core/datetime/server";
 
-const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+const MAGIC_LINK_EXPIRY_MS = 30 * MS.minute; // 30 minutes
 
 const handler = createHandler({
   async GET({ user }) {

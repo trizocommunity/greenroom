@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, max, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeCodeLetterRecipient as codeLetterRecipientTable,
@@ -248,10 +248,23 @@ export async function updateProgrammeStatus(
       status = "ENDED";
     }
 
+    let finalResultNumber = programme.resultNumber;
+    if (
+      ["ENDED", "JUDGED", "PUBLISHED"].includes(status) &&
+      finalResultNumber === null
+    ) {
+      const nextNumRes = await db
+        .select({ maxNum: max(programmeTable.resultNumber) })
+        .from(programmeTable)
+        .where(eq(programmeTable.festivalId, programme.festivalId));
+      finalResultNumber = (nextNumRes[0]?.maxNum ?? 0) + 1;
+    }
+
     await db
       .update(programmeTable)
       .set({
         status,
+        resultNumber: finalResultNumber,
         publishedAt: status === "PUBLISHED" ? serverNowIso() : null,
         updatedAt: serverNowIso(),
       })
@@ -365,10 +378,23 @@ export async function updateProgrammeStatus(
     }
   }
 
+  let finalResultNumber = programme.resultNumber;
+  if (
+    ["ENDED", "JUDGED", "PUBLISHED"].includes(status) &&
+    finalResultNumber === null
+  ) {
+    const nextNumRes = await db
+      .select({ maxNum: max(programmeTable.resultNumber) })
+      .from(programmeTable)
+      .where(eq(programmeTable.festivalId, programme.festivalId));
+    finalResultNumber = (nextNumRes[0]?.maxNum ?? 0) + 1;
+  }
+
   await db
     .update(programmeTable)
     .set({
       status,
+      resultNumber: finalResultNumber,
       publishedAt: status === "PUBLISHED" ? serverNowIso() : null,
       updatedAt: serverNowIso(),
     })

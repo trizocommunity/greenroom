@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   exists,
@@ -21,6 +22,7 @@ import { getStagePortalSessionFromCookie } from "@/core/auth/stage-portal-sessio
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
+  programmeAssignmentMember as assignmentMemberTable,
   programmeCodeLetter as codeLetterTable,
   festival as festivalTable,
   judgementConfigJudge as judgementConfigJudgeTable,
@@ -44,6 +46,10 @@ import {
 } from "@/features/judgement/services/scoring-policy.service";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import { getStageIdForReportingSession } from "@/features/programmes/actions/programme-reporting.actions";
+import {
+  assertProgrammeType,
+  requireProgrammeType,
+} from "@/features/programmes/utils/assert-programme-type";
 import { assertStageManagerAccessForStage } from "@/features/programmes/actions/reporting-access";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { calculatePosition } from "@/features/results/services/results-calculator";
@@ -286,7 +292,10 @@ export async function getJudgementWizardDataAction(festivalId: string) {
     const unitSetByProgramme = new Map<string, Set<string>>();
     const countByProgramme = new Map<string, number>();
     for (const a of assignmentRows) {
-      const type = programmeTypeById.get(a.programmeId) ?? "INDIVIDUAL";
+      const type = requireProgrammeType(
+        programmeTypeById.get(a.programmeId),
+        `judgement wizard: programme ${a.programmeId}`,
+      );
       if (type === "GROUP") {
         const set = unitSetByProgramme.get(a.programmeId) ?? new Set<string>();
         set.add(`${a.groupId ?? "-"}::${a.teamNumber ?? "-"}`);
@@ -299,7 +308,10 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       }
     }
     for (const id of programmeIds) {
-      const type = programmeTypeById.get(id) ?? "INDIVIDUAL";
+      const type = requireProgrammeType(
+        programmeTypeById.get(id),
+        `judgement wizard: programme ${id}`,
+      );
       assignedUnitsByProgramme.set(
         id,
         type === "GROUP"
@@ -330,8 +342,10 @@ export async function getJudgementWizardDataAction(festivalId: string) {
 
   for (const sessionRow of latestClosedSessions) {
     if (reportingByProgrammeId.has(sessionRow.programmeId)) continue;
-    const programmeType =
-      programmeTypeById.get(sessionRow.programmeId) ?? "INDIVIDUAL";
+    const programmeType = requireProgrammeType(
+      programmeTypeById.get(sessionRow.programmeId),
+      `judgement wizard: programme ${sessionRow.programmeId}`,
+    );
     const codeByParticipantId = new Map<string, string>();
     const sessionCodeLetters = codeLettersBySessionId.get(sessionRow.id) ?? [];
     for (const codeLetter of sessionCodeLetters) {
@@ -839,29 +853,29 @@ async function insertLiveJudgementConfig(input: {
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
   startedBy: string;
+  isOffStage?: boolean;
 }): Promise<string> {
   const now = serverNowIso();
   const configId = randomUUID();
 
-  const liveConfigsOnStage = await db
-    .select({ id: judgementConfigTable.id })
-    .from(judgementConfigTable)
-    .innerJoin(
-      reportingSessionTable,
-      eq(judgementConfigTable.reportingSessionId, reportingSessionTable.id),
-    )
-    .where(
-      and(
-        eq(reportingSessionTable.stageId, input.stageId),
-        eq(judgementConfigTable.status, "LIVE"),
-      ),
-    );
+  const liveConfigsOnStage = input.isOffStage
+    ? []
+    : await db
+        .select({ id: judgementConfigTable.id })
+        .from(judgementConfigTable)
+        .innerJoin(
+          reportingSessionTable,
+          eq(judgementConfigTable.reportingSessionId, reportingSessionTable.id),
+        )
+        .where(
+          and(
+            eq(reportingSessionTable.stageId, input.stageId),
+            eq(judgementConfigTable.status, "LIVE"),
+          ),
+        );
 
   await db.transaction(async (tx) => {
     if (input.previousReportingSessionStageId !== input.stageId) {
-      // Either auto-assigning from null (unscheduled programme) or
-      // correcting a stale stage id. Persist the resolved stageId on the
-      // reporting session in the same transaction as the config insert.
       await tx
         .update(reportingSessionTable)
         .set({ stageId: input.stageId } as any)
@@ -956,6 +970,7 @@ export async function startJudgementAction(input: {
     scoreLimit: input.scoreLimit,
     judgingMode: input.judgingMode ?? "GROUP",
     startedBy: actorName,
+    isOffStage: autoAssigned,
   });
 
   if (autoAssigned) {
@@ -1057,6 +1072,7 @@ export async function restartJudgementAction(input: {
     scoreLimit: priorConfig.scoreLimit,
     judgingMode: priorConfig.judgingMode as "SINGLE" | "GROUP",
     startedBy: actorName,
+    isOffStage: autoAssigned,
   });
 
   if (autoAssigned) {
@@ -1139,28 +1155,110 @@ export type StagePortalPortalStatus =
   | "LIVE"
   | "JUDGED";
 
+export type StagePortalLiveConfig = {
+  configId: string;
+  scoreLimit: number;
+  judgingMode: "SINGLE" | "GROUP";
+  programme: { id: string; name: string; type: "INDIVIDUAL" | "GROUP" };
+  judges: Array<{ id: string; name: string }>;
+  codeLetters: Array<{ id: string; code: string; isAbsent: boolean }>;
+  existingScores: Array<{
+    judgeId: string;
+    codeLetterId: string;
+    score: number;
+    remark: string | null;
+  }>;
+  judgeCompletion: Record<string, boolean>;
+};
+
+async function buildLivePayload(
+  configId: string,
+): Promise<StagePortalLiveConfig | null> {
+  const config = await db.query.judgementConfig.findFirst({
+    where: eq(judgementConfigTable.id, configId),
+    with: {
+      programme: { columns: { id: true, name: true, type: true } },
+      judges: { with: { judge: { columns: { id: true, name: true } } } },
+    },
+  });
+  if (!config) return null;
+
+  const codeLetters = await db.query.programmeCodeLetter.findMany({
+    where: and(
+      eq(codeLetterTable.programmeId, config.programmeId),
+      eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
+    ),
+    orderBy: [asc(codeLetterTable.issuedAt)],
+  });
+  const existingScores = await db.query.judgementScore.findMany({
+    where: eq(judgementScoreTable.configId, config.id),
+    columns: {
+      judgeId: true,
+      codeLetterId: true,
+      score: true,
+      remark: true,
+    },
+  });
+
+  const activeCodeIds = codeLetters
+    .filter((c) => !c.isAbsent)
+    .map((c) => c.id);
+  const judgeCompletion: Record<string, boolean> = {};
+  for (const j of config.judges) {
+    const covered = new Set(
+      existingScores
+        .filter(
+          (s) =>
+            s.judgeId === j.judge.id &&
+            activeCodeIds.includes(s.codeLetterId),
+        )
+        .map((s) => s.codeLetterId),
+    );
+    judgeCompletion[j.judge.id] =
+      activeCodeIds.length > 0 && covered.size === activeCodeIds.length;
+  }
+
+  return {
+    configId: config.id,
+    scoreLimit: config.scoreLimit,
+    judgingMode: (config.judgingMode ?? "GROUP") as "SINGLE" | "GROUP",
+    programme: config.programme,
+    judges: config.judges.map((j) => j.judge),
+    codeLetters: codeLetters.map((c) => ({
+      id: c.id,
+      code: c.code,
+      isAbsent: c.isAbsent,
+    })),
+    existingScores,
+    judgeCompletion,
+  };
+}
+
 export async function getStagePortalBoardAction(day?: string) {
   const stagePortalSession = await getStagePortalSessionFromCookie();
   if (!stagePortalSession) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   const stageId = stagePortalSession.stageId;
+  const isOffStage = stagePortalSession.stage.isOffStage;
   const stage = {
     name: stagePortalSession.stage.name,
-    isOffStage: stagePortalSession.stage.isOffStage,
+    isOffStage,
   };
 
-  // Day range from the festival's start–end; default to today (clamped).
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, stagePortalSession.festivalId),
     columns: { startDate: true, endDate: true, timezone: true },
   });
   const festivalTz = festival?.timezone ?? "UTC";
-  const dayKeySet =
-    getFestivalDateKeySet(
-      festival?.startDate ?? null,
-      festival?.endDate ?? null,
-      festivalTz,
-    ) ?? null;
+
+  // Off-stage portals skip day-based filtering entirely.
+  const dayKeySet = isOffStage
+    ? null
+    : getFestivalDateKeySet(
+        festival?.startDate ?? null,
+        festival?.endDate ?? null,
+        festivalTz,
+      ) ?? null;
   const days = dayKeySet ? Array.from(dayKeySet).sort() : [];
   const today = dateKeyLocal(serverNow(), festivalTz);
   let selectedDay =
@@ -1171,8 +1269,8 @@ export async function getStagePortalBoardAction(day?: string) {
         : (days[days.length - 1] ?? today);
   if (days.length === 0) selectedDay = today;
 
-  // The stage's LIVE config (if any) — the single actionable programme.
-  const liveConfigRow = await db
+  // All LIVE configs on this stage (off-stage allows multiple).
+  const liveConfigRows = await db
     .select({
       id: judgementConfigTable.id,
       programmeId: judgementConfigTable.programmeId,
@@ -1187,128 +1285,145 @@ export async function getStagePortalBoardAction(day?: string) {
         eq(reportingSessionTable.stageId, stageId),
         eq(judgementConfigTable.status, "LIVE"),
       ),
-    )
-    .limit(1);
-  const liveProgrammeId = liveConfigRow[0]?.programmeId ?? null;
+    );
+  const liveProgrammeIds = new Set(liveConfigRows.map((r) => r.programmeId));
 
-  // All PROGRAMME schedule entries on this stage, bucketed to the selected day.
-  const stageEntries = await db.query.scheduleEntry.findMany({
-    where: and(
-      eq(scheduleEntryTable.stageId, stageId),
-      eq(scheduleEntryTable.type, "PROGRAMME"),
-    ),
-    columns: { programmeId: true, startTime: true },
-    with: { programme: { columns: { id: true, name: true, status: true } } },
-    orderBy: [asc(scheduleEntryTable.startTime)],
-  });
+  let programmes: Array<{
+    programmeId: string;
+    name: string;
+    startTime: string;
+    portalStatus: StagePortalPortalStatus;
+  }>;
 
-  const programmes = stageEntries
-    .filter((e) => {
-      const start = parseInstant(e.startTime);
-      return (
-        e.programme && start && dateKeyLocal(start, festivalTz) === selectedDay
-      );
-    })
-    .map((e) => {
-      const p = e.programme!;
-      const judged = ["ENDED", "JUDGED", "PUBLISHED", "ANNOUNCED"].includes(
-        p.status,
-      );
-      const portalStatus: StagePortalPortalStatus =
-        p.id === liveProgrammeId
+  if (isOffStage) {
+    // For off-stage, list all programmes that have a reporting session on
+    // this stage instead of schedule entries (they have none).
+    const offStageReportingSessions =
+      await db.query.programmeReportingSession.findMany({
+        where: and(
+          eq(reportingSessionTable.stageId, stageId),
+          eq(reportingSessionTable.festivalId, stagePortalSession.festivalId),
+        ),
+        columns: { programmeId: true, startedAt: true },
+        with: {
+          programme: { columns: { id: true, name: true, status: true } },
+        },
+      });
+
+    const seen = new Set<string>();
+    programmes = offStageReportingSessions
+      .filter((s) => {
+        if (!s.programme || seen.has(s.programmeId)) return false;
+        seen.add(s.programmeId);
+        return true;
+      })
+      .map((s) => {
+        const p = s.programme!;
+        const judged = ["ENDED", "JUDGED", "PUBLISHED", "ANNOUNCED"].includes(
+          p.status,
+        );
+        const portalStatus: StagePortalPortalStatus = liveProgrammeIds.has(p.id)
           ? "LIVE"
           : judged
             ? "JUDGED"
             : p.status === "REPORTING"
               ? "REPORTING"
               : "SCHEDULED";
-      return {
-        programmeId: p.id,
-        name: p.name,
-        startTime: e.startTime,
-        portalStatus,
-      };
-    });
-
-  // Live scoring payload (only when a LIVE config exists on this stage).
-  let live: {
-    configId: string;
-    scoreLimit: number;
-    judgingMode: "SINGLE" | "GROUP";
-    programme: { id: string; name: string; type: "INDIVIDUAL" | "GROUP" };
-    judges: Array<{ id: string; name: string }>;
-    codeLetters: Array<{ id: string; code: string; isAbsent: boolean }>;
-    existingScores: Array<{
-      judgeId: string;
-      codeLetterId: string;
-      score: number;
-      remark: string | null;
-    }>;
-    judgeCompletion: Record<string, boolean>;
-  } | null = null;
-
-  if (liveConfigRow.length > 0) {
-    const config = await db.query.judgementConfig.findFirst({
-      where: eq(judgementConfigTable.id, liveConfigRow[0]!.id),
+        return {
+          programmeId: p.id,
+          name: p.name,
+          startTime: s.startedAt ?? "",
+          portalStatus,
+        };
+      });
+  } else {
+    const stageEntries = await db.query.scheduleEntry.findMany({
+      where: and(
+        eq(scheduleEntryTable.stageId, stageId),
+        eq(scheduleEntryTable.type, "PROGRAMME"),
+      ),
+      columns: { programmeId: true, startTime: true },
       with: {
-        programme: { columns: { id: true, name: true, type: true } },
-        judges: { with: { judge: { columns: { id: true, name: true } } } },
+        programme: { columns: { id: true, name: true, status: true } },
       },
+      orderBy: [asc(scheduleEntryTable.startTime)],
     });
-    if (config) {
-      const codeLetters = await db.query.programmeCodeLetter.findMany({
-        where: and(
-          eq(codeLetterTable.programmeId, config.programmeId),
-          eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
-        ),
-        orderBy: [asc(codeLetterTable.issuedAt)],
-      });
-      const existingScores = await db.query.judgementScore.findMany({
-        where: eq(judgementScoreTable.configId, config.id),
-        columns: {
-          judgeId: true,
-          codeLetterId: true,
-          score: true,
-          remark: true,
-        },
-      });
 
-      const activeCodeIds = codeLetters
-        .filter((c) => !c.isAbsent)
-        .map((c) => c.id);
-      const judgeCompletion: Record<string, boolean> = {};
-      for (const j of config.judges) {
-        const covered = new Set(
-          existingScores
-            .filter(
-              (s) =>
-                s.judgeId === j.judge.id &&
-                activeCodeIds.includes(s.codeLetterId),
-            )
-            .map((s) => s.codeLetterId),
+    programmes = stageEntries
+      .filter((e) => {
+        const start = parseInstant(e.startTime);
+        return (
+          e.programme &&
+          start &&
+          dateKeyLocal(start, festivalTz) === selectedDay
         );
-        judgeCompletion[j.judge.id] =
-          activeCodeIds.length > 0 && covered.size === activeCodeIds.length;
-      }
-
-      live = {
-        configId: config.id,
-        scoreLimit: config.scoreLimit,
-        judgingMode: (config.judgingMode ?? "GROUP") as "SINGLE" | "GROUP",
-        programme: config.programme,
-        judges: config.judges.map((j) => j.judge),
-        codeLetters: codeLetters.map((c) => ({
-          id: c.id,
-          code: c.code,
-          isAbsent: c.isAbsent,
-        })),
-        existingScores,
-        judgeCompletion,
-      };
-    }
+      })
+      .map((e) => {
+        const p = e.programme!;
+        const judged = ["ENDED", "JUDGED", "PUBLISHED", "ANNOUNCED"].includes(
+          p.status,
+        );
+        const portalStatus: StagePortalPortalStatus = liveProgrammeIds.has(p.id)
+          ? "LIVE"
+          : judged
+            ? "JUDGED"
+            : p.status === "REPORTING"
+              ? "REPORTING"
+              : "SCHEDULED";
+        return {
+          programmeId: p.id,
+          name: p.name,
+          startTime: e.startTime,
+          portalStatus,
+        };
+      });
   }
 
-  return { stage, days, selectedDay, programmes, live };
+  // Build live payloads for all LIVE configs.
+  const liveConfigs: StagePortalLiveConfig[] = [];
+  for (const row of liveConfigRows) {
+    const payload = await buildLivePayload(row.id);
+    if (payload) liveConfigs.push(payload);
+  }
+
+  // Backward compat: `live` is the first live config (regular stages only
+  // ever have one).
+  const live = liveConfigs[0] ?? null;
+
+  return { stage, days, selectedDay, programmes, live, liveConfigs };
+}
+
+export async function getStagePortalScorePayloadAction(configId: string) {
+  const stagePortalSession = await getStagePortalSessionFromCookie();
+  if (!stagePortalSession) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const config = await db.query.judgementConfig.findFirst({
+    where: eq(judgementConfigTable.id, configId),
+    columns: {
+      id: true,
+      reportingSessionId: true,
+      status: true,
+    },
+  });
+  if (!config) throw new AppError("Judgement round not found.");
+  if (config.status !== "LIVE") {
+    throw new AppError("This judgement round is no longer live.");
+  }
+
+  const stageId = await getStageIdForReportingSession(
+    config.reportingSessionId,
+  );
+  if (!stageId || stageId !== stagePortalSession.stageId) {
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  }
+
+  const payload = await buildLivePayload(configId);
+  if (!payload) throw new AppError("Judgement round not found.");
+
+  return {
+    stageName: stagePortalSession.stage.name,
+    payload,
+  };
 }
 
 /**
@@ -1362,14 +1477,38 @@ async function recomputeConfigResults(
   for (const cl of activeCodeLetters) {
     const avg = Math.round(averageByCodeLetter.get(cl.id) ?? 0);
     for (const recipient of cl.programmeCodeLetterRecipients) {
-      const assignment = await db.query.programmeAssignment.findFirst({
-        where: and(
-          eq(assignmentTable.programmeId, config.programmeId),
-          eq(assignmentTable.participantId, recipient.participantId),
-        ),
-        columns: { id: true },
-      });
-      if (assignment?.id) assignmentPoints.set(assignment.id, avg);
+      let assignmentId: string | undefined;
+
+      if (programmeRow.type === "INDIVIDUAL") {
+        const assignment = await db.query.programmeAssignment.findFirst({
+          where: and(
+            eq(assignmentTable.programmeId, config.programmeId),
+            eq(assignmentTable.participantId, recipient.participantId),
+          ),
+          columns: { id: true },
+        });
+        assignmentId = assignment?.id;
+      } else {
+        const member = await db.query.programmeAssignmentMember.findFirst({
+          where: eq(
+            assignmentMemberTable.participantId,
+            recipient.participantId,
+          ),
+          with: {
+            assignment: {
+              columns: {
+                id: true,
+                programmeId: true,
+              },
+            },
+          },
+        });
+        assignmentId =
+          member?.assignment?.programmeId === config.programmeId
+            ? member.assignment.id
+            : undefined;
+      }
+      if (assignmentId) assignmentPoints.set(assignmentId, avg);
     }
   }
 
@@ -1377,26 +1516,14 @@ async function recomputeConfigResults(
   await db.transaction(async (tx) => {
     for (const [assignmentId, pts] of assignmentPoints.entries()) {
       judgedAssignmentIds.push(assignmentId);
-      const assignmentRow = await db.query.programmeAssignment.findFirst({
-        where: eq(assignmentTable.id, assignmentId),
-        columns: { groupId: true, teamNumber: true },
-      });
 
       let participantsCount = 1;
-      if (programmeRow.type === "GROUP" && assignmentRow) {
-        const teamMembers = await db
-          .select({ id: assignmentTable.id })
-          .from(assignmentTable)
-          .where(
-            and(
-              eq(assignmentTable.programmeId, config.programmeId),
-              eq(assignmentTable.teamNumber, assignmentRow.teamNumber ?? 1),
-              assignmentRow.groupId
-                ? eq(assignmentTable.groupId, assignmentRow.groupId)
-                : sql`${assignmentTable.groupId} is null`,
-            ),
-          );
-        participantsCount = Math.max(1, teamMembers.length);
+      if (programmeRow.type === "GROUP") {
+        const [memberCount] = await tx
+          .select({ c: count() })
+          .from(assignmentMemberTable)
+          .where(eq(assignmentMemberTable.assignmentId, assignmentId));
+        participantsCount = Math.max(1, memberCount?.c ?? 1);
       }
 
       const policyResolved = await resolveScoringPolicy({

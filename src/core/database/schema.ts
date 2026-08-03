@@ -114,6 +114,7 @@ export const publicDisplayMode = pgEnum("PublicDisplayMode", [
   "team_standings",
 ]);
 export const programmeType = pgEnum("ProgrammeType", ["INDIVIDUAL", "GROUP"]);
+export const durationMode = pgEnum("DurationMode", ["SEQUENTIAL", "PARALLEL"]);
 export const programmeTeamLeadAppointedByRole = pgEnum(
   "ProgrammeTeamLeadAppointedByRole",
   ["ADMIN", "TEAM_LEADER"],
@@ -464,7 +465,7 @@ export const programme = pgTable(
     id: text().primaryKey().notNull(),
     categoryId: text().notNull(),
     name: text().notNull(),
-    type: programmeType().default("INDIVIDUAL").notNull(),
+    type: programmeType().notNull(),
     stageType: stageType().default("STAGE").notNull(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
@@ -478,6 +479,10 @@ export const programme = pgTable(
     createdByName: text("created_by_name"),
     publishedByEmail: text("published_by_email"),
     publishedByName: text("published_by_name"),
+    nameSecondary: text("name_secondary"),
+    durationMode: durationMode("duration_mode").default("SEQUENTIAL").notNull(),
+    timePerUnitMinutes: integer("time_per_unit_minutes").default(5).notNull(),
+    parallelDurationMinutes: integer("parallel_duration_minutes"),
     resultPosterTemplateCode: text("result_poster_template_code"),
     resultNumber: integer("result_number"),
   },
@@ -900,6 +905,14 @@ export const programmeAssignment = pgTable(
         table.participantId.asc().nullsLast(),
       )
       .where(sql`${table.participantId} is not null`),
+    uniqueIndex("programme_assignment_programmeId_groupId_teamNumber_key")
+      .using(
+        "btree",
+        table.programmeId.asc().nullsLast(),
+        table.groupId.asc().nullsLast(),
+        table.teamNumber.asc().nullsLast(),
+      )
+      .where(sql`${table.groupId} is not null`),
     foreignKey({
       columns: [table.programmeId],
       foreignColumns: [programme.id],
@@ -1070,6 +1083,65 @@ export const programmeTeamLead = pgTable(
   ],
 );
 
+// ─── 11.6 programme_assignment_member (depends on: programme_assignment, participant, festival) ───
+// Per-member join row for GROUP programmes. Stores one row per (programme_assignment, participant)
+// so code-letter recipients, reporting, and judgement mapping can address individual members
+// without polluting the parent programme_assignment row (which carries only groupId + teamNumber
+// for GROUP programmes). INDIVIDUAL programmes do NOT use this table — the participant lives
+// directly on programme_assignment.participantId.
+
+export const programmeAssignmentMember = pgTable(
+  "programme_assignment_member",
+  {
+    id: text().primaryKey().notNull(),
+    assignmentId: text().notNull(),
+    participantId: text().notNull(),
+    festivalId: text().notNull(),
+    assignedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    createdByEmail: text(),
+    createdByName: text(),
+  },
+  (table) => [
+    uniqueIndex("programme_assignment_member_assignmentId_participantId_key")
+      .using(
+        "btree",
+        table.assignmentId.asc().nullsLast(),
+        table.participantId.asc().nullsLast(),
+      ),
+    index("programme_assignment_member_assignmentId_idx").using(
+      "btree",
+      table.assignmentId.asc().nullsLast(),
+    ),
+    index("programme_assignment_member_participantId_idx").using(
+      "btree",
+      table.participantId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.assignmentId],
+      foreignColumns: [programmeAssignment.id],
+      name: "programme_assignment_member_assignmentId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.participantId],
+      foreignColumns: [participant.id],
+      name: "programme_assignment_member_participantId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "programme_assignment_member_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
 // ─── 12. programme_reporting_session (depends on: festival, schedule_entry, programme, stage) ──
 
 export const programmeReportingSession = pgTable(
@@ -1150,6 +1222,7 @@ export const programmeReportedParticipant = pgTable(
     teamNumber: integer(),
     reportedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     reportedBy: text(),
+    assignmentMemberId: text(),
   },
   (table) => [
     index("programme_reported_participant_groupId_idx").using(
@@ -1166,6 +1239,10 @@ export const programmeReportedParticipant = pgTable(
     index("programme_reported_participant_participantId_idx").using(
       "btree",
       table.participantId.asc().nullsLast(),
+    ),
+    index("programme_reported_participant_assignmentMemberId_idx").using(
+      "btree",
+      table.assignmentMemberId.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.reportingSessionId],
@@ -1192,6 +1269,13 @@ export const programmeReportedParticipant = pgTable(
       columns: [table.groupId],
       foreignColumns: [group.id],
       name: "programme_reported_participant_groupId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
+    foreignKey({
+      columns: [table.assignmentMemberId],
+      foreignColumns: [programmeAssignmentMember.id],
+      name: "programme_reported_participant_assignmentMemberId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("set null"),
@@ -1261,6 +1345,7 @@ export const programmeCodeLetterRecipient = pgTable(
     id: text().primaryKey().notNull(),
     codeLetterId: text().notNull(),
     participantId: text().notNull(),
+    assignmentMemberId: text(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
@@ -1289,6 +1374,13 @@ export const programmeCodeLetterRecipient = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
+    foreignKey({
+      columns: [table.assignmentMemberId],
+      foreignColumns: [programmeAssignmentMember.id],
+      name: "programme_code_letter_recipient_assignmentMemberId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
   ],
 );
 

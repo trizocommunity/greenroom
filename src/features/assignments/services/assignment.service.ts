@@ -6,6 +6,7 @@ import {
   group as groupTable,
   participant as participantTable,
   programmeAssignment,
+  programmeAssignmentMember,
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
 } from "@/core/database/schema";
@@ -17,6 +18,7 @@ import {
   deleteAssignment,
   findAssignmentsByProgramme,
 } from "@/features/assignments/repositories/assignment.repository";
+import { assertAssignmentShape } from "@/features/assignments/utils/assert-assignment-shape";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantById } from "@/features/participants/repositories/participant.repository";
 import { isProTier } from "@/features/plan-features/services/tier";
@@ -25,9 +27,33 @@ import { ProgrammeTeamLeadService } from "@/features/programme-team-leads/servic
 import { findProgrammeById } from "@/features/programmes/repositories/programme.repository";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 
+type BulkAssignmentRow = {
+  programmeId: string;
+  participantId: string;
+  teamNumber?: number;
+};
+
+type BulkAssignmentGroupRow = {
+  programmeId: string;
+  groupId: string;
+  teamNumber: number;
+  participantIds: string[];
+};
+
+export type BulkAssignmentInput = BulkAssignmentRow | BulkAssignmentGroupRow;
+
+function isGroupBulkRow(
+  row: BulkAssignmentInput,
+): row is BulkAssignmentGroupRow {
+  return (
+    "groupId" in row &&
+    typeof (row as BulkAssignmentGroupRow).groupId === "string"
+  );
+}
+
 export const AssignmentService = {
   async getAll(festivalId: string) {
-    return db.query.programmeAssignment.findMany({
+    const rows = await db.query.programmeAssignment.findMany({
       where: eq(programmeAssignment.festivalId, festivalId),
       with: {
         programme: {
@@ -41,11 +67,39 @@ export const AssignmentService = {
             group: true,
           },
         },
-        group: true,
+        group: {
+          with: {
+            participants: true,
+          },
+        },
         category: true,
+        members: {
+          with: { participant: { with: { category: true, group: true } } },
+        },
       },
       orderBy: [desc(programmeAssignment.assignedAt)],
     });
+
+    const fannedOut: any[] = [];
+    for (const row of rows) {
+      if (row.programme?.type === "GROUP") {
+        const seen = new Set<string>();
+        for (const m of row.members ?? []) {
+          if (!m?.participant) continue;
+          if (seen.has(m.participant.id)) continue;
+          seen.add(m.participant.id);
+          fannedOut.push({
+            ...row,
+            participant: m.participant,
+            teamAssignmentId: row.id,
+            synthetic: true,
+          });
+        }
+      } else {
+        if (row.participant) fannedOut.push(row);
+      }
+    }
+    return fannedOut;
   },
 
   async getByProgramme(programmeId: string) {
@@ -65,36 +119,49 @@ export const AssignmentService = {
       categoryName?: string;
     }[]
   > {
-    const assignments = await db.query.programmeAssignment.findMany({
+    const members = await db.query.programmeAssignmentMember.findMany({
       where: and(
-        eq(programmeAssignment.festivalId, festivalId),
-        eq(programmeAssignment.programmeId, programmeId),
-        eq(programmeAssignment.groupId, groupId),
-        eq(programmeAssignment.teamNumber, teamNumber),
+        eq(programmeAssignmentMember.festivalId, festivalId),
       ),
       with: {
+        assignment: {
+          columns: {
+            id: true,
+            programmeId: true,
+            groupId: true,
+            teamNumber: true,
+          },
+        },
         participant: { with: { category: true } },
       },
     });
-    return assignments
-      .filter((a) => a.participant != null)
-      .map((a) => ({
-        id: a.participant!.id,
-        name: a.participant!.name,
-        chestNumber: a.participant!.chestNumber,
-        categoryName: a.participant!.category?.name,
+    return members
+      .filter(
+        (m) =>
+          m.assignment.programmeId === programmeId &&
+          m.assignment.groupId === groupId &&
+          (m.assignment.teamNumber ?? 1) === teamNumber,
+      )
+      .map((m) => ({
+        id: m.participant.id,
+        name: m.participant.name,
+        chestNumber: m.participant.chestNumber,
+        categoryName: m.participant.category?.name,
       }));
   },
 
   async create(
     festivalId: string,
-    data: {
-      programmeId: string;
-      participantId?: string;
-      groupId?: string;
-      /** Required for GROUP programmes when assigning a participant (integer ≥ 1). */
-      teamNumber?: number;
-    },
+    data:
+      | {
+          programmeId: string;
+          participantId: string;
+        }
+      | {
+          programmeId: string;
+          groupId: string;
+          teamNumber?: number;
+        },
     actor?: { createdByEmail?: string; createdByName?: string },
   ) {
     const festival = await findFestivalById(festivalId);
@@ -105,109 +172,156 @@ export const AssignmentService = {
     if (!programme || programme.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
 
-    if (!data.participantId && !data.groupId) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_REQUIRES_PARTICIPANT);
-    }
-
-    if (data.participantId) {
-      const participant = await findParticipantById(data.participantId);
-      if (!participant || participant.festivalId !== festivalId)
-        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
-
-      const isGeneral = programme.category.type === "GENERAL";
-
-      if (
-        programme.type === "INDIVIDUAL" &&
-        participant.groupId &&
-        programme.maxParticipantsPerGroup
-      ) {
-        const [result] = await db
-          .select({ count: count() })
-          .from(programmeAssignment)
-          .innerJoin(
-            participantTable,
-            eq(programmeAssignment.participantId, participantTable.id),
-          )
-          .where(
-            and(
-              eq(programmeAssignment.programmeId, data.programmeId),
-              eq(participantTable.groupId, participant.groupId),
-            ),
-          );
-
-        if (result.count >= programme.maxParticipantsPerGroup) {
-          throw new AppError(
-            `Max participants from group reached (${programme.maxParticipantsPerGroup})`,
-          );
-        }
-      }
-
-      if (!isGeneral && programme.categoryId !== participant.categoryId) {
-        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
-      }
-
-      const exists = await checkAssignmentExists(
-        data.programmeId,
-        data.participantId,
-      );
-      if (exists) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
-
-      let teamNumber = 1;
-      if (programme.type === "GROUP") {
-        const tn = data.teamNumber;
-        if (
-          tn === undefined ||
-          tn === null ||
-          !Number.isInteger(tn) ||
-          tn < 1
-        ) {
-          throw new AppError(
-            "Group programmes require a team number (integer ≥ 1) when assigning a participant.",
-          );
-        }
-        teamNumber = tn;
-      } else if (
-        data.teamNumber != null &&
-        Number.isInteger(data.teamNumber) &&
-        data.teamNumber >= 1
-      ) {
-        teamNumber = data.teamNumber;
-      }
-
-      const created = await createAssignment({
-        festivalId,
-        programmeId: data.programmeId,
+    if ("participantId" in data) {
+      assertAssignmentShape(programme.type, {
         participantId: data.participantId,
-        teamNumber,
-        ...(participant.groupId ? { groupId: participant.groupId } : {}),
-        assignedAt: serverNowIso(),
-        ...(actor?.createdByEmail
-          ? { createdByEmail: actor.createdByEmail }
-          : {}),
-        ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
       });
-      await updateProgrammeStatus(data.programmeId);
-      return created;
+      return this.createIndividualAssignment(festivalId, programme, data, actor);
     }
+
+    assertAssignmentShape(programme.type, {
+      groupId: data.groupId,
+      teamNumber: data.teamNumber ?? 1,
+    });
+    return this.createGroupTeamAssignment(
+      festivalId,
+      programme,
+      data.groupId,
+      data.teamNumber ?? 1,
+      actor,
+    );
+  },
+
+  async createIndividualAssignment(
+    festivalId: string,
+    programme: { id: string; type: string; maxParticipantsPerGroup?: number | null; categoryId: string; category?: { type: string } | null },
+    data: { participantId: string },
+    actor?: { createdByEmail?: string; createdByName?: string },
+  ) {
+    const participant = await findParticipantById(data.participantId);
+    if (!participant || participant.festivalId !== festivalId)
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
+
+    const isGeneral = programme.category?.type === "GENERAL";
+    if (!isGeneral && programme.categoryId !== participant.categoryId) {
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
+    }
+
+    if (
+      programme.type === "INDIVIDUAL" &&
+      participant.groupId &&
+      programme.maxParticipantsPerGroup
+    ) {
+      const [result] = await db
+        .select({ count: count() })
+        .from(programmeAssignment)
+        .innerJoin(
+          participantTable,
+          eq(programmeAssignment.participantId, participantTable.id),
+        )
+        .where(
+          and(
+            eq(programmeAssignment.programmeId, programme.id),
+            eq(participantTable.groupId, participant.groupId),
+          ),
+        );
+
+      if (result.count >= programme.maxParticipantsPerGroup) {
+        throw new AppError(
+          `Max participants from group reached (${programme.maxParticipantsPerGroup})`,
+        );
+      }
+    }
+
+    const exists = await checkAssignmentExists(programme.id, data.participantId);
+    if (exists) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
 
     const created = await createAssignment({
       festivalId,
-      programmeId: data.programmeId,
-      groupId: data.groupId!,
+      programmeId: programme.id,
+      participantId: data.participantId,
+      teamNumber: 1,
       assignedAt: serverNowIso(),
+      updatedAt: serverNowIso(),
       ...(actor?.createdByEmail
         ? { createdByEmail: actor.createdByEmail }
         : {}),
       ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
     });
-    await updateProgrammeStatus(data.programmeId);
+    await updateProgrammeStatus(programme.id);
+    return created;
+  },
+
+  async createGroupTeamAssignment(
+    festivalId: string,
+    programme: { id: string; type: string; maxTeamsPerGroup?: number | null; maxParticipantsPerTeam?: number | null },
+    groupId: string,
+    teamNumber: number,
+    actor?: { createdByEmail?: string; createdByName?: string },
+  ) {
+    const existingTeam = await db.query.programmeAssignment.findFirst({
+      where: and(
+        eq(programmeAssignment.programmeId, programme.id),
+        eq(programmeAssignment.groupId, groupId),
+        eq(programmeAssignment.teamNumber, teamNumber),
+      ),
+    });
+    if (existingTeam) {
+      throw new AppError(
+        `Team ${teamNumber} for this group already exists on this programme.`,
+        "TEAM_ALREADY_EXISTS",
+      );
+    }
+
+    if (
+      programme.maxTeamsPerGroup &&
+      programme.maxTeamsPerGroup > 0
+    ) {
+      const [{ teamCount }] = await db
+        .select({
+          teamCount: sql<number>`COUNT(DISTINCT (${programmeAssignment.groupId}, ${programmeAssignment.teamNumber}))`,
+        })
+        .from(programmeAssignment)
+        .where(
+          and(
+            eq(programmeAssignment.programmeId, programme.id),
+            eq(programmeAssignment.groupId, groupId),
+          ),
+        );
+      if (teamCount >= programme.maxTeamsPerGroup) {
+        throw new AppError(
+          `Max teams per group reached (${programme.maxTeamsPerGroup}).`,
+        );
+      }
+    }
+
+    const created = await createAssignment({
+      festivalId,
+      programmeId: programme.id,
+      groupId,
+      teamNumber,
+      assignedAt: serverNowIso(),
+      updatedAt: serverNowIso(),
+      ...(actor?.createdByEmail
+        ? { createdByEmail: actor.createdByEmail }
+        : {}),
+      ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
+    });
+    await updateProgrammeStatus(programme.id);
     return created;
   },
 
   async update(
     id: string,
     festivalId: string,
-    data: { programmeId?: string; participantId?: string; groupId?: string },
+    data: {
+      programmeId?: string;
+      participantId?: string | null;
+      groupId?: string | null;
+      teamNumber?: number | null;
+      memberParticipantIds?: string[];
+      memberActor?: { createdByEmail?: string; createdByName?: string };
+    },
   ) {
     const festival = await findFestivalById(festivalId);
     if (festival?.status === "EXPIRED")
@@ -215,7 +329,7 @@ export const AssignmentService = {
 
     const existing = await db.query.programmeAssignment.findFirst({
       where: eq(programmeAssignment.id, id),
-      with: { participant: true, programme: true },
+      with: { programme: true },
     });
 
     if (!existing) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_NOT_FOUND);
@@ -223,67 +337,51 @@ export const AssignmentService = {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_FESTIVAL);
 
     const newProgrammeId = data.programmeId || existing.programmeId;
-    const newParticipantId =
-      data.participantId !== undefined
-        ? data.participantId
-        : existing.participantId;
-    const newGroupId =
-      data.groupId !== undefined ? data.groupId : existing.groupId;
-
     const programme = await findProgrammeById(newProgrammeId);
     if (!programme || programme.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
 
-    if (!newParticipantId && !newGroupId) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_REQUIRES_PARTICIPANT);
-    }
+    const nextParticipantId =
+      data.participantId !== undefined
+        ? data.participantId
+        : existing.participantId;
+    const nextGroupId =
+      data.groupId !== undefined ? data.groupId : existing.groupId;
+    const nextTeamNumber =
+      data.teamNumber !== undefined && data.teamNumber !== null
+        ? data.teamNumber
+        : (existing.teamNumber ?? 1);
 
-    if (newParticipantId) {
-      const participant = await findParticipantById(newParticipantId);
+    assertAssignmentShape(programme.type, {
+      participantId: nextParticipantId,
+      groupId: nextGroupId,
+      teamNumber: nextTeamNumber,
+    });
+
+    if (nextParticipantId) {
+      const participant = await findParticipantById(nextParticipantId);
       if (!participant || participant.festivalId !== festivalId)
         throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
 
-      const isGeneral = programme.category.type === "GENERAL";
+      const isGeneral = programme.category?.type === "GENERAL";
       if (!isGeneral && programme.categoryId !== participant.categoryId) {
         throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
       }
+    }
 
-      if (
-        newProgrammeId !== existing.programmeId ||
-        newParticipantId !== existing.participantId
-      ) {
-        const exists = await checkAssignmentExists(
-          newProgrammeId,
-          newParticipantId,
-        );
-        if (exists) {
-          const conflict = await db.query.programmeAssignment.findFirst({
-            where: and(
-              eq(programmeAssignment.programmeId, newProgrammeId),
-              eq(programmeAssignment.participantId, newParticipantId),
-            ),
-          });
-          if (conflict && conflict.id !== id)
-            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
-        }
-      }
-
-      const updated = (
-        await db
-          .update(programmeAssignment)
-          .set({
-            programmeId: newProgrammeId,
-            participantId: newParticipantId,
-            groupId: null,
-            updatedAt: serverNowIso(),
-          })
-          .where(eq(programmeAssignment.id, id))
-          .returning()
-      )[0];
-
-      await updateProgrammeStatus(existing.programmeId);
-      await updateProgrammeStatus(newProgrammeId);
-      return updated;
+    if (
+      nextParticipantId &&
+      (newProgrammeId !== existing.programmeId ||
+        nextParticipantId !== existing.participantId)
+    ) {
+      const conflict = await db.query.programmeAssignment.findFirst({
+        where: and(
+          eq(programmeAssignment.programmeId, newProgrammeId),
+          eq(programmeAssignment.participantId, nextParticipantId),
+        ),
+      });
+      if (conflict && conflict.id !== id)
+        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
     }
 
     const updated = (
@@ -291,17 +389,62 @@ export const AssignmentService = {
         .update(programmeAssignment)
         .set({
           programmeId: newProgrammeId,
-          participantId: null,
-          groupId: newGroupId!,
+          participantId: nextParticipantId,
+          groupId: nextGroupId,
+          teamNumber: nextTeamNumber,
           updatedAt: serverNowIso(),
         })
         .where(eq(programmeAssignment.id, id))
         .returning()
     )[0];
 
+    if (programme.type === "GROUP" && data.memberParticipantIds) {
+      await this.replaceGroupMembers(
+        festivalId,
+        id,
+        data.memberParticipantIds,
+        data.memberActor,
+      );
+    }
+
     await updateProgrammeStatus(existing.programmeId);
     await updateProgrammeStatus(newProgrammeId);
     return updated;
+  },
+
+  async replaceGroupMembers(
+    festivalId: string,
+    assignmentId: string,
+    participantIds: string[],
+    actor?: { createdByEmail?: string; createdByName?: string },
+  ) {
+    await db
+      .delete(programmeAssignmentMember)
+      .where(eq(programmeAssignmentMember.assignmentId, assignmentId));
+
+    if (participantIds.length === 0) return;
+
+    const rows = await db.query.participant.findMany({
+      where: inArray(participantTable.id, participantIds),
+    });
+    const validIds = rows.filter((r) => r.festivalId === festivalId).map((r) => r.id);
+    if (validIds.length === 0) return;
+
+    await db.insert(programmeAssignmentMember).values(
+      validIds.map((pid) => ({
+        id: randomUUID(),
+        assignmentId,
+        participantId: pid,
+        festivalId,
+        assignedAt: serverNowIso(),
+        createdAt: serverNowIso(),
+        updatedAt: serverNowIso(),
+        ...(actor?.createdByEmail
+          ? { createdByEmail: actor.createdByEmail }
+          : {}),
+        ...(actor?.createdByName ? { createdByName: actor.createdByName } : {}),
+      })),
+    );
   },
 
   async delete(
@@ -325,8 +468,7 @@ export const AssignmentService = {
 
     if (
       existing.programme?.type === "GROUP" &&
-      existing.groupId &&
-      existing.participantId
+      existing.groupId
     ) {
       const lead = await db.query.programmeTeamLead.findFirst({
         where: and(
@@ -336,29 +478,27 @@ export const AssignmentService = {
         ),
       });
 
-      if (lead && lead.participantId === existing.participantId) {
+      if (lead) {
         const [{ c: remainingCount }] = await db
           .select({ c: count() })
-          .from(programmeAssignment)
+          .from(programmeAssignmentMember)
           .where(
             and(
-              eq(programmeAssignment.programmeId, existing.programmeId),
-              eq(programmeAssignment.groupId, existing.groupId),
-              eq(programmeAssignment.teamNumber, existing.teamNumber),
-              sql`${programmeAssignment.id} != ${id}`,
+              eq(programmeAssignmentMember.assignmentId, id),
+              sql`${programmeAssignmentMember.participantId} != ${lead.participantId}`,
             ),
           );
 
         if (remainingCount === 0) {
           throw new AppError(
-            "This participant is the only member of the team. Delete the whole team instead of removing its last member.",
+            "This team has no remaining members. Delete the whole team instead of removing its last member.",
             "TEAM_WOULD_BE_EMPTY",
           );
         }
 
         if (!options?.replacementLeadParticipantId) {
           throw new AppError(
-            "This participant is the team lead. Appoint a replacement lead before removing them.",
+            "This team has a lead. Appoint a replacement lead before removing the team.",
             "LEAD_MUST_BE_REPLACED",
           );
         }
@@ -380,6 +520,9 @@ export const AssignmentService = {
             },
             tx,
           );
+          await tx
+            .delete(programmeAssignmentMember)
+            .where(eq(programmeAssignmentMember.assignmentId, id));
           const [row] = await tx
             .delete(programmeAssignment)
             .where(eq(programmeAssignment.id, id))
@@ -391,6 +534,9 @@ export const AssignmentService = {
       }
     }
 
+    await db
+      .delete(programmeAssignmentMember)
+      .where(eq(programmeAssignmentMember.assignmentId, id));
     const deleted = await deleteAssignment(id);
     await updateProgrammeStatus(deleted.programmeId);
     return deleted;
@@ -406,6 +552,17 @@ export const AssignmentService = {
     if (festival?.status === "EXPIRED")
       throw new AppError(ERROR_MESSAGES.FESTIVAL_EXPIRED);
 
+    const programme = await findProgrammeById(programmeId);
+    if (!programme || programme.festivalId !== festivalId)
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
+    if (programme.type !== "GROUP") {
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_GROUP_ONLY_OPERATION);
+    }
+
+    if (!Number.isInteger(teamNumber) || teamNumber < 1) {
+      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_GROUP_REQUIRES_TEAM_NUMBER);
+    }
+
     const result = await db
       .delete(programmeAssignment)
       .where(
@@ -419,7 +576,9 @@ export const AssignmentService = {
       .returning();
 
     if (result.length > 0) {
-      // No FK cascade from assignment -> team lead; clean up the orphaned row.
+      await db
+        .delete(programmeAssignmentMember)
+        .where(eq(programmeAssignmentMember.assignmentId, result[0].id));
       await db
         .delete(programmeTeamLeadTable)
         .where(
@@ -444,11 +603,7 @@ export const AssignmentService = {
 
   async bulkCreate(
     festivalId: string,
-    assignments: {
-      programmeId: string;
-      participantId: string;
-      teamNumber?: number;
-    }[],
+    assignments: BulkAssignmentInput[],
     actor?: { createdByEmail?: string; createdByName?: string },
     options?: {
       /** GROUP programmes only, keyed by `${programmeId}:${groupId}:${teamNumber}` -> lead participantId. */
@@ -469,8 +624,8 @@ export const AssignmentService = {
     const teamLeadsByTeam = options?.teamLeadsByTeam ?? {};
 
     return await db.transaction(async (tx) => {
-      const finalResults = [];
-      const assignmentsByProgramme = new Map<string, typeof assignments>();
+      const finalResults: typeof programmeAssignment.$inferSelect[] = [];
+      const assignmentsByProgramme = new Map<string, BulkAssignmentInput[]>();
       for (const a of assignments) {
         const existing = assignmentsByProgramme.get(a.programmeId) || [];
         existing.push(a);
@@ -487,209 +642,253 @@ export const AssignmentService = {
           throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
         }
 
-        const isGeneral = programme.category.type === "GENERAL";
-        const participantIds = progAssignments.map((a) => a.participantId);
+        const isGroupProgramme = programme.type === "GROUP";
+
+        if (isGroupProgramme) {
+          for (const row of progAssignments) {
+            if (!isGroupBulkRow(row)) {
+              throw new AppError(ERROR_MESSAGES.ASSIGNMENT_GROUP_REQUIRES_GROUP);
+            }
+            assertAssignmentShape(programme.type, {
+              groupId: row.groupId,
+              teamNumber: row.teamNumber,
+            });
+          }
+        } else {
+          for (const row of progAssignments) {
+            if (isGroupBulkRow(row)) {
+              throw new AppError(
+                ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT,
+              );
+            }
+            const id = (row as BulkAssignmentRow).participantId;
+            assertAssignmentShape(programme.type, { participantId: id });
+          }
+        }
+
+        const isGeneral = programme.category?.type === "GENERAL";
+        const allParticipantIds = new Set<string>();
+        for (const row of progAssignments) {
+          if (isGroupBulkRow(row)) {
+            for (const pid of row.participantIds) allParticipantIds.add(pid);
+          } else {
+            allParticipantIds.add((row as BulkAssignmentRow).participantId);
+          }
+        }
         const participants = await tx.query.participant.findMany({
-          where: inArray(participantTable.id, participantIds),
+          where: inArray(participantTable.id, Array.from(allParticipantIds)),
         });
         const participantMap = new Map(participants.map((s) => [s.id, s]));
 
+        for (const pid of allParticipantIds) {
+          const p = participantMap.get(pid);
+          if (!p || p.festivalId !== festivalId) {
+            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
+          }
+          if (!isGeneral && programme.categoryId !== p.categoryId) {
+            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
+          }
+        }
+
         const groupIds = new Set<string>();
-        participants.forEach((s) => {
-          if (s.groupId) groupIds.add(s.groupId);
-        });
+        for (const pid of allParticipantIds) {
+          const g = participantMap.get(pid)?.groupId;
+          if (g) groupIds.add(g);
+        }
 
-        const existingAssignments = await tx.query.programmeAssignment.findMany(
-          {
-            where: and(
-              eq(programmeAssignment.programmeId, programmeId),
-              or(
-                groupIds.size > 0
-                  ? inArray(programmeAssignment.groupId, Array.from(groupIds))
-                  : undefined,
-                // Drizzle relational query doesn't support nested participant.groupId check easily in 'where'
-                // We'll use a more direct approach if needed, but let's try to filter in JS or use sql
-              ),
-            ),
-            with: { participant: { columns: { groupId: true } } },
-          },
-        );
-
-        // Wait, the OR condition above is tricky. Let's use standard SQL for better control.
         const existingRaw = await tx
           .select({
             participantId: programmeAssignment.participantId,
             groupId: programmeAssignment.groupId,
             teamNumber: programmeAssignment.teamNumber,
-            participantGroupId: participantTable.groupId,
           })
           .from(programmeAssignment)
-          .leftJoin(
-            participantTable,
-            eq(programmeAssignment.participantId, participantTable.id),
-          )
-          .where(
-            and(
-              eq(programmeAssignment.programmeId, programmeId),
-              or(
-                groupIds.size > 0
-                  ? inArray(programmeAssignment.groupId, Array.from(groupIds))
-                  : undefined,
-                groupIds.size > 0
-                  ? inArray(participantTable.groupId, Array.from(groupIds))
-                  : undefined,
-              ),
-            ),
-          );
+          .where(eq(programmeAssignment.programmeId, programmeId));
 
         const participantsPerGroup = new Map<string, number>();
         const teamsPerGroup = new Map<string, Set<number>>();
         const participantsPerTeam = new Map<string, number>();
 
-        existingRaw.forEach((a) => {
-          const gid = a.groupId || a.participantGroupId;
-          if (!gid) return;
+        for (const a of existingRaw) {
+          const gid = a.groupId;
+          if (!gid) continue;
 
-          participantsPerGroup.set(
-            gid,
-            (participantsPerGroup.get(gid) || 0) + 1,
-          );
-          const teams = teamsPerGroup.get(gid) || new Set();
-          if (a.teamNumber) teams.add(a.teamNumber);
-          teamsPerGroup.set(gid, teams);
-
-          if (a.teamNumber) {
-            const key = `${gid}_${a.teamNumber}`;
-            participantsPerTeam.set(
-              key,
-              (participantsPerTeam.get(key) || 0) + 1,
+          if (!isGroupProgramme) {
+            participantsPerGroup.set(
+              gid,
+              (participantsPerGroup.get(gid) || 0) + 1,
             );
-          }
-        });
-
-        const processedParticipantIds = new Set<string>();
-        const touchedTeams = new Map<
-          string,
-          { groupId: string; teamNumber: number }
-        >();
-
-        for (const assignment of progAssignments) {
-          const { participantId } = assignment;
-          let teamNumber: number;
-          if (programme.type === "GROUP") {
-            const tn = assignment.teamNumber;
-            if (
-              tn === undefined ||
-              tn === null ||
-              !Number.isInteger(tn) ||
-              tn < 1
-            ) {
-              throw new AppError(
-                "Group programme assignments require an explicit integer team number.",
+          } else {
+            const teams = teamsPerGroup.get(gid) || new Set();
+            if (a.teamNumber) teams.add(a.teamNumber);
+            teamsPerGroup.set(gid, teams);
+            if (a.teamNumber) {
+              const key = `${gid}_${a.teamNumber}`;
+              participantsPerTeam.set(
+                key,
+                (participantsPerTeam.get(key) || 0) + 1,
               );
             }
-            teamNumber = tn;
-          } else {
-            const tn = assignment.teamNumber ?? 1;
-            teamNumber = Number.isInteger(tn) && tn >= 1 ? tn : 1;
-          }
-          const participant = participantMap.get(participantId);
-
-          if (!participant || participant.festivalId !== festivalId) {
-            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
-          }
-
-          if (!isGeneral && programme.categoryId !== participant.categoryId) {
-            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_CATEGORY_MISMATCH);
-          }
-
-          const participantGroupId = participant.groupId;
-
-          if (participantGroupId) {
-            if (programme.type === "GROUP") {
-              if (programme.maxTeamsPerGroup) {
-                const currentTeams =
-                  teamsPerGroup.get(participantGroupId) || new Set();
-                if (!currentTeams.has(teamNumber)) {
-                  if (currentTeams.size >= programme.maxTeamsPerGroup) {
-                    throw new AppError(
-                      `Max Teams per Group (${programme.maxTeamsPerGroup}) reached.`,
-                    );
-                  }
-                  currentTeams.add(teamNumber);
-                  teamsPerGroup.set(participantGroupId, currentTeams);
-                }
-              }
-
-              if (programme.maxParticipantsPerTeam) {
-                const key = `${participantGroupId}_${teamNumber}`;
-                const currentCount = participantsPerTeam.get(key) || 0;
-                if (currentCount >= programme.maxParticipantsPerTeam) {
-                  throw new AppError(
-                    `Max team size reached for Team ${teamNumber}`,
-                  );
-                }
-                participantsPerTeam.set(key, currentCount + 1);
-              }
-            } else {
-              if (programme.maxParticipantsPerGroup) {
-                const currentCount =
-                  participantsPerGroup.get(participantGroupId) || 0;
-                if (currentCount >= programme.maxParticipantsPerGroup) {
-                  throw new AppError(
-                    `Group limit reached for ${programme.name}`,
-                  );
-                }
-                participantsPerGroup.set(participantGroupId, currentCount + 1);
-              }
-            }
-          }
-
-          if (
-            existingRaw.some((e) => e.participantId === participantId) ||
-            processedParticipantIds.has(participantId)
-          ) {
-            throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
-          }
-          processedParticipantIds.add(participantId);
-
-          const created = (
-            await tx
-              .insert(programmeAssignment)
-              .values({
-                id: randomUUID(),
-                festivalId,
-                programmeId,
-                participantId,
-                teamNumber,
-                assignedAt: serverNowIso(),
-                updatedAt: serverNowIso(),
-                ...(actor?.createdByEmail
-                  ? { createdByEmail: actor.createdByEmail }
-                  : {}),
-                ...(actor?.createdByName
-                  ? { createdByName: actor.createdByName }
-                  : {}),
-                ...(participant.groupId
-                  ? { groupId: participant.groupId }
-                  : {}),
-              })
-              .returning()
-          )[0];
-          finalResults.push(created);
-
-          if (programme.type === "GROUP" && participantGroupId) {
-            touchedTeams.set(
-              `${programmeId}:${participantGroupId}:${teamNumber}`,
-              {
-                groupId: participantGroupId,
-                teamNumber,
-              },
-            );
           }
         }
 
-        if (programme.type === "GROUP" && teamLeadsRequired) {
+        const existingMemberRows = await tx
+          .select({
+            assignmentId: programmeAssignmentMember.assignmentId,
+            participantId: programmeAssignmentMember.participantId,
+          })
+          .from(programmeAssignmentMember)
+          .innerJoin(
+            programmeAssignment,
+            eq(programmeAssignment.id, programmeAssignmentMember.assignmentId),
+          )
+          .where(eq(programmeAssignment.programmeId, programmeId));
+        const memberSetByAssignment = new Map<string, Set<string>>();
+        for (const m of existingMemberRows) {
+          const set = memberSetByAssignment.get(m.assignmentId) ?? new Set();
+          set.add(m.participantId);
+          memberSetByAssignment.set(m.assignmentId, set);
+        }
+        const processedParticipantIds = new Set<string>();
+        const touchedTeams = new Map<
+          string,
+          { groupId: string; teamNumber: number; assignmentId: string }
+        >();
+
+        if (isGroupProgramme) {
+          for (const row of progAssignments as BulkAssignmentGroupRow[]) {
+            const teamNumber = row.teamNumber;
+
+            const gid = row.groupId;
+            if (
+              programme.maxTeamsPerGroup &&
+              programme.maxTeamsPerGroup > 0
+            ) {
+              const currentTeams = teamsPerGroup.get(gid) || new Set();
+              if (!currentTeams.has(teamNumber)) {
+                if (currentTeams.size >= programme.maxTeamsPerGroup) {
+                  throw new AppError(
+                    `Max Teams per Group (${programme.maxTeamsPerGroup}) reached.`,
+                  );
+                }
+                currentTeams.add(teamNumber);
+                teamsPerGroup.set(gid, currentTeams);
+              }
+            }
+
+            const created = (
+              await tx
+                .insert(programmeAssignment)
+                .values({
+                  id: randomUUID(),
+                  festivalId,
+                  programmeId,
+                  groupId: gid,
+                  teamNumber,
+                  assignedAt: serverNowIso(),
+                  updatedAt: serverNowIso(),
+                  ...(actor?.createdByEmail
+                    ? { createdByEmail: actor.createdByEmail }
+                    : {}),
+                  ...(actor?.createdByName
+                    ? { createdByName: actor.createdByName }
+                    : {}),
+                })
+                .returning()
+            )[0];
+            finalResults.push(created);
+
+            if (row.participantIds.length > 0) {
+              await tx.insert(programmeAssignmentMember).values(
+                row.participantIds.map((pid) => ({
+                  id: randomUUID(),
+                  assignmentId: created.id,
+                  participantId: pid,
+                  festivalId,
+                  assignedAt: serverNowIso(),
+                  createdAt: serverNowIso(),
+                  updatedAt: serverNowIso(),
+                  ...(actor?.createdByEmail
+                    ? { createdByEmail: actor.createdByEmail }
+                    : {}),
+                  ...(actor?.createdByName
+                    ? { createdByName: actor.createdByName }
+                    : {}),
+                })),
+              );
+              for (const pid of row.participantIds) {
+                processedParticipantIds.add(pid);
+                if (
+                  programme.maxParticipantsPerTeam &&
+                  programme.maxParticipantsPerTeam > 0
+                ) {
+                  const key = `${gid}_${teamNumber}`;
+                  const currentCount = participantsPerTeam.get(key) || 0;
+                  if (currentCount >= programme.maxParticipantsPerTeam) {
+                    throw new AppError(
+                      `Max team size reached for Team ${teamNumber}`,
+                    );
+                  }
+                  participantsPerTeam.set(key, currentCount + 1);
+                }
+              }
+            }
+
+            touchedTeams.set(`${programmeId}:${gid}:${teamNumber}`, {
+              groupId: gid,
+              teamNumber,
+              assignmentId: created.id,
+            });
+          }
+        } else {
+          for (const row of progAssignments as BulkAssignmentRow[]) {
+            const { participantId } = row;
+            if (
+              existingRaw.some((e) => e.participantId === participantId) ||
+              processedParticipantIds.has(participantId)
+            ) {
+              throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
+            }
+            processedParticipantIds.add(participantId);
+
+            const participant = participantMap.get(participantId);
+            const gid = participant?.groupId ?? null;
+
+            if (gid && programme.maxParticipantsPerGroup) {
+              const currentCount = participantsPerGroup.get(gid) || 0;
+              if (currentCount >= programme.maxParticipantsPerGroup) {
+                throw new AppError(
+                  `Group limit reached for ${programme.name}`,
+                );
+              }
+              participantsPerGroup.set(gid, currentCount + 1);
+            }
+
+            const created = (
+              await tx
+                .insert(programmeAssignment)
+                .values({
+                  id: randomUUID(),
+                  festivalId,
+                  programmeId,
+                  participantId,
+                  teamNumber: 1,
+                  assignedAt: serverNowIso(),
+                  updatedAt: serverNowIso(),
+                  ...(actor?.createdByEmail
+                    ? { createdByEmail: actor.createdByEmail }
+                    : {}),
+                  ...(actor?.createdByName
+                    ? { createdByName: actor.createdByName }
+                    : {}),
+                })
+                .returning()
+            )[0];
+            finalResults.push(created);
+          }
+        }
+
+        if (isGroupProgramme && teamLeadsRequired) {
           for (const [key, { groupId, teamNumber }] of touchedTeams) {
             const existingLead = await tx.query.programmeTeamLead.findFirst({
               where: and(

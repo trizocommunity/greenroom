@@ -22,7 +22,7 @@ export type RenderedEmail = {
   text: string;
 };
 
-const DEFAULT_MAGIC_LINK_EXPIRY_MINUTES = 15;
+const DEFAULT_MAGIC_LINK_EXPIRY_MINUTES = 30;
 const DEFAULT_INVITATION_EXPIRY_HOURS = 48;
 const DEFAULT_OTP_EXPIRY_MINUTES = 10;
 

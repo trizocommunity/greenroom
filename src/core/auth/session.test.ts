@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockCookieGet = vi.fn();
+const mockCookieSet = vi.fn();
 const mockCookieDelete = vi.fn();
 const mockCookies = vi.fn(async () => ({
   get: mockCookieGet,
+  set: mockCookieSet,
   delete: mockCookieDelete,
 }));
 
@@ -38,7 +40,14 @@ vi.mock("drizzle-orm", async () => {
   };
 });
 
-import { deleteSession, encrypt, getSession } from "./session";
+import { MS } from "@/core/datetime/server";
+import {
+  createSession,
+  decrypt,
+  deleteSession,
+  encrypt,
+  getSession,
+} from "./session";
 
 async function signCookie(
   userId: string,
@@ -47,12 +56,13 @@ async function signCookie(
   return encrypt({
     userId,
     role,
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    expires: new Date(Date.now() + MS.month),
   });
 }
 
 beforeEach(() => {
   mockCookieGet.mockReset();
+  mockCookieSet.mockReset();
   mockCookieDelete.mockReset();
   mockSelect.mockClear();
   mockFrom.mockClear();
@@ -104,6 +114,41 @@ describe("getSession", () => {
     expect(result).toBeNull();
     expect(mockSelect).toHaveBeenCalled();
     expect(mockCookieDelete).toHaveBeenCalledWith("session");
+  });
+});
+
+describe("encrypt — session lifetime", () => {
+  it("issues a JWT that expires ~30 days after issuance", async () => {
+    const before = Math.floor(Date.now() / 1000);
+    const token = await encrypt({
+      userId: "user-1",
+      role: "USER",
+      expires: new Date(Date.now() + MS.month),
+    });
+
+    const decoded = await decrypt(token);
+    const iat = decoded.iat as number;
+    const exp = decoded.exp as number;
+    expect(iat).toBeGreaterThanOrEqual(before);
+    expect(exp - iat).toBeGreaterThanOrEqual(30 * 24 * 60 * 60 - 5);
+    expect(exp - iat).toBeLessThanOrEqual(30 * 24 * 60 * 60 + 5);
+  });
+});
+
+describe("createSession — cookie lifetime", () => {
+  it("sets the session cookie with an expires ~30 days in the future", async () => {
+    const before = Date.now();
+    await createSession("user-1", "USER");
+
+    expect(mockCookieSet).toHaveBeenCalledTimes(1);
+    const [, , opts] = mockCookieSet.mock.calls[0];
+    const expiresMs = (opts.expires as Date).getTime();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    expect(expiresMs - before).toBeGreaterThanOrEqual(thirtyDaysMs - 5_000);
+    expect(expiresMs - before).toBeLessThanOrEqual(thirtyDaysMs + 5_000);
+    expect(opts.httpOnly).toBe(true);
+    expect(opts.path).toBe("/");
+    expect(opts.sameSite).toBe("strict");
   });
 });
 

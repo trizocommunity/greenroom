@@ -5,6 +5,7 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
+  programmeAssignmentMember as assignmentMemberTable,
   programmeNotification as notificationTable,
   participant as participantTable,
   programmeReportingSession as prsTable,
@@ -273,12 +274,22 @@ export async function getParticipantOngoingProgrammesAction(
   participantId: string,
 ) {
   await assertParticipantNotificationAccess(participantId);
-  const assignments = await db.query.programmeAssignment.findMany({
-    where: eq(assignmentTable.participantId, participantId),
-    columns: { programmeId: true },
-  });
+  const individualProgrammeIds = await db
+    .selectDistinct({ programmeId: assignmentTable.programmeId })
+    .from(assignmentTable)
+    .where(eq(assignmentTable.participantId, participantId));
+  const memberRows = await db
+    .selectDistinct({ programmeId: assignmentTable.programmeId })
+    .from(assignmentMemberTable)
+    .innerJoin(
+      assignmentTable,
+      eq(assignmentTable.id, assignmentMemberTable.assignmentId),
+    )
+    .where(eq(assignmentMemberTable.participantId, participantId));
   const programmeIds = Array.from(
-    new Set(assignments.map((a) => a.programmeId)),
+    new Set(
+      [...individualProgrammeIds, ...memberRows].map((r) => r.programmeId),
+    ),
   );
   if (!programmeIds.length) return [];
 
@@ -372,12 +383,36 @@ export async function scanAndReportParticipantAction(
       };
     }
 
-    const assignment = await db.query.programmeAssignment.findFirst({
-      where: and(
-        eq(assignmentTable.programmeId, session.programmeId),
-        eq(assignmentTable.participantId, participant.id),
-      ),
-    });
+    let assignment: { id: string; teamNumber: number | null } | undefined;
+    if (session.programme?.type === "GROUP") {
+      const member = await db.query.programmeAssignmentMember.findFirst({
+        where: eq(assignmentMemberTable.participantId, participant.id),
+        with: {
+          assignment: {
+            columns: {
+              id: true,
+              programmeId: true,
+              teamNumber: true,
+            },
+          },
+        },
+      });
+      if (member?.assignment?.programmeId === session.programmeId) {
+        assignment = {
+          id: member.assignment.id,
+          teamNumber: member.assignment.teamNumber,
+        };
+      }
+    } else {
+      const individualRow = await db.query.programmeAssignment.findFirst({
+        where: and(
+          eq(assignmentTable.programmeId, session.programmeId),
+          eq(assignmentTable.participantId, participant.id),
+        ),
+        columns: { id: true, teamNumber: true },
+      });
+      if (individualRow) assignment = individualRow;
+    }
 
     if (!assignment) {
       return {

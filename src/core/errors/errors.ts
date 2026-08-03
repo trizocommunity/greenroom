@@ -92,6 +92,20 @@ export const ERROR_MESSAGES = {
   ASSIGNMENT_DEADLINE_PASSED_ADMIN: "Deadline passed. Assignments are closed.",
   ASSIGNMENT_WINDOW_NOT_OPEN:
     "Assignments haven't opened yet. Please wait for the start date.",
+  ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT:
+    "INDIVIDUAL programme assignments must reference a participant, not a group.",
+  ASSIGNMENT_GROUP_REQUIRES_GROUP:
+    "GROUP programme assignments must reference a group and team number, not a participant.",
+  ASSIGNMENT_GROUP_REQUIRES_TEAM_NUMBER:
+    "GROUP programme assignments must include a team number of at least 1.",
+  ASSIGNMENT_GROUP_ONLY_OPERATION:
+    "This operation is only valid for GROUP programme assignments.",
+  ASSIGNMENT_INVALID_SHAPE:
+    "Assignment shape does not match the programme type (INDIVIDUAL requires participantId; GROUP requires groupId + teamNumber).",
+  PROGRAMME_TYPE_UNKNOWN:
+    "Programme type is unknown or missing. Every programme must explicitly declare its type as INDIVIDUAL or GROUP.",
+  PROGRAMME_TYPE_MISMATCH:
+    "Programme type does not match the expected type for this operation.",
   PARTICIPANT_CREATION_DEADLINE_PASSED:
     "Deadline passed. Adding new participants is closed.",
   PARTICIPANT_CREATION_WINDOW_NOT_OPEN:

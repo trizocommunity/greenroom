@@ -26,7 +26,7 @@ export async function encrypt(payload: SessionPayload) {
   return await new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("30d")
     .sign(key);
 }
 
@@ -39,7 +39,7 @@ export async function decrypt(input: string): Promise<SessionPayload> {
 }
 
 export async function createSession(userId: string, role: GlobalRole) {
-  const expires = nowPlus(MS.week);
+  const expires = nowPlus(MS.month);
   const session = await encrypt({ userId, role, expires });
 
   const cookieStore = await cookies();
@@ -59,7 +59,7 @@ export async function updateSession(data: Partial<SessionPayload>) {
   const newPayload: SessionPayload = {
     ...session,
     ...data,
-    expires: nowPlus(MS.week),
+    expires: nowPlus(MS.month),
   };
 
   const newToken = await encrypt(newPayload);

@@ -2,7 +2,7 @@
 
 import { randomUUID } from "crypto";
 import { format } from "date-fns";
-import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
@@ -187,8 +187,15 @@ export async function getScheduleEntriesPublic(
 export type SchedulableProgramme = {
   id: string;
   name: string;
+  nameSecondary: string | null;
   categoryId: string | null;
   categoryName: string | null;
+  type: "INDIVIDUAL" | "GROUP";
+  durationMode: "SEQUENTIAL" | "PARALLEL";
+  timePerUnitMinutes: number;
+  parallelDurationMinutes: number | null;
+  assignmentCount: number;
+  teamCount: number;
 };
 
 export async function getSchedulableProgrammesAction(
@@ -200,7 +207,17 @@ export async function getSchedulableProgrammesAction(
   const allProgrammes = await db.query.programme.findMany({
     where: (programmeTable, { eq }) =>
       eq(programmeTable.festivalId, festivalId),
-    columns: { id: true, name: true, categoryId: true },
+    columns: {
+      id: true,
+      name: true,
+      nameSecondary: true,
+      categoryId: true,
+      type: true,
+      durationMode: true,
+      timePerUnitMinutes: true,
+      parallelDurationMinutes: true,
+      maxTeamsPerGroup: true,
+    },
     with: {
       category: { columns: { id: true, name: true } },
     },
@@ -220,25 +237,38 @@ export async function getSchedulableProgrammesAction(
       .filter((id): id is string => typeof id === "string" && id.length > 0),
   );
 
-  const assignmentRows = await db
-    .selectDistinct({ programmeId: assignmentTable.programmeId })
+  const assignmentCounts = await db
+    .select({
+      programmeId: assignmentTable.programmeId,
+      count: count(),
+      teamCount: sql<number>`COUNT(DISTINCT ${assignmentTable.teamNumber})`,
+    })
     .from(assignmentTable)
-    .where(eq(assignmentTable.festivalId, festivalId));
-  const assignedProgrammeIds = new Set(
-    assignmentRows
-      .map((r) => r.programmeId)
-      .filter((id): id is string => typeof id === "string" && id.length > 0),
+    .where(eq(assignmentTable.festivalId, festivalId))
+    .groupBy(assignmentTable.programmeId);
+
+  const countMap = new Map(
+    assignmentCounts
+      .filter((r): r is typeof r & { programmeId: string } => !!r.programmeId)
+      .map((r) => [r.programmeId, { count: r.count, teamCount: r.teamCount }]),
   );
 
   return allProgrammes
     .filter(
-      (p) => !scheduledProgrammeIds.has(p.id) && assignedProgrammeIds.has(p.id),
+      (p) => !scheduledProgrammeIds.has(p.id) && countMap.has(p.id),
     )
     .map((p) => ({
       id: p.id,
       name: p.name,
+      nameSecondary: p.nameSecondary ?? null,
       categoryId: p.category?.id ?? null,
       categoryName: p.category?.name ?? null,
+      type: p.type,
+      durationMode: p.durationMode,
+      timePerUnitMinutes: p.timePerUnitMinutes,
+      parallelDurationMinutes: p.parallelDurationMinutes ?? null,
+      assignmentCount: countMap.get(p.id)?.count ?? 0,
+      teamCount: countMap.get(p.id)?.teamCount ?? 0,
     }));
 }
 
@@ -610,6 +640,69 @@ export async function deleteScheduleEntry(
   return { success: true };
 }
 
+export async function clearScheduleEntries(
+  festivalId: string,
+  filters?: { stageId?: string | null; dateKey?: string | null },
+): Promise<{ success: true; count: number } | { success: false; error: string }> {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId, { requireWritable: true });
+
+  const festival = await findFestivalById(festivalId);
+  if (!festival) return { success: false, error: "Festival not found" };
+
+  const canManage = await getEffectiveFeatureEnabled(
+    festival.tier as Tier,
+    "schedule",
+  );
+  if (!canManage)
+    return { success: false, error: "Schedule is not available on your plan." };
+
+  const conditions = [eq(scheduleEntryTable.festivalId, festivalId)];
+
+  if (filters?.stageId) {
+    conditions.push(eq(scheduleEntryTable.stageId, filters.stageId));
+  }
+
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  if (accessibleStageIds !== "all" && accessibleStageIds.length > 0) {
+    conditions.push(inArray(scheduleEntryTable.stageId, accessibleStageIds));
+  }
+
+  let entriesToDelete = await db.query.scheduleEntry.findMany({
+    where: and(...conditions),
+    columns: { id: true, startTime: true, type: true, programmeId: true },
+  });
+
+  if (filters?.dateKey) {
+    entriesToDelete = entriesToDelete.filter((e) => {
+      const d = parseStoredScheduleInstant(e.startTime);
+      return !Number.isNaN(d.getTime()) && format(d, "yyyy-MM-dd") === filters.dateKey;
+    });
+  }
+
+  if (entriesToDelete.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const ids = entriesToDelete.map((e) => e.id);
+  await db.delete(scheduleEntryTable).where(inArray(scheduleEntryTable.id, ids));
+
+  for (const entry of entriesToDelete) {
+    if (entry.type === "PROGRAMME") {
+      await handleProgrammeEntryMutation({
+        scheduleEntryId: entry.id,
+        previousProgrammeId: entry.programmeId,
+      });
+    }
+  }
+
+  revalidateSchedulePaths(festival.slug);
+  return { success: true, count: entriesToDelete.length };
+}
+
 export async function reorderScheduleEntries(
   festivalId: string,
   entryIds: string[],
@@ -685,6 +778,118 @@ export async function reorderScheduleEntries(
           ),
         );
     }
+  });
+
+  revalidateSchedulePaths(festival.slug);
+  return { success: true };
+}
+
+export async function getScheduleEntriesEnriched(festivalId: string) {
+  const entries = await getScheduleEntries(festivalId);
+
+  const programmeIds = entries
+    .map((e) => e.programmeId)
+    .filter((id): id is string => !!id);
+
+  if (programmeIds.length === 0) {
+    return entries.map((e) => ({ ...e, assignmentCount: 0, teamCount: 0 }));
+  }
+
+  const assignmentCounts = await db
+    .select({
+      programmeId: assignmentTable.programmeId,
+      count: count(),
+      teamCount: sql<number>`COUNT(DISTINCT ${assignmentTable.teamNumber})`,
+    })
+    .from(assignmentTable)
+    .where(inArray(assignmentTable.programmeId, programmeIds))
+    .groupBy(assignmentTable.programmeId);
+
+  const countMap = new Map(
+    assignmentCounts
+      .filter((r): r is typeof r & { programmeId: string } => !!r.programmeId)
+      .map((r) => [r.programmeId, { count: r.count, teamCount: r.teamCount }]),
+  );
+
+  return entries.map((e) => ({
+    ...e,
+    assignmentCount: e.programmeId ? (countMap.get(e.programmeId)?.count ?? 0) : 0,
+    teamCount: e.programmeId ? (countMap.get(e.programmeId)?.teamCount ?? 0) : 0,
+  }));
+}
+
+export type EnrichedScheduleEntry = Awaited<
+  ReturnType<typeof getScheduleEntriesEnriched>
+>[number];
+
+export async function swapScheduleSlots(
+  festivalId: string,
+  entryIdA: string,
+  entryIdB: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+
+  const festival = await findFestivalById(festivalId);
+  if (!festival) return { success: false, error: "Festival not found" };
+
+  const canManage = await getEffectiveFeatureEnabled(
+    festival.tier as Tier,
+    "schedule",
+  );
+  if (!canManage)
+    return { success: false, error: "Schedule is not available on your plan." };
+
+  const [entryA, entryB] = await Promise.all([
+    db.query.scheduleEntry.findFirst({
+      where: and(
+        eq(scheduleEntryTable.id, entryIdA),
+        eq(scheduleEntryTable.festivalId, festivalId),
+      ),
+    }),
+    db.query.scheduleEntry.findFirst({
+      where: and(
+        eq(scheduleEntryTable.id, entryIdB),
+        eq(scheduleEntryTable.festivalId, festivalId),
+      ),
+    }),
+  ]);
+
+  if (!entryA || !entryB)
+    return { success: false, error: "One or both entries not found." };
+  if (entryA.type !== "PROGRAMME" || entryB.type !== "PROGRAMME")
+    return { success: false, error: "Can only swap programme entries." };
+
+  const stageGuardA = await assertCanWriteOnStage(festivalId, entryA.stageId);
+  if (!stageGuardA.ok) return { success: false, error: stageGuardA.error };
+  const stageGuardB = await assertCanWriteOnStage(festivalId, entryB.stageId);
+  if (!stageGuardB.ok) return { success: false, error: stageGuardB.error };
+
+  const now = serverNowIso();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(scheduleEntryTable)
+      .set({
+        startTime: entryB.startTime,
+        endTime: entryB.endTime,
+        stageId: entryB.stageId,
+        order: entryB.order,
+        updatedAt: now,
+        updatedBy: session?.userId ?? null,
+      })
+      .where(eq(scheduleEntryTable.id, entryIdA));
+
+    await tx
+      .update(scheduleEntryTable)
+      .set({
+        startTime: entryA.startTime,
+        endTime: entryA.endTime,
+        stageId: entryA.stageId,
+        order: entryA.order,
+        updatedAt: now,
+        updatedBy: session?.userId ?? null,
+      })
+      .where(eq(scheduleEntryTable.id, entryIdB));
   });
 
   revalidateSchedulePaths(festival.slug);

@@ -27,6 +27,7 @@ import {
   type ResultPosterBindingInput,
 } from "@/features/posters/services/poster-bindings.service";
 import type { PosterTemplateRecord } from "@/features/posters/types/poster-template.types";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 
 export interface ResultPosterExportPayload {
   programmeId: string;
@@ -113,8 +114,10 @@ export async function getResultPosterExportPayloadAction(
       return { success: true, data: null };
     }
 
-    const programmeType =
-      progMeta?.type ?? rows[0]?.programmeType ?? "INDIVIDUAL";
+    const programmeType = requireProgrammeType(
+      progMeta?.type ?? rows[0]?.programmeType,
+      `poster export: programme ${programmeId}`,
+    );
     const winners = rows.map((r) => ({
       position: r.position ?? 0,
       name:

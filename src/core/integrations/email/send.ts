@@ -64,22 +64,31 @@ async function dispatchViaResend(
 }
 
 /**
- * Dev fallback used when `RESEND_API_KEY` is unset. Logs the rendered
- * email so a developer can see what would have been sent without burning
- * Resend quota. Returns a synthetic `{ id }` so the caller can treat it
- * as a successful no-op.
+ * Dev fallback used when `RESEND_API_KEY` is unset. Prints the rendered
+ * email to the console so a developer can see exactly what would have
+ * been sent, without burning Resend quota. Returns a synthetic `{ id }`
+ * so the caller can treat it as a successful no-op.
+ *
+ * This is the canonical local-dev path: leave `RESEND_API_KEY` unset in
+ * your local `.env` (it lives in the Vercel dashboard for production)
+ * and every send lands here.
  */
 function devFallback(
   rendered: { subject: string; html: string; text: string },
   to: string[],
 ): SendEmailResult {
-  console.warn(
-    `[email] RESEND_API_KEY not set — would have sent "${rendered.subject}" to ${to.join(", ")}`,
-  );
-  console.warn(
-    `[email] plaintext (first 240 chars): ${rendered.text.slice(0, 240)}…`,
-  );
-  console.warn(`[email] html length: ${rendered.html.length} chars`);
+  const lines = [
+    "",
+    "─── [email:dev] would have sent ─────────────────────────────",
+    `  to:      ${to.join(", ")}`,
+    `  from:    ${fromAddress()}`,
+    `  subject: ${rendered.subject}`,
+    `  text (${rendered.text.length} chars):`,
+    ...rendered.text.split("\n").map((line) => `    ${line}`),
+    "─────────────────────────────────────────────────────────────",
+    "",
+  ];
+  console.warn(lines.join("\n"));
   return { id: `dev-${Date.now()}` };
 }
 

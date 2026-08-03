@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   category as categoryTable,
@@ -6,8 +6,10 @@ import {
   group as groupTable,
   participant as participantTable,
   programmeAssignment,
+  programmeAssignmentMember,
   programmeCodeLetter as programmeCodeLetterTable,
   programme as programmeTable,
+  programmeTeamLead as programmeTeamLeadTable,
   result as resultTable,
 } from "@/core/database/schema";
 
@@ -15,6 +17,7 @@ export type AnnouncerQueueProgramme = {
   id: string;
   name: string;
   type: string;
+  stageType: string;
   status: string;
   categoryName: string | null;
   resultNumber: number | null;
@@ -33,13 +36,25 @@ export type AnnouncerQueueProgramme = {
   }[];
 };
 
+type ResultRowBase = {
+  id: string;
+  programmeId: string;
+  position: number | null;
+  points: number | null;
+  awardPoints: number | null;
+  grade: string | null;
+  isPublished: boolean;
+  groupName: string | null;
+  teamNumber: number | null;
+};
+
 export async function getAnnouncerQueue(
   festivalId: string,
 ): Promise<AnnouncerQueueProgramme[]> {
   const programmes = await db.query.programme.findMany({
     where: and(
       eq(programmeTable.festivalId, festivalId),
-      eq(programmeTable.status, "JUDGED"),
+      inArray(programmeTable.status, ["JUDGED", "ENDED"]),
     ),
     with: { category: { columns: { name: true } } },
     orderBy: [asc(programmeTable.resultNumber)],
@@ -58,23 +73,53 @@ export async function getAnnouncerQueue(
       awardPoints: resultTable.awardPoints,
       grade: resultTable.grade,
       isPublished: resultTable.isPublished,
-      participantName: participantTable.name,
-      chestNumber: participantTable.chestNumber,
       groupName: groupTable.name,
       teamNumber: programmeAssignment.teamNumber,
+      assignmentId: programmeAssignment.id,
     })
     .from(resultTable)
     .innerJoin(
       programmeAssignment,
       eq(resultTable.assignmentId, programmeAssignment.id),
     )
-    .leftJoin(
-      participantTable,
-      eq(programmeAssignment.participantId, participantTable.id),
-    )
     .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
     .where(eq(resultTable.festivalId, festivalId))
     .orderBy(asc(resultTable.position));
+
+  if (results.length === 0) return [];
+
+  const groupTeamKeys = new Set<string>();
+  for (const r of results) {
+    if (r.groupName != null) {
+      groupTeamKeys.add(`${r.programmeId}:${r.groupName}:${r.teamNumber ?? "-"}`);
+    }
+  }
+
+  const leadByAssignment = await loadTeamLeadsForAssignments(
+    results.map((r) => r.assignmentId),
+  );
+  const memberDisplayByAssignment = await loadFirstMemberDisplay(
+    results.map((r) => r.assignmentId),
+  );
+
+  const displayByAssignment = new Map<string, { name: string | null; chestNumber: string | null; isTeamLeader: boolean }>();
+  for (const assignmentId of results.map((r) => r.assignmentId)) {
+    const lead = leadByAssignment.get(assignmentId);
+    if (lead) {
+      displayByAssignment.set(assignmentId, {
+        name: lead.name,
+        chestNumber: lead.chestNumber,
+        isTeamLeader: true,
+      });
+    } else {
+      const m = memberDisplayByAssignment.get(assignmentId);
+      displayByAssignment.set(assignmentId, {
+        name: m?.name ?? null,
+        chestNumber: m?.chestNumber ?? null,
+        isTeamLeader: false,
+      });
+    }
+  }
 
   const codeLetters = await db.query.programmeCodeLetter.findMany({
     where: eq(programmeCodeLetterTable.festivalId, festivalId),
@@ -98,14 +143,12 @@ export async function getAnnouncerQueue(
     }
   }
 
-  const resultsByProgramme = new Map<string, (typeof results)>();
+  const resultsByProgramme = new Map<string, typeof results>();
   for (const r of results) {
     const list = resultsByProgramme.get(r.programmeId) ?? [];
     list.push(r);
     resultsByProgramme.set(r.programmeId, list);
   }
-
-  const programmeIdSet = new Set(programmeIds);
 
   return programmes
     .filter((p) => {
@@ -114,28 +157,95 @@ export async function getAnnouncerQueue(
     })
     .map((p) => {
       const progResults = resultsByProgramme.get(p.id) ?? [];
+
+      let finalResults = progResults;
+      if (p.type === "GROUP") {
+        const teamMap = new Map<string, typeof progResults[0]>();
+        for (const r of progResults) {
+          const key = `${r.groupName ?? ""}:${r.teamNumber ?? ""}`;
+          const display = displayByAssignment.get(r.assignmentId);
+          const prefer =
+            !teamMap.has(key) || (display?.isTeamLeader ?? false);
+          if (prefer) {
+            teamMap.set(key, r);
+          }
+        }
+        finalResults = Array.from(teamMap.values());
+      }
+
       return {
         id: p.id,
         name: p.name,
         type: p.type,
+        stageType: p.stageType,
         status: p.status,
         categoryName: p.category?.name ?? null,
         resultNumber: p.resultNumber,
-        results: progResults.map((r) => ({
-          id: r.id,
-          position: r.position,
-          points: r.awardPoints ?? r.points,
-          grade: r.grade,
-          isPublished: r.isPublished,
-          participantName: r.participantName,
-          chestNumber: r.chestNumber,
-          groupName: r.groupName,
-          teamNumber: r.teamNumber,
-          codeLetter: null as string | null,
-          awardPoints: r.awardPoints ?? 0,
-        })),
+        results: finalResults.map((r) => {
+          const display = displayByAssignment.get(r.assignmentId);
+          const label =
+            p.type === "GROUP"
+              ? display?.name
+                ? `${display.name} and team`
+                : "Team"
+              : display?.name ?? null;
+          return {
+            id: r.id,
+            position: r.position,
+            points: r.awardPoints ?? r.points,
+            grade: r.grade,
+            isPublished: r.isPublished,
+            participantName: label,
+            chestNumber: display?.chestNumber ?? null,
+            groupName: r.groupName,
+            teamNumber: r.teamNumber,
+            codeLetter: null as string | null,
+            awardPoints: r.awardPoints ?? 0,
+          };
+        }),
       };
     });
+}
+
+async function loadTeamLeadsForAssignments(
+  assignmentIds: string[],
+): Promise<
+  Map<string, { name: string | null; chestNumber: string | null }>
+> {
+  const map = new Map<
+    string,
+    { name: string | null; chestNumber: string | null }
+  >();
+  if (assignmentIds.length === 0) return map;
+
+  const rows = await db
+    .select({
+      assignmentId: programmeAssignment.id,
+      name: participantTable.name,
+      chestNumber: participantTable.chestNumber,
+    })
+    .from(programmeAssignment)
+    .innerJoin(
+      programmeTeamLeadTable,
+      and(
+        eq(programmeTeamLeadTable.programmeId, programmeAssignment.programmeId),
+        eq(programmeTeamLeadTable.groupId, programmeAssignment.groupId),
+        eq(programmeTeamLeadTable.teamNumber, programmeAssignment.teamNumber),
+      ),
+    )
+    .innerJoin(
+      participantTable,
+      eq(participantTable.id, programmeTeamLeadTable.participantId),
+    )
+    .where(inArray(programmeAssignment.id, assignmentIds));
+
+  for (const row of rows) {
+    map.set(row.assignmentId, {
+      name: row.name,
+      chestNumber: row.chestNumber,
+    });
+  }
+  return map;
 }
 
 export type PublishedResultProgramme = {
@@ -168,7 +278,7 @@ export async function getPublishedResults(
       eq(programmeTable.status, "PUBLISHED"),
     ),
     with: { category: { columns: { name: true } } },
-    orderBy: [desc(programmeTable.resultNumber)],
+    orderBy: [asc(programmeTable.resultNumber)],
   });
 
   if (programmes.length === 0) return [];
@@ -182,19 +292,14 @@ export async function getPublishedResults(
       awardPoints: resultTable.awardPoints,
       grade: resultTable.grade,
       publishedByName: resultTable.publishedByName,
-      participantName: participantTable.name,
-      chestNumber: participantTable.chestNumber,
       groupName: groupTable.name,
       teamNumber: programmeAssignment.teamNumber,
+      assignmentId: programmeAssignment.id,
     })
     .from(resultTable)
     .innerJoin(
       programmeAssignment,
       eq(resultTable.assignmentId, programmeAssignment.id),
-    )
-    .leftJoin(
-      participantTable,
-      eq(programmeAssignment.participantId, participantTable.id),
     )
     .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
     .where(
@@ -205,7 +310,37 @@ export async function getPublishedResults(
     )
     .orderBy(asc(resultTable.position));
 
-  const resultsByProgramme = new Map<string, (typeof results)>();
+  if (results.length === 0) return [];
+
+  const leadByAssignment = await loadTeamLeadsForAssignments(
+    results.map((r) => r.assignmentId),
+  );
+  const memberDisplayByAssignment = await loadFirstMemberDisplay(
+    results.map((r) => r.assignmentId),
+  );
+  const displayByAssignment = new Map<
+    string,
+    { name: string | null; chestNumber: string | null; isTeamLeader: boolean }
+  >();
+  for (const r of results) {
+    const lead = leadByAssignment.get(r.assignmentId);
+    if (lead) {
+      displayByAssignment.set(r.assignmentId, {
+        name: lead.name,
+        chestNumber: lead.chestNumber,
+        isTeamLeader: true,
+      });
+    } else {
+      const m = memberDisplayByAssignment.get(r.assignmentId);
+      displayByAssignment.set(r.assignmentId, {
+        name: m?.name ?? null,
+        chestNumber: m?.chestNumber ?? null,
+        isTeamLeader: false,
+      });
+    }
+  }
+
+  const resultsByProgramme = new Map<string, typeof results>();
   for (const r of results) {
     const list = resultsByProgramme.get(r.programmeId) ?? [];
     list.push(r);
@@ -214,6 +349,20 @@ export async function getPublishedResults(
 
   return programmes.map((p) => {
     const progResults = resultsByProgramme.get(p.id) ?? [];
+
+    let finalResults = progResults;
+    if (p.type === "GROUP") {
+      const teamMap = new Map<string, typeof progResults[0]>();
+      for (const r of progResults) {
+        const key = `${r.groupName ?? ""}:${r.teamNumber ?? ""}`;
+        const display = displayByAssignment.get(r.assignmentId);
+        const prefer =
+          !teamMap.has(key) || (display?.isTeamLeader ?? false);
+        if (prefer) teamMap.set(key, r);
+      }
+      finalResults = Array.from(teamMap.values());
+    }
+
     return {
       id: p.id,
       name: p.name,
@@ -222,17 +371,26 @@ export async function getPublishedResults(
       resultNumber: p.resultNumber,
       publishedAt: p.publishedAt,
       publishedByName: progResults[0]?.publishedByName ?? null,
-      results: progResults.map((r) => ({
-        id: r.id,
-        position: r.position,
-        points: r.awardPoints ?? r.points,
-        grade: r.grade,
-        participantName: r.participantName,
-        chestNumber: r.chestNumber,
-        groupName: r.groupName,
-        teamNumber: r.teamNumber,
-        awardPoints: r.awardPoints ?? 0,
-      })),
+      results: finalResults.map((r) => {
+        const display = displayByAssignment.get(r.assignmentId);
+        const label =
+          p.type === "GROUP"
+            ? display?.name
+              ? `${display.name} and team`
+              : "Team"
+            : display?.name ?? null;
+        return {
+          id: r.id,
+          position: r.position,
+          points: r.awardPoints ?? r.points,
+          grade: r.grade,
+          participantName: label,
+          chestNumber: display?.chestNumber ?? null,
+          groupName: r.groupName,
+          teamNumber: r.teamNumber,
+          awardPoints: r.awardPoints ?? 0,
+        };
+      }),
     };
   });
 }
@@ -313,7 +471,7 @@ export async function getNextResultNumber(
   festivalId: string,
 ): Promise<number> {
   const result = await db
-    .select({ maxNum: max(programmeTable.resultNumber) })
+    .select({ maxNum: sql<number>`MAX(${programmeTable.resultNumber})` })
     .from(programmeTable)
     .where(eq(programmeTable.festivalId, festivalId));
   return (result[0]?.maxNum ?? 0) + 1;
@@ -330,7 +488,7 @@ export async function getStandingsContext(festivalId: string) {
   });
 
   const highestPublishedResult = await db
-    .select({ maxNum: max(programmeTable.resultNumber) })
+    .select({ maxNum: sql<number>`MAX(${programmeTable.resultNumber})` })
     .from(programmeTable)
     .where(
       and(
@@ -346,4 +504,42 @@ export async function getStandingsContext(festivalId: string) {
     standingsPublishedAt: festival?.standingsPublishedAt ?? null,
     highestPublishedResultNumber: highestPublishedResult[0]?.maxNum ?? null,
   };
+}
+
+async function loadFirstMemberDisplay(
+  assignmentIds: string[],
+): Promise<
+  Map<string, { name: string | null; chestNumber: string | null }>
+> {
+  const map = new Map<
+    string,
+    { name: string | null; chestNumber: string | null }
+  >();
+  if (assignmentIds.length === 0) return map;
+
+  const rows = await db
+    .select({
+      assignmentId: programmeAssignmentMember.assignmentId,
+      participantId: programmeAssignmentMember.participantId,
+      name: participantTable.name,
+      chestNumber: participantTable.chestNumber,
+    })
+    .from(programmeAssignmentMember)
+    .innerJoin(
+      participantTable,
+      eq(participantTable.id, programmeAssignmentMember.participantId),
+    )
+    .where(inArray(programmeAssignmentMember.assignmentId, assignmentIds))
+    .orderBy(asc(programmeAssignmentMember.assignedAt));
+
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (seen.has(row.assignmentId)) continue;
+    seen.add(row.assignmentId);
+    map.set(row.assignmentId, {
+      name: row.name,
+      chestNumber: row.chestNumber,
+    });
+  }
+  return map;
 }

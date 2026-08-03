@@ -10,6 +10,7 @@ import {
 } from "@/features/festivals/actions/festival-crud.actions";
 import {
   getStagePortalBoardAction,
+  getStagePortalScorePayloadAction,
   markCodeLetterAbsenceAction,
   previewJudgeSubmissionSummaryAction,
   restartJudgementAction,
@@ -203,6 +204,14 @@ export function useStagePortalBoard(day?: string) {
     queryKey: ["stage-portal", "board", day ?? "today"],
     queryFn: async () => getStagePortalBoardAction(day),
     refetchInterval: 5000,
+  });
+}
+
+export function useStagePortalScorePayload(configId: string) {
+  return useQuery({
+    queryKey: ["stage-portal", "score-payload", configId],
+    queryFn: async () => getStagePortalScorePayloadAction(configId),
+    enabled: !!configId,
   });
 }
 

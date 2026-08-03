@@ -30,6 +30,10 @@ const {
   mockSelectDistinctWhere,
   mockSelectDistinctFrom,
   mockSelectDistinct,
+  mockSelectGroupBy,
+  mockSelectWhere,
+  mockSelectFrom,
+  mockSelect,
   mockTransaction,
 } = vi.hoisted(() => {
   const mkFn = () => vi.fn();
@@ -56,6 +60,10 @@ const {
     mockSelectDistinctWhere: mkFn(),
     mockSelectDistinctFrom: mkFn(),
     mockSelectDistinct: vi.fn(),
+    mockSelectGroupBy: mkFn(),
+    mockSelectWhere: mkFn(),
+    mockSelectFrom: mkFn(),
+    mockSelect: vi.fn(),
     mockTransaction: vi.fn(),
   };
 });
@@ -67,6 +75,14 @@ function wireChains() {
   mockDelete.mockImplementation(() => ({ where: mockDeleteWhere }));
   mockSelectDistinct.mockImplementation(() => ({
     from: () => ({ where: mockSelectDistinctWhere }),
+  }));
+  mockSelect.mockImplementation(() => ({
+    from: () => ({
+      where: (...args: unknown[]) => {
+        mockSelectWhere(...args);
+        return { groupBy: mockSelectGroupBy };
+      },
+    }),
   }));
   mockTransaction.mockImplementation(
     async (
@@ -112,6 +128,7 @@ vi.mock("@/core/database/client", () => ({
     update: (...args: unknown[]) => mockUpdate(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
     selectDistinct: (...args: unknown[]) => mockSelectDistinct(...args),
+    select: (...args: unknown[]) => mockSelect(...args),
     transaction: (
       cb: (tx: {
         update: typeof mockUpdate;
@@ -203,6 +220,7 @@ beforeEach(() => {
   mockUpdateSetWhere.mockResolvedValue(undefined);
   mockDeleteWhere.mockResolvedValue(undefined);
   mockSelectDistinctWhere.mockResolvedValue([]);
+  mockSelectGroupBy.mockResolvedValue([]);
 });
 
 describe("getScheduleEntries (read filter)", () => {
@@ -290,18 +308,17 @@ describe("getSchedulableProgrammesAction", () => {
     mockScheduleEntryFindMany.mockResolvedValue([
       { programmeId: "prog-1", type: "PROGRAMME" },
     ]);
-    mockSelectDistinctWhere.mockResolvedValue([{ programmeId: "prog-2" }]);
+    mockSelectGroupBy.mockResolvedValue([{ programmeId: "prog-2" }]);
 
     const result = await getSchedulableProgrammesAction(FESTIVAL_ID);
 
-    expect(result).toEqual([
-      {
-        id: "prog-2",
-        name: "Hifz",
-        categoryId: "cat-1",
-        categoryName: "General",
-      },
-    ]);
+    expect(result[0]).toMatchObject({
+      id: "prog-2",
+      name: "Hifz",
+      categoryId: "cat-1",
+      categoryName: "General",
+    });
+    expect(result).toHaveLength(1);
   });
 
   it("excludes programmes without any assignment", async () => {
@@ -335,7 +352,7 @@ describe("getSchedulableProgrammesAction", () => {
     mockScheduleEntryFindMany.mockResolvedValue([
       { programmeId: "prog-1", type: "PROGRAMME", stageId: STAGE_A },
     ]);
-    mockSelectDistinctWhere.mockResolvedValue([{ programmeId: "prog-1" }]);
+    mockSelectGroupBy.mockResolvedValue([{ programmeId: "prog-1" }]);
 
     const result = await getSchedulableProgrammesAction(FESTIVAL_ID);
 
@@ -350,8 +367,8 @@ describe("getSchedulableProgrammesAction", () => {
 
     await getSchedulableProgrammesAction(FESTIVAL_ID);
 
-    expect(mockSelectDistinctWhere).toHaveBeenCalledTimes(1);
-    const where = mockSelectDistinctWhere.mock.calls[0]?.[0];
+    expect(mockSelectGroupBy).toHaveBeenCalledTimes(1);
+    const where = mockSelectWhere.mock.calls[0]?.[0];
     const values = extractSqlValues(where);
     expect(values).toContain(FESTIVAL_ID);
   });

@@ -60,7 +60,21 @@ const adminOnlyHandler = createProtectedHandler({
     const parsed = createAssignmentInput.safeParse(data);
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
-    const result = await AssignmentService.create(festivalId, parsed.data);
+    let result;
+    if (parsed.data.participantId) {
+      result = await AssignmentService.create(festivalId, {
+        programmeId: parsed.data.programmeId,
+        participantId: parsed.data.participantId,
+      });
+    } else if (parsed.data.groupId) {
+      result = await AssignmentService.create(festivalId, {
+        programmeId: parsed.data.programmeId,
+        groupId: parsed.data.groupId,
+        teamNumber: parsed.data.teamNumber,
+      });
+    } else {
+      return badRequest("INVALID_INPUT", "participantId or groupId required");
+    }
     return ok(result);
   },
 });

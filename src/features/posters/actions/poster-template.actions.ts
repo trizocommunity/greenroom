@@ -84,7 +84,7 @@ export async function getEditorPreviewBindingsAction(
 
 export async function listPosterTemplatesAction(
   festivalId: string,
-): Promise<ActionResponse<PosterTemplateListItem[]>> {
+): Promise<ActionResponse<PosterTemplateRecord[]>> {
   try {
     const session = await getSession();
     if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
@@ -100,7 +100,7 @@ export async function listPosterTemplatesAction(
     const rows = await PosterTemplateRepo.listByFestival(festivalId);
     return {
       success: true,
-      data: rows.map(toPosterTemplateListItem),
+      data: rows,
     };
   } catch (error) {
     return handleActionError(error);

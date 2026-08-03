@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { jsPDF } from "jspdf";
 import { db } from "@/core/database/client";
 import {
@@ -7,7 +7,9 @@ import {
   group as groups,
   participant as participants,
   programmeAssignment,
+  programmeAssignmentMember,
   programme as programmes,
+  programmeTeamLead,
   result as results,
   scheduleEntry,
   stage as stages,
@@ -147,14 +149,92 @@ async function loadKeepTablesForFestival(
       { name: p.name, category: categoryNameById.get(p.categoryId) ?? null },
     ]),
   );
-  const participantNameByAssignmentId = new Map(
-    assignmentsData
-      .filter((a) => a.participantId)
-      .map((a) => [
-        a.id,
-        participantNameById.get(a.participantId ?? "") ?? "—",
-      ]),
+  const programmeIdByAssignmentId = new Map(
+    assignmentsData.map((a) => [a.id, a.programmeId]),
   );
+  const programmeTypeByAssignmentId = new Map<string, "INDIVIDUAL" | "GROUP">(
+    assignmentsData
+      .map((a) => {
+        const p = programmeMetaById.get(a.programmeId);
+        const t = (programmesData.find((pp) => pp.id === a.programmeId)?.type ??
+          null) as "INDIVIDUAL" | "GROUP" | null;
+        return t ? [a.id, t] : null;
+      })
+      .filter((entry): entry is [string, "INDIVIDUAL" | "GROUP"] =>
+        entry !== null,
+      ),
+  );
+
+  const memberRows = await db
+    .select({
+      assignmentId: programmeAssignmentMember.assignmentId,
+      participantId: programmeAssignmentMember.participantId,
+      assignedAt: programmeAssignmentMember.assignedAt,
+    })
+    .from(programmeAssignmentMember)
+    .where(inArray(programmeAssignmentMember.assignmentId, assignmentsData.map((a) => a.id)));
+  const memberByAssignment = new Map<string, Array<{ participantId: string; assignedAt: string | Date }>>();
+  for (const m of memberRows) {
+    const list = memberByAssignment.get(m.assignmentId) ?? [];
+    list.push({ participantId: m.participantId, assignedAt: m.assignedAt });
+    memberByAssignment.set(m.assignmentId, list);
+  }
+  const firstMemberByAssignment = new Map<string, string>();
+  for (const [aid, members] of memberByAssignment.entries()) {
+    if (members.length > 0) {
+      const sorted = members.slice().sort((a, b) => {
+        const at = new Date(a.assignedAt).getTime();
+        const bt = new Date(b.assignedAt).getTime();
+        return at - bt;
+      });
+      firstMemberByAssignment.set(aid, sorted[0].participantId);
+    }
+  }
+
+  const leadRows = await db
+    .select({
+      programmeId: programmeTeamLead.programmeId,
+      groupId: programmeTeamLead.groupId,
+      teamNumber: programmeTeamLead.teamNumber,
+      participantId: programmeTeamLead.participantId,
+    })
+    .from(programmeTeamLead);
+  const leadByTeam = new Map<string, string>();
+  for (const l of leadRows) {
+    leadByTeam.set(
+      `${l.programmeId}:${l.groupId}:${l.teamNumber}`,
+      l.participantId,
+    );
+  }
+
+  const participantNameByAssignmentId = new Map<string, string>();
+  for (const a of assignmentsData) {
+    const type = programmeTypeByAssignmentId.get(a.id);
+    if (type === "INDIVIDUAL") {
+      if (a.participantId) {
+        participantNameByAssignmentId.set(
+          a.id,
+          participantNameById.get(a.participantId) ?? "—",
+        );
+      } else {
+        participantNameByAssignmentId.set(a.id, "—");
+      }
+    } else if (type === "GROUP") {
+      let leadPid: string | undefined;
+      if (a.groupId) {
+        leadPid = leadByTeam.get(
+          `${a.programmeId}:${a.groupId}:${a.teamNumber ?? 1}`,
+        );
+      }
+      const pid = leadPid ?? firstMemberByAssignment.get(a.id);
+      participantNameByAssignmentId.set(
+        a.id,
+        pid ? (participantNameById.get(pid) ?? "—") : "Team",
+      );
+    } else {
+      participantNameByAssignmentId.set(a.id, "—");
+    }
+  }
 
   return {
     festival: {

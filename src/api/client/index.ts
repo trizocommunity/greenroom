@@ -129,6 +129,7 @@ export {
   useSavePosterTemplateDraft,
   useScanAndReportParticipant,
   useStagePortalBoard,
+  useStagePortalScorePayload,
   useStagePortalCredential,
   useStagePortalLogin,
   useStartJudgement,

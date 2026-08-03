@@ -53,6 +53,36 @@ export async function createMember(
   });
 }
 
+export async function updateMemberRoles(
+  id: string,
+  primaryRole: string,
+  additionalRoles: string[],
+) {
+  const member = await db.query.festivalMember.findFirst({
+    where: eq(festivalMember.id, id),
+  });
+  if (!member) return null;
+
+  const existingMeta =
+    (member.metadata as Record<string, unknown> | null) ?? {};
+  const newMeta = { ...existingMeta, additionalRoles };
+
+  const result = await db
+    .update(festivalMember)
+    .set({
+      role: primaryRole as any,
+      metadata: newMeta,
+      updatedAt: serverNowIso(),
+    })
+    .where(eq(festivalMember.id, id))
+    .returning();
+
+  return db.query.festivalMember.findFirst({
+    where: eq(festivalMember.id, result[0].id),
+    with: { user: true },
+  });
+}
+
 export async function deleteMember(id: string) {
   const result = await db
     .delete(festivalMember)

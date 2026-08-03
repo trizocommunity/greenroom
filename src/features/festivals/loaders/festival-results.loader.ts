@@ -2,7 +2,11 @@ import { and, asc, count, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   category as categoryTable,
+  participant as participantTable,
+  programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
   programme as programmeTable,
+  programmeTeamLead as programmeTeamLeadTable,
   result as resultTable,
 } from "@/core/database/schema";
 
@@ -18,6 +22,8 @@ export interface PublicResult {
   points: number;
   grade?: string | null;
   codeLetter?: string | null;
+  chestNo?: string | null;
+  resultNumber?: number | null;
 }
 
 /** One programme with its announced results already sorted by position. */
@@ -26,6 +32,7 @@ export interface PublicProgrammeResults {
   name: string;
   category: string;
   type: "INDIVIDUAL" | "GROUP";
+  resultNumber?: number | null;
   results: PublicResult[];
 }
 
@@ -120,6 +127,7 @@ export async function getPublicProgrammeResults(
         name: programmeTable.name,
         type: programmeTable.type,
         category: categoryTable.name,
+        resultNumber: programmeTable.resultNumber,
       })
       .from(resultTable)
       .innerJoin(programmeTable, eq(programmeTable.id, resultTable.programmeId))
@@ -183,8 +191,16 @@ export async function getPublicProgrammeResults(
     else rowsByProgramme.set(row.programmeId, [row]);
   }
 
+  const displayByAssignment = await loadTeamDisplayByAssignment(
+    rows.map((r) => r.assignmentId),
+  );
+
   const programmes = pageRows.map((programme) =>
-    toProgrammeResults(programme, rowsByProgramme.get(programme.id) ?? []),
+    toProgrammeResults(
+      programme,
+      rowsByProgramme.get(programme.id) ?? [],
+      displayByAssignment,
+    ),
   );
 
   return {
@@ -232,6 +248,10 @@ export async function getPublicTopResults(
   }
 
   const out: PublicResult[] = [];
+  const winnerAssignmentIds = winners.map((w) => w.assignmentId);
+  const displayByAssignment = await loadTeamDisplayByAssignment(
+    winnerAssignmentIds,
+  );
   for (const rows of byProgramme.values()) {
     const programme = rows[0].programme;
     const mapped = toProgrammeResults(
@@ -240,8 +260,10 @@ export async function getPublicTopResults(
         name: programme.name,
         type: programme.type as "INDIVIDUAL" | "GROUP",
         category: programme.category.name,
+        resultNumber: programme.resultNumber,
       },
       rows,
+      displayByAssignment,
     );
     const first = mapped.results[0];
     if (first) out.push(first);
@@ -258,74 +280,156 @@ type ProgrammeRow = {
   name: string;
   type: "INDIVIDUAL" | "GROUP";
   category: string;
+  resultNumber?: number | null;
 };
 
 /**
- * GROUP programmes store one result row per assigned member, so they are
- * collapsed to one row per team before display; INDIVIDUAL programmes map
- * one-to-one.
+ * Under the XOR invariant, each GROUP result row maps to exactly one team
+ * (the team-level programme_assignment). The team-leader's name is used as
+ * the public "winner" label; otherwise the first member by assignedAt is
+ * displayed.
  */
 function toProgrammeResults(
   programme: ProgrammeRow,
   rows: { [key: string]: any }[],
+  displayByAssignment: Map<
+    string,
+    { name: string | null; chestNumber: string | null }
+  >,
 ): PublicProgrammeResults {
   const results: PublicResult[] = [];
 
-  if (programme.type === "GROUP") {
-    const teams = new Map<string, PublicResult>();
+  for (const row of rows) {
+    const assignment = row.programmeAssignment;
+    const isGroup = programme.type === "GROUP";
 
-    for (const row of rows) {
-      const assignment = row.programmeAssignment;
-      const teamKey = `${assignment?.group?.id ?? "unknown"}-${
-        assignment?.teamNumber ?? 1
-      }`;
-      if (teams.has(teamKey)) continue;
-
-      const teamName =
-        (assignment?.group?.name ?? "") +
-        (assignment?.teamNumber > 1 ? ` Team ${assignment.teamNumber}` : "");
-
-      teams.set(teamKey, {
-        id: row.id,
-        programmeId: programme.id,
-        programName: programme.name,
-        programmeType: "GROUP",
-        category: programme.category,
-        winner: teamName || "Unknown Team",
-        team: assignment?.group?.name || "N/A",
-        position: row.position || 999,
-        points: getResultPoints(row),
-        grade: row.grade,
-        codeLetter: null,
-      });
+    let winner: string;
+    let chestNo: string | null;
+    if (isGroup) {
+      const display = assignment
+        ? displayByAssignment.get(assignment.id)
+        : undefined;
+      winner = display?.name
+        ? `${display.name} and team`
+        : "Team";
+      chestNo = display?.chestNumber ?? null;
+    } else {
+      winner = assignment?.participant?.name || "Unknown";
+      chestNo = assignment?.participant?.chestNumber ?? null;
     }
 
-    results.push(...teams.values());
-  } else {
-    for (const row of rows) {
-      results.push({
-        id: row.id,
-        programmeId: programme.id,
-        programName: programme.name,
-        programmeType: "INDIVIDUAL",
-        category: programme.category,
-        winner: row.programmeAssignment?.participant?.name || "Unknown",
-        team: row.programmeAssignment?.group?.name || "N/A",
-        position: row.position || 999,
-        points: getResultPoints(row),
-        grade: row.grade,
-        codeLetter: null,
-      });
-    }
+    results.push({
+      id: row.id,
+      programmeId: programme.id,
+      programName: programme.name,
+      programmeType: programme.type,
+      category: programme.category,
+      winner,
+      team: assignment?.group?.name || "N/A",
+      position: row.position || 999,
+      points: getResultPoints(row),
+      grade: row.grade,
+      codeLetter: null,
+      chestNo: chestNo,
+      resultNumber: programme.resultNumber,
+    });
   }
 
   results.sort((a, b) => a.position - b.position);
-
   return {
     id: programme.id,
     name: programme.name,
     category: programme.category,
     type: programme.type,
+    resultNumber: programme.resultNumber,
     results,
   };
+}
+
+async function loadTeamDisplayByAssignment(
+  assignmentIds: string[],
+): Promise<
+  Map<string, { name: string | null; chestNumber: string | null }>
+> {
+  const map = new Map<
+    string,
+    { name: string | null; chestNumber: string | null }
+  >();
+  if (assignmentIds.length === 0) return map;
+
+  const leadRows = await db
+    .select({
+      programmeId: programmeTeamLeadTable.programmeId,
+      groupId: programmeTeamLeadTable.groupId,
+      teamNumber: programmeTeamLeadTable.teamNumber,
+      participantId: programmeTeamLeadTable.participantId,
+    })
+    .from(programmeTeamLeadTable);
+  const leadByTeamKey = new Map<string, string>();
+  for (const l of leadRows) {
+    leadByTeamKey.set(
+      `${l.programmeId}:${l.groupId}:${l.teamNumber}`,
+      l.participantId,
+    );
+  }
+
+  const memberRows = await db
+    .select({
+      assignmentId: assignmentMemberTable.assignmentId,
+      participantId: assignmentMemberTable.participantId,
+      assignedAt: assignmentMemberTable.assignedAt,
+    })
+    .from(assignmentMemberTable)
+    .innerJoin(
+      assignmentTable,
+      eq(assignmentTable.id, assignmentMemberTable.assignmentId),
+    )
+    .where(inArray(assignmentMemberTable.assignmentId, assignmentIds))
+    .orderBy(asc(assignmentMemberTable.assignedAt));
+
+  const memberPidByAssignment = new Map<string, string>();
+  for (const m of memberRows) {
+    if (!memberPidByAssignment.has(m.assignmentId)) {
+      memberPidByAssignment.set(m.assignmentId, m.participantId);
+    }
+  }
+
+  const leadPids = Array.from(new Set(leadRows.map((l) => l.participantId)));
+  const memberPids = Array.from(new Set(memberRows.map((m) => m.participantId)));
+  const pids = Array.from(new Set([...leadPids, ...memberPids]));
+
+  const participants = await db
+    .select({
+      id: participantTable.id,
+      name: participantTable.name,
+      chestNumber: participantTable.chestNumber,
+    })
+    .from(participantTable)
+    .where(inArray(participantTable.id, pids));
+  const participantById = new Map(participants.map((p) => [p.id, p]));
+
+  for (const aid of assignmentIds) {
+    const a = (
+      await db
+        .select({
+          id: assignmentTable.id,
+          programmeId: assignmentTable.programmeId,
+          groupId: assignmentTable.groupId,
+          teamNumber: assignmentTable.teamNumber,
+        })
+        .from(assignmentTable)
+        .where(eq(assignmentTable.id, aid))
+    )[0];
+    if (!a?.groupId) continue;
+    const leadPid = leadByTeamKey.get(
+      `${a.programmeId}:${a.groupId}:${a.teamNumber ?? 1}`,
+    );
+    const fallbackPid = memberPidByAssignment.get(aid);
+    const pid = leadPid ?? fallbackPid;
+    if (!pid) continue;
+    const p = participantById.get(pid);
+    if (!p) continue;
+    map.set(aid, { name: p.name, chestNumber: p.chestNumber });
+  }
+  return map;
 }

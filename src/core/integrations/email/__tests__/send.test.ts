@@ -85,6 +85,33 @@ describe("sendEmail — global toggle", () => {
     warnSpy.mockRestore();
     if (prevKey) process.env.RESEND_API_KEY = prevKey;
   });
+
+  it("dev fallback prints subject, recipients, and full text body", async () => {
+    mockIsEnabled.mockResolvedValue(true);
+    const prevKey = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { sendEmail } = await import("../send");
+
+    await sendEmail({
+      to: ["alice@example.com", "bob@example.com"],
+      kind: { kind: "magic_link", token: "tok" },
+    });
+
+    const allWarned = warnSpy.mock.calls
+      .map((call) => call.map((part) => String(part)).join(" "))
+      .join("\n");
+
+    expect(allWarned).toContain("[email:dev] would have sent");
+    expect(allWarned).toContain("alice@example.com, bob@example.com");
+    expect(allWarned).toContain("subject:");
+    expect(allWarned).toMatch(/text \(\d+ chars\):/);
+    expect(allWarned).toContain("─────────");
+
+    warnSpy.mockRestore();
+    if (prevKey) process.env.RESEND_API_KEY = prevKey;
+  });
 });
 
 describe("EMAIL_KINDS registry", () => {

@@ -1,12 +1,36 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
+  programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
   programmeReportingSession as prsTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+
+async function findAssignmentMemberId(
+  tx: any,
+  programmeId: string,
+  participantId: string,
+): Promise<string | null> {
+  const member = await tx.query.programmeAssignmentMember.findFirst({
+    where: eq(assignmentMemberTable.participantId, participantId),
+    with: {
+      assignment: { columns: { id: true, programmeId: true } },
+    },
+  });
+  if (member?.assignment?.programmeId === programmeId) return member.id;
+  const individualRow = await tx.query.programmeAssignment.findFirst({
+    where: and(
+      eq(assignmentTable.programmeId, programmeId),
+      eq(assignmentTable.participantId, participantId),
+    ),
+    columns: { id: true },
+  });
+  return individualRow?.id ?? null;
+}
 
 export function sequentialAlphabetCode(indexOneBased: number): string {
   let n = Math.max(1, indexOneBased);
@@ -63,7 +87,7 @@ export const CodeLetterGeneratorService = {
       const assignedParticipantIds = new Set<string>();
       for (const e of existing) {
         for (const r of e.programmeCodeLetterRecipients) {
-          assignedParticipantIds.add(r.participantId);
+          if (r.participantId) assignedParticipantIds.add(r.participantId);
         }
       }
 
@@ -75,7 +99,6 @@ export const CodeLetterGeneratorService = {
 
       let ordinal = 0;
       for (const row of toAssign) {
-        // Find next available letter that isn't already used
         let code = "";
         do {
           ordinal += 1;
@@ -93,10 +116,17 @@ export const CodeLetterGeneratorService = {
           updatedAt: nowStr,
         } as any);
 
+        const memberId = await findAssignmentMemberId(
+          tx,
+          session.programmeId,
+          row.participantId,
+        );
+
         await tx.insert(codeLetterRecipientTable).values({
           id: randomUUID(),
           codeLetterId: codeLetterId,
           participantId: row.participantId,
+          assignmentMemberId: memberId,
           updatedAt: nowStr,
         } as any);
 
@@ -145,16 +175,15 @@ export const CodeLetterGeneratorService = {
       const assignedParticipantIds = new Set<string>();
       for (const e of existing) {
         for (const r of e.programmeCodeLetterRecipients) {
-          assignedParticipantIds.add(r.participantId);
+          if (r.participantId) assignedParticipantIds.add(r.participantId);
         }
       }
 
       // 2. Group by team
-      type TeamBucket = { participantIds: Set<string> };
+      type TeamBucket = { participantIds: Set<string>; teamAssignmentId: string | null };
       const byTeam = new Map<string, TeamBucket>();
 
       for (const row of reportedParticipants) {
-        // Skip participants who already have a code
         if (row.participantId && assignedParticipantIds.has(row.participantId))
           continue;
 
@@ -164,7 +193,7 @@ export const CodeLetterGeneratorService = {
             : `legacy:${row.participantId}`;
         let bucket = byTeam.get(teamKey);
         if (!bucket) {
-          bucket = { participantIds: new Set<string>() };
+          bucket = { participantIds: new Set<string>(), teamAssignmentId: null };
           byTeam.set(teamKey, bucket);
         }
         if (row.participantId) bucket.participantIds.add(row.participantId);
@@ -177,7 +206,6 @@ export const CodeLetterGeneratorService = {
 
       let ordinal = 0;
       for (const bucket of teamBuckets) {
-        // Find next available letter
         let code = "";
         do {
           ordinal += 1;
@@ -195,10 +223,16 @@ export const CodeLetterGeneratorService = {
           updatedAt: nowStr,
         } as any);
         for (const participantId of bucket.participantIds) {
+          const memberId = await findAssignmentMemberId(
+            tx,
+            session.programmeId,
+            participantId,
+          );
           await tx.insert(codeLetterRecipientTable).values({
             id: randomUUID(),
             codeLetterId: codeLetterId,
             participantId,
+            assignmentMemberId: memberId,
             updatedAt: nowStr,
           } as any);
           participantCodes.push({ participantId, code });
@@ -281,10 +315,16 @@ export const CodeLetterGeneratorService = {
 
         for (const participant of teamParticipants) {
           if (participant.participantId) {
+            const memberId = await findAssignmentMemberId(
+              tx,
+              session.programmeId,
+              participant.participantId,
+            );
             await tx.insert(codeLetterRecipientTable).values({
               id: randomUUID(),
               codeLetterId: codeLetterId,
               participantId: participant.participantId,
+              assignmentMemberId: memberId,
               updatedAt: nowStr,
             } as any);
             participantCodes.push({

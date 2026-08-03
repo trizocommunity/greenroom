@@ -12,6 +12,7 @@ import {
 } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
 import { serverNow } from "@/core/datetime/server";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import {
   buildCandidateCardBindings,
   buildCertificateBindings,
@@ -241,8 +242,10 @@ async function loadResultPreview(
     )
     .orderBy(asc(resultTable.position));
 
-  const programmeType =
-    programme.type ?? rows[0]?.programmeType ?? "INDIVIDUAL";
+  const programmeType = requireProgrammeType(
+    programme.type ?? rows[0]?.programmeType,
+    `poster preview: programme ${programmeId}`,
+  );
   const winners = rows.map((r) => ({
     position: r.position ?? 0,
     name:

@@ -3,6 +3,9 @@ import { db } from "@/core/database/client";
 import {
   category,
   programmeCodeLetter as codeLetterTable,
+  programmeAssignmentMember as assignmentMemberTable,
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeAssignment as assignmentTable,
   festival as festivals,
   programme as programmeTable,
   programmeReportingSession as reportingSessionTable,
@@ -13,6 +16,7 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
   T extends {
     id: string;
     assignments: Array<{
+      id?: string | null;
       participant?: { id: string } | null;
       result?: {
         codeLetter?: { code: string; isAbsent?: boolean } | null;
@@ -57,7 +61,9 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
       isAbsent: true,
     },
     with: {
-      programmeCodeLetterRecipients: { columns: { participantId: true } },
+      programmeCodeLetterRecipients: {
+        columns: { participantId: true, assignmentMemberId: true },
+      },
     },
   });
 
@@ -69,22 +75,47 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
     participantCodeByProgramme.set(progId, new Map());
   }
 
+  const assignmentCodeByProgramme = new Map<
+    string,
+    Map<string, { code: string; isAbsent: boolean }>
+  >();
+  for (const progId of programmeIds) {
+    assignmentCodeByProgramme.set(progId, new Map());
+  }
+
   for (const cl of letters) {
     const latestForProg = latestSessionIdByProgramme.get(cl.programmeId);
     if (latestForProg !== cl.reportingSessionId) continue;
-    const map = participantCodeByProgramme.get(cl.programmeId)!;
+    const pmap = participantCodeByProgramme.get(cl.programmeId)!;
+    const amap = assignmentCodeByProgramme.get(cl.programmeId)!;
     for (const r of cl.programmeCodeLetterRecipients) {
-      map.set(r.participantId, { code: cl.code, isAbsent: cl.isAbsent });
+      if (r.participantId) {
+        pmap.set(r.participantId, { code: cl.code, isAbsent: cl.isAbsent });
+      }
+      if (r.assignmentMemberId) {
+        const member = await loadMemberAssignmentId(r.assignmentMemberId);
+        if (member) {
+          if (!amap.has(member)) {
+            amap.set(member, { code: cl.code, isAbsent: cl.isAbsent });
+          }
+        }
+      }
     }
   }
 
   for (const p of programmes) {
-    const map = participantCodeByProgramme.get(p.id);
-    if (!map) continue;
+    const pmap = participantCodeByProgramme.get(p.id);
+    const amap = assignmentCodeByProgramme.get(p.id);
+    if (!pmap && !amap) continue;
     for (const a of p.assignments) {
-      const sid = a.participant?.id;
-      if (!sid || !a.result) continue;
-      const data = map.get(sid);
+      if (!a.result) continue;
+      let data = null;
+      if (amap && a.id && amap.has(a.id)) {
+        data = amap.get(a.id) ?? null;
+      }
+      if (!data && pmap && a.participant?.id) {
+        data = pmap.get(a.participant.id) ?? null;
+      }
       if (data) {
         a.result.codeLetter = { code: data.code, isAbsent: data.isAbsent };
       }
@@ -92,6 +123,14 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
   }
 
   return programmes;
+}
+
+async function loadMemberAssignmentId(memberId: string): Promise<string | null> {
+  const row = await db.query.programmeAssignmentMember.findFirst({
+    where: eq(assignmentMemberTable.id, memberId),
+    columns: { assignmentId: true },
+  });
+  return row?.assignmentId ?? null;
 }
 
 export async function getFestivalResultsDataBySlug(slug: string) {

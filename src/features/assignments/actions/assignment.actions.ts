@@ -209,7 +209,26 @@ export async function createAssignmentAction(
     }
   }
 
-  const created = await AssignmentService.create(festivalId, data, actor);
+  let created;
+  if (data.participantId) {
+    created = await AssignmentService.create(
+      festivalId,
+      { programmeId: data.programmeId, participantId: data.participantId },
+      actor,
+    );
+  } else if (data.groupId) {
+    created = await AssignmentService.create(
+      festivalId,
+      {
+        programmeId: data.programmeId,
+        groupId: data.groupId,
+        teamNumber: data.teamNumber,
+      },
+      actor,
+    );
+  } else {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_REQUIRES_PARTICIPANT);
+  }
   await createAuditLog({
     action: "ASSIGN_PARTICIPANTS",
     targetType: "PROGRAMME_ASSIGNMENT",
@@ -217,6 +236,8 @@ export async function createAssignmentAction(
     metadata: {
       programmeId: data.programmeId,
       participantId: data.participantId,
+      groupId: data.groupId,
+      teamNumber: data.teamNumber,
     },
     actor: auditActorForContext(actorContext),
   }).catch((err) =>
