@@ -1,5 +1,6 @@
 import { Heading, Text } from "@react-email/components";
 import { EmailButton } from "../components/Button";
+import { EmailCopyableLink } from "../components/CopyableLink";
 import { EmailFooter } from "../components/Footer";
 import { BrandedLayout } from "../components/Layout";
 import { EmailWordmark } from "../components/Wordmark";
@@ -36,6 +37,10 @@ export function MagicLinkEmail({
         .
       </Text>
       <EmailButton href={url}>Sign In</EmailButton>
+      <EmailCopyableLink
+        url={url}
+        shareSubject="Greenroom sign-in link"
+      />
       <EmailFooter note="If you didn't request this, you can safely ignore this email." />
     </BrandedLayout>
   );
