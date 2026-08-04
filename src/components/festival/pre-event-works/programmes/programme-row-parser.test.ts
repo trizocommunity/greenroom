@@ -84,6 +84,17 @@ describe("parseProgrammeRow", () => {
     expect(item.data.stageType).toBe("STAGE");
   });
 
+  it("keeps missing limits as a warning", () => {
+    const item = parseProgrammeRow(
+      ["Solo Singing", "Music", "INDIVIDUAL", "STAGE"],
+      0,
+      CATEGORIES,
+    );
+    expect(item.isValid).toBe(true);
+    expect(item.errors).toEqual([]);
+    expect(item.warnings).toContain("Set limits manually");
+  });
+
   it("flags unknown type as an error", () => {
     const item = parseProgrammeRow(
       ["Group Song", "Music", "TEAM", "STAGE"],

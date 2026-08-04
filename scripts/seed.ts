@@ -9,7 +9,7 @@ import {
 } from "./seed/festival";
 import { createParticipants } from "./seed/participants";
 import {
-  createProgrammesAndAssignments,
+  createProgrammes,
   createSessions,
 } from "./seed/programmes";
 import { printSeedSummary, updateFestivalUsageCounts } from "./seed/summary";
@@ -48,13 +48,11 @@ async function seed() {
 
   const sessionCount = await createSessions(db, festivalId, stages, SESSIONS);
 
-  const { programmeCount } = await createProgrammesAndAssignments(
+  const { programmeCount } = await createProgrammes(
     db,
     festivalId,
     categories,
     stages,
-    groups,
-    participants,
   );
 
   await updateFestivalUsageCounts(db, festivalId, {

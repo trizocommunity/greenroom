@@ -47,6 +47,7 @@ export interface ParsedItem<T> {
   data: T;
   isValid: boolean;
   errors: string[];
+  warnings?: string[];
 }
 
 export interface BulkUploadFlowProps<T> {
@@ -242,6 +243,10 @@ export function BulkUploadFlow<T>({
 
   const validCount = parsedData.filter((p) => p.isValid).length;
   const errorCount = parsedData.filter((p) => !p.isValid).length;
+  const warningCount = parsedData.reduce(
+    (count, item) => count + (item.warnings?.length ?? 0),
+    0,
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -369,6 +374,14 @@ export function BulkUploadFlow<T>({
                       <AlertCircle className="h-4 w-4" /> {errorCount} Errors
                     </Badge>
                   )}
+                  {warningCount > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="px-3 py-1.5 text-sm gap-2 border-amber-500/20 bg-amber-500/10 text-amber-600"
+                    >
+                      <AlertCircle className="h-4 w-4" /> {warningCount} Warnings
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -434,43 +447,34 @@ export function BulkUploadFlow<T>({
                                 </TableCell>
                               ))}
 
-                              <TableCell className="w-[150px]">
-                                {row.isValid ? (
-                                  <div className="text-xs text-emerald-500 font-medium flex items-center gap-1.5 bg-emerald-500/10 w-fit px-2 py-1 rounded-full border border-emerald-500/20">
-                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />{" "}
-                                    Ready
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col gap-1.5">
-                                    {row.errors.map((err, i) => {
-                                      const isLimitError = err
-                                        .toLowerCase()
-                                        .includes("limit");
-                                      return (
-                                        <span
-                                          key={i}
-                                          className={cn(
-                                            "text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none",
-                                            isLimitError
-                                              ? "text-amber-600 bg-amber-500/10 border-amber-500/30"
-                                              : "text-red-600 bg-red-500/10 border-red-500/30",
-                                          )}
-                                        >
-                                          <AlertCircle
-                                            className={cn(
-                                              "h-3 w-3 shrink-0",
-                                              isLimitError
-                                                ? "text-amber-600"
-                                                : "text-red-600",
-                                            )}
-                                          />{" "}
-                                          {err}
-                                        </span>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </TableCell>
+                               <TableCell className="w-[150px]">
+                                 <div className="flex flex-col gap-1.5">
+                                   {row.isValid && (
+                                     <div className="text-xs text-emerald-500 font-medium flex items-center gap-1.5 bg-emerald-500/10 w-fit px-2 py-1 rounded-full border border-emerald-500/20">
+                                       <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />{" "}
+                                       Ready
+                                     </div>
+                                   )}
+                                   {row.errors.map((err, i) => (
+                                     <span
+                                       key={`error-${i}`}
+                                       className="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none text-red-600 bg-red-500/10 border-red-500/30"
+                                     >
+                                       <AlertCircle className="h-3 w-3 shrink-0 text-red-600" />{" "}
+                                       {err}
+                                     </span>
+                                   ))}
+                                   {row.warnings?.map((warning, i) => (
+                                     <span
+                                       key={`warning-${i}`}
+                                       className="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none text-amber-600 bg-amber-500/10 border-amber-500/30"
+                                     >
+                                       <AlertCircle className="h-3 w-3 shrink-0 text-amber-600" />{" "}
+                                       {warning}
+                                     </span>
+                                   ))}
+                                 </div>
+                               </TableCell>
                               <TableCell className="text-right w-[120px]">
                                 <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                   <Button
@@ -595,18 +599,36 @@ export function BulkUploadFlow<T>({
               Cancel
             </Button>
             {step === "VALIDATION" && (
-              <Button
-                onClick={handleCommit}
-                disabled={validCount === 0 || isProcessing}
-                className="pl-6 pr-8 h-10 text-base shadow-lg hover:shadow-xl transition-all"
-              >
-                {isProcessing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <CloudUpload className="mr-2 h-4 w-4" />
+              <div className="flex items-center gap-2">
+                {warningCount > 0 && errorCount === 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setParsedData((prev) =>
+                        prev.map((item) => ({ ...item, warnings: [] })),
+                      )
+                    }
+                    disabled={isProcessing}
+                    className="h-10 text-base"
+                  >
+                    Skip Warnings
+                  </Button>
                 )}
-                Import {validCount} Items
-              </Button>
+                <Button
+                  onClick={handleCommit}
+                  disabled={
+                    errorCount > 0 || validCount === 0 || isProcessing
+                  }
+                  className="pl-6 pr-8 h-10 text-base shadow-lg hover:shadow-xl transition-all"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CloudUpload className="mr-2 h-4 w-4" />
+                  )}
+                  Import {validCount} Items
+                </Button>
+              </div>
             )}
           </DialogFooter>
         )}

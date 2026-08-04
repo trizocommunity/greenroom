@@ -1,9 +1,12 @@
 import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
-import { PROGRAMME_SCHEDULE, PROGRAMME_TEMPLATES } from "./config";
+import {
+  FESTIVAL_OWNER_EMAIL,
+  FESTIVAL_OWNER_NAME,
+  PROGRAMMES_BY_CATEGORY,
+} from "./config";
 import type { DB } from "./db";
-import type { CreatedParticipant } from "./participants";
-import type { CreatedCategory, CreatedGroup, CreatedStage } from "./taxonomies";
+import type { CreatedCategory, CreatedStage } from "./taxonomies";
 
 export async function createSessions(
   db: DB,
@@ -44,36 +47,42 @@ export type ProgrammeResult = {
   programmeCount: number;
 };
 
-export async function createProgrammesAndAssignments(
+export async function createProgrammes(
   db: DB,
   festivalId: string,
   categories: CreatedCategory[],
   _stages: CreatedStage[],
-  _groups: CreatedGroup[],
-  _participants: CreatedParticipant[],
 ): Promise<ProgrammeResult> {
-  console.log("🏆 Creating Programmes...");
+  console.log("🏆 Creating Programmes…");
 
   let programmeCount = 0;
+  const nowIso = new Date().toISOString();
 
   for (const cat of categories) {
-    for (const tmpl of PROGRAMME_TEMPLATES) {
-      const progId = generateId();
+    const templates = PROGRAMMES_BY_CATEGORY[cat.name];
+    if (!templates?.length) {
+      throw new Error(`No programme seed data configured for category ${cat.name}`);
+    }
+
+    for (const tmpl of templates) {
       await db.insert(schema.programme).values({
-        id: progId,
+        id: generateId(),
         festivalId,
         categoryId: cat.id,
         name: tmpl.name,
         type: tmpl.type,
-        stageType: tmpl.stageType,
+        stageType: tmpl.stageType === "stage" ? "STAGE" : "NON_STAGE",
         maxParticipantsPerGroup: tmpl.maxParticipantsPerGroup,
         maxTeamsPerGroup: tmpl.maxTeamsPerGroup,
         maxParticipantsPerTeam: tmpl.maxParticipantsPerTeam,
-        status: "READY",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        durationMode: "SEQUENTIAL",
+        timePerUnitMinutes: tmpl.timePerUnitMinutes,
+        status: "DRAFT",
+        createdByEmail: FESTIVAL_OWNER_EMAIL,
+        createdByName: FESTIVAL_OWNER_NAME,
+        createdAt: nowIso,
+        updatedAt: nowIso,
       });
-
       programmeCount++;
     }
   }

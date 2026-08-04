@@ -18,6 +18,7 @@ export interface ParsedItem<T> {
   data: T;
   isValid: boolean;
   errors: string[];
+  warnings?: string[];
 }
 
 const GROUP_VARIANTS = new Set(["GROUP", "group", "Group"]);
@@ -68,7 +69,8 @@ export function parseProgrammeRow(
   const typeRaw = row?.[2];
   const stageTypeRaw = row?.[3];
 
-  const errors: string[] = ["Set limits manually"];
+  const errors: string[] = [];
+  const warnings: string[] = ["Set limits manually"];
 
   if (!name) errors.push("Name is required");
   if (!categoryName) errors.push("Category is required");
@@ -99,7 +101,8 @@ export function parseProgrammeRow(
       maxParticipantsPerTeam: 0,
       categoryId: category?.id,
     },
-    isValid: false,
+    isValid: errors.length === 0,
     errors,
+    warnings,
   };
 }
