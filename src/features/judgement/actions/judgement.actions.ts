@@ -46,12 +46,12 @@ import {
 } from "@/features/judgement/services/scoring-policy.service";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import { getStageIdForReportingSession } from "@/features/programmes/actions/programme-reporting.actions";
-import {
-  assertProgrammeType,
-  requireProgrammeType,
-} from "@/features/programmes/utils/assert-programme-type";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import { assertStageManagerAccessForStage } from "@/features/programmes/actions/reporting-access";
-import { updateProgrammeStatus, assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
+import {
+  updateProgrammeStatus,
+  assertProgrammePrePublishing,
+} from "@/features/programmes/services/programme-status.service";
 import { calculatePosition } from "@/features/results/services/results-calculator";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
@@ -474,9 +474,8 @@ export async function getActiveJudgementConfigsAction(festivalId: string) {
     festivalId,
     session,
   );
-  const configScope = buildJudgementConfigReportingSessionStageScope(
-    accessibleStageIds,
-  );
+  const configScope =
+    buildJudgementConfigReportingSessionStageScope(accessibleStageIds);
 
   const configs = await db.query.judgementConfig.findMany({
     where: and(
@@ -524,15 +523,11 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
     festivalId,
     session,
   );
-  const configScope = buildJudgementConfigReportingSessionStageScope(
-    accessibleStageIds,
-  );
+  const configScope =
+    buildJudgementConfigReportingSessionStageScope(accessibleStageIds);
 
   const configs = await db.query.judgementConfig.findMany({
-    where: and(
-      eq(judgementConfigTable.festivalId, festivalId),
-      configScope,
-    ),
+    where: and(eq(judgementConfigTable.festivalId, festivalId), configScope),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
       programme: {
@@ -998,10 +993,7 @@ export async function startJudgementAction(input: {
         configId,
       },
     }).catch((err) =>
-      console.error(
-        "[AuditLog] JUDGEMENT_AUTO_ASSIGN_OFF_STAGE failed",
-        err,
-      ),
+      console.error("[AuditLog] JUDGEMENT_AUTO_ASSIGN_OFF_STAGE failed", err),
     );
   }
 
@@ -1101,10 +1093,7 @@ export async function restartJudgementAction(input: {
         restarted: true,
       },
     }).catch((err) =>
-      console.error(
-        "[AuditLog] JUDGEMENT_AUTO_ASSIGN_OFF_STAGE failed",
-        err,
-      ),
+      console.error("[AuditLog] JUDGEMENT_AUTO_ASSIGN_OFF_STAGE failed", err),
     );
   }
 
@@ -1278,17 +1267,14 @@ async function buildLivePayload(
     },
   });
 
-  const activeCodeIds = codeLetters
-    .filter((c) => !c.isAbsent)
-    .map((c) => c.id);
+  const activeCodeIds = codeLetters.filter((c) => !c.isAbsent).map((c) => c.id);
   const judgeCompletion: Record<string, boolean> = {};
   for (const j of config.judges) {
     const covered = new Set(
       existingScores
         .filter(
           (s) =>
-            s.judgeId === j.judge.id &&
-            activeCodeIds.includes(s.codeLetterId),
+            s.judgeId === j.judge.id && activeCodeIds.includes(s.codeLetterId),
         )
         .map((s) => s.codeLetterId),
     );
@@ -1332,11 +1318,11 @@ export async function getStagePortalBoardAction(day?: string) {
   // Off-stage portals skip day-based filtering entirely.
   const dayKeySet = isOffStage
     ? null
-    : getFestivalDateKeySet(
+    : (getFestivalDateKeySet(
         festival?.startDate ?? null,
         festival?.endDate ?? null,
         festivalTz,
-      ) ?? null;
+      ) ?? null);
   const days = dayKeySet ? Array.from(dayKeySet).sort() : [];
   const today = dateKeyLocal(serverNow(), festivalTz);
   let selectedDay =
@@ -1397,9 +1383,11 @@ export async function getStagePortalBoardAction(day?: string) {
       })
       .map((s) => {
         const p = s.programme!;
-        const judged = ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(
-          p.status,
-        );
+        const judged = [
+          "PENDING_PUBLICATION",
+          "PUBLISHED",
+          "ANNOUNCED",
+        ].includes(p.status);
         const portalStatus: StagePortalPortalStatus = liveProgrammeIds.has(p.id)
           ? "LIVE"
           : judged
@@ -1438,9 +1426,11 @@ export async function getStagePortalBoardAction(day?: string) {
       })
       .map((e) => {
         const p = e.programme!;
-        const judged = ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(
-          p.status,
-        );
+        const judged = [
+          "PENDING_PUBLICATION",
+          "PUBLISHED",
+          "ANNOUNCED",
+        ].includes(p.status);
         const portalStatus: StagePortalPortalStatus = liveProgrammeIds.has(p.id)
           ? "LIVE"
           : judged
@@ -1614,13 +1604,20 @@ async function recomputeConfigResults(
         participantsCount,
         points: pts,
       });
-
       const grade = policyResolved.grade;
       const remarks =
         policyResolved.grade === null
           ? "No grade (below threshold)"
           : "Grade resolved by scoring policy";
       const position = calculatePosition(pts, averages);
+
+      let finalAwardPoints = policyResolved.awardPoints;
+      if (position === 1) finalAwardPoints += policyResolved.positionPoints1st;
+      else if (position === 2)
+        finalAwardPoints += policyResolved.positionPoints2nd;
+      else if (position === 3)
+        finalAwardPoints += policyResolved.positionPoints3rd;
+
       await tx
         .insert(resultTable)
         .values({
@@ -1631,7 +1628,7 @@ async function recomputeConfigResults(
           grade,
           position,
           points: pts,
-          awardPoints: policyResolved.awardPoints,
+          awardPoints: finalAwardPoints,
           scoringPolicyVersion: policyResolved.policyVersion,
           remarks,
           isPublished: false,
@@ -1643,12 +1640,12 @@ async function recomputeConfigResults(
             grade,
             position,
             points: pts,
-            awardPoints: policyResolved.awardPoints,
+            awardPoints: finalAwardPoints,
             scoringPolicyVersion: policyResolved.policyVersion,
             remarks,
             isPublished: false,
             updatedAt: now,
-          },
+          } as any,
         });
     }
 
@@ -2063,6 +2060,9 @@ export async function getScoringPolicyAction(festivalId: string) {
 export async function saveScoringPolicyAction(input: {
   festivalId: string;
   noGradeBelow: number;
+  positionPoints1st: number;
+  positionPoints2nd: number;
+  positionPoints3rd: number;
   gradeRules: Array<{ grade: string; min: number; max: number }>;
   awardRules: Array<{
     criteriaType: "PARTICIPANT_RANGE" | "PROGRAMME_SET";
@@ -2095,6 +2095,9 @@ export async function saveScoringPolicyAction(input: {
   await upsertScoringPolicyActionData({
     festivalId: input.festivalId,
     noGradeBelow: Math.round(input.noGradeBelow),
+    positionPoints1st: Math.round(input.positionPoints1st),
+    positionPoints2nd: Math.round(input.positionPoints2nd),
+    positionPoints3rd: Math.round(input.positionPoints3rd),
     gradeRules: input.gradeRules,
     awardRules: input.awardRules,
     updatedBy: session?.userId ?? null,

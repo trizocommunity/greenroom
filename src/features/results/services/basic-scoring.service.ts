@@ -112,6 +112,9 @@ export async function saveBasicProgrammeScores(input: {
       awardPoints: number;
       policyVersion: number;
       remarks: string;
+      positionPoints1st: number;
+      positionPoints2nd: number;
+      positionPoints3rd: number;
     }
   >();
 
@@ -148,12 +151,20 @@ export async function saveBasicProgrammeScores(input: {
       awardPoints: policyResolved.awardPoints,
       policyVersion: policyResolved.policyVersion,
       remarks,
+      positionPoints1st: policyResolved.positionPoints1st,
+      positionPoints2nd: policyResolved.positionPoints2nd,
+      positionPoints3rd: policyResolved.positionPoints3rd,
     });
   }
 
   for (const [assignmentId, points] of pointsByAssignment) {
     const resolved = resolvedByAssignment.get(assignmentId)!;
     const position = calculatePosition(points, allPoints);
+    
+    let finalAwardPoints = resolved.awardPoints;
+    if (position === 1) finalAwardPoints += resolved.positionPoints1st;
+    else if (position === 2) finalAwardPoints += resolved.positionPoints2nd;
+    else if (position === 3) finalAwardPoints += resolved.positionPoints3rd;
 
     await ResultModel.upsert(assignmentId, {
       festivalId: input.festivalId,
@@ -162,7 +173,7 @@ export async function saveBasicProgrammeScores(input: {
       grade: resolved.grade,
       position,
       points,
-      awardPoints: resolved.awardPoints,
+      awardPoints: finalAwardPoints,
       scoringPolicyVersion: resolved.policyVersion,
       remarks: resolved.remarks,
       isPublished: false,
