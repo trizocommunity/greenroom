@@ -15,13 +15,14 @@ describe("renderEmail — magic_link", () => {
     expect(result.text).toContain("login/verify/abc123");
   });
 
-  it("renders a copyable URL block + share-via-email mailto link", async () => {
+  it("renders a copyable URL block + copy button + share-via-email mailto link", async () => {
     const result = await renderEmail({
       kind: "magic_link",
       token: "abc123",
     });
-    // Helper text + brand-coloured share link
+    // Helper text + copy button + brand-coloured share link
     expect(result.html).toContain("Or copy and share this link:");
+    expect(result.html).toContain("Copy link");
     expect(result.html).toContain("Share via email");
     // mailto: subject + URL pre-filled, encoded
     expect(result.html).toContain(
@@ -84,7 +85,7 @@ describe("renderEmail — festival_invitation", () => {
     expect(result.html).toMatch(/invite\/tok/);
   });
 
-  it("renders a copyable invite URL block + share-via-email mailto link", async () => {
+  it("renders a copyable invite URL block + copy button + share-via-email mailto link", async () => {
     const result = await renderEmail({
       kind: "festival_invitation",
       token: "tok",
@@ -92,6 +93,7 @@ describe("renderEmail — festival_invitation", () => {
       role: "JUDGE",
     });
     expect(result.html).toContain("Or copy and share this invitation:");
+    expect(result.html).toContain("Copy link");
     expect(result.html).toContain("Share via email");
     expect(result.html).toContain(
       "mailto:?subject=Invitation%20to%20Ahlussuffa%20IGS%20on%20Greenroom",
