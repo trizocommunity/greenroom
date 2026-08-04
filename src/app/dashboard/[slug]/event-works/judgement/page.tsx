@@ -8,6 +8,8 @@ import { festival as festivalTable } from "@/core/database/schema";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getJudgementDashboardDataAction } from "@/features/judgement/actions/judgement.actions";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
+import { getStages } from "@/features/stages/actions/stage.actions";
+import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
 export const metadata: Metadata = {
   title: "Judgement",
@@ -51,14 +53,39 @@ export default async function JudgementPage({
   )
     return notFound();
 
-  const initialDashboardData = await getJudgementDashboardDataAction(
-    festival.id,
-  );
+  const isStageManager = context.role === "STAGE_MANAGER";
+  const [initialDashboardData, stages] = await Promise.all([
+    getJudgementDashboardDataAction(festival.id),
+    getStages(festival.id),
+  ]);
+
+  let initialStageId: string | null = null;
+  if (isStageManager) {
+    initialStageId = await getStageFilterCookie(
+      festival.id,
+      stages.map((s) => s.id),
+    );
+  }
+
+  if (isStageManager && stages.length === 0) {
+    return (
+      <JudgementWizardClient
+        festivalId={festival.id}
+        initialDashboardData={initialDashboardData as any}
+        stages={[]}
+        initialStageId={null}
+        hideStageFilter
+      />
+    );
+  }
 
   return (
     <JudgementWizardClient
       festivalId={festival.id}
       initialDashboardData={initialDashboardData as any}
+      stages={stages.map((s) => ({ id: s.id, name: s.name }))}
+      initialStageId={initialStageId}
+      hideStageFilter={isStageManager}
     />
   );
 }

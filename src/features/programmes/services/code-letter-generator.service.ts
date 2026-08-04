@@ -1,12 +1,33 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
+  programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
   programmeReportingSession as prsTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+
+async function findAssignmentMemberId(
+  tx: any,
+  programmeId: string,
+  participantId: string,
+): Promise<string | null> {
+  // Returns the `programme_assignment_member.id` for GROUP programmes (where
+  // recipients are addressed per-member). For INDIVIDUAL programmes, returns
+  // null — INDIVIDUAL code letters are addressed by participantId on the
+  // `programme_assignment` row, not via the member table.
+  const member = await tx.query.programmeAssignmentMember.findFirst({
+    where: eq(assignmentMemberTable.participantId, participantId),
+    with: {
+      assignment: { columns: { id: true, programmeId: true } },
+    },
+  });
+  if (member?.assignment?.programmeId === programmeId) return member.id;
+  return null;
+}
 
 export function sequentialAlphabetCode(indexOneBased: number): string {
   let n = Math.max(1, indexOneBased);
@@ -63,7 +84,7 @@ export const CodeLetterGeneratorService = {
       const assignedParticipantIds = new Set<string>();
       for (const e of existing) {
         for (const r of e.programmeCodeLetterRecipients) {
-          assignedParticipantIds.add(r.participantId);
+          if (r.participantId) assignedParticipantIds.add(r.participantId);
         }
       }
 
@@ -75,7 +96,6 @@ export const CodeLetterGeneratorService = {
 
       let ordinal = 0;
       for (const row of toAssign) {
-        // Find next available letter that isn't already used
         let code = "";
         do {
           ordinal += 1;
@@ -93,10 +113,17 @@ export const CodeLetterGeneratorService = {
           updatedAt: nowStr,
         } as any);
 
+        const memberId = await findAssignmentMemberId(
+          tx,
+          session.programmeId,
+          row.participantId,
+        );
+
         await tx.insert(codeLetterRecipientTable).values({
           id: randomUUID(),
           codeLetterId: codeLetterId,
           participantId: row.participantId,
+          assignmentMemberId: memberId,
           updatedAt: nowStr,
         } as any);
 
@@ -145,16 +172,15 @@ export const CodeLetterGeneratorService = {
       const assignedParticipantIds = new Set<string>();
       for (const e of existing) {
         for (const r of e.programmeCodeLetterRecipients) {
-          assignedParticipantIds.add(r.participantId);
+          if (r.participantId) assignedParticipantIds.add(r.participantId);
         }
       }
 
       // 2. Group by team
-      type TeamBucket = { participantIds: Set<string> };
+      type TeamBucket = { participantIds: Set<string>; teamAssignmentId: string | null };
       const byTeam = new Map<string, TeamBucket>();
 
       for (const row of reportedParticipants) {
-        // Skip participants who already have a code
         if (row.participantId && assignedParticipantIds.has(row.participantId))
           continue;
 
@@ -164,7 +190,7 @@ export const CodeLetterGeneratorService = {
             : `legacy:${row.participantId}`;
         let bucket = byTeam.get(teamKey);
         if (!bucket) {
-          bucket = { participantIds: new Set<string>() };
+          bucket = { participantIds: new Set<string>(), teamAssignmentId: null };
           byTeam.set(teamKey, bucket);
         }
         if (row.participantId) bucket.participantIds.add(row.participantId);
@@ -177,7 +203,6 @@ export const CodeLetterGeneratorService = {
 
       let ordinal = 0;
       for (const bucket of teamBuckets) {
-        // Find next available letter
         let code = "";
         do {
           ordinal += 1;
@@ -195,10 +220,16 @@ export const CodeLetterGeneratorService = {
           updatedAt: nowStr,
         } as any);
         for (const participantId of bucket.participantIds) {
+          const memberId = await findAssignmentMemberId(
+            tx,
+            session.programmeId,
+            participantId,
+          );
           await tx.insert(codeLetterRecipientTable).values({
             id: randomUUID(),
             codeLetterId: codeLetterId,
             participantId,
+            assignmentMemberId: memberId,
             updatedAt: nowStr,
           } as any);
           participantCodes.push({ participantId, code });
@@ -241,27 +272,107 @@ export const CodeLetterGeneratorService = {
     const nowStr = serverNowIso();
 
     const run = async (tx: any) => {
-      for (const assignment of codeAssignments) {
+      // Under the XOR invariant, GROUP programmes store ONE
+      // programme_reported_participant row per team (keyed by reportingSessionId +
+      // assignmentId). When the spin payload targets a GROUP team
+      // (groupId+teamNumber, no participantId), use that single reported row
+      // as the "team was reported" signal, then fan out recipients to every
+      // team member loaded from programme_assignment_member.
+      const teamAssignments = codeAssignments.filter(
+        (a) => !a.participantId && a.groupId && a.teamNumber != null,
+      );
+      const singleMemberAssignments = codeAssignments.filter(
+        (a) => !!a.participantId,
+      );
+
+      const teamAssignmentRows = await Promise.all(
+        teamAssignments.map(async (a) => {
+          const reportedRow = reportedParticipants.find(
+            (p) =>
+              p.groupId === a.groupId &&
+              p.teamNumber === a.teamNumber &&
+              p.participantId !== null,
+          );
+          if (!reportedRow) return { assignment: a, members: [] as string[] };
+
+          const teamMemberRows = await tx
+            .select({ participantId: assignmentMemberTable.participantId })
+            .from(assignmentMemberTable)
+            .innerJoin(
+              assignmentTable,
+              eq(assignmentTable.id, assignmentMemberTable.assignmentId),
+            )
+            .where(
+              and(
+                eq(assignmentTable.programmeId, session.programmeId),
+                eq(assignmentTable.groupId, a.groupId ?? ""),
+                eq(assignmentTable.teamNumber, a.teamNumber ?? 1),
+              ),
+            );
+
+          let members = teamMemberRows.map(
+            (r: { participantId: string }) => r.participantId,
+          );
+
+          // Transitional fallback: if the team was created before the
+          // XOR migration ran and `programme_assignment_member` rows were never
+          // backfilled, derive the member list from legacy programme_assignment
+          // rows that still carry `participantId` + matching `groupId`/`teamNumber`.
+          if (members.length === 0) {
+            const legacyRows = await tx
+              .select({ participantId: assignmentTable.participantId })
+              .from(assignmentTable)
+              .where(
+                and(
+                  eq(assignmentTable.programmeId, session.programmeId),
+                  eq(assignmentTable.groupId, a.groupId ?? ""),
+                  eq(assignmentTable.teamNumber, a.teamNumber ?? 1),
+                ),
+              );
+            members = legacyRows
+              .map((r: { participantId: string | null }) => r.participantId)
+              .filter((p: string | null): p is string => Boolean(p));
+          }
+          return { assignment: a, members };
+        }),
+      );
+
+      const allAssignments = [
+        ...teamAssignmentRows.map((t) => t.assignment),
+        ...singleMemberAssignments,
+      ];
+      const memberLookup = new Map<string, string[]>();
+      for (const t of teamAssignmentRows) {
+        memberLookup.set(
+          `${t.assignment.groupId}:${t.assignment.teamNumber}`,
+          t.members,
+        );
+      }
+
+      for (const assignment of allAssignments) {
         let teamParticipants: Array<{ participantId: string | null }> = [];
 
-        // Prefer a single participant (spin per participant). Team-wide assignment only
-        // when no participantId is provided (legacy / bulk).
         if (assignment.participantId) {
           teamParticipants = reportedParticipants.filter(
             (p) => p.participantId === assignment.participantId,
           );
         } else if (
           assignment.teamNumber !== null &&
-          assignment.teamNumber !== undefined
+          assignment.teamNumber !== undefined &&
+          assignment.groupId
         ) {
-          teamParticipants = reportedParticipants.filter(
-            (p) =>
-              assignment.groupId !== undefined &&
-              assignment.groupId !== null &&
-              p.groupId === assignment.groupId &&
-              p.teamNumber === assignment.teamNumber &&
-              p.participantId !== null,
-          );
+          const members =
+            memberLookup.get(
+              `${assignment.groupId}:${assignment.teamNumber}`,
+            ) ?? [];
+          teamParticipants = members.map((pid) => ({
+            participantId: pid,
+          }));
+          if (teamParticipants.length === 0) {
+            throw new Error(
+              `No team members found for ${assignment.groupId} team ${assignment.teamNumber}`,
+            );
+          }
         }
 
         if (teamParticipants.length === 0) {
@@ -281,10 +392,16 @@ export const CodeLetterGeneratorService = {
 
         for (const participant of teamParticipants) {
           if (participant.participantId) {
+            const memberId = await findAssignmentMemberId(
+              tx,
+              session.programmeId,
+              participant.participantId,
+            );
             await tx.insert(codeLetterRecipientTable).values({
               id: randomUUID(),
               codeLetterId: codeLetterId,
               participantId: participant.participantId,
+              assignmentMemberId: memberId,
               updatedAt: nowStr,
             } as any);
             participantCodes.push({

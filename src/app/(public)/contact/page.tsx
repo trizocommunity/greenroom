@@ -1,60 +1,101 @@
-"use client";
-
-import { Mail, MapPin, Phone } from "lucide-react";
+import type { Metadata } from "next";
 import ContactForm from "@/components/contact/ContactForm";
+import { PageHeader, Section } from "@/components/layout/Section";
 
-const channels = [
-  { icon: Mail, label: "Email", value: "support@greenroom.com" },
-  { icon: Phone, label: "Phone", value: "+1 (555) 123-4567" },
-  { icon: MapPin, label: "Office", value: "123 Innovation Dr, CA" },
+export const metadata: Metadata = {
+  title: "Contact | Greenroom",
+  description:
+    "Tell us about your festival — the format, the judging rules, the timeline — and we'll show you how Greenroom runs it.",
+};
+
+const CHANNELS = [
+  {
+    label: "Email",
+    value: "support@greenroom.com",
+    href: "mailto:support@greenroom.com",
+  },
+  { label: "Phone", value: "+91 98470 00000", href: "tel:+919847000000" },
+  { label: "Support hours", value: "Mon–Sat, 9:00 – 19:00 IST" },
+  { label: "Response time", value: "Within one business day" },
+];
+
+const ASK = [
+  "What kind of festival it is, and roughly how many participants",
+  "How your scoring works — grades, points, or both",
+  "Whether you need stages and a schedule, or just results",
+  "When it runs",
 ];
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen py-16 md:py-20 bg-background text-foreground relative overflow-hidden">
-      {/* Background blobs */}
-      <div className="absolute left-0 top-0 h-96 w-96 bg-primary/8 blur-[130px] -z-10" />
-      <div className="absolute bottom-0 right-1/4 h-80 w-80 bg-secondary/8 blur-[110px] -z-10" />
+    <>
+      <PageHeader
+        eyebrow="Get in touch"
+        title={
+          <>
+            Tell us what you&apos;re{" "}
+            <span className="font-display font-normal italic text-primary">
+              running.
+            </span>
+          </>
+        }
+        lede="The more we know about the format, the faster we can tell you whether Greenroom fits — and what setting it up would look like."
+      />
 
-      <div className="container max-w-6xl px-4 md:px-6 mx-auto">
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24">
-          {/* Left Column: Info */}
+      <Section className="py-16 md:py-20">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-20">
           <div>
-            <p className="text-eyebrow mb-4">Get in touch</p>
-            <h1 className="text-4xl md:text-6xl font-semibold tracking-tight mb-6 text-heading leading-[1.08]">
-              Let&apos;s{" "}
-              <span className="font-display italic font-normal text-primary">
-                talk
-              </span>
-            </h1>
-            <p className="text-lg text-muted-foreground mb-12 max-w-md leading-relaxed">
-              Ready to upgrade how your festival runs? Request a demo and
-              we&apos;ll walk you through it.
-            </p>
-
-            <div className="space-y-8">
-              {channels.map((c) => (
-                <div key={c.label} className="flex items-start gap-5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
-                    <c.icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-heading mb-0.5">
-                      {c.label}
-                    </h3>
-                    <p className="text-muted-foreground">{c.value}</p>
-                  </div>
+            <dl className="divide-y divide-border border-y border-border">
+              {CHANNELS.map((channel) => (
+                <div
+                  key={channel.label}
+                  className="flex items-baseline justify-between gap-4 py-4"
+                >
+                  <dt className="text-sm text-muted-foreground">
+                    {channel.label}
+                  </dt>
+                  <dd className="text-right text-[15px] font-medium text-heading">
+                    {channel.href ? (
+                      <a
+                        href={channel.href}
+                        className="transition-colors hover:text-primary"
+                      >
+                        {channel.value}
+                      </a>
+                    ) : (
+                      channel.value
+                    )}
+                  </dd>
                 </div>
               ))}
+            </dl>
+
+            <div className="mt-10">
+              <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Helpful to include
+              </h2>
+              <ul className="space-y-2.5">
+                {ASK.map((item) => (
+                  <li
+                    key={item}
+                    className="flex gap-3 text-sm leading-relaxed text-muted-foreground"
+                  >
+                    <span
+                      aria-hidden
+                      className="mt-2 h-1 w-1 shrink-0 rounded-full bg-primary"
+                    />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
 
-          {/* Right Column: Form */}
-          <div className="bg-card text-foreground p-8 md:p-10 border border-border shadow-premium-lg rounded-2xl">
+          <div className="border-t border-border pt-10 lg:border-l lg:border-t-0 lg:pl-16 lg:pt-0">
             <ContactForm />
           </div>
         </div>
-      </div>
-    </div>
+      </Section>
+    </>
   );
 }

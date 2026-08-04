@@ -1,8 +1,8 @@
 "use client";
 
 import { formatInTimeZone } from "date-fns-tz";
-import { Badge } from "@/components/ui/badge";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import { Badge } from "@/components/ui/badge";
 import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import type { ReportingBoardItem } from "./types";
@@ -45,6 +45,7 @@ export function ReportingBoardList({
               item.reportingSession?.windowEndsAt ?? null,
             );
             const isSelected = selectedId === item.id;
+            const isUnscheduled = item.scheduleEntry == null;
 
             return (
               <button
@@ -65,7 +66,7 @@ export function ReportingBoardList({
                       isSelected ? "text-primary" : "text-foreground",
                     )}
                   >
-                    {item.programme?.name}
+                    {item.programme.name}
                   </p>
                   {item.reportingSession?.status === "IN_PROGRESS" && (
                     <div className="relative flex items-center justify-center shrink-0 mt-1">
@@ -74,7 +75,7 @@ export function ReportingBoardList({
                     </div>
                   )}
                 </div>
-                {item.programme?.category?.name ? (
+                {item.programme.category?.name ? (
                   <p className="text-sm text-muted-foreground truncate">
                     {item.programme.category.name}
                   </p>
@@ -92,17 +93,25 @@ export function ReportingBoardList({
                   </Badge>
                   <span className="text-xs text-muted-foreground font-mono">
                     {(() => {
-                      const d = parseInstant(item.startTime);
-                      return d
-                        ? formatInTimeZone(d, displayTz, "h:mm a")
-                        : "—";
+                      const d = item.startTime
+                        ? parseInstant(item.startTime)
+                        : null;
+                      return d ? formatInTimeZone(d, displayTz, "h:mm a") : "—";
                     })()}
                   </span>
-                  {item.stage?.name && (
+                  {item.stage?.name ? (
                     <span className="text-xs text-muted-foreground truncate max-w-[100px]">
                       · {item.stage.name}
                     </span>
-                  )}
+                  ) : null}
+                  {isUnscheduled ? (
+                    <Badge
+                      variant="outline"
+                      className="h-6 px-2 text-[10px] uppercase font-bold tracking-wider"
+                    >
+                      Unscheduled
+                    </Badge>
+                  ) : null}
                 </div>
               </button>
             );

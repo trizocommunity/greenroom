@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { APP_CONTAINER } from "@/components/app/AppSection";
 import { ProfileView } from "@/components/profile/profile-view";
 import { getCurrentUser } from "@/core/auth/current-user";
 
@@ -20,7 +21,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl py-12 px-6">
+    <div className={`${APP_CONTAINER} py-10 md:py-14`}>
       <ProfileView user={user as any} />
     </div>
   );

@@ -63,7 +63,7 @@ export async function validateProgrammesAction(
       and(
         eq(sql`LOWER(${programmeTable.name})`, c.name.trim().toLowerCase()),
         eq(programmeTable.categoryId, c.categoryId),
-        eq(programmeTable.type, (c.type as any) || "INDIVIDUAL"),
+        eq(programmeTable.type, c.type as "INDIVIDUAL" | "GROUP"),
       ),
     );
 
@@ -117,8 +117,8 @@ export async function createProgrammeAction(
     {
       name: data.name,
       categoryId: data.categoryId,
-      type: (data.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL",
-      stageType: (data.stageType as "STAGE" | "NON_STAGE") || "STAGE",
+      type: data.type as "INDIVIDUAL" | "GROUP",
+      stageType: data.stageType as "STAGE" | "NON_STAGE",
       maxParticipantsPerGroup: data.maxParticipantsPerGroup,
       maxTeamsPerGroup: data.maxTeamsPerGroup,
       maxParticipantsPerTeam: data.maxParticipantsPerTeam,
@@ -158,8 +158,8 @@ export async function bulkCreateProgrammesAction(
   const formatted = programmes.map((p) => ({
     name: p.name,
     categoryId: p.categoryId,
-    type: (p.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL",
-    stageType: (p.stageType as "STAGE" | "NON_STAGE") || "STAGE",
+    type: p.type as "INDIVIDUAL" | "GROUP",
+    stageType: p.stageType as "STAGE" | "NON_STAGE",
     maxParticipantsPerGroup: p.maxParticipantsPerGroup,
     maxTeamsPerGroup: p.maxTeamsPerGroup,
     maxParticipantsPerTeam: p.maxParticipantsPerTeam,
@@ -206,11 +206,9 @@ export async function updateProgrammeAction(
   const updated = await ProgrammeService.update(id, festivalId, {
     name: data.name,
     categoryId: data.categoryId,
-    type: data.type
-      ? (data.type as "INDIVIDUAL" | "GROUP") || "INDIVIDUAL"
-      : undefined,
+    type: data.type ? (data.type as "INDIVIDUAL" | "GROUP") : undefined,
     stageType: data.stageType
-      ? (data.stageType as "STAGE" | "NON_STAGE") || "STAGE"
+      ? (data.stageType as "STAGE" | "NON_STAGE")
       : undefined,
     maxParticipantsPerGroup: data.maxParticipantsPerGroup,
     maxTeamsPerGroup: data.maxTeamsPerGroup,

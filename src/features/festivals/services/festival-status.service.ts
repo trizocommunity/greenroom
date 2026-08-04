@@ -1,9 +1,4 @@
-import {
-  isAfter,
-  isBefore,
-  isExpired,
-  toDateOrNull,
-} from "@/core/datetime";
+import { isAfter, isBefore, isExpired, toDateOrNull } from "@/core/datetime";
 import { MS, serverNow } from "@/core/datetime/server";
 
 /**
@@ -62,16 +57,31 @@ function toDate(value?: Date | string | null): Date | null {
   return toDateOrNull(value);
 }
 
-function daysUntil(target: Date, now: Date): number {
-  return Math.ceil((target.getTime() - now.getTime()) / MS.day);
+/**
+ * Days remaining from `now` until `target`, rounded up.
+ * Returns `null` when either side is missing or unparseable so callers
+ * can suppress their suffix instead of rendering "NaN days".
+ */
+function daysUntil(target: Date | null | undefined, now: Date): number | null {
+  if (!target) return null;
+  const t = target.getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.ceil((t - now.getTime()) / MS.day);
 }
 
 /**
  * Format Date as dd/MM/yy.
+ *
+ * Three distinct outputs so the UI can tell apart *missing* (column is
+ * `null` — represented as `"—"`) and *invalid* (column held garbage that
+ * didn't parse — represented as `"Invalid date"`), plus the formatted
+ * value for valid inputs. The previous version collapsed both missing
+ * and invalid into `"—"`, masking broken-data bugs.
  */
 export function formatFestivalDateDDMMYY(value?: Date | string | null): string {
   const date = toDate(value);
-  if (!date) return "—";
+  if (date === null) return "—";
+  if (Number.isNaN(date.getTime())) return "Invalid date";
   const dd = String(date.getDate()).padStart(2, "0");
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const yy = String(date.getFullYear()).slice(-2);
@@ -80,6 +90,9 @@ export function formatFestivalDateDDMMYY(value?: Date | string | null): string {
 
 /**
  * Compact countdown text used in navbar/status badges.
+ *
+ * Returns `null` whenever the relevant date is missing or unparseable so
+ * the UI cleanly drops the suffix instead of emitting "NaN days left".
  */
 export function getFestivalStatusCountdownText(
   status: DerivedFestivalStatus,
@@ -92,6 +105,7 @@ export function getFestivalStatusCountdownText(
 
   if (status === "READY" && startDate) {
     const d = daysUntil(startDate, now);
+    if (d === null) return null;
     if (d > 0) return `${d}d to start`;
     if (d === 0) return "Starts today";
     return `Started ${Math.abs(d)}d ago`;
@@ -99,6 +113,7 @@ export function getFestivalStatusCountdownText(
 
   if (status === "ONGOING" && endDate) {
     const d = daysUntil(endDate, now);
+    if (d === null) return null;
     if (d > 0) return `${d}d left`;
     if (d === 0) return "Ends today";
     return `Ended ${Math.abs(d)}d ago`;
@@ -106,6 +121,7 @@ export function getFestivalStatusCountdownText(
 
   if (status === "PAST" && expiresAt) {
     const d = daysUntil(expiresAt, now);
+    if (d === null) return null;
     if (d > 0) return `${d}d to expire`;
     if (d === 0) return "Expires today";
     return `Expired ${Math.abs(d)}d ago`;
@@ -113,6 +129,7 @@ export function getFestivalStatusCountdownText(
 
   if (status === "EXPIRED" && expiresAt) {
     const d = daysUntil(expiresAt, now);
+    if (d === null) return null;
     if (d < 0) return `Expired ${Math.abs(d)}d ago`;
     if (d === 0) return "Expired today";
     return `${d}d to expire`;

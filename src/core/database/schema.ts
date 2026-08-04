@@ -25,6 +25,7 @@ export const festivalLifecycleEventType = pgEnum("FestivalLifecycleEventType", [
   "CREATED",
   "ACTIVATED",
   "EXPIRED",
+  "EXPIRATION_WARNING",
 ]);
 export const festivalRole = pgEnum("FestivalRole", [
   "ADMIN",
@@ -36,6 +37,14 @@ export const posterTemplateType = pgEnum("PosterTemplateType", [
   "RESULT",
   "TEAM_POINTS",
   "CANDIDATE_CARD",
+  "CERTIFICATE",
+]);
+
+export const templateAssignmentKind = pgEnum("TemplateAssignmentKind", [
+  "RESULT_RANGE",
+  "CERTIFICATE_TYPE",
+  "BADGE",
+  "TEAM_POINTS",
 ]);
 export const posterTemplateStatus = pgEnum("PosterTemplateStatus", [
   "DRAFT",
@@ -89,22 +98,23 @@ export const programmeReportingStatus = pgEnum("ProgrammeReportingStatus", [
   "CLOSED",
 ]);
 export const programmeStatus = pgEnum("ProgrammeStatus", [
-  "READY",
+  "DRAFT",
   "ASSIGNED",
   "SCHEDULED",
   "REPORTING",
-  "STARTED",
-  "ENDED",
-  "JUDGED",
+  "PENDING_JUDGMENT",
+  "JUDGING",
+  "PENDING_PUBLICATION",
   "PUBLISHED",
   "ANNOUNCED",
-  "RESET",
+  "CANCELLED",
 ]);
 export const publicDisplayMode = pgEnum("PublicDisplayMode", [
   "programme_results",
   "team_standings",
 ]);
 export const programmeType = pgEnum("ProgrammeType", ["INDIVIDUAL", "GROUP"]);
+export const durationMode = pgEnum("DurationMode", ["SEQUENTIAL", "PARALLEL"]);
 export const programmeTeamLeadAppointedByRole = pgEnum(
   "ProgrammeTeamLeadAppointedByRole",
   ["ADMIN", "TEAM_LEADER"],
@@ -297,6 +307,7 @@ export const festival = pgTable(
     slug: text().notNull(),
     category: text(),
     description: text(),
+    tagline: text(),
     orgName: text(),
     orgDescription: text(),
     orgWebsite: text(),
@@ -313,13 +324,16 @@ export const festival = pgTable(
     maxResultScore: integer(),
     expiresAt: tzTimestamp(),
     institutionName: text(),
+    festivalExpiringSoonEmailSentAt: tzTimestamp(),
     institutionType: institutionType(),
     judgesCount: integer().default(0).notNull(),
     location: text(),
+    programmeAssignmentStartDate: tzTimestamp(),
     programmeAssignmentDeadline: tzTimestamp(),
     storageUsedMb: integer().default(0).notNull(),
     tier: tier().default("STANDARD").notNull(),
     tierLabel: text().default("Standard").notNull(),
+    participantCreationStartDate: tzTimestamp(),
     participantCreationDeadline: tzTimestamp(),
     teamLeaderLimit: integer().default(2).notNull(),
     participantsCount: integer().default(0).notNull(),
@@ -330,11 +344,10 @@ export const festival = pgTable(
     programmesCount: integer().default(0).notNull(),
     chestNumberSettings: jsonb(),
     teamStandings: jsonb(),
-    publicDisplayMode: publicDisplayMode()
-      .default("programme_results")
-      .notNull(),
-    announcerResultsPerStandings: integer().default(10).notNull(),
-    announcedProgrammesSinceStandings: integer().default(0).notNull(),
+    standingsPublishedAtResultNumber: integer(
+      "standings_published_at_result_number",
+    ),
+    standingsPublishedAt: tzTimestampNamed("standings_published_at"),
     scoringSystem: scoringSystem().default("SCORE_BASED").notNull(),
     status: festivalStatus().default("READY").notNull(),
     resultPdfUrl: text(),
@@ -342,16 +355,20 @@ export const festival = pgTable(
     institutionId: text(),
     festivalType: festivalTypeEnum().default("INDEPENDENT").notNull(),
     timezone: text().default("UTC").notNull(),
+    archivedAt: tzTimestamp(),
   },
   (table) => [
     index("festival_expiresAt_idx").using(
       "btree",
       table.expiresAt.asc().nullsLast(),
     ),
-    uniqueIndex("festival_ownerId_key").using(
+    index("festival_archivedAt_idx").using(
       "btree",
-      table.ownerId.asc().nullsLast(),
+      table.archivedAt.asc().nullsLast(),
     ),
+    uniqueIndex("festival_ownerId_active_key")
+      .using("btree", table.ownerId.asc().nullsLast())
+      .where(sql`${table.status} <> 'EXPIRED'`),
     uniqueIndex("festival_slug_key").using(
       "btree",
       table.slug.asc().nullsLast(),
@@ -448,7 +465,7 @@ export const programme = pgTable(
     id: text().primaryKey().notNull(),
     categoryId: text().notNull(),
     name: text().notNull(),
-    type: programmeType().default("INDIVIDUAL").notNull(),
+    type: programmeType().notNull(),
     stageType: stageType().default("STAGE").notNull(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
@@ -456,13 +473,17 @@ export const programme = pgTable(
     maxParticipantsPerGroup: integer().default(1).notNull(),
     maxTeamsPerGroup: integer().default(1).notNull(),
     maxParticipantsPerTeam: integer().default(1).notNull(),
-    status: programmeStatus().default("READY").notNull(),
+    status: programmeStatus().default("DRAFT").notNull(),
     publishedAt: tzTimestamp(),
     createdByEmail: text("created_by_email"),
     createdByName: text("created_by_name"),
     publishedByEmail: text("published_by_email"),
     publishedByName: text("published_by_name"),
-    resultPosterTemplateCode: text("result_poster_template_code"),
+    nameSecondary: text("name_secondary"),
+    durationMode: durationMode("duration_mode").default("SEQUENTIAL").notNull(),
+    timePerUnitMinutes: integer("time_per_unit_minutes").default(5).notNull(),
+    parallelDurationMinutes: integer("parallel_duration_minutes"),
+    resultNumber: integer("result_number"),
   },
   (table) => [
     index("programme_festivalId_createdAt_idx").using(
@@ -475,6 +496,9 @@ export const programme = pgTable(
       table.festivalId.asc().nullsLast(),
       table.status.asc().nullsLast(),
     ),
+    uniqueIndex("programme_festivalId_resultNumber_key")
+      .using("btree", table.festivalId.asc().nullsLast(), table.resultNumber.asc().nullsLast())
+      .where(sql`${table.resultNumber} IS NOT NULL`),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
@@ -664,6 +688,7 @@ export const stage = pgTable(
     name: text().notNull(),
     description: text(),
     createdBy: text(),
+    isOffStage: boolean("is_off_stage").default(false).notNull(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
@@ -677,6 +702,9 @@ export const stage = pgTable(
       "btree",
       table.festivalId.asc().nullsLast(),
     ),
+    uniqueIndex("stage_festivalId_isOffStage_key")
+      .using("btree", table.festivalId.asc().nullsLast())
+      .where(sql`${table.isOffStage} = true`),
     foreignKey({
       columns: [table.festivalId],
       foreignColumns: [festival.id],
@@ -876,6 +904,14 @@ export const programmeAssignment = pgTable(
         table.participantId.asc().nullsLast(),
       )
       .where(sql`${table.participantId} is not null`),
+    uniqueIndex("programme_assignment_programmeId_groupId_teamNumber_key")
+      .using(
+        "btree",
+        table.programmeId.asc().nullsLast(),
+        table.groupId.asc().nullsLast(),
+        table.teamNumber.asc().nullsLast(),
+      )
+      .where(sql`${table.groupId} is not null`),
     foreignKey({
       columns: [table.programmeId],
       foreignColumns: [programme.id],
@@ -936,14 +972,10 @@ export const result = pgTable(
     scoringPolicyVersion: integer("scoring_policy_version"),
     remarks: text(),
     isPublished: boolean().default(false).notNull(),
-    isAnnounced: boolean().default(false).notNull(),
-    announcedAt: tzTimestamp(),
     savedByEmail: text("saved_by_email"),
     savedByName: text("saved_by_name"),
     publishedByEmail: text("published_by_email"),
     publishedByName: text("published_by_name"),
-    announcedByEmail: text("announced_by_email"),
-    announcedByName: text("announced_by_name"),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
@@ -1050,6 +1082,65 @@ export const programmeTeamLead = pgTable(
   ],
 );
 
+// ─── 11.6 programme_assignment_member (depends on: programme_assignment, participant, festival) ───
+// Per-member join row for GROUP programmes. Stores one row per (programme_assignment, participant)
+// so code-letter recipients, reporting, and judgement mapping can address individual members
+// without polluting the parent programme_assignment row (which carries only groupId + teamNumber
+// for GROUP programmes). INDIVIDUAL programmes do NOT use this table — the participant lives
+// directly on programme_assignment.participantId.
+
+export const programmeAssignmentMember = pgTable(
+  "programme_assignment_member",
+  {
+    id: text().primaryKey().notNull(),
+    assignmentId: text().notNull(),
+    participantId: text().notNull(),
+    festivalId: text().notNull(),
+    assignedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    createdByEmail: text(),
+    createdByName: text(),
+  },
+  (table) => [
+    uniqueIndex("programme_assignment_member_assignmentId_participantId_key")
+      .using(
+        "btree",
+        table.assignmentId.asc().nullsLast(),
+        table.participantId.asc().nullsLast(),
+      ),
+    index("programme_assignment_member_assignmentId_idx").using(
+      "btree",
+      table.assignmentId.asc().nullsLast(),
+    ),
+    index("programme_assignment_member_participantId_idx").using(
+      "btree",
+      table.participantId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.assignmentId],
+      foreignColumns: [programmeAssignment.id],
+      name: "programme_assignment_member_assignmentId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.participantId],
+      foreignColumns: [participant.id],
+      name: "programme_assignment_member_participantId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "programme_assignment_member_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
 // ─── 12. programme_reporting_session (depends on: festival, schedule_entry, programme, stage) ──
 
 export const programmeReportingSession = pgTable(
@@ -1057,7 +1148,7 @@ export const programmeReportingSession = pgTable(
   {
     id: text().primaryKey().notNull(),
     festivalId: text().notNull(),
-    scheduleEntryId: text().notNull(),
+    scheduleEntryId: text(),
     programmeId: text().notNull(),
     stageId: text(),
     status: programmeReportingStatus().default("NOT_STARTED").notNull(),
@@ -1081,9 +1172,10 @@ export const programmeReportingSession = pgTable(
       "btree",
       table.programmeId.asc().nullsLast(),
     ),
-    uniqueIndex("programme_reporting_session_scheduleEntryId_key").using(
+    uniqueIndex("programme_reporting_session_festivalId_programmeId_key").using(
       "btree",
-      table.scheduleEntryId.asc().nullsLast(),
+      table.festivalId.asc().nullsLast(),
+      table.programmeId.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.festivalId],
@@ -1129,6 +1221,7 @@ export const programmeReportedParticipant = pgTable(
     teamNumber: integer(),
     reportedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     reportedBy: text(),
+    assignmentMemberId: text(),
   },
   (table) => [
     index("programme_reported_participant_groupId_idx").using(
@@ -1145,6 +1238,10 @@ export const programmeReportedParticipant = pgTable(
     index("programme_reported_participant_participantId_idx").using(
       "btree",
       table.participantId.asc().nullsLast(),
+    ),
+    index("programme_reported_participant_assignmentMemberId_idx").using(
+      "btree",
+      table.assignmentMemberId.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.reportingSessionId],
@@ -1171,6 +1268,13 @@ export const programmeReportedParticipant = pgTable(
       columns: [table.groupId],
       foreignColumns: [group.id],
       name: "programme_reported_participant_groupId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
+    foreignKey({
+      columns: [table.assignmentMemberId],
+      foreignColumns: [programmeAssignmentMember.id],
+      name: "programme_reported_participant_assignmentMemberId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("set null"),
@@ -1240,6 +1344,7 @@ export const programmeCodeLetterRecipient = pgTable(
     id: text().primaryKey().notNull(),
     codeLetterId: text().notNull(),
     participantId: text().notNull(),
+    assignmentMemberId: text(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
@@ -1268,6 +1373,13 @@ export const programmeCodeLetterRecipient = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
+    foreignKey({
+      columns: [table.assignmentMemberId],
+      foreignColumns: [programmeAssignmentMember.id],
+      name: "programme_code_letter_recipient_assignmentMemberId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
   ],
 );
 
@@ -1521,6 +1633,29 @@ export const festivalMediaImage = pgTable(
   ],
 );
 
+// ─── 19b. festival_media_video (depends on: festival) ────────────────────────
+
+export const festivalMediaVideo = pgTable(
+  "festival_media_video",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text().notNull(),
+    url: text().notNull(),
+    order: integer().default(0).notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_media_video_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
 // ─── 20. payment (depends on: user, festival) ────────────────────────────────
 
 export const payment = pgTable(
@@ -1668,61 +1803,14 @@ export const festivalCategoryPreference = pgTable(
   ],
 );
 
-// ─── 24. expired_festival_result (depends on: festival) ──────────────────────
-
-export const expiredFestivalResult = pgTable(
-  "expired_festival_result",
-  {
-    id: text().primaryKey().notNull(),
-    festivalId: text().notNull(),
-    programmeName: text().notNull(),
-    categoryName: text(),
-    participantName: text().notNull(),
-    position: integer(),
-    grade: text(),
-    score: doublePrecision(),
-    points: integer(),
-    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
-  },
-  (table) => [
-    index("expired_festival_result_festivalId_idx").using(
-      "btree",
-      table.festivalId.asc().nullsLast(),
-    ),
-    foreignKey({
-      columns: [table.festivalId],
-      foreignColumns: [festival.id],
-      name: "expired_festival_result_festivalId_fkey",
-    })
-      .onUpdate("cascade")
-      .onDelete("cascade"),
-  ],
-);
-
-// ─── 24b. expired_festival_manual_book (depends on: festival) ──────────────────
-
-export const expiredFestivalManualBook = pgTable(
-  "expired_festival_manual_book",
-  {
-    id: text().primaryKey().notNull(),
-    festivalId: text().notNull(),
-    data: jsonb().notNull(),
-    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
-  },
-  (table) => [
-    index("expired_festival_manual_book_festivalId_idx").using(
-      "btree",
-      table.festivalId.asc().nullsLast(),
-    ),
-    foreignKey({
-      columns: [table.festivalId],
-      foreignColumns: [festival.id],
-      name: "expired_festival_manual_book_festivalId_fkey",
-    })
-      .onUpdate("cascade")
-      .onDelete("cascade"),
-  ],
-);
+// ─── 24. expired_festival_result / expired_festival_manual_book ───────────
+//
+// Removed in ISSUE-15 §1.3. The expiry flow no longer snapshots results or
+// the manual-book JSON blob; the live kept tables (`programme`, `participant`,
+// `result`, `group`, `category`, `stage`, `scheduleEntry`,
+// `programmeAssignment`, `festivalMember`, `festivalNews`, `festivalMediaImage`)
+// are the source of truth, and the Manual Book PDF is regenerated on demand
+// from them. See drizzle/0029_drop_expired_festival_snapshot_tables.sql.
 
 // ─── 25. festival_lifecycle_event (depends on: festival) ─────────────────────
 
@@ -1940,6 +2028,38 @@ export const festivalPosterTemplate = pgTable(
       columns: [table.festivalId],
       foreignColumns: [festival.id],
       name: "festival_poster_template_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const festivalTemplateAssignment = pgTable(
+  "festival_template_assignment",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    templateCode: text("template_code").notNull(),
+    assignmentKind: templateAssignmentKind("assignment_kind").notNull(),
+    fromResultNo: integer("from_result_no"),
+    toResultNo: integer("to_result_no"),
+    certificateType: text("certificate_type"),
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
+      .notNull(),
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
+      .notNull(),
+  },
+  (table) => [
+    index("festival_template_assignment_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_template_assignment_festivalId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),

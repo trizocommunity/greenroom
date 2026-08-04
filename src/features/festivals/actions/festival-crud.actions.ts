@@ -3,7 +3,7 @@
 import { randomUUID } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { TIER_CONFIG } from "@/config/pricing";
+import { getFestivalDurationDays, TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
@@ -28,6 +28,7 @@ import { assertFestivalMutationAllowed } from "@/features/festivals/services/fes
 import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
 import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
+import { ensureOffStageStage } from "@/features/stages/services/off-stage.service";
 
 export async function createFestival(input: CreateFestivalInput) {
   try {
@@ -135,6 +136,10 @@ export async function createFestival(input: CreateFestivalInput) {
       return festival;
     });
 
+    // Provision the per-festival Off-Stage stage outside the festival
+    // transaction (it provisions its own portal credential). Idempotent.
+    await ensureOffStageStage(result.id);
+
     await createAuditLog({
       action: "CREATE_FESTIVAL",
       targetType: "FESTIVAL",
@@ -151,17 +156,34 @@ export async function createFestival(input: CreateFestivalInput) {
   }
 }
 
+/**
+ * A deadline window is only meaningful when it opens before it closes.
+ * Either bound may be absent (unbounded on that side).
+ */
+function assertWindowOrder(
+  label: string,
+  start: string | Date | null | undefined,
+  end: string | Date | null | undefined,
+) {
+  const startDate = parseInstant(start ?? null);
+  const endDate = parseInstant(end ?? null);
+  if (!startDate || !endDate) return;
+  if (startDate.getTime() >= endDate.getTime()) {
+    throw new AppError(`${label} must open before it closes`);
+  }
+}
+
 export async function updateFestivalSettingsAction(
   festivalId: string,
   data: {
+    programmeAssignmentStartDate?: string | null;
     programmeAssignmentDeadline?: string | null;
+    participantCreationStartDate?: string | null;
     participantCreationDeadline?: string | null;
     teamLeaderLimit?: number;
-    announcerResultsPerStandings?: number;
     startDate?: string | null;
     endDate?: string | null;
     scoringSystem?: "POSITION_BASED" | "SCORE_BASED" | null;
-    publicDisplayMode?: "programme_results" | "team_standings" | null;
     chestNumberSettings?: {
       autoGenerate?: boolean;
       prefix?: string;
@@ -200,10 +222,11 @@ export async function updateFestivalSettingsAction(
     const hasDateField =
       data.startDate !== undefined || data.endDate !== undefined;
     const hasNonDateField =
+      data.programmeAssignmentStartDate !== undefined ||
       data.programmeAssignmentDeadline !== undefined ||
+      data.participantCreationStartDate !== undefined ||
       data.participantCreationDeadline !== undefined ||
-      data.teamLeaderLimit !== undefined ||
-      data.announcerResultsPerStandings !== undefined;
+      data.teamLeaderLimit !== undefined;
     const isDateOnlyUpdate = hasDateField && !hasNonDateField;
     await assertFestivalMutationAllowed(festivalId, {
       allowPast: isDateOnlyUpdate,
@@ -214,8 +237,7 @@ export async function updateFestivalSettingsAction(
     const planStart = parseInstant(festival.createdAt);
     const tierConfig = TIER_CONFIG[festival.tier as keyof typeof TIER_CONFIG];
     const planEndMs = planStart
-      ? planStart.getTime() +
-        (tierConfig?.festivalDurationDays ?? 90) * MS.day
+      ? planStart.getTime() + (tierConfig?.festivalDurationDays ?? 90) * MS.day
       : null;
 
     if (data.startDate && !incomingStart) {
@@ -238,9 +260,38 @@ export async function updateFestivalSettingsAction(
       throw new AppError("End date must be on/before plan expiry date");
     }
 
+    assertWindowOrder(
+      "Programme assignment",
+      data.programmeAssignmentStartDate !== undefined
+        ? data.programmeAssignmentStartDate
+        : festival.programmeAssignmentStartDate,
+      data.programmeAssignmentDeadline !== undefined
+        ? data.programmeAssignmentDeadline
+        : festival.programmeAssignmentDeadline,
+    );
+    assertWindowOrder(
+      "Participant registration",
+      data.participantCreationStartDate !== undefined
+        ? data.participantCreationStartDate
+        : festival.participantCreationStartDate,
+      data.participantCreationDeadline !== undefined
+        ? data.participantCreationDeadline
+        : festival.participantCreationDeadline,
+    );
+
     const [updated] = await db
       .update(festivalTable)
       .set({
+        ...(data.programmeAssignmentStartDate !== undefined && {
+          programmeAssignmentStartDate: data.programmeAssignmentStartDate
+            ? parseInstant(data.programmeAssignmentStartDate)?.toISOString()
+            : null,
+        }),
+        ...(data.participantCreationStartDate !== undefined && {
+          participantCreationStartDate: data.participantCreationStartDate
+            ? parseInstant(data.participantCreationStartDate)?.toISOString()
+            : null,
+        }),
         ...(data.programmeAssignmentDeadline !== undefined && {
           programmeAssignmentDeadline: data.programmeAssignmentDeadline
             ? parseInstant(data.programmeAssignmentDeadline)?.toISOString()
@@ -257,15 +308,6 @@ export async function updateFestivalSettingsAction(
             Math.min(10, Number(data.teamLeaderLimit) || 2),
           ),
         }),
-        ...(data.announcerResultsPerStandings !== undefined && {
-          announcerResultsPerStandings: Math.max(
-            1,
-            Math.min(
-              100,
-              Math.floor(Number(data.announcerResultsPerStandings) || 10),
-            ),
-          ),
-        }),
         ...(data.startDate !== undefined && {
           startDate: incomingStart?.toISOString() ?? null,
         }),
@@ -275,12 +317,6 @@ export async function updateFestivalSettingsAction(
         ...(data.scoringSystem !== undefined && {
           scoringSystem:
             data.scoringSystem === null ? undefined : data.scoringSystem,
-        }),
-        ...(data.publicDisplayMode !== undefined && {
-          publicDisplayMode:
-            data.publicDisplayMode === null
-              ? undefined
-              : data.publicDisplayMode,
         }),
         ...(data.chestNumberSettings !== undefined && {
           chestNumberSettings: data.chestNumberSettings,
@@ -433,6 +469,137 @@ export async function updateFestivalBrandingAction(data: {
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
     return { success: true };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+/**
+ * Relaunch a new festival for an owner whose previous festival has EXPIRED.
+ *
+ * Flow:
+ *   1. Validate session + payment (must be PAID, unused, FESTIVAL_CREATION).
+ *   2. Confirm the owner does NOT currently have a non-EXPIRED festival
+ *      (the partial unique index on `festival_ownerId_active_key` enforces
+ *      this at the DB level — we surface a friendly message here).
+ *   3. Insert a fresh festival row with `status="READY"`,
+ *      `isLocked=false`, new `id`, `expiresAt = now + duration`.
+ *   4. Add the owner as an ADMIN member.
+ *   5. Mark the payment used and audit-log REPLACE_FESTIVAL_LIFECYCLE.
+ *
+ * The expired `festival` row is intentionally NOT touched — it stays as
+ * history so the owner can still download the Manual Book.
+ */
+export async function relaunchFestival(input: {
+  paymentId: string;
+  festivalName: string;
+}) {
+  try {
+    const session = await getSession();
+    if (!session?.userId) {
+      throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+    }
+
+    if (!input.festivalName?.trim()) {
+      throw new AppError("Festival name is required");
+    }
+
+    const payment = await db.query.payment.findFirst({
+      where: and(
+        eq(paymentTable.id, input.paymentId),
+        eq(paymentTable.userId, session.userId),
+      ),
+    });
+    if (!payment || payment.status !== "PAID" || payment.used) {
+      throw new AppError(ERROR_MESSAGES.PAYMENT_INVALID);
+    }
+    if (payment.purpose !== "FESTIVAL_CREATION") {
+      throw new AppError(ERROR_MESSAGES.PAYMENT_PURPOSE_MISMATCH);
+    }
+
+    const tier = (payment.tier || "BASIC") as "BASIC" | "STANDARD" | "PRO";
+    const tierConfig = TIER_CONFIG[tier];
+
+    // Confirm no active festival exists (the partial unique index will
+    // reject the insert if this slips through).
+    const activeFestival = await db.query.festival.findFirst({
+      where: and(
+        eq(festivalTable.ownerId, session.userId),
+        sql`${festivalTable.status} <> 'EXPIRED'`,
+      ),
+    });
+    if (activeFestival) {
+      return {
+        success: false,
+        error:
+          "You already have an active festival. Relaunch is only available once your current festival has expired.",
+      } as const;
+    }
+
+    const expiresAt = fromNow(getFestivalDurationDays() * MS.day);
+    const finalSlug = input.festivalName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 50);
+
+    const result = await db.transaction(async (tx) => {
+      const festivalId = randomUUID();
+      const now = serverNowIso();
+
+      const [festival] = await tx
+        .insert(festivalTable)
+        .values({
+          id: festivalId,
+          name: input.festivalName.trim(),
+          slug: finalSlug,
+          ownerId: session.userId,
+          status: "READY",
+          tier,
+          tierLabel: tierConfig?.label || "Standard",
+          isLocked: false,
+          expiresAt,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      await tx.insert(memberTable).values({
+        id: randomUUID(),
+        festivalId: festival.id,
+        userId: session.userId,
+        role: "ADMIN",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await tx
+        .update(paymentTable)
+        .set({
+          used: true,
+          festivalId: festival.id,
+          updatedAt: now,
+        })
+        .where(eq(paymentTable.id, payment.id));
+
+      return festival;
+    });
+
+    // Provision the per-festival Off-Stage stage. Idempotent.
+    await ensureOffStageStage(result.id);
+
+    await createAuditLog({
+      action: "REPLACE_FESTIVAL_LIFECYCLE",
+      targetType: "FESTIVAL",
+      targetId: result.id,
+      metadata: { name: result.name, tier: result.tier, source: "relaunch" },
+    });
+
+    revalidatePath("/profile");
+    revalidatePath("/festivals");
+
+    return { success: true, data: result };
   } catch (error) {
     return handleActionError(error);
   }

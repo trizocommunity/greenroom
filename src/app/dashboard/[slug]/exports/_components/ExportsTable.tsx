@@ -97,7 +97,10 @@ export function ExportsTable({
           const firstBadge = e.filterBadges[0];
           const extra = e.filterBadges.length - 1;
           return (
-            <div key={e.id} className="rounded-lg border p-4 flex flex-col gap-3">
+            <div
+              key={e.id}
+              className="rounded-lg border p-4 flex flex-col bg-card gap-3"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 font-medium">
                   <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -128,7 +131,7 @@ export function ExportsTable({
                   )}
                 </div>
               </div>
-              
+
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm">{e.summary}</span>
@@ -143,11 +146,12 @@ export function ExportsTable({
                     </Badge>
                   )}
                 </div>
-                {e.status === "COMPLETED" && metaLine(e.itemCount, e.fileSizeBytes) && (
-                  <div className="text-xs text-muted-foreground">
-                    {metaLine(e.itemCount, e.fileSizeBytes)}
-                  </div>
-                )}
+                {e.status === "COMPLETED" &&
+                  metaLine(e.itemCount, e.fileSizeBytes) && (
+                    <div className="text-xs text-muted-foreground">
+                      {metaLine(e.itemCount, e.fileSizeBytes)}
+                    </div>
+                  )}
                 {e.status === "FAILED" && e.errorMessage && (
                   <div className="text-xs text-destructive line-clamp-2">
                     {e.errorMessage}
@@ -194,7 +198,7 @@ export function ExportsTable({
         })}
       </div>
       <div className="hidden md:block rounded-lg border overflow-x-auto">
-        <Table>
+        <Table className="bg-card">
           <TableHeader>
             <TableRow>
               <TableHead>Export Type</TableHead>

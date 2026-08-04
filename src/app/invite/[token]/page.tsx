@@ -59,7 +59,9 @@ export default function InvitePage() {
   const token = params.token as string;
 
   const [error, setError] = useState<string | null>(null);
-  const [inviteDetails, setInviteDetails] = useState<InviteDetails | null>(null);
+  const [inviteDetails, setInviteDetails] = useState<InviteDetails | null>(
+    null,
+  );
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -204,7 +206,9 @@ export default function InvitePage() {
           </p>
           <div className="mt-6 flex flex-col gap-2">
             <Button
-              onClick={() => router.push(isAuthenticated ? "/profile" : "/login")}
+              onClick={() =>
+                router.push(isAuthenticated ? "/profile" : "/login")
+              }
               className="rounded-xl font-medium"
             >
               {isAuthenticated ? "Go to your dashboard" : "Go to sign in"}

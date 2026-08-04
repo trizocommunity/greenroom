@@ -23,6 +23,20 @@ import { toast } from "sonner";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { useCancelJudgement } from "@/api/client/server-actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
+import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import {
   Accordion,
   AccordionContent,
@@ -32,7 +46,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 import {
   Drawer,
   DrawerContent,
@@ -50,18 +63,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { formatDateTime, parseInstant } from "@/core/datetime";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
-import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
-import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
-import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 import {
   getJudgementDashboardDataAction,
   restartJudgementAction,
   startJudgementAction,
 } from "@/features/judgement/actions/judgement.actions";
+import { createJudgeAction } from "@/features/judges/actions/judge.actions";
 
 type Judge = { id: string; name: string; description?: string | null };
 type Programme = {
@@ -158,9 +175,15 @@ function resetWizardForm() {
 export function JudgementWizardClient({
   festivalId,
   initialDashboardData,
+  stages = [],
+  initialStageId = null,
+  hideStageFilter = false,
 }: {
   festivalId: string;
   initialDashboardData: JudgementDashboardQueryData;
+  stages?: Array<{ id: string; name: string }>;
+  initialStageId?: string | null;
+  hideStageFilter?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -178,6 +201,14 @@ export function JudgementWizardClient({
   const toEpoch = useCallback((value: string | Date) => {
     return parseInstant(value)?.getTime() ?? 0;
   }, []);
+
+  const autoLockedStageId =
+    hideStageFilter && stages.length === 1 ? stages[0]!.id : null;
+  const [selectedStageId, setSelectedStageId] = useState<string>(
+    autoLockedStageId ?? initialStageId ?? "",
+  );
+  const effectiveStageId = autoLockedStageId ?? selectedStageId;
+  const showStageDropdown = !hideStageFilter && stages.length > 1;
 
   const judgementStatusLabel = (status: ProgrammeJudgementStatus) => {
     switch (status) {
@@ -202,6 +233,9 @@ export function JudgementWizardClient({
   const [isPending, startTransition] = useTransition();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  
+  const cancelJudgementMutation = useCancelJudgement();
+  const [cancelProgrammeId, setCancelProgrammeId] = useState<string | null>(null);
 
   const [reportedParticipantsView, setReportedParticipantsView] = useState<{
     programmeName: string;
@@ -248,6 +282,26 @@ export function JudgementWizardClient({
   const judgedProgrammes = dashboardQuery.data?.judgedProgrammes ?? [];
   const judgesByStageId = dashboardQuery.data?.judgesByStageId ?? {};
 
+  const matchesStageFilter = useCallback(
+    (stageId: string | null | undefined) =>
+      effectiveStageId === "" || stageId === effectiveStageId,
+    [effectiveStageId],
+  );
+  const filteredJudgeProgrammes = useMemo(
+    () =>
+      judgeProgrammes.filter((p) =>
+        matchesStageFilter(p.reportingDetails?.stageId ?? null),
+      ),
+    [judgeProgrammes, matchesStageFilter],
+  );
+  const filteredRejudgeProgrammes = useMemo(
+    () =>
+      rejudgeProgrammes.filter((p) =>
+        matchesStageFilter(p.reportingDetails?.stageId ?? null),
+      ),
+    [rejudgeProgrammes, matchesStageFilter],
+  );
+
   const activeByProgrammeId = useMemo(() => {
     const m = new Map<string, ActiveConfig>();
     for (const c of activeConfigs) {
@@ -267,11 +321,11 @@ export function JudgementWizardClient({
   const wizardProgramme = useMemo(() => {
     if (!wizardProgrammeId) return null;
     return (
-      judgeProgrammes.find((p) => p.id === wizardProgrammeId) ??
-      rejudgeProgrammes.find((p) => p.id === wizardProgrammeId) ??
+      filteredJudgeProgrammes.find((p) => p.id === wizardProgrammeId) ??
+      filteredRejudgeProgrammes.find((p) => p.id === wizardProgrammeId) ??
       null
     );
-  }, [judgeProgrammes, rejudgeProgrammes, wizardProgrammeId]);
+  }, [filteredJudgeProgrammes, filteredRejudgeProgrammes, wizardProgrammeId]);
 
   const sortedJudgedCodeRows = useMemo(() => {
     if (!combinedDrawerDetail) return [];
@@ -301,8 +355,8 @@ export function JudgementWizardClient({
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase();
     const allProgrammes = [
-      ...judgeProgrammes.map((p) => ({ ...p, _kind: "READY" })),
-      ...rejudgeProgrammes.map((p) => ({ ...p, _kind: "REJUDGE" })),
+      ...filteredJudgeProgrammes.map((p) => ({ ...p, _kind: "READY" })),
+      ...filteredRejudgeProgrammes.map((p) => ({ ...p, _kind: "REJUDGE" })),
       ...completedJudgements.map((p) => ({
         id: p.programmeId,
         name: p.programmeName,
@@ -325,7 +379,12 @@ export function JudgementWizardClient({
         p.name.toLowerCase().includes(query) ||
         p.programmeCategory?.toLowerCase().includes(query),
     );
-  }, [searchQuery, judgeProgrammes, rejudgeProgrammes, completedJudgements]);
+  }, [
+    searchQuery,
+    filteredJudgeProgrammes,
+    filteredRejudgeProgrammes,
+    completedJudgements,
+  ]);
 
   const completedDetailTimeline = useMemo(() => {
     if (!combinedDrawerDetail) return [];
@@ -389,8 +448,8 @@ export function JudgementWizardClient({
     const priorJudgeIds =
       judgedByProgrammeId.get(programmeId)?.judges.map((j) => j.id) ?? [];
     const programme =
-      judgeProgrammes.find((p) => p.id === programmeId) ??
-      rejudgeProgrammes.find((p) => p.id === programmeId);
+      filteredJudgeProgrammes.find((p) => p.id === programmeId) ??
+      filteredRejudgeProgrammes.find((p) => p.id === programmeId);
     const stageId = programme?.reportingDetails?.stageId ?? null;
     const stagePanel = stageId ? (judgesByStageId[stageId] ?? []) : [];
     const prefill =
@@ -487,12 +546,12 @@ export function JudgementWizardClient({
   // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot handoff; only re-run when the param or programme list changes.
   useEffect(() => {
     if (!startParam || handledStartRef.current === startParam) return;
-    const ready = judgeProgrammes.some((p) => p.id === startParam);
+    const ready = filteredJudgeProgrammes.some((p) => p.id === startParam);
     if (!ready) return;
     handledStartRef.current = startParam;
     openWizardForProgramme(startParam, "create");
     router.replace(pathname);
-  }, [startParam, judgeProgrammes]);
+  }, [startParam, filteredJudgeProgrammes]);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -516,6 +575,28 @@ export function JudgementWizardClient({
               }}
             />
           </div>
+          {showStageDropdown && (
+            <Select
+              value={effectiveStageId === "" ? "__all__" : effectiveStageId}
+              onValueChange={(v) =>
+                setSelectedStageId(v === "__all__" ? "" : v)
+              }
+            >
+              <SelectTrigger className="w-[180px] h-9 text-sm">
+                <SelectValue placeholder="Stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem className="font-normal" value="__all__">
+                  All stages
+                </SelectItem>
+                {stages.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <HowItWorksButton title="How judgement works">
             <div className="space-y-4 text-sm">
               <div>
@@ -548,14 +629,17 @@ export function JudgementWizardClient({
       </div>
 
       <section className="space-y-3 min-h-[60vh]">
-        {judgeProgrammes.length === 0 ? (
+        {filteredJudgeProgrammes.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             No programmes are ready to judge right now.
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {judgeProgrammes.map((p) => {
+            {filteredJudgeProgrammes.map((p) => {
               const active = activeByProgrammeId.get(p.id);
+              const isUnscheduled = Boolean(
+                p.reportingDetails && p.reportingDetails.stageId === null,
+              );
               return (
                 <Card
                   key={p.id}
@@ -566,12 +650,22 @@ export function JudgementWizardClient({
                       <CardTitle className="text-base font-semibold leading-snug line-clamp-2 sm:text-lg">
                         {p.name}
                       </CardTitle>
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 text-[11px]"
-                      >
-                        {p.status}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge
+                          variant="secondary"
+                          className="text-[11px]"
+                        >
+                          {p.status}
+                        </Badge>
+                        {isUnscheduled && (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/60 bg-amber-500/10 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300"
+                          >
+                            Off-Stage
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {p.programmeType === "GROUP" ? "Group" : "Individual"}
@@ -623,6 +717,15 @@ export function JudgementWizardClient({
                               </Button>
                             );
                           })()}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+                            onClick={() => setCancelProgrammeId(p.id)}
+                          >
+                            Cancel
+                          </Button>
                         </div>
                       </>
                     ) : (
@@ -652,6 +755,11 @@ export function JudgementWizardClient({
                             className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
                             onClick={() =>
                               openWizardForProgramme(p.id, "create")
+                            }
+                            title={
+                              isUnscheduled
+                                ? "This programme is unscheduled. It will be judged using the Off-Stage portal."
+                                : undefined
                             }
                           >
                             <Play className="mr-1.5 h-3.5 w-3.5" />
@@ -744,17 +852,17 @@ export function JudgementWizardClient({
           <h2 className="text-base font-semibold tracking-tight sm:text-lg flex items-center justify-between">
             Rejudge
             <Badge variant="outline" className="text-[10px]">
-              {rejudgeProgrammes.length}
+              {filteredRejudgeProgrammes.length}
             </Badge>
           </h2>
-          {rejudgeProgrammes.length === 0 ? (
+          {filteredRejudgeProgrammes.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               No judged programmes available for rejudge (published items never
               appear here).
             </div>
           ) : (
             <div className="space-y-2">
-              {rejudgeProgrammes.map((p) => (
+              {filteredRejudgeProgrammes.map((p) => (
                 <div
                   key={p.id}
                   className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
@@ -834,7 +942,8 @@ export function JudgementWizardClient({
                       : `Reported participants (${reportedParticipantsView.details.reportedCount})`}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Category: {reportedParticipantsView.programmeCategory ?? "—"}
+                    Category:{" "}
+                    {reportedParticipantsView.programmeCategory ?? "—"}
                   </p>
                   {reportedParticipantsView.details.reportedEntries.length ===
                   0 ? (
@@ -1353,6 +1462,50 @@ export function JudgementWizardClient({
           </div>
         </DrawerContent>
       </Drawer>
+      
+      <AlertDialog
+        open={!!cancelProgrammeId}
+        onOpenChange={(open) => {
+          if (!open) setCancelProgrammeId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel judgement?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will abort the active judgement round and lock out all judges instantly. Any partial scores that have not been submitted will be lost. The programme will return to 'Pending Judgment' status.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelJudgementMutation.isPending}>
+              Keep active
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cancelJudgementMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (cancelProgrammeId) {
+                  cancelJudgementMutation.mutate(
+                    {
+                      festivalId,
+                      programmeId: cancelProgrammeId,
+                    },
+                    {
+                      onSuccess: () => {
+                        toast.success("Judgement cancelled");
+                        setCancelProgrammeId(null);
+                      },
+                    }
+                  );
+                }
+              }}
+            >
+              {cancelJudgementMutation.isPending ? "Cancelling..." : "Yes, cancel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

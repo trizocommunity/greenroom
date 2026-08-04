@@ -39,7 +39,9 @@ interface CallRow {
 
 function formatDob(iso: string | null, festivalTz: string): string {
   if (!iso) return "";
-  return parseInstant(iso) ? formatDate(iso, { tz: festivalTz, style: "medium" }) : "";
+  return parseInstant(iso)
+    ? formatDate(iso, { tz: festivalTz, style: "medium" })
+    : "";
 }
 
 async function loadCallRows(

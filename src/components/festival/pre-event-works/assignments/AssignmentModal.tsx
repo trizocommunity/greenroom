@@ -1,12 +1,15 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Check,
-  Grid2X2,
+  ClipboardList,
+  Crown,
+  Loader2,
   Plus,
+  Search,
   Trash2,
   Users,
   X,
@@ -22,6 +25,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -30,8 +34,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/core/utils/cn";
+import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
 
 interface AssignmentModalProps {
   festivalId: string;
@@ -46,6 +50,11 @@ interface AssignmentModalProps {
   groups?: { id: string; name: string }[];
   /** Pre-scopes the dialog to a single group (e.g. a team leader's own group) and hides the Group step. */
   fixedGroupId?: string;
+  /**
+   * PRO festivals reject a GROUP assignment unless every team receiving a
+   * member has a lead on record, so the review step has to collect one.
+   */
+  requiresTeamLead?: boolean;
 }
 
 interface QueueItem {
@@ -63,6 +72,17 @@ interface QueueItem {
 
 type ModalView = "SELECTION" | "REVIEW";
 
+/** Programme limits, spelled out the way an organiser would say them. */
+function describeLimits(p: any) {
+  if (p.type === "INDIVIDUAL") {
+    const max = p.maxParticipantsPerGroup || 1;
+    return `Up to ${max} ${max === 1 ? "person" : "people"} per group`;
+  }
+  const teams = p.maxTeamsPerGroup || 1;
+  const size = p.maxParticipantsPerTeam || 1;
+  return `Up to ${teams} team${teams === 1 ? "" : "s"} of ${size}`;
+}
+
 export function AssignmentModal({
   festivalId,
   open,
@@ -74,19 +94,14 @@ export function AssignmentModal({
   assignments,
   groups = [],
   fixedGroupId,
+  requiresTeamLead = false,
 }: AssignmentModalProps) {
   const bulkCreateAssignment = useBulkCreateAssignments();
 
-  // Whether to show the "Group" step at all — admin dialogs pick a group;
+  // Whether to show the group picker at all — admin dialogs pick a group;
   // team-leader dialogs are pre-scoped to their own group via fixedGroupId.
-  // Wizard order: Category (1) → Group (2) → Programme (3) → Participants (4).
-  // When the dialog is pre-scoped to a single group (fixedGroupId), the Group
-  // step is hidden and the remaining steps renumber down.
+  // Flow: pick category (+ group) at the top, then programme, then people.
   const hasGroupStep = !fixedGroupId && groups.length > 0;
-  const categoryStepNum = 1;
-  const groupStepNum = hasGroupStep ? 2 : 1;
-  const programmeStepNum = hasGroupStep ? 3 : 2;
-  const participantStepNum = hasGroupStep ? 4 : 3;
 
   // State
   const [view, setView] = useState<ModalView>("SELECTION");
@@ -98,8 +113,77 @@ export function AssignmentModal({
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<
     Set<string>
   >(new Set());
+  const [participantSearch, setParticipantSearch] = useState("");
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /** `${programmeId}:${groupId}:${teamNumber}` -> chosen lead participantId. */
+  const [teamLeadChoice, setTeamLeadChoice] = useState<Record<string, string>>(
+    {},
+  );
+
+  /* Which queued teams already have a lead? Only fetched when the tier needs
+     it, and only for the programmes actually in the queue. */
+  const queuedProgrammeIds = useMemo(
+    () => Array.from(new Set(queue.map((q) => q.programmeId))).sort(),
+    [queue],
+  );
+
+  const { data: existingLeadsByProgramme } = useQuery({
+    queryKey: ["assignment-modal-team-leads", festivalId, queuedProgrammeIds],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        queuedProgrammeIds.map(async (programmeId) => {
+          try {
+            const leads = await getProgrammeTeamLeadsAction(
+              festivalId,
+              programmeId,
+            );
+            return [programmeId, leads] as const;
+          } catch {
+            // Non-PRO or no access — treated as "no leads on record".
+            return [programmeId, {}] as const;
+          }
+        }),
+      );
+      return Object.fromEntries(entries) as Record<
+        string,
+        Record<string, Record<number, { participantId: string }>>
+      >;
+    },
+    enabled: requiresTeamLead && queuedProgrammeIds.length > 0,
+    staleTime: 30_000,
+  });
+
+  /**
+   * `${programmeId}:${groupId}:${teamNumber}` for every team the queue touches
+   * that has no lead yet — the same key the review blocks are grouped by, so
+   * each block knows whether to show its lead picker. Mirrors the server's rule
+   * in `AssignmentService.bulkCreate`, so what the dialog asks for is exactly
+   * what the save will require.
+   */
+  const leadRequiredKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (!requiresTeamLead) return keys;
+
+    for (const item of queue) {
+      if (!item.isGroupType || !item.groupId) continue;
+
+      const alreadyLed =
+        existingLeadsByProgramme?.[item.programmeId]?.[item.groupId]?.[
+          item.teamNumber
+        ];
+      if (alreadyLed) continue;
+
+      keys.add(`${item.programmeId}:${item.groupId}:${item.teamNumber}`);
+    }
+
+    return keys;
+  }, [requiresTeamLead, queue, existingLeadsByProgramme]);
+
+  const teamsMissingLeadCount = Array.from(leadRequiredKeys).filter(
+    (key) => !teamLeadChoice[key],
+  ).length;
+  const missingTeamLead = teamsMissingLeadCount > 0;
 
   const categoriesById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
@@ -179,6 +263,16 @@ export function AssignmentModal({
     fixedGroupId,
   ]);
 
+  // What the name search narrows the list down to. Selection and capacity
+  // maths always run on the full eligible list, never on the search result.
+  const visibleParticipants = useMemo(() => {
+    const q = participantSearch.trim().toLowerCase();
+    if (!q) return filteredParticipants;
+    return filteredParticipants.filter((s: any) =>
+      `${s.name ?? ""} ${s.chestNumber ?? ""}`.toLowerCase().includes(q),
+    );
+  }, [filteredParticipants, participantSearch]);
+
   // Limits Logic
   type LimitInfo =
     | { type: "INDIVIDUAL"; max: number; label: string }
@@ -207,7 +301,7 @@ export function AssignmentModal({
   // Calculate next available team or if limit reached.
   const assignmentState = useMemo(() => {
     if (!selectedProgramme || !limitInfo || !selectedGroupId)
-      return { canAssign: false, message: "Select a group and programme" };
+      return { canAssign: false, message: "Pick a programme first" };
 
     // Existing DB Assignments for this Group & Programme
     // For Group Programme: Count by Team Number
@@ -245,7 +339,9 @@ export function AssignmentModal({
           return {
             canAssign: false,
             limitReached: true,
-            message: `Group limit reached (${limitInfo.max}/${limitInfo.max})`,
+            message: `This group already has all ${limitInfo.max} place${
+              limitInfo.max === 1 ? "" : "s"
+            } filled`,
           };
         }
       }
@@ -318,7 +414,7 @@ export function AssignmentModal({
         return {
           canAssign: false,
           limitReached: true,
-          message: "Selection exceeds capacity",
+          message: "That is more people than there is room for",
         };
       }
 
@@ -326,7 +422,7 @@ export function AssignmentModal({
         return {
           canAssign: false,
           limitReached: true,
-          message: "All teams are full",
+          message: "Every team is already full",
         };
       }
 
@@ -342,13 +438,13 @@ export function AssignmentModal({
     selectedProgramme,
   ]);
 
-  // Handler for adding to queue - MUST USE AUTO-ASSIGN
+  // Handler for adding to the list - MUST USE AUTO-ASSIGN
   const handleAddToQueue = () => {
     addParticipantsToQueue(selectedParticipantIds);
   };
 
-  // Generic queue impl, used by both the manual "Add to Queue" button and the
-  // "Add all eligible" quick action. Takes an explicit set of participant IDs so
+  // Generic queue impl, used by both the manual "Add selected" button and the
+  // "Add everyone" quick action. Takes an explicit set of participant IDs so
   // the bulk path can supply it directly without waiting on a batched state
   // update.
   const addParticipantsToQueue = (ids: Set<string>) => {
@@ -398,7 +494,7 @@ export function AssignmentModal({
       const participant = participants.find((s: any) => s.id === sId);
       if (!participant) return;
 
-      // Check if already in queue (sanity check)
+      // Check if already in the list (sanity check)
       if (
         queue.some(
           (q) =>
@@ -424,7 +520,7 @@ export function AssignmentModal({
         if (!found) {
           // Should not happen if UI disabled correctly, but fail safe
           toast.error(
-            `Could not auto-assign team for ${participant.name}. Limits reached.`,
+            `No team has room left for ${participant.name}. Remove someone first.`,
           );
           return;
         }
@@ -447,11 +543,13 @@ export function AssignmentModal({
     if (newItems.length === 0) return;
     setQueue((prev) => [...prev, ...newItems]);
     if (ids === selectedParticipantIds) setSelectedParticipantIds(new Set()); // Clear selection only for the manual path
-    toast.success(`Added ${newItems.length} to queue`);
+    toast.success(
+      `Added ${newItems.length} ${newItems.length === 1 ? "person" : "people"} to the list`,
+    );
   };
 
-  // "Add all eligible" quick action — selects every eligible (unassigned,
-  // not-yet-queued) participant and queues them in one go, respecting the
+  // "Add everyone" quick action — selects every eligible (unassigned,
+  // not-yet-listed) participant and adds them in one go, respecting the
   // programme's per-group capacity. For programmes that are already full the
   // button is disabled.
   const eligibleUnassignedCount = useMemo(() => {
@@ -460,7 +558,7 @@ export function AssignmentModal({
   }, [filteredParticipants, selectedProgramme]);
 
   // Total slots the group still has on this programme (across all teams).
-  // Used both to surface "capacity full" and to clamp the "add all" batch.
+  // Used both to surface "capacity full" and to clamp the "add everyone" batch.
   const remainingProgrammeSlots = useMemo(() => {
     if (!selectedProgramme || !selectedGroupId || !limitInfo) return 0;
     const dbCount = assignments.filter(
@@ -490,7 +588,7 @@ export function AssignmentModal({
   const handleAddAllEligible = () => {
     if (isReadOnly || !selectedProgramme) return;
     if (remainingProgrammeSlots <= 0) {
-      toast.info("Programme capacity is full for this group");
+      toast.info("This programme is already full for this group");
       return;
     }
     const eligibleIds = filteredParticipants
@@ -498,7 +596,7 @@ export function AssignmentModal({
       .slice(0, remainingProgrammeSlots)
       .map((s: any) => s.id);
     if (eligibleIds.length === 0) {
-      toast.info("No eligible (unassigned) participants to add");
+      toast.info("Everyone here is already on this programme");
       return;
     }
     addParticipantsToQueue(new Set(eligibleIds));
@@ -507,14 +605,72 @@ export function AssignmentModal({
   const isLimitReached = assignmentState.limitReached || false;
 
   const handleRemoveFromQueue = (itemId: string) => {
+    const removed = queue.find((item) => item.id === itemId);
     setQueue((prev) => prev.filter((item) => item.id !== itemId));
+
+    // If the person being removed was picked as their team's lead, drop that
+    // choice too — otherwise the save would send a lead who is no longer there.
+    if (!removed) return;
+    const teamKey = `${removed.programmeId}:${removed.groupId}:${removed.teamNumber}`;
+    setTeamLeadChoice((prev) => {
+      if (prev[teamKey] !== removed.participantId) return prev;
+      const next = { ...prev };
+      delete next[teamKey];
+      return next;
+    });
   };
+
+  /**
+   * The review list, bundled the way it will actually exist after saving:
+   * one block per team (group programmes) or per programme (individual ones),
+   * instead of one flat row per person.
+   */
+  const reviewBlocks = useMemo(() => {
+    const byKey = new Map<
+      string,
+      {
+        key: string;
+        programmeName: string;
+        groupName?: string;
+        teamNumber: number;
+        isGroupType?: boolean;
+        items: QueueItem[];
+      }
+    >();
+
+    for (const item of queue) {
+      const key = item.isGroupType
+        ? `${item.programmeId}:${item.groupId}:${item.teamNumber}`
+        : `${item.programmeId}:${item.groupId}`;
+      if (!byKey.has(key)) {
+        byKey.set(key, {
+          key,
+          programmeName: item.programmeName,
+          groupName: item.groupName,
+          teamNumber: item.teamNumber,
+          isGroupType: item.isGroupType,
+          items: [],
+        });
+      }
+      byKey.get(key)!.items.push(item);
+    }
+
+    return Array.from(byKey.values());
+  }, [queue]);
 
   const handleSave = async () => {
     if (isReadOnly) return;
     if (queue.length === 0) return;
     setIsSubmitting(true);
     try {
+      const teamLeadsByTeam = requiresTeamLead
+        ? Object.fromEntries(
+            Array.from(leadRequiredKeys)
+              .map((key) => [key, teamLeadChoice[key]] as const)
+              .filter(([, participantId]) => Boolean(participantId)),
+          )
+        : undefined;
+
       await bulkCreateAssignment.mutateAsync({
         festivalId,
         data: {
@@ -523,13 +679,16 @@ export function AssignmentModal({
             participantId: item.participantId,
             teamNumber: item.teamNumber,
           })),
+          teamLeadsByTeam,
         },
       });
       setQueue([]);
+      setTeamLeadChoice({});
       onOpenChange(false);
       // Reset form
       setSelectedProgrammeId("");
       setSelectedParticipantIds(new Set());
+      setParticipantSearch("");
       setView("SELECTION");
     } catch (error) {
       console.error(error);
@@ -556,76 +715,57 @@ export function AssignmentModal({
     setSelectedParticipantIds(next);
   };
 
+  const needsCategory = !selectedCategoryId;
+  const needsGroup = hasGroupStep && !selectedGroupId;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-none w-[calc(100%-1rem)] sm:w-[95vw] h-[95vh] max-h-dvh flex flex-col p-0 gap-0 border rounded-lg sm:rounded-xl mx-auto my-auto ring-0 outline-none overflow-hidden">
         {/* Header */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-card z-10">
-          <div>
-            <DialogTitle className="text-xl">New Assignment</DialogTitle>
-            <DialogDescription>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b flex items-start justify-between gap-3 bg-card z-10 shrink-0">
+          <div className="min-w-0">
+            <DialogTitle className="text-lg sm:text-xl">
+              New assignment
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               {view === "SELECTION"
-                ? "Select participants and add to queue."
-                : "Review and confirm assignments."}
+                ? "Step 1 of 2 — choose a programme and the people taking part."
+                : "Step 2 of 2 — check the list, then save."}
             </DialogDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 mr-4">
-              <div
-                className={cn(
-                  "h-2 w-2 rounded-full transition-colors",
-                  view === "SELECTION" ? "bg-primary" : "bg-muted",
-                )}
-              ></div>
-              <div
-                className={cn(
-                  "h-1 w-8 rounded-full transition-colors",
-                  view === "REVIEW" ? "bg-primary" : "bg-muted",
-                )}
-              ></div>
-              <div
-                className={cn(
-                  "h-2 w-2 rounded-full transition-colors",
-                  view === "REVIEW" ? "bg-primary" : "bg-muted",
-                )}
-              ></div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            aria-label="Close"
+            onClick={() => onOpenChange(false)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
 
         {/* --- VIEW: SELECTION --- */}
         {view === "SELECTION" && (
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-            {/* Left Context Pane (Sidebar on Desktop, Top Bar on Mobile) */}
-            <div className="w-full lg:w-[300px] border-b lg:border-b-0 lg:border-r flex flex-col bg-muted/10 shrink-0 overflow-y-auto">
-              <div className="p-6 space-y-6">
-                {/* Step: Category (selected first so programme list can be
-                    filtered by category before group is chosen) */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                      {categoryStepNum}
-                    </div>
-                    <span className="text-sm font-semibold">Category</span>
-                  </div>
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            {/* Context bar — category and group, on one line */}
+            <div className="shrink-0 border-b bg-muted/20 px-4 sm:px-6 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="min-w-0 flex-1 sm:max-w-xs">
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                    Category
+                  </p>
                   <Select
                     value={selectedCategoryId}
                     onValueChange={(val) => {
                       setSelectedCategoryId(val);
                       setSelectedProgrammeId("");
                       setSelectedParticipantIds(new Set());
+                      setParticipantSearch("");
                     }}
                     disabled={isReadOnly}
                   >
                     <SelectTrigger className="w-full bg-background">
-                      <SelectValue placeholder="Select Category" />
+                      <SelectValue placeholder="Choose a category" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
@@ -636,103 +776,76 @@ export function AssignmentModal({
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedCategoryType === "GENERAL" && (
-                    <p className="text-xs text-muted-foreground">
-                      General — open to participants from any category.
-                    </p>
-                  )}
                 </div>
 
-                {/* Step: Group (only shown when the dialog isn't pre-scoped to one group) */}
                 {hasGroupStep && (
-                  <>
-                    <Separator />
-
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                          {groupStepNum}
-                        </div>
-                        <span className="text-sm font-semibold">Group</span>
-                      </div>
-                      <Select
-                        value={selectedGroupId}
-                        onValueChange={(val) => {
-                          setSelectedGroupId(val);
-                          // Group comes after Category now — only reset
-                          // downstream selections, keep the category.
-                          setSelectedProgrammeId("");
-                          setSelectedParticipantIds(new Set());
-                        }}
-                        disabled={isReadOnly || !selectedCategoryId}
-                      >
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select Group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {groups.map((g) => (
-                            <SelectItem key={g.id} value={g.id}>
-                              {g.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-
-                <Separator />
-
-                {/* Queue Status Widget */}
-                <div className="mt-auto pt-6">
-                  <div className="bg-card border rounded-lg p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Queue Status</span>
-                      <Badge variant={queue.length > 0 ? "default" : "outline"}>
-                        {queue.length}
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      className="w-full text-xs"
-                      size="sm"
-                      onClick={() => setView("REVIEW")}
-                      disabled={isReadOnly || queue.length === 0}
+                  <div className="min-w-0 flex-1 sm:max-w-xs">
+                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                      Group
+                    </p>
+                    <Select
+                      value={selectedGroupId}
+                      onValueChange={(val) => {
+                        setSelectedGroupId(val);
+                        // Group comes after category — only reset downstream
+                        // selections, keep the category.
+                        setSelectedProgrammeId("");
+                        setSelectedParticipantIds(new Set());
+                        setParticipantSearch("");
+                      }}
+                      disabled={isReadOnly || !selectedCategoryId}
                     >
-                      Review & Submit <ArrowRight className="ml-1 h-3 w-3" />
-                    </Button>
+                      <SelectTrigger className="w-full bg-background">
+                        <SelectValue placeholder="Choose a group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {groups.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </div>
+                )}
               </div>
+
+              {selectedCategoryType === "GENERAL" && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  General category — anyone can take part, whatever their own
+                  category.
+                </p>
+              )}
             </div>
 
-            {/* Right Content Area */}
+            {/* Two panes: programmes on the left, people on the right */}
             <div className="flex-1 flex flex-col lg:grid lg:grid-cols-2 overflow-hidden bg-background min-h-0">
-              {/* Left Bar: Programmes */}
-              <div className="h-full border-b lg:border-r w-full flex flex-col min-h-0">
-                <div className="px-6 h-14 border-b bg-muted/5 flex items-center gap-2 shrink-0">
-                  <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                    {programmeStepNum}
-                  </div>
-                  <h3 className="text-sm font-semibold">Select Programme</h3>
+              {/* Programmes */}
+              <div className="flex-1 flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r">
+                <div className="px-4 sm:px-6 h-12 border-b bg-muted/5 flex items-center justify-between gap-2 shrink-0">
+                  <h3 className="text-sm font-semibold">Pick a programme</h3>
+                  {filteredProgrammes.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {filteredProgrammes.length} available
+                    </span>
+                  )}
                 </div>
-                <ScrollArea className="flex-1 p-6">
-                  {!selectedCategoryId || (hasGroupStep && !selectedGroupId) ? (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-                      <Grid2X2 className="h-8 w-8 opacity-20" />
-                      <p>
-                        {!selectedCategoryId
-                          ? "Select a category"
-                          : "Select a group"}{" "}
-                        to view programmes.
+                <ScrollArea className="flex-1 p-4 sm:p-6">
+                  {needsCategory || needsGroup ? (
+                    <div className="flex flex-col items-center justify-center gap-1 py-12 text-center text-muted-foreground">
+                      <ClipboardList className="h-8 w-8 opacity-20" />
+                      <p className="text-sm">
+                        {needsCategory
+                          ? "Choose a category above to see its programmes."
+                          : "Choose a group above to continue."}
                       </p>
                     </div>
                   ) : filteredProgrammes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic text-center py-10">
-                      No programmes found.
+                    <p className="py-12 text-center text-sm text-muted-foreground">
+                      No programmes in this category yet.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {filteredProgrammes.map((p: any) => (
                         <button
                           type="button"
@@ -742,9 +855,10 @@ export function AssignmentModal({
                             if (isReadOnly) return;
                             setSelectedProgrammeId(p.id);
                             setSelectedParticipantIds(new Set());
+                            setParticipantSearch("");
                           }}
                           className={cn(
-                            "flex flex-col items-start text-left p-4 rounded-lg border transition-all hover:shadow-md",
+                            "flex flex-col items-start gap-2 text-left p-3 rounded-lg border transition-all hover:shadow-md",
                             selectedProgrammeId === p.id
                               ? "border-primary bg-primary/5 ring-1 ring-primary/50"
                               : "bg-card hover:bg-accent/50",
@@ -753,42 +867,24 @@ export function AssignmentModal({
                               : "",
                           )}
                         >
-                          <div className="font-semibold text-sm mb-1">
-                            {p.name}
+                          <div className="flex w-full items-start justify-between gap-2">
+                            <span className="font-semibold text-sm">
+                              {p.name}
+                            </span>
+                            <Badge
+                              variant={
+                                p.type === "INDIVIDUAL"
+                                  ? "outline"
+                                  : "secondary"
+                              }
+                              className="shrink-0 text-[10px] h-5"
+                            >
+                              {p.type === "INDIVIDUAL" ? "Solo" : "Team"}
+                            </Badge>
                           </div>
-                          <div className="flex flex-wrap gap-2 mt-auto pt-2">
-                            {p.type === "INDIVIDUAL" ? (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] h-5"
-                              >
-                                Single
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="secondary"
-                                className="text-[10px] h-5"
-                              >
-                                Group
-                              </Badge>
-                            )}
-
-                            {/* Limits Badges */}
-                            {p.type === "INDIVIDUAL" ? (
-                              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                Max: {p.maxParticipantsPerGroup}
-                              </span>
-                            ) : (
-                              <div className="flex gap-1">
-                                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                  Teams: {p.maxTeamsPerGroup}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                  Size: {p.maxParticipantsPerTeam}
-                                </span>
-                              </div>
-                            )}
-                          </div>
+                          <span className="text-[11px] text-muted-foreground">
+                            {describeLimits(p)}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -796,105 +892,122 @@ export function AssignmentModal({
                 </ScrollArea>
               </div>
 
-              {/* Right Bar: Participants */}
-              <div className="h-full flex flex-col min-h-0 border-t lg:border-t-0">
-                <div className="px-6 py-3 gap-3 border-l-0 lg:border-l border-b flex bg-muted/5 flex-col xl:flex-row items-start xl:items-center justify-between w-full shrink-0">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                        {participantStepNum}
-                      </div>
-                      <h3 className="text-sm font-semibold">
-                        {selectedProgramme?.type === "GROUP"
-                          ? "Select members"
-                          : "Select participants"}
-                      </h3>
-                    </div>
-                    {selectedProgramme?.type === "GROUP" &&
-                      limitInfo &&
-                      limitInfo.type === "GROUP" && (
-                        <p className="text-xs text-muted-foreground pl-7">
-                          Max {limitInfo.maxPerTeam} per team.
-                        </p>
-                      )}
-                  </div>
-
-                  {/* Controls */}
-                  <div className="flex items-center gap-4">
-                    {isLimitReached && (
-                      <div className="px-3 py-1 rounded-md text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20 animate-pulse">
-                        {assignmentState.message || "Limit Reached"}
-                      </div>
-                    )}
-
-                    {/* Auto-Assignment Indicator */}
-                    {selectedProgramme?.type === "GROUP" && !isLimitReached && (
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 bg-muted px-2 py-1 rounded">
-                        <span>Next:</span>
-                        <span className="font-medium text-foreground">
-                          Team {assignmentState.nextTeam || "?"}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={
-                          isReadOnly ||
-                          !selectedProgramme ||
-                          eligibleUnassignedCount === 0 ||
-                          remainingProgrammeSlots <= 0
-                        }
-                        onClick={handleAddAllEligible}
-                        className="h-8"
-                        title="Queue every eligible (unassigned, not yet on this programme) participant for the selected programme in one click — capped at the group's remaining capacity."
-                      >
-                        <Plus className="h-3 w-3 mr-1" /> Add all eligible (
-                        {Math.min(
-                          eligibleUnassignedCount,
-                          remainingProgrammeSlots,
+              {/* People */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="px-4 sm:px-6 py-2.5 border-b bg-muted/5 shrink-0 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold">
+                      {selectedProgramme?.type === "GROUP"
+                        ? "Pick team members"
+                        : "Pick participants"}
+                    </h3>
+                    {selectedProgramme && (
+                      <span
+                        className={cn(
+                          "text-xs",
+                          remainingProgrammeSlots > 0
+                            ? "text-muted-foreground"
+                            : "font-medium text-destructive",
                         )}
-                        )
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={
-                          isReadOnly ||
-                          !selectedProgramme ||
-                          selectedParticipantIds.size === 0
-                        }
-                        onClick={handleAddToQueue}
-                        className="h-8"
                       >
-                        <Plus className="h-3 w-3 mr-1" /> Add to Queue
-                      </Button>
-                    </div>
+                        {remainingProgrammeSlots > 0
+                          ? `${remainingProgrammeSlots} place${
+                              remainingProgrammeSlots === 1 ? "" : "s"
+                            } left`
+                          : "No places left"}
+                      </span>
+                    )}
                   </div>
+
+                  {selectedProgramme && (
+                    <>
+                      {filteredParticipants.length > 8 && (
+                        <div className="relative">
+                          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            inputSize="s"
+                            className="pl-8"
+                            placeholder="Search by name"
+                            value={participantSearch}
+                            onChange={(e) =>
+                              setParticipantSearch(e.target.value)
+                            }
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          className="h-8"
+                          disabled={
+                            isReadOnly || selectedParticipantIds.size === 0
+                          }
+                          onClick={handleAddToQueue}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          {selectedParticipantIds.size > 0
+                            ? `Add ${selectedParticipantIds.size} to list`
+                            : "Add to list"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                          disabled={
+                            isReadOnly ||
+                            eligibleUnassignedCount === 0 ||
+                            remainingProgrammeSlots <= 0
+                          }
+                          onClick={handleAddAllEligible}
+                          title="Adds everyone who is free, up to the places left"
+                        >
+                          Add everyone (
+                          {Math.min(
+                            eligibleUnassignedCount,
+                            remainingProgrammeSlots,
+                          )}
+                          )
+                        </Button>
+
+                        {isLimitReached ? (
+                          <span className="text-xs font-medium text-destructive">
+                            {assignmentState.message}
+                          </span>
+                        ) : selectedProgramme.type === "GROUP" ? (
+                          <span className="text-xs text-muted-foreground">
+                            Next picks join Team{" "}
+                            {assignmentState.nextTeam || "?"}
+                          </span>
+                        ) : null}
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                <ScrollArea className="flex-1 p-6">
+                <ScrollArea className="flex-1 p-4 sm:p-6">
                   {!selectedProgramme ? (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
+                    <div className="flex flex-col items-center justify-center gap-1 py-12 text-center text-muted-foreground">
                       <Users className="h-8 w-8 opacity-20" />
-                      <p>
-                        Select a programme above to start selecting
-                        participants.
+                      <p className="text-sm">
+                        Pick a programme first, then choose who takes part.
                       </p>
                     </div>
                   ) : filteredParticipants.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic text-center py-10">
-                      No eligible participants found in this group.
+                    <p className="py-12 text-center text-sm text-muted-foreground">
+                      Nobody in this group can take part in this programme.
+                    </p>
+                  ) : visibleParticipants.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">
+                      No names match your search.
                     </p>
                   ) : (
-                    <div className="flex flex-wrap w-full  gap-3">
-                      {filteredParticipants.map((s: any) => {
-                        // Determine visual state
+                    <div className="flex flex-col gap-2">
+                      {visibleParticipants.map((s: any) => {
                         const isSelected = selectedParticipantIds.has(s.id);
                         const isAssigned = s.isAssigned;
-                        // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
-                        // Disabled if: (Limit reached AND not selected) OR (Already Assigned)
+                        // Disabled if already on the programme, or if there is
+                        // no room left and this person is not already picked.
                         const isDisabled =
                           isReadOnly ||
                           isAssigned ||
@@ -909,27 +1022,27 @@ export function AssignmentModal({
                             }
                             disabled={isDisabled}
                             className={cn(
-                              "relative group p-3 rounded-md border text-sm transition-all cursor-pointer flex items-center justify-between gap-2 overflow-hidden w-full text-left",
+                              "relative flex w-full items-center justify-between gap-2 overflow-hidden rounded-md border p-3 text-left text-sm transition-all",
                               isAssigned
-                                ? "bg-destructive/5 border-destructive/20 text-muted-foreground opacity-60 cursor-not-allowed" // Assigned State (Red & Disabled)
+                                ? "bg-muted/40 border-border text-muted-foreground cursor-default"
                                 : isReadOnly
                                   ? "bg-muted opacity-50 cursor-not-allowed"
                                   : isSelected
-                                    ? "bg-primary/10 border-primary text-primary font-medium ring-1 ring-primary" // Selected State
+                                    ? "bg-primary/10 border-primary text-primary font-medium ring-1 ring-primary cursor-pointer"
                                     : isDisabled
-                                      ? "bg-muted opacity-50 cursor-not-allowed" // Limit Reached Disabled
-                                      : "bg-card hover:border-primary/50 hover:shadow-sm", // Default
+                                      ? "bg-muted opacity-50 cursor-not-allowed"
+                                      : "bg-card hover:border-primary/50 hover:shadow-sm cursor-pointer",
                             )}
                           >
                             <span className="truncate">{s.name}</span>
 
                             {isSelected && (
-                              <Check className="h-3 w-3 shrink-0 text-primary" />
+                              <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
                             )}
 
                             {isAssigned && (
-                              <span className="text-[10px] text-destructive font-medium bg-destructive/10 px-1 rounded">
-                                Assigned
+                              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                Already added
                               </span>
                             )}
                           </button>
@@ -940,6 +1053,30 @@ export function AssignmentModal({
                 </ScrollArea>
               </div>
             </div>
+
+            {/* Sticky footer — the list so far, and the way forward */}
+            <div className="shrink-0 border-t bg-card px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+              <p className="text-sm">
+                {queue.length === 0 ? (
+                  <span className="text-muted-foreground">
+                    Nothing added yet
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-semibold">{queue.length}</span>{" "}
+                    <span className="text-muted-foreground">
+                      {queue.length === 1 ? "person" : "people"} ready to save
+                    </span>
+                  </>
+                )}
+              </p>
+              <Button
+                onClick={() => setView("REVIEW")}
+                disabled={isReadOnly || queue.length === 0}
+              >
+                Review and save <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
 
@@ -947,96 +1084,179 @@ export function AssignmentModal({
         {view === "REVIEW" && (
           <div className="flex-1 flex flex-col bg-muted/5 animate-in slide-in-from-right-10 duration-200 overflow-hidden min-h-0">
             <div className="flex-1 flex justify-center p-4 sm:p-8 overflow-hidden min-h-0">
-              <div className="w-full max-w-4xl flex flex-col bg-background rounded-lg border h-full shadow-sm overflow-hidden">
-                <div className="p-4 border-b flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-lg">Review Queue</h3>
+              <div className="w-full max-w-3xl flex flex-col bg-background rounded-lg border h-full shadow-sm overflow-hidden">
+                <div className="p-4 border-b flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold">
+                      {queue.length} {queue.length === 1 ? "person" : "people"}{" "}
+                      ready to save
+                    </h3>
                     <p className="text-sm text-muted-foreground">
-                      Verify assignments before saving.
+                      Remove anyone who should not be here.
                     </p>
                   </div>
-                  <Button variant="ghost" onClick={() => setView("SELECTION")}>
-                    <ArrowLeft className="h-4 w-4 mr-2" /> Back to Selection
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => setView("SELECTION")}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1.5" /> Back
                   </Button>
                 </div>
 
-                <ScrollArea className="flex-1 overflow-y-scroll">
-                  {queue.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-                      <p>Queue is empty.</p>
+                {/* One banner, so the only thing left to do is impossible to miss */}
+                {teamsMissingLeadCount > 0 && (
+                  <div className="flex items-start gap-2 border-b border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                    <Crown className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200">
+                      <span className="font-semibold">
+                        {teamsMissingLeadCount === 1
+                          ? "1 team still needs a lead."
+                          : `${teamsMissingLeadCount} teams still need a lead.`}
+                      </span>{" "}
+                      Tap a name to make that person the lead.
+                    </p>
+                  </div>
+                )}
+
+                <ScrollArea className="flex-1">
+                  {reviewBlocks.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-1 p-12 text-center text-muted-foreground">
+                      <ClipboardList className="h-8 w-8 opacity-20" />
+                      <p className="text-sm">
+                        The list is empty. Go back and add some people.
+                      </p>
                     </div>
                   ) : (
-                    <div className="divide-y">
-                      {queue.map((item, idx) => (
-                        <div
-                          key={item.id}
-                          className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                        >
-                          <div className="flex items-center gap-4">
-                            <span className="text-sm text-muted-foreground w-6 text-center">
-                              {idx + 1}.
-                            </span>
-                            <div>
-                              <p className="font-medium">
-                                {item.participantName}
-                              </p>
-                              <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
-                                <span>{item.programmeName}</span>
-                                {item.groupName && (
-                                  <>
-                                    <span className="text-gray-300">•</span>
-                                    <span>{item.groupName}</span>
-                                  </>
-                                )}
-                                {item.isGroupType && (
-                                  <>
-                                    <span className="text-gray-300">•</span>
-                                    <span className="text-primary font-medium">
-                                      Team {item.teamNumber}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleRemoveFromQueue(item.id)}
+                    <div className="space-y-3 p-4">
+                      {reviewBlocks.map((block) => {
+                        const needsLead = leadRequiredKeys.has(block.key);
+                        const leadId = teamLeadChoice[block.key];
+                        const leadMissing = needsLead && !leadId;
+
+                        return (
+                          <div
+                            key={block.key}
+                            className={cn(
+                              "rounded-lg border p-3",
+                              leadMissing
+                                ? "border-amber-500/50 bg-amber-500/5"
+                                : "bg-card",
+                            )}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                              {block.programmeName}
+                              {block.groupName ? ` · ${block.groupName}` : ""}
+                              {block.isGroupType
+                                ? ` · Team ${block.teamNumber}`
+                                : ""}
+                            </p>
+
+                            <ul className="mt-2 space-y-1">
+                              {block.items.map((item) => (
+                                <li
+                                  key={item.id}
+                                  className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-muted/40"
+                                >
+                                  <span className="flex min-w-0 items-center gap-1.5">
+                                    <span className="truncate text-sm font-medium">
+                                      {item.participantName}
+                                    </span>
+                                    {leadId === item.participantId && (
+                                      <Crown className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                    )}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                                    aria-label={`Remove ${item.participantName}`}
+                                    onClick={() =>
+                                      handleRemoveFromQueue(item.id)
+                                    }
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+
+                            {/* Lead picker sits with the team it belongs to */}
+                            {needsLead && (
+                              <div className="mt-3 border-t pt-3">
+                                <p className="text-xs font-medium">
+                                  {leadId
+                                    ? "Team lead"
+                                    : "Who leads this team?"}
+                                </p>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {block.items.map((item) => {
+                                    const isLead =
+                                      leadId === item.participantId;
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={item.id}
+                                        onClick={() =>
+                                          setTeamLeadChoice((prev) => ({
+                                            ...prev,
+                                            [block.key]: item.participantId,
+                                          }))
+                                        }
+                                        className={cn(
+                                          "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                                          isLead
+                                            ? "border-primary bg-primary text-primary-foreground"
+                                            : "bg-background hover:border-primary/50 hover:bg-accent",
+                                        )}
+                                      >
+                                        {isLead && (
+                                          <Crown className="h-3 w-3" />
+                                        )}
+                                        {item.participantName}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </ScrollArea>
 
-                <div className="p-4 border-t bg-muted/10 flex justify-between items-center">
-                  <div className="text-sm font-medium">
-                    Total: <span className="text-primary">{queue.length}</span>{" "}
-                    assignments
-                  </div>
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setView("SELECTION")}
-                      disabled={isReadOnly}
-                    >
-                      Add More
-                    </Button>
+                <div className="p-4 border-t bg-muted/10 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    variant="outline"
+                    onClick={() => setView("SELECTION")}
+                    disabled={isReadOnly}
+                  >
+                    Add more people
+                  </Button>
+                  <div className="flex flex-col items-stretch gap-1.5 sm:items-end">
                     <Button
                       onClick={handleSave}
                       disabled={
-                        isReadOnly || isSubmitting || queue.length === 0
+                        isReadOnly ||
+                        isSubmitting ||
+                        queue.length === 0 ||
+                        missingTeamLead
                       }
                     >
                       {isSubmitting && (
-                        <AlertCircle className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
-                      Confirm All Assignments
+                      Save {queue.length}{" "}
+                      {queue.length === 1 ? "assignment" : "assignments"}
                     </Button>
+                    {missingTeamLead && (
+                      <span className="text-xs text-muted-foreground">
+                        Pick a lead for every team to continue.
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

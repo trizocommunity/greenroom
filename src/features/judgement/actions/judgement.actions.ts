@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   exists,
@@ -12,6 +13,7 @@ import {
   notInArray,
   or,
   sql,
+  type SQL,
 } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
@@ -20,6 +22,7 @@ import { getStagePortalSessionFromCookie } from "@/core/auth/stage-portal-sessio
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
+  programmeAssignmentMember as assignmentMemberTable,
   programmeCodeLetter as codeLetterTable,
   festival as festivalTable,
   judgementConfigJudge as judgementConfigJudgeTable,
@@ -36,18 +39,24 @@ import { serverNow, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
-import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
-import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import {
   getScoringPolicyWithRules,
   resolveScoringPolicy,
   upsertScoringPolicyActionData,
 } from "@/features/judgement/services/scoring-policy.service";
+import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import { getStageIdForReportingSession } from "@/features/programmes/actions/programme-reporting.actions";
+import {
+  assertProgrammeType,
+  requireProgrammeType,
+} from "@/features/programmes/utils/assert-programme-type";
 import { assertStageManagerAccessForStage } from "@/features/programmes/actions/reporting-access";
-import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
-import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { updateProgrammeStatus, assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 import { calculatePosition } from "@/features/results/services/results-calculator";
+import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
+import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
+import { getOffStageStage } from "@/features/stages/services/off-stage.service";
+import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 async function allAssignedJudgesHaveCompleteScores(
   configId: string,
@@ -75,16 +84,90 @@ async function allAssignedJudgesHaveCompleteScores(
   return true;
 }
 
+function buildProgrammeReportingSessionStageScope(
+  programmeTableRef: typeof programmeTable,
+  accessibleStageIds: string[] | "all",
+): SQL | undefined {
+  if (accessibleStageIds === "all") return undefined;
+  return or(
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(reportingSessionTable)
+        .innerJoin(
+          scheduleEntryTable,
+          eq(scheduleEntryTable.id, reportingSessionTable.scheduleEntryId),
+        )
+        .where(
+          and(
+            eq(reportingSessionTable.programmeId, programmeTableRef.id),
+            eq(reportingSessionTable.status, "CLOSED"),
+            inArray(scheduleEntryTable.stageId, accessibleStageIds),
+          ),
+        ),
+    ),
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(scheduleEntryTable)
+        .where(
+          and(
+            eq(scheduleEntryTable.programmeId, programmeTableRef.id),
+            inArray(scheduleEntryTable.stageId, accessibleStageIds),
+          ),
+        ),
+    ),
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(reportingSessionTable)
+        .where(
+          and(
+            eq(reportingSessionTable.programmeId, programmeTableRef.id),
+            inArray(reportingSessionTable.stageId, accessibleStageIds),
+          ),
+        ),
+    ),
+  );
+}
+
+function buildJudgementConfigReportingSessionStageScope(
+  accessibleStageIds: string[] | "all",
+): SQL | undefined {
+  if (accessibleStageIds === "all") return undefined;
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(reportingSessionTable)
+      .where(
+        and(
+          eq(reportingSessionTable.id, judgementConfigTable.reportingSessionId),
+          inArray(reportingSessionTable.stageId, accessibleStageIds),
+        ),
+      ),
+  );
+}
+
 export async function getJudgementWizardDataAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
+
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  const programmeScope = buildProgrammeReportingSessionStageScope(
+    programmeTable,
+    accessibleStageIds,
+  );
 
   const [judgeProgrammes, rejudgeProgrammes, judges] = await Promise.all([
     db.query.programme.findMany({
       where: and(
         eq(programmeTable.festivalId, festivalId),
+        programmeScope,
         or(
-          eq(programmeTable.status, "STARTED"),
+          eq(programmeTable.status, "PENDING_JUDGMENT"),
           and(
             eq(programmeTable.status, "REPORTING"),
             exists(
@@ -108,7 +191,8 @@ export async function getJudgementWizardDataAction(festivalId: string) {
     db.query.programme.findMany({
       where: and(
         eq(programmeTable.festivalId, festivalId),
-        inArray(programmeTable.status, ["JUDGED", "ENDED"]),
+        programmeScope,
+        inArray(programmeTable.status, ["PENDING_PUBLICATION", "JUDGING"]),
       ),
       columns: { id: true, name: true, status: true, type: true },
       with: { category: { columns: { name: true } } },
@@ -208,7 +292,10 @@ export async function getJudgementWizardDataAction(festivalId: string) {
     const unitSetByProgramme = new Map<string, Set<string>>();
     const countByProgramme = new Map<string, number>();
     for (const a of assignmentRows) {
-      const type = programmeTypeById.get(a.programmeId) ?? "INDIVIDUAL";
+      const type = requireProgrammeType(
+        programmeTypeById.get(a.programmeId),
+        `judgement wizard: programme ${a.programmeId}`,
+      );
       if (type === "GROUP") {
         const set = unitSetByProgramme.get(a.programmeId) ?? new Set<string>();
         set.add(`${a.groupId ?? "-"}::${a.teamNumber ?? "-"}`);
@@ -221,7 +308,10 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       }
     }
     for (const id of programmeIds) {
-      const type = programmeTypeById.get(id) ?? "INDIVIDUAL";
+      const type = requireProgrammeType(
+        programmeTypeById.get(id),
+        `judgement wizard: programme ${id}`,
+      );
       assignedUnitsByProgramme.set(
         id,
         type === "GROUP"
@@ -252,8 +342,10 @@ export async function getJudgementWizardDataAction(festivalId: string) {
 
   for (const sessionRow of latestClosedSessions) {
     if (reportingByProgrammeId.has(sessionRow.programmeId)) continue;
-    const programmeType =
-      programmeTypeById.get(sessionRow.programmeId) ?? "INDIVIDUAL";
+    const programmeType = requireProgrammeType(
+      programmeTypeById.get(sessionRow.programmeId),
+      `judgement wizard: programme ${sessionRow.programmeId}`,
+    );
     const codeByParticipantId = new Map<string, string>();
     const sessionCodeLetters = codeLettersBySessionId.get(sessionRow.id) ?? [];
     for (const codeLetter of sessionCodeLetters) {
@@ -378,10 +470,19 @@ export async function getActiveJudgementConfigsAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  const configScope = buildJudgementConfigReportingSessionStageScope(
+    accessibleStageIds,
+  );
+
   const configs = await db.query.judgementConfig.findMany({
     where: and(
       eq(judgementConfigTable.festivalId, festivalId),
       eq(judgementConfigTable.status, "LIVE"),
+      configScope,
     ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
@@ -419,8 +520,19 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
 
+  const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
+    festivalId,
+    session,
+  );
+  const configScope = buildJudgementConfigReportingSessionStageScope(
+    accessibleStageIds,
+  );
+
   const configs = await db.query.judgementConfig.findMany({
-    where: eq(judgementConfigTable.festivalId, festivalId),
+    where: and(
+      eq(judgementConfigTable.festivalId, festivalId),
+      configScope,
+    ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
       programme: {
@@ -449,46 +561,74 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
   }
 
   const reportingSessionIds = Array.from(
-    new Set(Array.from(latestWithScoresByProgramme.values()).map((c) => c.reportingSessionId))
+    new Set(
+      Array.from(latestWithScoresByProgramme.values()).map(
+        (c) => c.reportingSessionId,
+      ),
+    ),
   );
-  
-  const allCodeLetters = reportingSessionIds.length > 0
-    ? await db.query.programmeCodeLetter.findMany({
-        where: inArray(codeLetterTable.reportingSessionId, reportingSessionIds),
-        columns: { id: true, code: true, isAbsent: true, reportingSessionId: true },
-        with: {
-          programmeCodeLetterRecipients: {
-            columns: { participantId: true },
+
+  const allCodeLetters =
+    reportingSessionIds.length > 0
+      ? await db.query.programmeCodeLetter.findMany({
+          where: inArray(
+            codeLetterTable.reportingSessionId,
+            reportingSessionIds,
+          ),
+          columns: {
+            id: true,
+            code: true,
+            isAbsent: true,
+            reportingSessionId: true,
           },
-        },
-      })
-    : [];
+          with: {
+            programmeCodeLetterRecipients: {
+              columns: { participantId: true },
+            },
+          },
+        })
+      : [];
 
   const programmeIds = Array.from(latestWithScoresByProgramme.keys());
-  
-  const allAssignments = programmeIds.length > 0
-    ? await db.query.programmeAssignment.findMany({
-        where: inArray(assignmentTable.programmeId, programmeIds),
-        columns: { id: true, participantId: true, programmeId: true },
-      })
-    : [];
 
-  const allResults = programmeIds.length > 0
-    ? await db.query.result.findMany({
-        where: inArray(resultTable.programmeId, programmeIds),
-        columns: { assignmentId: true, grade: true, awardPoints: true, programmeId: true },
-      })
-    : [];
+  const allAssignments =
+    programmeIds.length > 0
+      ? await db.query.programmeAssignment.findMany({
+          where: inArray(assignmentTable.programmeId, programmeIds),
+          columns: { id: true, participantId: true, programmeId: true },
+        })
+      : [];
 
-  const resultByCodeLetterId = new Map<string, { grade: string | null; awardPoints: number }>();
+  const allResults =
+    programmeIds.length > 0
+      ? await db.query.result.findMany({
+          where: inArray(resultTable.programmeId, programmeIds),
+          columns: {
+            assignmentId: true,
+            grade: true,
+            awardPoints: true,
+            programmeId: true,
+          },
+        })
+      : [];
+
+  const resultByCodeLetterId = new Map<
+    string,
+    { grade: string | null; awardPoints: number }
+  >();
   for (const cl of allCodeLetters) {
     const participantId = cl.programmeCodeLetterRecipients[0]?.participantId;
     if (participantId) {
-      const assignment = allAssignments.find(a => a.participantId === participantId);
+      const assignment = allAssignments.find(
+        (a) => a.participantId === participantId,
+      );
       if (assignment) {
-        const result = allResults.find(r => r.assignmentId === assignment.id);
+        const result = allResults.find((r) => r.assignmentId === assignment.id);
         if (result) {
-          resultByCodeLetterId.set(cl.id, { grade: result.grade, awardPoints: result.awardPoints });
+          resultByCodeLetterId.set(cl.id, {
+            grade: result.grade,
+            awardPoints: result.awardPoints,
+          });
         }
       }
     }
@@ -515,7 +655,8 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         }
       >();
 
-      const sessionCodeLetters = codeLettersBySession.get(config.reportingSessionId) ?? [];
+      const sessionCodeLetters =
+        codeLettersBySession.get(config.reportingSessionId) ?? [];
       for (const cl of sessionCodeLetters) {
         byCodeLetter.set(cl.id, {
           codeLetterId: cl.id,
@@ -535,10 +676,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         }
 
         const prevSubmittedAt = judgeSubmittedAt.get(score.judgeId);
-        if (
-          !prevSubmittedAt ||
-          isAfter(score.updatedAt, prevSubmittedAt)
-        ) {
+        if (!prevSubmittedAt || isAfter(score.updatedAt, prevSubmittedAt)) {
           judgeSubmittedAt.set(score.judgeId, score.updatedAt);
         }
 
@@ -670,39 +808,86 @@ export async function getJudgementDashboardDataAction(festivalId: string) {
 }
 
 /**
+ * Resolves the stage id to use when starting or restarting judgement.
+ *
+ * Returns the supplied stageId when the reporting session already has one
+ * (a scheduled programme). When it does not (an unscheduled programme),
+ * looks up the festival's Off-Stage stage and returns its id — flagging
+ * the resolution as auto-assigned so callers can audit it. Throws when
+ * the festival has no Off-Stage stage provisioned; the caller surfaces
+ * a friendly message to the operator.
+ */
+async function resolveStageIdForJudgement(
+  festivalId: string,
+  currentStageId: string | null,
+): Promise<{ stageId: string; autoAssigned: boolean }> {
+  if (currentStageId) {
+    return { stageId: currentStageId, autoAssigned: false };
+  }
+  const offStage = await getOffStageStage(festivalId);
+  if (!offStage) {
+    throw new AppError(
+      "This festival has no Off-Stage stage provisioned. Please contact an administrator to set one up.",
+    );
+  }
+  return { stageId: offStage.id, autoAssigned: true };
+}
+
+/**
  * Archives any LIVE config on the given stage (across all its programmes)
  * and inserts a fresh LIVE config + judge assignments. Shared by
  * startJudgementAction and restartJudgementAction so only one programme is
  * ever "live" per stage at a time, matching the single-live-card portal UI.
+ *
+ * If `previousReportingSessionStageId` differs from `stageId`, the reporting
+ * session's stageId is updated inside the same transaction (atomic
+ * auto-assign for unscheduled programmes).
  */
 async function insertLiveJudgementConfig(input: {
   festivalId: string;
   programmeId: string;
   reportingSessionId: string;
+  previousReportingSessionStageId: string | null;
   stageId: string;
   judgeIds: string[];
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
   startedBy: string;
+  isOffStage?: boolean;
 }): Promise<string> {
   const now = serverNowIso();
   const configId = randomUUID();
 
-  const liveConfigsOnStage = await db
-    .select({ id: judgementConfigTable.id })
-    .from(judgementConfigTable)
-    .innerJoin(
-      reportingSessionTable,
-      eq(judgementConfigTable.reportingSessionId, reportingSessionTable.id),
-    )
-    .where(
-      and(
-        eq(reportingSessionTable.stageId, input.stageId),
-        eq(judgementConfigTable.status, "LIVE"),
-      ),
-    );
+  const liveConfigsOnStage = input.isOffStage
+    ? []
+    : await db
+        .select({ id: judgementConfigTable.id })
+        .from(judgementConfigTable)
+        .innerJoin(
+          reportingSessionTable,
+          eq(judgementConfigTable.reportingSessionId, reportingSessionTable.id),
+        )
+        .where(
+          and(
+            eq(reportingSessionTable.stageId, input.stageId),
+            eq(judgementConfigTable.status, "LIVE"),
+          ),
+        );
+
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, input.programmeId),
+    columns: { status: true },
+  });
+  if (programmeRow) assertProgrammePrePublishing(programmeRow.status);
 
   await db.transaction(async (tx) => {
+    if (input.previousReportingSessionStageId !== input.stageId) {
+      await tx
+        .update(reportingSessionTable)
+        .set({ stageId: input.stageId } as any)
+        .where(eq(reportingSessionTable.id, input.reportingSessionId));
+    }
+
     if (liveConfigsOnStage.length > 0) {
       await tx
         .update(judgementConfigTable)
@@ -755,6 +940,13 @@ export async function startJudgementAction(input: {
     throw new AppError("Please select at least one judge.");
   }
 
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, input.programmeId),
+    columns: { status: true },
+  });
+  if (!programmeRow) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
+  assertProgrammePrePublishing(programmeRow.status);
+
   const latestClosedReportingSession =
     await db.query.programmeReportingSession.findFirst({
       where: and(
@@ -767,27 +959,51 @@ export async function startJudgementAction(input: {
   if (!latestClosedReportingSession) {
     throw new AppError("No closed reporting session found for this programme.");
   }
-  if (!latestClosedReportingSession.stageId) {
-    throw new AppError(
-      "This programme isn't linked to a stage; the judge portal requires a stage assignment.",
-    );
-  }
+
+  // Resolve the stageId: scheduled programmes keep theirs; unscheduled
+  // programmes are routed through the festival's Off-Stage stage so the
+  // judge portal still has a stage to pin to.
+  const { stageId, autoAssigned } = await resolveStageIdForJudgement(
+    input.festivalId,
+    latestClosedReportingSession.stageId,
+  );
 
   const actorName = await assertStageManagerAccessForStage(
     input.festivalId,
-    latestClosedReportingSession.stageId,
+    stageId,
   );
 
   const configId = await insertLiveJudgementConfig({
     festivalId: input.festivalId,
     programmeId: input.programmeId,
     reportingSessionId: latestClosedReportingSession.id,
-    stageId: latestClosedReportingSession.stageId,
+    previousReportingSessionStageId: latestClosedReportingSession.stageId,
+    stageId,
     judgeIds: input.judgeIds,
     scoreLimit: input.scoreLimit,
     judgingMode: input.judgingMode ?? "GROUP",
     startedBy: actorName,
+    isOffStage: autoAssigned,
   });
+
+  if (autoAssigned) {
+    await createAuditLog({
+      action: "JUDGEMENT_AUTO_ASSIGN_OFF_STAGE",
+      targetType: "REPORTING_SESSION",
+      targetId: latestClosedReportingSession.id,
+      metadata: {
+        festivalId: input.festivalId,
+        programmeId: input.programmeId,
+        offStageStageId: stageId,
+        configId,
+      },
+    }).catch((err) =>
+      console.error(
+        "[AuditLog] JUDGEMENT_AUTO_ASSIGN_OFF_STAGE failed",
+        err,
+      ),
+    );
+  }
 
   await createAuditLog({
     action: "START_JUDGEMENT",
@@ -846,14 +1062,13 @@ export async function restartJudgementAction(input: {
     throw new AppError("Please select at least one judge.");
   }
 
-  const stageId = await getStageIdForReportingSession(
+  const previousStageId = await getStageIdForReportingSession(
     priorConfig.reportingSessionId,
   );
-  if (!stageId) {
-    throw new AppError(
-      "This programme isn't linked to a stage; the judge portal requires a stage assignment.",
-    );
-  }
+  const { stageId, autoAssigned } = await resolveStageIdForJudgement(
+    input.festivalId,
+    previousStageId,
+  );
 
   const actorName = await assertStageManagerAccessForStage(
     input.festivalId,
@@ -864,12 +1079,34 @@ export async function restartJudgementAction(input: {
     festivalId: input.festivalId,
     programmeId: input.programmeId,
     reportingSessionId: priorConfig.reportingSessionId,
+    previousReportingSessionStageId: previousStageId,
     stageId,
     judgeIds,
     scoreLimit: priorConfig.scoreLimit,
     judgingMode: priorConfig.judgingMode as "SINGLE" | "GROUP",
     startedBy: actorName,
+    isOffStage: autoAssigned,
   });
+
+  if (autoAssigned) {
+    await createAuditLog({
+      action: "JUDGEMENT_AUTO_ASSIGN_OFF_STAGE",
+      targetType: "REPORTING_SESSION",
+      targetId: priorConfig.reportingSessionId,
+      metadata: {
+        festivalId: input.festivalId,
+        programmeId: input.programmeId,
+        offStageStageId: stageId,
+        configId,
+        restarted: true,
+      },
+    }).catch((err) =>
+      console.error(
+        "[AuditLog] JUDGEMENT_AUTO_ASSIGN_OFF_STAGE failed",
+        err,
+      ),
+    );
+  }
 
   await createAuditLog({
     action: "START_JUDGEMENT",
@@ -887,6 +1124,71 @@ export async function restartJudgementAction(input: {
   }
 
   return { configId };
+}
+
+export async function cancelJudgementAction(input: {
+  festivalId: string;
+  programmeId: string;
+}) {
+  const session = await getSession();
+  if (!session) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const liveConfig = await db.query.judgementConfig.findFirst({
+    where: and(
+      eq(judgementConfigTable.programmeId, input.programmeId),
+      eq(judgementConfigTable.status, "LIVE"),
+    ),
+    columns: { id: true, reportingSessionId: true },
+  });
+
+  if (!liveConfig) {
+    throw new AppError("No active judgement round found to cancel.");
+  }
+
+  const reportingSession = await db.query.programmeReportingSession.findFirst({
+    where: eq(reportingSessionTable.id, liveConfig.reportingSessionId),
+    columns: { stageId: true },
+  });
+
+  const { stageId } = await resolveStageIdForJudgement(
+    input.festivalId,
+    reportingSession?.stageId ?? null,
+  );
+
+  await assertStageManagerAccessForStage(input.festivalId, stageId);
+
+  await db
+    .update(judgementConfigTable)
+    .set({
+      status: "CANCELLED",
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(judgementConfigTable.id, liveConfig.id));
+
+  await db
+    .update(programmeTable)
+    .set({
+      status: "PENDING_JUDGMENT",
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(programmeTable.id, input.programmeId));
+
+  await createAuditLog({
+    action: "CANCEL_JUDGEMENT",
+    targetType: "PROGRAMME",
+    targetId: input.programmeId,
+    metadata: { configId: liveConfig.id },
+  }).catch((err) => console.error("[AuditLog] CANCEL_JUDGEMENT failed", err));
+
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, input.festivalId),
+    columns: { slug: true },
+  });
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgement`);
+  }
+
+  return { success: true };
 }
 
 /**
@@ -931,25 +1233,110 @@ export type StagePortalPortalStatus =
   | "LIVE"
   | "JUDGED";
 
+export type StagePortalLiveConfig = {
+  configId: string;
+  scoreLimit: number;
+  judgingMode: "SINGLE" | "GROUP";
+  programme: { id: string; name: string; type: "INDIVIDUAL" | "GROUP" };
+  judges: Array<{ id: string; name: string }>;
+  codeLetters: Array<{ id: string; code: string; isAbsent: boolean }>;
+  existingScores: Array<{
+    judgeId: string;
+    codeLetterId: string;
+    score: number;
+    remark: string | null;
+  }>;
+  judgeCompletion: Record<string, boolean>;
+};
+
+async function buildLivePayload(
+  configId: string,
+): Promise<StagePortalLiveConfig | null> {
+  const config = await db.query.judgementConfig.findFirst({
+    where: eq(judgementConfigTable.id, configId),
+    with: {
+      programme: { columns: { id: true, name: true, type: true } },
+      judges: { with: { judge: { columns: { id: true, name: true } } } },
+    },
+  });
+  if (!config) return null;
+
+  const codeLetters = await db.query.programmeCodeLetter.findMany({
+    where: and(
+      eq(codeLetterTable.programmeId, config.programmeId),
+      eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
+    ),
+    orderBy: [asc(codeLetterTable.issuedAt)],
+  });
+  const existingScores = await db.query.judgementScore.findMany({
+    where: eq(judgementScoreTable.configId, config.id),
+    columns: {
+      judgeId: true,
+      codeLetterId: true,
+      score: true,
+      remark: true,
+    },
+  });
+
+  const activeCodeIds = codeLetters
+    .filter((c) => !c.isAbsent)
+    .map((c) => c.id);
+  const judgeCompletion: Record<string, boolean> = {};
+  for (const j of config.judges) {
+    const covered = new Set(
+      existingScores
+        .filter(
+          (s) =>
+            s.judgeId === j.judge.id &&
+            activeCodeIds.includes(s.codeLetterId),
+        )
+        .map((s) => s.codeLetterId),
+    );
+    judgeCompletion[j.judge.id] =
+      activeCodeIds.length > 0 && covered.size === activeCodeIds.length;
+  }
+
+  return {
+    configId: config.id,
+    scoreLimit: config.scoreLimit,
+    judgingMode: (config.judgingMode ?? "GROUP") as "SINGLE" | "GROUP",
+    programme: config.programme,
+    judges: config.judges.map((j) => j.judge),
+    codeLetters: codeLetters.map((c) => ({
+      id: c.id,
+      code: c.code,
+      isAbsent: c.isAbsent,
+    })),
+    existingScores,
+    judgeCompletion,
+  };
+}
+
 export async function getStagePortalBoardAction(day?: string) {
   const stagePortalSession = await getStagePortalSessionFromCookie();
   if (!stagePortalSession) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   const stageId = stagePortalSession.stageId;
-  const stage = { name: stagePortalSession.stage.name };
+  const isOffStage = stagePortalSession.stage.isOffStage;
+  const stage = {
+    name: stagePortalSession.stage.name,
+    isOffStage,
+  };
 
-  // Day range from the festival's start–end; default to today (clamped).
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, stagePortalSession.festivalId),
     columns: { startDate: true, endDate: true, timezone: true },
   });
   const festivalTz = festival?.timezone ?? "UTC";
-  const dayKeySet =
-    getFestivalDateKeySet(
-      festival?.startDate ?? null,
-      festival?.endDate ?? null,
-      festivalTz,
-    ) ?? null;
+
+  // Off-stage portals skip day-based filtering entirely.
+  const dayKeySet = isOffStage
+    ? null
+    : getFestivalDateKeySet(
+        festival?.startDate ?? null,
+        festival?.endDate ?? null,
+        festivalTz,
+      ) ?? null;
   const days = dayKeySet ? Array.from(dayKeySet).sort() : [];
   const today = dateKeyLocal(serverNow(), festivalTz);
   let selectedDay =
@@ -960,8 +1347,8 @@ export async function getStagePortalBoardAction(day?: string) {
         : (days[days.length - 1] ?? today);
   if (days.length === 0) selectedDay = today;
 
-  // The stage's LIVE config (if any) — the single actionable programme.
-  const liveConfigRow = await db
+  // All LIVE configs on this stage (off-stage allows multiple).
+  const liveConfigRows = await db
     .select({
       id: judgementConfigTable.id,
       programmeId: judgementConfigTable.programmeId,
@@ -976,129 +1363,145 @@ export async function getStagePortalBoardAction(day?: string) {
         eq(reportingSessionTable.stageId, stageId),
         eq(judgementConfigTable.status, "LIVE"),
       ),
-    )
-    .limit(1);
-  const liveProgrammeId = liveConfigRow[0]?.programmeId ?? null;
+    );
+  const liveProgrammeIds = new Set(liveConfigRows.map((r) => r.programmeId));
 
-  // All PROGRAMME schedule entries on this stage, bucketed to the selected day.
-  const stageEntries = await db.query.scheduleEntry.findMany({
-    where: and(
-      eq(scheduleEntryTable.stageId, stageId),
-      eq(scheduleEntryTable.type, "PROGRAMME"),
-    ),
-    columns: { programmeId: true, startTime: true },
-    with: { programme: { columns: { id: true, name: true, status: true } } },
-    orderBy: [asc(scheduleEntryTable.startTime)],
-  });
+  let programmes: Array<{
+    programmeId: string;
+    name: string;
+    startTime: string;
+    portalStatus: StagePortalPortalStatus;
+  }>;
 
-  const programmes = stageEntries
-    .filter(
-      (e) => {
-        const start = parseInstant(e.startTime);
-        return (
-          e.programme && start && dateKeyLocal(start, festivalTz) === selectedDay
+  if (isOffStage) {
+    // For off-stage, list all programmes that have a reporting session on
+    // this stage instead of schedule entries (they have none).
+    const offStageReportingSessions =
+      await db.query.programmeReportingSession.findMany({
+        where: and(
+          eq(reportingSessionTable.stageId, stageId),
+          eq(reportingSessionTable.festivalId, stagePortalSession.festivalId),
+        ),
+        columns: { programmeId: true, startedAt: true },
+        with: {
+          programme: { columns: { id: true, name: true, status: true } },
+        },
+      });
+
+    const seen = new Set<string>();
+    programmes = offStageReportingSessions
+      .filter((s) => {
+        if (!s.programme || seen.has(s.programmeId)) return false;
+        seen.add(s.programmeId);
+        return true;
+      })
+      .map((s) => {
+        const p = s.programme!;
+        const judged = ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(
+          p.status,
         );
-      },
-    )
-    .map((e) => {
-      const p = e.programme!;
-      const judged = ["ENDED", "JUDGED", "PUBLISHED", "ANNOUNCED"].includes(
-        p.status,
-      );
-      const portalStatus: StagePortalPortalStatus =
-        p.id === liveProgrammeId
+        const portalStatus: StagePortalPortalStatus = liveProgrammeIds.has(p.id)
           ? "LIVE"
           : judged
             ? "JUDGED"
             : p.status === "REPORTING"
               ? "REPORTING"
               : "SCHEDULED";
-      return {
-        programmeId: p.id,
-        name: p.name,
-        startTime: e.startTime,
-        portalStatus,
-      };
-    });
-
-  // Live scoring payload (only when a LIVE config exists on this stage).
-  let live: {
-    configId: string;
-    scoreLimit: number;
-    judgingMode: "SINGLE" | "GROUP";
-    programme: { id: string; name: string; type: "INDIVIDUAL" | "GROUP" };
-    judges: Array<{ id: string; name: string }>;
-    codeLetters: Array<{ id: string; code: string; isAbsent: boolean }>;
-    existingScores: Array<{
-      judgeId: string;
-      codeLetterId: string;
-      score: number;
-      remark: string | null;
-    }>;
-    judgeCompletion: Record<string, boolean>;
-  } | null = null;
-
-  if (liveConfigRow.length > 0) {
-    const config = await db.query.judgementConfig.findFirst({
-      where: eq(judgementConfigTable.id, liveConfigRow[0]!.id),
+        return {
+          programmeId: p.id,
+          name: p.name,
+          startTime: s.startedAt ?? "",
+          portalStatus,
+        };
+      });
+  } else {
+    const stageEntries = await db.query.scheduleEntry.findMany({
+      where: and(
+        eq(scheduleEntryTable.stageId, stageId),
+        eq(scheduleEntryTable.type, "PROGRAMME"),
+      ),
+      columns: { programmeId: true, startTime: true },
       with: {
-        programme: { columns: { id: true, name: true, type: true } },
-        judges: { with: { judge: { columns: { id: true, name: true } } } },
+        programme: { columns: { id: true, name: true, status: true } },
       },
+      orderBy: [asc(scheduleEntryTable.startTime)],
     });
-    if (config) {
-      const codeLetters = await db.query.programmeCodeLetter.findMany({
-        where: and(
-          eq(codeLetterTable.programmeId, config.programmeId),
-          eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
-        ),
-        orderBy: [asc(codeLetterTable.issuedAt)],
-      });
-      const existingScores = await db.query.judgementScore.findMany({
-        where: eq(judgementScoreTable.configId, config.id),
-        columns: {
-          judgeId: true,
-          codeLetterId: true,
-          score: true,
-          remark: true,
-        },
-      });
 
-      const activeCodeIds = codeLetters
-        .filter((c) => !c.isAbsent)
-        .map((c) => c.id);
-      const judgeCompletion: Record<string, boolean> = {};
-      for (const j of config.judges) {
-        const covered = new Set(
-          existingScores
-            .filter(
-              (s) =>
-                s.judgeId === j.judge.id && activeCodeIds.includes(s.codeLetterId),
-            )
-            .map((s) => s.codeLetterId),
+    programmes = stageEntries
+      .filter((e) => {
+        const start = parseInstant(e.startTime);
+        return (
+          e.programme &&
+          start &&
+          dateKeyLocal(start, festivalTz) === selectedDay
         );
-        judgeCompletion[j.judge.id] =
-          activeCodeIds.length > 0 && covered.size === activeCodeIds.length;
-      }
-
-      live = {
-        configId: config.id,
-        scoreLimit: config.scoreLimit,
-        judgingMode: (config.judgingMode ?? "GROUP") as "SINGLE" | "GROUP",
-        programme: config.programme,
-        judges: config.judges.map((j) => j.judge),
-        codeLetters: codeLetters.map((c) => ({
-          id: c.id,
-          code: c.code,
-          isAbsent: c.isAbsent,
-        })),
-        existingScores,
-        judgeCompletion,
-      };
-    }
+      })
+      .map((e) => {
+        const p = e.programme!;
+        const judged = ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(
+          p.status,
+        );
+        const portalStatus: StagePortalPortalStatus = liveProgrammeIds.has(p.id)
+          ? "LIVE"
+          : judged
+            ? "JUDGED"
+            : p.status === "REPORTING"
+              ? "REPORTING"
+              : "SCHEDULED";
+        return {
+          programmeId: p.id,
+          name: p.name,
+          startTime: e.startTime,
+          portalStatus,
+        };
+      });
   }
 
-  return { stage, days, selectedDay, programmes, live };
+  // Build live payloads for all LIVE configs.
+  const liveConfigs: StagePortalLiveConfig[] = [];
+  for (const row of liveConfigRows) {
+    const payload = await buildLivePayload(row.id);
+    if (payload) liveConfigs.push(payload);
+  }
+
+  // Backward compat: `live` is the first live config (regular stages only
+  // ever have one).
+  const live = liveConfigs[0] ?? null;
+
+  return { stage, days, selectedDay, programmes, live, liveConfigs };
+}
+
+export async function getStagePortalScorePayloadAction(configId: string) {
+  const stagePortalSession = await getStagePortalSessionFromCookie();
+  if (!stagePortalSession) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const config = await db.query.judgementConfig.findFirst({
+    where: eq(judgementConfigTable.id, configId),
+    columns: {
+      id: true,
+      reportingSessionId: true,
+      status: true,
+    },
+  });
+  if (!config) throw new AppError("Judgement round not found.");
+  if (config.status !== "LIVE") {
+    throw new AppError("This judgement round is no longer live.");
+  }
+
+  const stageId = await getStageIdForReportingSession(
+    config.reportingSessionId,
+  );
+  if (!stageId || stageId !== stagePortalSession.stageId) {
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  }
+
+  const payload = await buildLivePayload(configId);
+  if (!payload) throw new AppError("Judgement round not found.");
+
+  return {
+    stageName: stagePortalSession.stage.name,
+    payload,
+  };
 }
 
 /**
@@ -1152,14 +1555,38 @@ async function recomputeConfigResults(
   for (const cl of activeCodeLetters) {
     const avg = Math.round(averageByCodeLetter.get(cl.id) ?? 0);
     for (const recipient of cl.programmeCodeLetterRecipients) {
-      const assignment = await db.query.programmeAssignment.findFirst({
-        where: and(
-          eq(assignmentTable.programmeId, config.programmeId),
-          eq(assignmentTable.participantId, recipient.participantId),
-        ),
-        columns: { id: true },
-      });
-      if (assignment?.id) assignmentPoints.set(assignment.id, avg);
+      let assignmentId: string | undefined;
+
+      if (programmeRow.type === "INDIVIDUAL") {
+        const assignment = await db.query.programmeAssignment.findFirst({
+          where: and(
+            eq(assignmentTable.programmeId, config.programmeId),
+            eq(assignmentTable.participantId, recipient.participantId),
+          ),
+          columns: { id: true },
+        });
+        assignmentId = assignment?.id;
+      } else {
+        const member = await db.query.programmeAssignmentMember.findFirst({
+          where: eq(
+            assignmentMemberTable.participantId,
+            recipient.participantId,
+          ),
+          with: {
+            assignment: {
+              columns: {
+                id: true,
+                programmeId: true,
+              },
+            },
+          },
+        });
+        assignmentId =
+          member?.assignment?.programmeId === config.programmeId
+            ? member.assignment.id
+            : undefined;
+      }
+      if (assignmentId) assignmentPoints.set(assignmentId, avg);
     }
   }
 
@@ -1167,26 +1594,14 @@ async function recomputeConfigResults(
   await db.transaction(async (tx) => {
     for (const [assignmentId, pts] of assignmentPoints.entries()) {
       judgedAssignmentIds.push(assignmentId);
-      const assignmentRow = await db.query.programmeAssignment.findFirst({
-        where: eq(assignmentTable.id, assignmentId),
-        columns: { groupId: true, teamNumber: true },
-      });
 
       let participantsCount = 1;
-      if (programmeRow.type === "GROUP" && assignmentRow) {
-        const teamMembers = await db
-          .select({ id: assignmentTable.id })
-          .from(assignmentTable)
-          .where(
-            and(
-              eq(assignmentTable.programmeId, config.programmeId),
-              eq(assignmentTable.teamNumber, assignmentRow.teamNumber ?? 1),
-              assignmentRow.groupId
-                ? eq(assignmentTable.groupId, assignmentRow.groupId)
-                : sql`${assignmentTable.groupId} is null`,
-            ),
-          );
-        participantsCount = Math.max(1, teamMembers.length);
+      if (programmeRow.type === "GROUP") {
+        const [memberCount] = await tx
+          .select({ c: count() })
+          .from(assignmentMemberTable)
+          .where(eq(assignmentMemberTable.assignmentId, assignmentId));
+        participantsCount = Math.max(1, memberCount?.c ?? 1);
       }
 
       const policyResolved = await resolveScoringPolicy({
@@ -1286,6 +1701,12 @@ export async function markCodeLetterAbsenceAction(input: {
     throw new AppError("Code letter not found for this programme.");
   }
 
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, config.programmeId),
+    columns: { status: true },
+  });
+  if (programmeRow) assertProgrammePrePublishing(programmeRow.status);
+
   const now = serverNowIso();
   await db.transaction(async (tx) => {
     await tx
@@ -1346,6 +1767,12 @@ export async function submitJudgeScoresAction(
 ) {
   const config = await assertStagePortalAccessForConfig(input.configId);
 
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, config.programmeId),
+    columns: { status: true },
+  });
+  if (programmeRow) assertProgrammePrePublishing(programmeRow.status);
+
   const judgeMembership = await db.query.judgementConfigJudge.findFirst({
     where: and(
       eq(judgementConfigJudgeTable.configId, config.id),
@@ -1384,7 +1811,8 @@ export async function submitJudgeScoresAction(
     for (const [codeLetterId, score] of Object.entries(
       input.scoresByCodeLetterId,
     )) {
-      const remark = input.remarksByCodeLetterId?.[codeLetterId]?.trim() || null;
+      const remark =
+        input.remarksByCodeLetterId?.[codeLetterId]?.trim() || null;
       await tx
         .insert(judgementScoreTable)
         .values({

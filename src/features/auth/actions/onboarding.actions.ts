@@ -52,9 +52,10 @@ export async function completePersonalOnboardingAction(
     }
 
     const parsed = personalOnboardingSchema.parse(data);
-    const timezone = parsed.timezone && isValidTimezone(parsed.timezone)
-      ? parsed.timezone
-      : null;
+    const timezone =
+      parsed.timezone && isValidTimezone(parsed.timezone)
+        ? parsed.timezone
+        : null;
 
     await db
       .update(userTable)
@@ -86,9 +87,10 @@ export async function completeInstitutionalOnboardingAction(
     }
 
     const parsed = institutionalOnboardingSchema.parse(data);
-    const timezone = parsed.timezone && isValidTimezone(parsed.timezone)
-      ? parsed.timezone
-      : null;
+    const timezone =
+      parsed.timezone && isValidTimezone(parsed.timezone)
+        ? parsed.timezone
+        : null;
 
     const institution = await createInstitution({
       name: parsed.institutionName,

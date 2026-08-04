@@ -7,11 +7,13 @@ export type ProgrammeReportingAssignmentRow = {
   groupId: string | null;
   groupName: string | null;
   teamNumber: number | null;
+  /** GROUP-only: participant ids from programme_assignment_member (XOR-migrated data). */
+  teamParticipantIds?: string[];
 };
 
 export type ReportingBoardItem = {
   id: string;
-  startTime: Date;
+  startTime: Date | null;
   stage: { id: string; name: string } | null;
   programme: {
     id: string;
@@ -19,6 +21,11 @@ export type ReportingBoardItem = {
     type: "INDIVIDUAL" | "GROUP";
     status?: string;
     category: { id: string; name: string } | null;
+  };
+  scheduleEntry: {
+    id: string;
+    startTime: string;
+    stageId: string | null;
   } | null;
   reportingSession: {
     id: string;
@@ -67,6 +74,8 @@ export type RosterTableRow =
       groupId: string | null;
       teamNumber: number;
       teamParticipantIds: string[];
+      /** PRO only; the appointed lead for this team, when there is one. */
+      teamLeadName?: string | null;
       nameColumn: string;
       groupName: string | null;
       teamCell: number;

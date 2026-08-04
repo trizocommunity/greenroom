@@ -1,10 +1,14 @@
 import { and, desc, eq } from "drizzle-orm";
 import { Crown } from "lucide-react";
 import { notFound } from "next/navigation";
+import {
+  APP_CONTAINER,
+  AppEmptyState,
+  AppPageHeader,
+  StatusPill,
+} from "@/components/app/AppSection";
 import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/participants/ParticipantDetailsDialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/core/database/client";
 import { participant as participantTable } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
@@ -65,62 +69,58 @@ export default async function MyGroupPage({
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Participants</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          View every participant in your group and open their profile details.
-        </p>
-      </div>
+    <div className={`${APP_CONTAINER} space-y-6 py-8`}>
+      <AppPageHeader
+        eyebrow={participant.group?.name ?? "Your group"}
+        title="Participants"
+        description="Everyone in your group, with their category and chest number."
+      />
 
       {groupParticipants.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            No participants in this group.
-          </CardContent>
-        </Card>
+        <AppEmptyState
+          title="No participants yet"
+          description="Nobody has been added to this group."
+        />
       ) : (
-        <div className="space-y-3">
+        <ul className="divide-y divide-border border-y border-border">
           {groupParticipants.map((s: any) => (
-            <Card key={s.id}>
-              <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{s.name}</span>
-                    {s.isTeamLeader && (
-                      <Badge
-                        variant="secondary"
-                        className="bg-amber-500/15 text-amber-800 border-amber-500/30"
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          <Crown className="h-3.5 w-3.5" />
-                          Team Leader
-                        </span>
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {s.category?.name ?? "—"} · {s.chestNumber ?? "—"}
-                  </div>
-                </div>
+            <li key={s.id} className="flex items-center gap-4 py-3.5">
+              <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                {s.chestNumber ?? "—"}
+              </span>
 
-                <ParticipantDetailsDialog
-                  festivalId={festival.id}
-                  participant={s}
-                  trigger={
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full sm:w-auto"
-                    >
-                      View Details
-                    </Button>
-                  }
-                />
-              </CardContent>
-            </Card>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-[15px] font-medium text-heading">
+                    {s.name}
+                  </span>
+                  {s.isTeamLeader && (
+                    <StatusPill tone="warning" icon={Crown}>
+                      Leader
+                    </StatusPill>
+                  )}
+                </div>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {s.category?.name ?? "No category"}
+                </p>
+              </div>
+
+              <ParticipantDetailsDialog
+                festivalId={festival.id}
+                participant={s}
+                trigger={
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    Details
+                  </Button>
+                }
+              />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

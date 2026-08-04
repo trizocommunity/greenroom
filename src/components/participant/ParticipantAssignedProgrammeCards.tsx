@@ -1,8 +1,8 @@
+import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
 import {
   getCodeForParticipantFromLetters,
   mapSessionCodeLettersForLookup,
@@ -37,23 +37,25 @@ function isSessionTimedOut(
   );
 }
 
-function cardBorderClass(
+/**
+ * A tint on the row's left edge rather than a coloured card. Uses theme
+ * tokens — the previous emerald/amber/blue literals were invisible against
+ * the dark theme's surfaces.
+ */
+function rowAccentClass(
   latest: ParticipantProgrammeReportingSession | undefined,
 ): string {
-  if (!latest) return "";
-  if (isSessionTimedOut(latest)) {
-    return "border-amber-500/40 bg-amber-500/10";
+  if (!latest) return "border-l-transparent";
+  if (isSessionTimedOut(latest) || latest.status === "RESET") {
+    return "border-l-warning bg-warning/[0.04]";
   }
   if (latest.status === "IN_PROGRESS") {
-    return "border-emerald-500/40 bg-emerald-500/5";
+    return "border-l-success bg-success/[0.04]";
   }
   if (latest.status === "CLOSED") {
-    return "border-blue-500/35 bg-blue-500/5";
+    return "border-l-info bg-info/[0.04]";
   }
-  if (latest.status === "RESET") {
-    return "border-amber-500/40 bg-amber-500/10";
-  }
-  return "";
+  return "border-l-transparent";
 }
 
 export function ParticipantAssignedProgrammeCards({
@@ -78,29 +80,28 @@ export function ParticipantAssignedProgrammeCards({
   emptyMessage?: string;
 }) {
   if (programmes.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-10 text-center text-muted-foreground">
-          {emptyMessage}
-        </CardContent>
-      </Card>
-    );
+    return <AppEmptyState title={emptyMessage} />;
   }
 
   return (
-    <div className="space-y-3">
+    <ul className="border-y border-border">
       {programmes.map((p) => {
         const latestSess = latestReportingByProgrammeId.get(p.programmeId);
         const closedSess =
           latestClosedReportingByProgrammeId.get(p.programmeId) ??
           (latestSess?.status === "CLOSED" ? latestSess : undefined);
 
+        const isLive =
+          latestSess?.status === "IN_PROGRESS" &&
+          !isSessionTimedOut(latestSess);
+        const isTimedOut = Boolean(latestSess && isSessionTimedOut(latestSess));
+
         const myAssignmentId = assignmentIdByProgrammeId.get(p.programmeId);
         const iWasReportedOnClosed =
           Boolean(closedSess) &&
           Boolean(myAssignmentId) &&
           Boolean(
-            closedSess!.programmeReportedParticipants.some(
+            closedSess?.programmeReportedParticipants.some(
               (r) => r.assignmentId === myAssignmentId,
             ),
           );
@@ -114,91 +115,82 @@ export function ParticipantAssignedProgrammeCards({
             )
           : null;
 
+        // At most one line of guidance per row — whichever is most actionable.
+        const note = isLive
+          ? "Report to the stage manager when called."
+          : isTimedOut
+            ? "Reporting time ended. Wait for the stage manager to restart it."
+            : closedSess && !closedCode && iWasReportedOnClosed
+              ? "You were reported present; no code letter is on file for this session."
+              : closedSess && !closedCode && !iWasReportedOnClosed
+                ? "You were not marked present when reporting ended."
+                : null;
+
         return (
-          <Card key={p.programmeId} className={cardBorderClass(latestSess)}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <span className="truncate">{p.name}</span>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {latestSess?.status === "IN_PROGRESS" &&
-                  !isSessionTimedOut(latestSess) ? (
-                    <>
-                      <Badge className="bg-emerald-600 text-white">
-                        Live reporting
-                      </Badge>
-                      {latestSess.windowEndsAt ? (
-                        <ReportingEndsInCountdown
-                          endsAt={latestSess.windowEndsAt}
-                        />
-                      ) : null}
-                    </>
-                  ) : null}
-                  {latestSess && isSessionTimedOut(latestSess) ? (
-                    <Badge className="bg-amber-600 text-white">
-                      Reporting ended
-                    </Badge>
-                  ) : null}
-                  {latestSess?.status === "CLOSED" ? (
-                    <Badge className="bg-blue-600 text-white">
-                      Reporting ended
-                    </Badge>
-                  ) : null}
-                  {closedSess && latestSess?.status !== "CLOSED" ? (
-                    <Badge className="bg-blue-600/90 text-white">
-                      Code issued
-                    </Badge>
-                  ) : null}
-                  {latestSess?.status === "RESET" ? (
-                    <Badge className="bg-amber-600 text-white">
-                      Reporting closed
-                    </Badge>
-                  ) : null}
-                  <ProgrammeStatusBadge status={p.status} />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 text-sm text-muted-foreground space-y-2">
-              <div>
-                Category:{" "}
-                <span className="text-foreground">{p.categoryName ?? "—"}</span>
+          <li
+            key={p.programmeId}
+            className={cn(
+              "border-b border-l-2 border-border px-4 py-4 last:border-b-0",
+              rowAccentClass(latestSess),
+            )}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+              <div className="min-w-0">
+                <p className="truncate text-[15px] font-medium text-heading">
+                  {p.name}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {p.categoryName ?? "Uncategorised"}
+                  {p.programmeType === "GROUP" ? " · Team" : ""}
+                </p>
               </div>
-              {closedCode ? (
-                <div className="text-foreground font-mono text-sm">
-                  {p.programmeType === "GROUP"
-                    ? "Your team’s code letter:"
-                    : "Your code letter:"}{" "}
-                  <span className="rounded border border-blue-500/40 bg-blue-500/10 px-2 py-0.5 font-semibold">
-                    {closedCode}
-                  </span>
-                </div>
-              ) : null}
-              {closedSess && !closedCode && iWasReportedOnClosed ? (
-                <p className="text-xs text-muted-foreground">
-                  You were reported present; code letter is not on file for this
-                  session.
-                </p>
-              ) : null}
-              {closedSess && !closedCode && !iWasReportedOnClosed ? (
-                <p className="text-xs text-muted-foreground">
-                  You were not marked present when reporting ended.
-                </p>
-              ) : null}
-              {latestSess?.status === "IN_PROGRESS" &&
-              !isSessionTimedOut(latestSess) ? (
-                <p className="text-xs text-muted-foreground">
-                  Report to the stage manager when called.
-                </p>
-              ) : null}
-              {latestSess && isSessionTimedOut(latestSess) ? (
-                <p className="text-xs text-muted-foreground">
-                  Reporting time ended. Wait for the stage manager to restart or
-                  proceed with current reported participants.
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
+
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                {isLive && (
+                  <>
+                    <StatusPill tone="live" pulse>
+                      Live reporting
+                    </StatusPill>
+                    {latestSess?.windowEndsAt && (
+                      <ReportingEndsInCountdown
+                        endsAt={latestSess.windowEndsAt}
+                      />
+                    )}
+                  </>
+                )}
+                {isTimedOut && (
+                  <StatusPill tone="warning">Reporting ended</StatusPill>
+                )}
+                {latestSess?.status === "CLOSED" && (
+                  <StatusPill tone="muted">Reporting closed</StatusPill>
+                )}
+                {closedSess && latestSess?.status !== "CLOSED" && (
+                  <StatusPill tone="muted">Code issued</StatusPill>
+                )}
+                {latestSess?.status === "RESET" && (
+                  <StatusPill tone="warning">Reporting reset</StatusPill>
+                )}
+                <ProgrammeStatusBadge status={p.status} />
+              </div>
+            </div>
+
+            {closedCode && (
+              <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                {p.programmeType === "GROUP"
+                  ? "Your team's code letter"
+                  : "Your code letter"}
+                <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-sm font-semibold text-heading">
+                  {closedCode}
+                </span>
+              </p>
+            )}
+
+            {note && (
+              <p className="mt-2 text-xs text-muted-foreground">{note}</p>
+            )}
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

@@ -38,6 +38,7 @@ export async function GET(
 
   const isExpired =
     festival.status === "EXPIRED" ||
+    festival.status === "PAST" ||
     (festival.expiresAt && new Date(festival.expiresAt) < new Date());
 
   if (!isExpired) {

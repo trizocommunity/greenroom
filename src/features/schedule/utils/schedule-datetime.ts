@@ -1,3 +1,5 @@
+import { parseInstant } from "@/core/datetime";
+
 /**
  * Build a Date from the organizer's date + time inputs (browser local wall clock).
  * Avoids `new Date("YYYY-MM-DDTHH:mm")` which is parsed as UTC in some runtimes
@@ -22,18 +24,22 @@ export function localWallClockToDate(
 }
 
 /**
- * Parse schedule_entry timestamps from the DB. Rows are written with
- * `toISOString()` (UTC). Some drivers return ISO without `Z`; `new Date(that)`
- * is then interpreted as *local* wall time and shifts displayed times.
+ * Parse schedule_entry timestamps from the DB.
+ *
+ * Rows are written with `toISOString()` (UTC) and the canonical
+ * `parseInstant` helper accepts every realistic wire shape the DB
+ * can emit — Z-suffixed ISO, ±HH:MM offset, ±00 zero-offset,
+ * space-separated Postgres-style without TZ, etc.
+ *
+ * Returns `new Date(NaN)` for genuinely unparseable or missing input
+ * so existing callers that use `.getTime()` arithmetic keep working
+ * (NaN propagates harmlessly). Prefer `parseInstant()` directly if
+ * you can handle `Date | null`.
  */
 export function parseStoredScheduleInstant(
   value: string | Date | null | undefined,
 ): Date {
-  if (value == null || value === "") return new Date(NaN);
-  if (value instanceof Date) return value;
-  const s = String(value).trim();
-  if (/Z$/i.test(s)) return new Date(s);
-  if (/[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s);
-  const normalized = s.includes("T") ? s : s.replace(" ", "T");
-  return new Date(`${normalized}Z`);
+  const parsed = parseInstant(value);
+  if (parsed === null) return new Date(NaN);
+  return parsed;
 }

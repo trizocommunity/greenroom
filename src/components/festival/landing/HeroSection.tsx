@@ -1,130 +1,189 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, CalendarDays, MapPin, Users } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { FestivalPublicData } from "@/components/festival/FestivalContext";
-import { Button } from "@/components/ui/button";
+import { PUBLIC_CONTAINER } from "@/components/festival/public/PublicSection";
 
 interface HeroSectionProps {
   festival: FestivalPublicData;
   basicMode?: boolean;
+  /** Festival branding colour — drives the wash, rule and links. */
+  accentColor?: string;
 }
 
-export function HeroSection({ festival, basicMode = false }: HeroSectionProps) {
+/**
+ * The festival masthead: the name at display size, one line of facts under a
+ * hairline, and two links. Everything decorative is driven by the festival's
+ * own accent colour so each portal reads as its own brand, not as ours.
+ */
+export function HeroSection({
+  festival,
+  basicMode = false,
+  accentColor = "var(--primary)",
+}: HeroSectionProps) {
   const startDate = festival.startDate ? new Date(festival.startDate) : null;
   const endDate = festival.endDate ? new Date(festival.endDate) : null;
   const basePath = `/${festival.slug}`;
-  const resultsHref = basicMode ? "#results" : `${basePath}/results`;
-  const programmesHref = `${basePath}/programmes`;
+  const isLive = festival.status === "ACTIVE";
+
+  const dateLabel =
+    startDate && endDate
+      ? `${startDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })} – ${endDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })}`
+      : null;
+
+  const facts = [
+    dateLabel,
+    festival.location,
+    festival.participantsCount
+      ? `${festival.participantsCount.toLocaleString()} participants`
+      : null,
+  ].filter(Boolean) as string[];
 
   return (
-    <section className="relative min-h-[56vh] flex items-center justify-center overflow-hidden">
-      {/* Abstract Background */}
+    // Pulled up under the festival navbar (the layout reserves `pt-16` for
+    // the inner pages) so the accent wash reaches the top of the viewport
+    // instead of starting below a blank band. The extra top padding puts the
+    // content back where it was.
+    <section className="relative -mt-16 overflow-hidden pb-14 pt-36 md:pb-20 md:pt-44">
+      {/* One wide wash in the festival's colour, fading down the page */}
       <div
-        className="absolute inset-0 z-0"
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 -top-56 h-[28rem] opacity-[0.18] blur-[120px]"
         style={{
-          background: `
-            radial-gradient(circle at 0% 0%, var(--primary) 0%, transparent 55%),
-            radial-gradient(circle at 100% 100%, var(--secondary) 0%, transparent 55%),
-            linear-gradient(to bottom, var(--background), var(--muted) 60%, var(--background))
-          `,
-          opacity: 0.06,
+          background: `radial-gradient(ellipse 45% 100% at 50% 100%, ${accentColor}, transparent 70%)`,
         }}
       />
 
-      {/* Floating accent orbs */}
-      <div className="pointer-events-none absolute -left-24 top-24 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 bottom-10 h-48 w-48 rounded-full bg-secondary/10 blur-3xl" />
-
-      <div className="relative z-10 max-w-5xl mx-auto px-4 md:px-6 py-16">
+      <div className={`relative ${PUBLIC_CONTAINER}`}>
         <motion.div
-          className="flex flex-col md:flex-row items-center gap-8"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-3xl"
         >
-          {/* Text content */}
-          <div className="flex-1 text-center md:text-left space-y-5">
-            <p className="text-eyebrow justify-center md:justify-start">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Festival
+          <div className="mb-7 flex items-center gap-4">
+            {festival.logo && (
+              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full ring-1 ring-border">
+                <Image
+                  src={festival.logo}
+                  alt=""
+                  width={48}
+                  height={48}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
+            {isLive && (
+              <span
+                className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em]"
+                style={{ color: accentColor }}
+              >
+                <span
+                  className="animate-pulse-dot h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: accentColor }}
+                />
+                Live now
+              </span>
+            )}
+          </div>
+
+          <h1 className="text-balance text-[2.5rem] font-semibold leading-[1.02] tracking-tight text-heading sm:text-6xl md:text-7xl">
+            {festival.name}
+          </h1>
+
+          {festival.tagline && (
+            <p className="mt-5 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+              {festival.tagline}
             </p>
+          )}
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-heading leading-[1.1]">
-              {festival.name}
-            </h1>
+          {/* Facts sit under a rule tinted with the festival colour */}
+          {facts.length > 0 && (
+            <>
+              <motion.div
+                aria-hidden
+                className="mt-9 h-px origin-left"
+                style={{
+                  background: `linear-gradient(90deg, ${accentColor}, transparent)`,
+                }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.8, delay: 0.25, ease: "easeOut" }}
+              />
+              <dl className="mt-5 flex flex-wrap gap-x-12 gap-y-4">
+                {facts.map((fact) => (
+                  <div key={fact}>
+                    <dd className="text-sm font-medium text-heading">{fact}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          )}
 
-            <p className="text-base text-muted-foreground max-w-lg mx-auto md:mx-0 leading-relaxed">
-              {festival.description ||
-                "A vibrant celebration of talent, creativity, and competition."}
-            </p>
-
-            {/* Meta badges */}
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground justify-center md:justify-start">
-              {startDate && endDate && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {startDate.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                  {" – "}
-                  {endDate.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              )}
-              {festival.location && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {festival.location}
-                </span>
-              )}
-              {festival.participantsCount != null &&
-                festival.participantsCount > 0 && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5">
-                    <Users className="h-3.5 w-3.5" />
-                    {festival.participantsCount.toLocaleString()} participants
-                  </span>
-                )}
-            </div>
-
-            {/* CTAs */}
-            <div className="flex gap-3 pt-2 justify-center md:justify-start">
-              <Link href={`${basePath}/login`}>
-                <Button
-                  size="sm"
-                  className="rounded-full h-10 px-6 font-medium shadow-primary-glow hover:opacity-90 transition-opacity"
-                >
-                  Participant Login
-                </Button>
-              </Link>
-              <Link href={resultsHref}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-full h-10 px-6 font-medium bg-card border-border text-foreground hover:bg-muted"
-                >
-                  View results
-                </Button>
-              </Link>
-              {!basicMode && (
-                <Link href={programmesHref}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-full h-10 px-6 font-medium bg-card border-border text-foreground hover:bg-muted"
-                  >
-                    Programs <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                  </Button>
-                </Link>
-              )}
-            </div>
+          <div className="mt-9 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm font-medium">
+            <HeroLink
+              href={basicMode ? "#results" : `${basePath}/results`}
+              accentColor={accentColor}
+              primary
+            >
+              View results
+            </HeroLink>
+            {!basicMode && (
+              <HeroLink href={`${basePath}/schedule`} accentColor={accentColor}>
+                Schedule
+              </HeroLink>
+            )}
+            <HeroLink href={`${basePath}/login`} accentColor={accentColor}>
+              Participant login
+            </HeroLink>
           </div>
         </motion.div>
       </div>
     </section>
+  );
+}
+
+function HeroLink({
+  href,
+  accentColor,
+  primary = false,
+  children,
+}: {
+  href: string;
+  accentColor: string;
+  primary?: boolean;
+  children: React.ReactNode;
+}) {
+  if (primary) {
+    return (
+      <Link
+        href={href}
+        className="group inline-flex h-11 items-center gap-2 rounded-full px-6 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        style={{ backgroundColor: accentColor }}
+      >
+        {children}
+        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="group inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+    >
+      {children}
+      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+    </Link>
   );
 }

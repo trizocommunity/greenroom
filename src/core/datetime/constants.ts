@@ -53,4 +53,5 @@ export const MS = {
   hour: 3_600_000,
   day: 86_400_000,
   week: 7 * 86_400_000,
+  month: 30 * 86_400_000,
 } as const;

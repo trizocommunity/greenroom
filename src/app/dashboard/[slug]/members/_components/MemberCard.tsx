@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRemoveMember } from "@/api/client/members";
+import { updateMemberRolesAction } from "@/features/members/actions/member.actions";
 import {
   useAssignStageManager,
   useStageAssignments,
@@ -52,7 +53,11 @@ export function MemberCard({
   const [showDetails, setShowDetails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isStageManager = member.role === "STAGE_MANAGER";
+  const allRoles = [
+    member.role,
+    ...((member.metadata as any)?.additionalRoles ?? []),
+  ];
+  const isStageManager = allRoles.includes("STAGE_MANAGER");
   const canAssignStages =
     isStageManager && canManageStageAssignments && !isReadOnly;
 
@@ -98,6 +103,23 @@ export function MemberCard({
       setShowDetails(false);
     } catch (error: any) {
       toast.error(error.message || "Failed to update stage assignments");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveRoles = async (roles: string[]) => {
+    setIsSaving(true);
+    try {
+      const result = await updateMemberRolesAction(festivalId, member.id, roles);
+      if (!result.success) {
+        toast.error((result as any).error?.message || "Failed to update roles");
+        return;
+      }
+      toast.success("Member roles updated");
+      setShowDetails(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update roles");
     } finally {
       setIsSaving(false);
     }
@@ -214,6 +236,11 @@ export function MemberCard({
         <div className="mt-4 pt-3 border-t border-border/40">
           <div className="flex flex-wrap items-center gap-2">
             <FestivalRoleBadge festivalRole={member.role as any} />
+            {((member.metadata as any)?.additionalRoles ?? []).map(
+              (r: string) => (
+                <FestivalRoleBadge key={r} festivalRole={r as any} />
+              ),
+            )}
             <span
               className={`inline-flex items-center gap-1.5 text-xs font-medium ${
                 member.isActive
@@ -278,7 +305,9 @@ export function MemberCard({
           .filter((a) => a.memberId === member.id)
           .map((a) => a.stageId)}
         canAssignStages={canAssignStages}
+        canEditRoles={!isReadOnly}
         onSaveStages={handleSaveStages}
+        onSaveRoles={handleSaveRoles}
         isSaving={isSaving}
       />
     </div>

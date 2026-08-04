@@ -1,4 +1,7 @@
+import { MS } from "@/core/datetime/constants";
 import type { Tier } from "@/core/types/app-enums";
+
+export const MS_PER_DAY = MS.day;
 
 // DEFER-1 & DEFER-2 FIX: Completed features blocks for STANDARD and PRO tiers.
 // Also typed the Record properly to remove `any`.
@@ -108,6 +111,17 @@ export interface TierConfig {
 }
 
 export const GRACE_PERIOD_DAYS = 7;
+
+/**
+ * Single source of truth for the active duration of a festival, in days.
+ *
+ * Every tier currently uses 90 days. The helper exists so that future tier-aware
+ * duration policies (e.g. STANDARD → 120 days) only need to change `pricing.ts`
+ * — every consumer routes through this function instead of hard-coded `90`s.
+ */
+export function getFestivalDurationDays(): number {
+  return TIER_CONFIG.BASIC.festivalDurationDays;
+}
 
 export const TIER_CONFIG: Record<Tier, TierConfig> = {
   BASIC: {

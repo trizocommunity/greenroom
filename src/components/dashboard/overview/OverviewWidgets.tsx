@@ -1,5 +1,4 @@
 import {
-  ArrowRight,
   BarChart2,
   BookOpen,
   Building2,
@@ -8,11 +7,9 @@ import {
   FileText,
   Gavel,
   LayoutDashboard,
-  LayoutList,
   LifeBuoy,
   List,
   Mic,
-  QrCode,
   Settings,
   Trophy,
   UserPlus,
@@ -20,7 +17,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { LiveLinksCard } from "@/components/dashboard/overview/LiveLinksCard";
-import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import {
   Card,
   CardContent,
@@ -28,14 +24,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { DashboardCharts } from "./DashboardCharts";
+
 import type { festival as festivalSchema } from "@/core/database/schema";
-import { formatDate } from "@/core/datetime";
 import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
 import type { FeaturePath } from "@/features/plan-features/services/features";
 import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
@@ -52,6 +43,16 @@ function planFeature(
 ): boolean {
   return Boolean(features[key]);
 }
+
+const COLORS = [
+  "var(--primary)",
+  "var(--success)",
+  "var(--info)",
+  "var(--warning)",
+  "var(--secondary)",
+  "var(--purple)",
+  "var(--pink)",
+];
 
 export default async function OverviewWidgets({
   festival,
@@ -173,230 +174,221 @@ export default async function OverviewWidgets({
     },
   ];
 
+  const categoryChartData = overviewData.participantsByCategory
+    .filter(d => d.type !== 'GENERAL')
+    .map((d, i) => ({
+      name: d.name,
+      count: d.count,
+      fill: COLORS[i % COLORS.length],
+    }));
+
+  const teamChartData = overviewData.participantsByTeam.map((d, i) => ({
+    name: d.name,
+    count: d.count,
+    fill: COLORS[i % COLORS.length],
+  }));
+
+  // Ensure items for leaderboard
+  const teamStandingsList = Array.isArray(overviewData.teamStandings)
+    ? (overviewData.teamStandings as any[]).map((t, idx) => ({
+        rank: idx + 1,
+        name: t.name || t.groupName || "Unknown",
+        points: t.points || t.totalPoints || 0,
+      }))
+    : [];
+  const topTeams = teamStandingsList.slice(0, 10);
+
   return (
     <div className="flex flex-col gap-5">
-      {/* Top: 3 Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Programmes
-            </CardTitle>
-            <LayoutList className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {fmt(overviewData.totalProgrammes)}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+        {/* Left Column (Main Content) */}
+        <div className="flex flex-col gap-4">
+          {/* Top: 6 Stat Cards */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                  Participants
+                </CardTitle>
+                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md">
+                  <Users className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {fmt(overviewData.totalParticipants)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Registered</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Participants
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {fmt(overviewData.totalParticipants)}
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                  Competitions
+                </CardTitle>
+                <div className="p-1.5 bg-purple-50 text-purple-600 rounded-md">
+                  <Trophy className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {fmt(overviewData.totalProgrammes)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {overviewData.programmesActiveCount} Active /{" "}
+                  {overviewData.programmesFinalCount} Final
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {fmt(overviewData.totalGroups)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                  Teams
+                </CardTitle>
+                <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md">
+                  <Building2 className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {fmt(overviewData.totalGroups)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Participating
+                </p>
+              </CardContent>
+            </Card>
 
-      <TooltipProvider>
-        {/* Middle section: Recent Programmes, Recent Participants, Recent Results */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle>Recent Programmes</CardTitle>
-              <CardDescription>Latest added programmes</CardDescription>
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                  Categories
+                </CardTitle>
+                <div className="p-1.5 bg-orange-50 text-orange-600 rounded-md">
+                  <FileText className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {fmt(overviewData.totalCategories)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Event groups
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                  Stages
+                </CardTitle>
+                <div className="p-1.5 bg-amber-50 text-amber-600 rounded-md">
+                  <Mic className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {fmt(overviewData.totalStages)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Active stages
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                  Judges
+                </CardTitle>
+                <div className="p-1.5 bg-rose-50 text-rose-600 rounded-md">
+                  <Gavel className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {fmt(overviewData.totalJudges)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Registered</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main charts area */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <DashboardCharts
+              teamChartData={teamChartData}
+              categoryChartData={categoryChartData}
+            />
+          </div>
+        </div>
+
+        {/* Leaderboard sidebar */}
+        <div className="flex flex-col">
+          <Card className="shadow-sm flex flex-col flex-1 h-full min-h-[500px]">
+            <CardHeader className="pb-4 border-b">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-orange-500" /> Team Leaderboard
+              </CardTitle>
+              <CardDescription className="text-xs ml-7">
+                Points from published results
+              </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col flex-1">
-              <div className="space-y-4">
-                {overviewData.recentProgrammes.map((prog) => (
-                  <div
-                    key={prog.id}
-                    className="flex items-center justify-between border-b pb-2 last:border-0 "
-                  >
-                    <div>
-                      <p
-                        className="text-sm font-medium leading-none truncate max-w-[200px]"
-                        title={prog.name}
-                      >
-                        {prog.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate max-w-[160px]">
-                        {prog.category.name}
-                      </p>
-                    </div>
-                    <div className="flex items-center flex-col">
-                      {prog.status && (
-                        <ProgrammeStatusBadge
-                          status={prog.status}
-                          className="text-[10px]"
-                        />
-                      )}
-                      <p className="text-[12px] text-muted-foreground shrink-0">
-                        {formatDate(prog.createdAt, {
-                          tz: festivalTz,
-                          style: "short",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {overviewData.recentProgrammes.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No programmes found.
-                  </p>
-                )}
-              </div>
-              <div className="pt-4 border-t mt-auto">
-                <Link
-                  href={`/dashboard/${slug}/pre-event-works/programmes`}
-                  className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
-                >
-                  View All Programmes <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle>Recent Participants</CardTitle>
-              <CardDescription>Latest added participants</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col flex-1">
-              <div className="space-y-4 pr-2">
-                {overviewData.recentParticipants.map((participant) => (
-                  <div
-                    key={participant.id}
-                    className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0 gap-4"
-                  >
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <p className="text-sm font-medium leading-none uppercase truncate flex-1">
-                          {participant.name}
-                        </p>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{participant.name}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <p className="text-xs text-muted-foreground shrink-0 truncate max-w-[120px]">
-                          {participant.group?.name || "No Group"}
-                        </p>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{participant.group?.name || "No Group"}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                ))}
-                {overviewData.recentParticipants.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No participants found.
-                  </p>
-                )}
-              </div>
-              <div className="pt-4 border-t mt-auto">
-                <Link
-                  href={`/dashboard/${slug}/pre-event-works/participants`}
-                  className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
-                >
-                  View All Participants <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle>Recent Results</CardTitle>
-              <CardDescription>Programme, category and date</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col flex-1">
-              <div className="space-y-3 pr-2">
-                {overviewData.recentResultsByProgramme.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No results found.
-                  </p>
-                ) : (
-                  overviewData.recentResultsByProgramme.map(({ programme }) => (
+            <CardContent className="p-0 overflow-y-auto flex-1">
+              <div className="flex flex-col">
+                {topTeams.length > 0 ? (
+                  topTeams.map((team, idx) => (
                     <div
-                      key={programme.id}
-                      className="flex items-center justify-between gap-2 border-b pb-2 last:border-0 last:pb-0 text-sm"
+                      key={team.name}
+                      className="flex items-center justify-between py-3 px-4 border-b last:border-0 hover:bg-muted/20 transition-colors"
                     >
-                      <div className="min-w-0 flex-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <p className="font-medium truncate">
-                              {programme.name}
-                            </p>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{programme.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {programme.category.name}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {programme.category.name}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                            idx === 0
+                              ? "bg-amber-100 text-amber-700"
+                              : idx === 1
+                                ? "bg-slate-100 text-slate-700"
+                                : idx === 2
+                                  ? "bg-orange-100 text-orange-800"
+                                  : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {idx === 0
+                            ? "1"
+                            : idx === 1
+                              ? "2"
+                              : idx === 2
+                                ? "3"
+                                : team.rank}
+                        </div>
+                        <span
+                          className={`text-sm ${idx < 3 ? "font-medium" : ""}`}
+                        >
+                          {team.name}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                        {programme.latestResultAt
-                          ? formatDate(programme.latestResultAt, {
-                              tz: festivalTz,
-                              style: "short",
-                            })
-                          : "—"}
-                      </span>
+                      <div className="font-semibold text-sm flex items-baseline gap-1">
+                        {team.points}{" "}
+                        <span className="text-xs text-muted-foreground font-normal">
+                          pts
+                        </span>
+                      </div>
                     </div>
                   ))
+                ) : (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    No points awarded yet.
+                  </div>
                 )}
-              </div>
-              <div className="pt-4 border-t mt-auto">
-                {canUseExternalJudging ? (
-                  <Link
-                    href={`/dashboard/${slug}/event-works/results`}
-                    className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
-                  >
-                    View All Results <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                ) : canUseMarksUI ? (
-                  <Link
-                    href={`/dashboard/${slug}/event-works/marks`}
-                    className="w-full flex items-center justify-center py-2 text-sm border rounded-md hover:bg-muted/50 transition-colors"
-                  >
-                    View {tier === "BASIC" ? "Scoring" : "Marks"}{" "}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                ) : null}
               </div>
             </CardContent>
           </Card>
         </div>
-      </TooltipProvider>
+      </div>
 
       {/* Live links */}
       <LiveLinksCard
@@ -405,7 +397,7 @@ export default async function OverviewWidgets({
       />
 
       {/* Bottom section: Quick Actions */}
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Manage your festival components</CardDescription>

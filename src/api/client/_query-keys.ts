@@ -67,6 +67,7 @@ export const queryKeys = {
   },
   media: {
     all: (festivalId: string) => ["media", festivalId] as const,
+    videos: (festivalId: string) => ["media", "videos", festivalId] as const,
   },
   news: {
     all: (festivalId: string) => ["news", festivalId] as const,

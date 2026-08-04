@@ -1,10 +1,18 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { AnnouncerOverview } from "@/components/dashboard/overview/AnnouncerOverview";
+import { MediaOverview } from "@/components/dashboard/overview/MediaOverview";
 import { OverviewSkeleton } from "@/components/dashboard/overview/OverviewSkeleton";
 import OverviewWidgets from "@/components/dashboard/overview/OverviewWidgets";
+import { StageManagerOverview } from "@/components/dashboard/overview/StageManagerOverview";
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import {
+  ALL_FESTIVAL_ROLES,
+  PRIVILEGED_ROLES,
+} from "@/features/role-switch/constants";
+import { getActiveRoleCookie } from "@/features/role-switch/role-switch-cookie.server";
 
 export default async function FestivalDashboardPage({
   params,
@@ -22,11 +30,40 @@ export default async function FestivalDashboardPage({
     userId: session?.userId ?? null,
     globalRole: session?.role ?? null,
   });
-  if (context?.role === "STAGE_MANAGER") {
-    redirect(`/dashboard/${slug}/stage-manager`);
+  if (!context) notFound();
+
+  const isPrivileged = PRIVILEGED_ROLES.includes(context.role as any);
+  const activeRoleCookie = await getActiveRoleCookie(
+    festival.id,
+    isPrivileged ? [...ALL_FESTIVAL_ROLES] : context.memberRoles,
+  );
+  const effectiveRole = activeRoleCookie ?? context.role;
+
+  if (effectiveRole === "STAGE_MANAGER") {
+    return (
+      <Suspense fallback={<OverviewSkeleton />}>
+        <StageManagerOverview
+          festivalSlug={slug}
+          userId={session?.userId ?? ""}
+        />
+      </Suspense>
+    );
   }
-  if (context?.role === "ANNOUNCER") {
-    redirect(`/dashboard/${slug}/announcer`);
+
+  if (effectiveRole === "ANNOUNCER") {
+    return (
+      <Suspense fallback={<OverviewSkeleton />}>
+        <AnnouncerOverview festivalSlug={slug} />
+      </Suspense>
+    );
+  }
+
+  if (effectiveRole === "MEDIA") {
+    return (
+      <Suspense fallback={<OverviewSkeleton />}>
+        <MediaOverview festivalSlug={slug} />
+      </Suspense>
+    );
   }
 
   return (

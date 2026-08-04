@@ -5,16 +5,16 @@ import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 
 const STATUS_LABELS: Record<ProgrammeStatus, string> = {
-  READY: "Ready",
+  DRAFT: "Draft",
   ASSIGNED: "Assigned",
   SCHEDULED: "Scheduled",
   REPORTING: "Reporting",
-  STARTED: "Started",
-  ENDED: "Ended",
-  JUDGED: "Judged",
+  PENDING_JUDGMENT: "Pending Judgment",
+  JUDGING: "Judging",
+  PENDING_PUBLICATION: "Pending Publication",
   PUBLISHED: "Published",
   ANNOUNCED: "Announced",
-  RESET: "Reset",
+  CANCELLED: "Cancelled",
 };
 
 /**
@@ -28,17 +28,17 @@ const STATUS_LABELS: Record<ProgrammeStatus, string> = {
  * - PUBLISHED: success green (final, live)
  */
 const STATUS_STYLES: Record<ProgrammeStatus, string> = {
-  READY: "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
+  DRAFT: "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
   ASSIGNED: "border-transparent bg-muted text-muted-foreground",
   SCHEDULED:
     "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
   REPORTING: "border-transparent bg-warning/15 text-warning",
-  STARTED: "border-transparent bg-warning/15 text-warning",
-  ENDED: "border-transparent bg-muted text-muted-foreground hover:bg-muted/80",
-  JUDGED: "border-transparent bg-primary/15 text-primary",
+  PENDING_JUDGMENT: "border-transparent bg-warning/15 text-warning",
+  JUDGING: "border-transparent bg-warning/15 text-warning",
+  PENDING_PUBLICATION: "border-transparent bg-primary/15 text-primary",
   PUBLISHED: "border-transparent bg-success/15 text-success",
   ANNOUNCED: "border-transparent bg-success/15 text-success",
-  RESET: "border-transparent bg-destructive/15 text-destructive",
+  CANCELLED: "border-transparent bg-destructive/15 text-destructive",
 };
 
 interface ProgrammeStatusBadgeProps {
@@ -51,7 +51,7 @@ export function ProgrammeStatusBadge({
   className,
 }: ProgrammeStatusBadgeProps) {
   const label = STATUS_LABELS[status] ?? status;
-  const style = STATUS_STYLES[status] ?? STATUS_STYLES.READY;
+  const style = STATUS_STYLES[status] ?? STATUS_STYLES.DRAFT;
   return (
     <Badge variant="outline" className={cn("rounded-full", style, className)}>
       {label}

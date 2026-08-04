@@ -10,6 +10,7 @@ import {
   programme as programmes,
   result as results,
   stage as stages,
+  judge as judges,
 } from "@/core/database/schema";
 import { isAfter, parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
@@ -154,13 +155,12 @@ export async function updateTeamStandings(festivalId: string, standings: any) {
   return result[0];
 }
 
-export async function updateFestivalAnnouncerState(
+export async function updateFestivalStandings(
   festivalId: string,
   data: {
-    publicDisplayMode?: "programme_results" | "team_standings";
-    announcedProgrammesSinceStandings?: number;
-    announcerResultsPerStandings?: number;
     teamStandings?: unknown;
+    standingsPublishedAtResultNumber?: number | null;
+    standingsPublishedAt?: string | null;
   },
 ) {
   const result = await db
@@ -270,9 +270,14 @@ export async function getDashboardOverviewData(festivalId: string) {
     tp,
     ts,
     tg,
-    recentProgrammes,
-    recentParticipants,
-    programmesWithPublishedResults,
+    tc,
+    tst,
+    fest,
+    progActive,
+    progFinal,
+    participantsByTeamRaw,
+    participantsByCategoryRaw,
+    jCount,
   ] = await Promise.all([
     db
       .select({ c: count() })
@@ -286,79 +291,67 @@ export async function getDashboardOverviewData(festivalId: string) {
       .select({ c: count() })
       .from(groups)
       .where(eq(groups.festivalId, festivalId)),
-    db.query.programme.findMany({
-      where: eq(programmes.festivalId, festivalId),
-      orderBy: [desc(programmes.createdAt)],
-      limit: 4,
-      with: { category: true },
+    db
+      .select({ c: count() })
+      .from(categories)
+      .where(eq(categories.festivalId, festivalId)),
+    db
+      .select({ c: count() })
+      .from(stages)
+      .where(eq(stages.festivalId, festivalId)),
+    db.query.festival.findFirst({
+      where: eq(festivals.id, festivalId),
+      columns: { judgesCount: true, teamStandings: true },
     }),
-    db.query.participant.findMany({
-      where: eq(participants.festivalId, festivalId),
-      orderBy: [desc(participants.createdAt)],
-      limit: 6,
-      with: { group: true },
-    }),
-    db.query.programme.findMany({
-      where: and(
-        eq(programmes.festivalId, festivalId),
-        exists(
-          db
-            .select()
-            .from(results)
-            .where(
-              and(
-                eq(results.programmeId, programmes.id),
-                eq(results.isPublished, true),
-              ),
-            ),
-        ),
+    db
+      .select({ c: count() })
+      .from(programmes)
+      .where(
+        and(eq(programmes.festivalId, festivalId), eq(programmes.status, "PENDING_JUDGMENT")),
       ),
-      limit: 4,
-      with: {
-        category: true,
-        assignments: {
-          with: {
-            participant: true,
-            group: true,
-            result: true,
-          },
-        },
-      },
-    }),
+    db
+      .select({ c: count() })
+      .from(programmes)
+      .where(
+        and(eq(programmes.festivalId, festivalId), eq(programmes.status, "PUBLISHED")),
+      ),
+    db
+      .select({
+        name: groups.name,
+        count: count(participants.id),
+      })
+      .from(groups)
+      .leftJoin(participants, eq(participants.groupId, groups.id))
+      .where(eq(groups.festivalId, festivalId))
+      .groupBy(groups.name),
+    db
+      .select({
+        name: categories.name,
+        type: categories.type,
+        count: count(participants.id),
+      })
+      .from(categories)
+      .leftJoin(participants, eq(participants.categoryId, categories.id))
+      .where(eq(categories.festivalId, festivalId))
+      .groupBy(categories.name, categories.type),
+    db
+      .select({ c: count() })
+      .from(judges)
+      .where(eq(judges.festivalId, festivalId)),
   ]);
-
-  const recentResultsByProgramme: OverviewProgrammeResults[] =
-    programmesWithPublishedResults.map((prog) => {
-      const resultDates = prog.assignments
-        .map((a) => a.result)
-        .filter((r) => r?.isPublished)
-        .map((r) => parseInstant(r!.createdAt))
-        .filter((date): date is Date => date !== null);
-      const latestResultAt = resultDates.reduce<Date | null>(
-        (latest, date) => (!latest || isAfter(date, latest) ? date : latest),
-        null,
-      );
-      return {
-        programme: {
-          id: prog.id,
-          name: prog.name,
-          type: prog.type ?? "INDIVIDUAL",
-          category: prog.category
-            ? { id: prog.category.id, name: prog.category.name }
-            : { id: "", name: "Uncategorized" },
-          latestResultAt,
-        },
-        rows: buildResultRowsForProgramme(prog, prog.assignments, 5),
-      };
-    });
 
   return {
     totalProgrammes: tp[0].c,
     totalParticipants: ts[0].c,
     totalGroups: tg[0].c,
-    recentProgrammes,
-    recentParticipants,
-    recentResultsByProgramme,
+    totalCategories: tc[0].c,
+    totalStages: tst[0].c,
+    totalJudges: jCount[0].c,
+    programmesActiveCount: progActive[0].c,
+    programmesFinalCount: progFinal[0].c,
+    participantsByTeam: participantsByTeamRaw,
+    participantsByCategory: participantsByCategoryRaw,
+    teamStandings: fest?.teamStandings,
   };
 }
 

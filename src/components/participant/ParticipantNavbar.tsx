@@ -4,8 +4,8 @@ import { ArrowUpRight, Bell, Crown, Menu, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { APP_CONTAINER, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -50,13 +50,9 @@ export function ParticipantNavbar({
 
   if (isTeamLeader) {
     menuItems.push(
-      {
-        label: "Assign Programmes",
-        href: `${linkBase}/assign-programmes`,
-      },
-      { label: "My Participants", href: `${linkBase}/my-participants` },
+      { label: "Assign", href: `${linkBase}/assign-programmes` },
+      { label: "Participants", href: `${linkBase}/my-participants` },
       { label: "Programmes", href: `${linkBase}/all-programmes` },
-      { label: "Leaderboard", href: `${linkBase}/leaderboard` },
     );
   } else {
     menuItems.push(
@@ -75,107 +71,98 @@ export function ParticipantNavbar({
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-xl">
+      <div className={cn(APP_CONTAINER, "flex h-16 items-center gap-4")}>
+        {/* Identity */}
         <Link
           href={participantMainHref}
-          className="flex items-center gap-3 min-w-0"
+          className="flex min-w-0 shrink-0 items-center gap-2.5"
         >
-          <div className="min-w-0 flex items-center gap-2">
-            <div
-              className="h-8 w-8 uppercase rounded-full flex border border-border items-center justify-center font-bold text-sm text-primary-foreground bg-primary shrink-0"
-              aria-hidden
-            >
-              {participant.name?.charAt(0) ?? "S"}
-            </div>
-            <div className="min-w-0 leading-tight hidden lg:block">
-              {isTeamLeader ? (
-                <Badge
-                  variant="secondary"
-                  className=" bg-amber-500/15 text-amber-800 border-amber-500/30"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    <Crown className="h-3.5 w-3.5" />
-                    Team Leader
-                  </span>
-                </Badge>
-              ) : null}
-            </div>
-          </div>
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold uppercase text-primary-foreground"
+            aria-hidden
+          >
+            {participant.name?.charAt(0) ?? "P"}
+          </span>
+          <span className="hidden min-w-0 lg:block">
+            <span className="block truncate text-[15px] font-semibold tracking-tight text-heading">
+              {participant.name}
+            </span>
+            {isTeamLeader && (
+              <StatusPill tone="warning" icon={Crown} className="mt-0.5 px-2">
+                Team leader
+              </StatusPill>
+            )}
+          </span>
         </Link>
 
-        <nav className="flex items-center gap-2 md:gap-3">
-          <div className="hidden lg:flex items-center gap-1">
-            {menuItems.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-2",
-                    active ? "text-foreground bg-muted/70" : "",
-                  )}
-                >
-                  <span className="whitespace-nowrap">{item.label}</span>
-                  {item.badge}
-                </Link>
-              );
-            })}
-          </div>
+        {/* Sections */}
+        <nav className="mx-auto hidden h-16 items-center lg:flex">
+          {menuItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "relative flex h-full items-center gap-2 px-3.5 text-sm font-medium transition-colors",
+                  active
+                    ? "text-heading"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span className="whitespace-nowrap">{item.label}</span>
+                {item.badge}
+                {active && (
+                  <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
 
-          {/* Notification icon only (no implementation required). */}
-          <Link href={`${linkBase}/notifications`}>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              aria-label="Notifications"
-            >
-              <Bell className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link className="lg:hidden" href={participantMainHref}>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              aria-label={isTeamLeader ? "Dashboard" : "Profile"}
-            >
-              <User className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href={`/${festival.slug}`}>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              aria-label="Festival Live"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-            </Button>
-          </Link>
+        {/* Utilities */}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <IconLink
+            href={`${linkBase}/notifications`}
+            label="Notifications"
+            icon={Bell}
+          />
+          <IconLink
+            href={participantMainHref}
+            label={isTeamLeader ? "Dashboard" : "Profile"}
+            icon={User}
+            className="lg:hidden"
+          />
+          <IconLink
+            href={`/${festival.slug}`}
+            label="Festival site"
+            icon={ArrowUpRight}
+          />
 
           <div className="lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full"
-                  aria-label="Open participant menu"
+                  className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+                  aria-label="Open menu"
                 >
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent>
-                <div className="p-4 border-b">
-                  <div className="text-sm font-semibold">Menu</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {participant.isTeamLeader ? "Team leader" : "Participant"}
-                  </div>
+              <SheetContent className="p-0">
+                <div className="border-b border-border p-5">
+                  <p className="text-[15px] font-semibold tracking-tight text-heading">
+                    {participant.name}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {isTeamLeader ? "Team leader" : "Participant"} ·{" "}
+                    {festival.name}
+                  </p>
                 </div>
-                <div className="p-2 space-y-1">
+                <nav className="divide-y divide-border px-5">
                   {menuItems.map((item) => {
                     const active = pathname === item.href;
                     return (
@@ -183,8 +170,8 @@ export function ParticipantNavbar({
                         <Link
                           href={item.href}
                           className={cn(
-                            "w-full px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center justify-between gap-2",
-                            active ? "text-foreground bg-muted/70" : "",
+                            "flex items-center justify-between gap-3 py-3.5 text-[15px] font-medium transition-colors",
+                            active ? "text-primary" : "text-muted-foreground",
                           )}
                         >
                           <span className="truncate">{item.label}</span>
@@ -193,12 +180,37 @@ export function ParticipantNavbar({
                       </SheetClose>
                     );
                   })}
-                </div>
+                </nav>
               </SheetContent>
             </Sheet>
           </div>
-        </nav>
+        </div>
       </div>
     </header>
+  );
+}
+
+function IconLink({
+  href,
+  label,
+  icon: Icon,
+  className,
+}: {
+  href: string;
+  label: string;
+  icon: typeof Bell;
+  className?: string;
+}) {
+  return (
+    <Link href={href} className={className}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+        aria-label={label}
+      >
+        <Icon className="h-4 w-4" />
+      </Button>
+    </Link>
   );
 }

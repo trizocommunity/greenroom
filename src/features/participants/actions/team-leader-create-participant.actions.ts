@@ -7,6 +7,7 @@ import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { resolveDeadlineWindow } from "@/features/festivals/services/deadline-window";
 import { assignChestNumberForParticipantInternal } from "@/features/participants/actions/chest-number.actions";
 import { ParticipantService } from "@/features/participants/services/participant.service";
 
@@ -46,12 +47,23 @@ export async function createParticipantAsTeamLeaderAction(
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, festivalId),
-    columns: { participantCreationDeadline: true, slug: true },
+    columns: {
+      participantCreationStartDate: true,
+      participantCreationDeadline: true,
+      slug: true,
+    },
   });
   if (!festival) throw new AppError(ERROR_MESSAGES.NOT_FOUND);
 
-  if (isExpired(festival.participantCreationDeadline)) {
+  const { state } = resolveDeadlineWindow({
+    start: festival.participantCreationStartDate,
+    end: festival.participantCreationDeadline,
+  });
+  if (state === "CLOSED") {
     throw new AppError(ERROR_MESSAGES.PARTICIPANT_CREATION_DEADLINE_PASSED);
+  }
+  if (state === "UPCOMING") {
+    throw new AppError(ERROR_MESSAGES.PARTICIPANT_CREATION_WINDOW_NOT_OPEN);
   }
 
   const newParticipant = await ParticipantService.create(festivalId, {

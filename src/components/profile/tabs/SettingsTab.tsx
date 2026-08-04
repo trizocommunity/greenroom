@@ -5,12 +5,11 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { useProfile } from "@/api/client/profile";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AppPageHeader,
+  AppSectionHeading,
+  DataRow,
+} from "@/components/app/AppSection";
+import { TimezoneField } from "@/components/profile/TimezoneField";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -20,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TimezoneField } from "@/components/profile/TimezoneField";
 import { labelForTimezone } from "@/core/datetime";
 import { UpdateInstitutionDialog } from "../UpdateInstitutionDialog";
 import { UpdateProfileDialog } from "../UpdateProfileDialog";
@@ -31,12 +29,11 @@ interface SettingsTabProps {
 
 type ThemeMode = "light" | "dark" | "system";
 
-const THEME_OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] =
-  [
-    { value: "light", label: "Light", icon: Sun },
-    { value: "dark", label: "Dark", icon: Moon },
-    { value: "system", label: "System", icon: Laptop },
-  ];
+const THEME_OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Laptop },
+];
 
 export function SettingsTab({ userId: _userId }: SettingsTabProps) {
   const { data: userData, isLoading } = useProfile();
@@ -53,21 +50,22 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-in fade-in duration-500">
-        <Skeleton className="h-10 w-48" />
-        <div className="space-y-4">
-          <Skeleton className="h-48 w-full rounded-lg" />
-          <Skeleton className="h-48 w-full rounded-lg" />
+      <div className="animate-in fade-in space-y-8 duration-500">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-52" />
+          <Skeleton className="h-4 w-72" />
         </div>
+        <Skeleton className="h-48 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
       </div>
     );
   }
 
   if (!userData) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-muted-foreground">Failed to load profile data.</p>
-      </div>
+      <p className="py-12 text-center text-muted-foreground">
+        Failed to load profile data.
+      </p>
     );
   }
 
@@ -75,64 +73,36 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
   const institution = user.institution;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="space-y-2">
-        <h2 className="text-3xl font-semibold tracking-tight text-heading">
-          Account settings
-        </h2>
-        <p className="text-muted-foreground">
-          View and manage your account information.
-        </p>
-      </div>
+    <div className="animate-in fade-in space-y-10 duration-500">
+      <AppPageHeader
+        eyebrow="Settings"
+        title="Account"
+        description="Your details, how Greenroom looks, and the timezone every date is shown in."
+      />
 
-      {/* Personal Information Card */}
-      <Card className="border border-border rounded-2xl bg-card shadow-premium">
-        <CardHeader>
-          <CardTitle className="font-semibold tracking-tight text-heading">
-            Personal information
-          </CardTitle>
-          <CardDescription>Your personal account details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Full name</p>
-              <p className="text-sm font-medium text-heading">
-                {user.fullName || "—"}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Display name</p>
-              <p className="text-sm font-medium text-heading">
-                {user.displayName || "—"}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Email</p>
-              <p className="text-sm font-medium text-heading">{user.email}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Account type</p>
-              <p className="text-sm font-medium text-heading">
-                {user.accountType || "PERSONAL"}
-              </p>
-            </div>
-          </div>
-          <div className="pt-4 border-t border-border">
-            <UpdateProfileDialog user={user} />
-          </div>
-        </CardContent>
-      </Card>
+      <section>
+        <AppSectionHeading title="Personal information" />
+        <dl className="border-t border-border">
+          <DataRow label="Full name" value={user.fullName} />
+          <DataRow label="Display name" value={user.displayName} />
+          <DataRow label="Email" value={user.email} />
+          <DataRow
+            label="Account type"
+            value={user.accountType || "PERSONAL"}
+          />
+        </dl>
+        <div className="mt-5">
+          <UpdateProfileDialog user={user} />
+        </div>
+      </section>
 
-      {/* Preferences Card */}
-      <Card className="border border-border rounded-2xl bg-card shadow-premium">
-        <CardHeader>
-          <CardTitle className="font-semibold tracking-tight text-heading">
-            Preferences
-          </CardTitle>
-          <CardDescription>Choose how Greenroom looks for you.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <section className="border-t border-border pt-8">
+        <AppSectionHeading
+          title="Preferences"
+          description="Choose how Greenroom looks for you."
+        />
+
+        <div className="space-y-6">
           <div className="space-y-1.5">
             <Label htmlFor="theme-select">Appearance</Label>
             <Select
@@ -159,10 +129,11 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
               System follows your device&apos;s appearance.
             </p>
           </div>
-          <div className="space-y-1.5 pt-2 border-t border-border">
+
+          <div className="space-y-1.5 border-t border-border pt-6">
             <Label>Timezone</Label>
             <p className="text-xs text-muted-foreground">
-              All dates and times are shown in this zone. Currently:{" "}
+              Every date and time in Greenroom is shown in this zone. Currently:{" "}
               <span className="font-medium text-foreground">
                 {user.timezone
                   ? labelForTimezone(user.timezone)
@@ -171,62 +142,23 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
             </p>
             <TimezoneField initialTimezone={user.timezone} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* Institution Information Card - Only for INSTITUTIONAL accounts */}
       {user.accountType === "INSTITUTIONAL" && institution && (
-        <Card className="border border-border rounded-2xl bg-card shadow-premium">
-          <CardHeader>
-            <CardTitle className="font-semibold tracking-tight text-heading">
-              Institution information
-            </CardTitle>
-            <CardDescription>
-              Your institutional account details
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  Institution name
-                </p>
-                <p className="text-sm font-medium text-heading">
-                  {institution.name || "—"}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  Institution type
-                </p>
-                <p className="text-sm font-medium text-heading">
-                  {institution.type || "—"}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Affiliation</p>
-                <p className="text-sm font-medium text-heading">
-                  {institution.affiliation || "—"}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">City</p>
-                <p className="text-sm font-medium text-heading">
-                  {institution.city || "—"}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Size range</p>
-                <p className="text-sm font-medium text-heading">
-                  {institution.sizeRange || "—"}
-                </p>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-border">
-              <UpdateInstitutionDialog institution={institution} />
-            </div>
-          </CardContent>
-        </Card>
+        <section className="border-t border-border pt-8">
+          <AppSectionHeading title="Institution" />
+          <dl className="border-t border-border">
+            <DataRow label="Name" value={institution.name} />
+            <DataRow label="Type" value={institution.type} />
+            <DataRow label="Affiliation" value={institution.affiliation} />
+            <DataRow label="City" value={institution.city} />
+            <DataRow label="Size range" value={institution.sizeRange} />
+          </dl>
+          <div className="mt-5">
+            <UpdateInstitutionDialog institution={institution} />
+          </div>
+        </section>
       )}
     </div>
   );

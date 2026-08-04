@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
+import { getFestivalDurationDays } from "@/config/pricing";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
+import { MS } from "@/core/datetime/constants";
 
 export type PublicFestivalData = {
   festival: {
@@ -8,6 +10,7 @@ export type PublicFestivalData = {
     name: string;
     slug: string;
     description: string | null;
+    tagline: string | null;
     orgName: string | null;
     orgDescription: string | null;
     orgWebsite: string | null;
@@ -19,12 +22,12 @@ export type PublicFestivalData = {
     branding: any;
     status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
     tier: "BASIC" | "STANDARD" | "PRO" | null;
+    participantCreationStartDate: string | null;
     participantCreationDeadline: string | null;
+    programmeAssignmentStartDate: string | null;
     programmeAssignmentDeadline: string | null;
     scoringSystem: "POSITION_BASED" | "SCORE_BASED";
     teamStandings: any;
-    publicDisplayMode: "programme_results" | "team_standings";
-    announcerResultsPerStandings: number;
   };
   event: {
     startDate: string;
@@ -44,6 +47,7 @@ export async function getPublicFestivalData(
       name: true,
       slug: true,
       description: true,
+      tagline: true,
       orgName: true,
       orgDescription: true,
       orgWebsite: true,
@@ -59,12 +63,12 @@ export async function getPublicFestivalData(
       createdAt: true,
       expiresAt: true,
       location: true,
+      participantCreationStartDate: true,
       participantCreationDeadline: true,
+      programmeAssignmentStartDate: true,
       programmeAssignmentDeadline: true,
       scoringSystem: true,
       teamStandings: true,
-      publicDisplayMode: true,
-      announcerResultsPerStandings: true,
     },
   });
 
@@ -76,7 +80,8 @@ export async function getPublicFestivalData(
   const endDate =
     festival.expiresAt ||
     new Date(
-      new Date(festival.createdAt).getTime() + 40 * 24 * 60 * 60 * 1000,
+      new Date(festival.createdAt).getTime() +
+        getFestivalDurationDays() * MS.day,
     ).toISOString();
 
   return {

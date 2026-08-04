@@ -27,7 +27,6 @@ interface AdvancedSettingsDialogProps {
   festival: {
     id: string;
     scoringSystem?: "POSITION_BASED" | "SCORE_BASED" | null;
-    publicDisplayMode?: "programme_results" | "team_standings" | null;
     chestNumberSettings?: ChestNumberSettings | null;
   };
   onSuccess?: () => void;
@@ -45,9 +44,6 @@ export function AdvancedSettingsDialog({
   const [scoringSystem, setScoringSystem] = useState<
     "POSITION_BASED" | "SCORE_BASED"
   >(festival.scoringSystem ?? "SCORE_BASED");
-  const [publicDisplayMode, setPublicDisplayMode] = useState<
-    "programme_results" | "team_standings"
-  >(festival.publicDisplayMode ?? "programme_results");
   const [chestNumberPrefix, setChestNumberPrefix] = useState(
     festival.chestNumberSettings?.prefix ?? "",
   );
@@ -58,7 +54,6 @@ export function AdvancedSettingsDialog({
     try {
       const res = await updateFestivalSettingsAction(festival.id, {
         scoringSystem,
-        publicDisplayMode,
         chestNumberSettings: {
           autoGenerate: true,
           prefix: chestNumberPrefix || "AHL-",
@@ -130,26 +125,6 @@ export function AdvancedSettingsDialog({
             </select>
             <p className="text-sm text-muted-foreground">
               How results are ranked and displayed.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="publicDisplayMode">Public Display Mode</Label>
-            <select
-              id="publicDisplayMode"
-              value={publicDisplayMode}
-              onChange={(e) =>
-                setPublicDisplayMode(
-                  e.target.value as "programme_results" | "team_standings",
-                )
-              }
-              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="programme_results">Programme Results</option>
-              <option value="team_standings">Team Standings</option>
-            </select>
-            <p className="text-sm text-muted-foreground">
-              How results appear on the public site.
             </p>
           </div>
 

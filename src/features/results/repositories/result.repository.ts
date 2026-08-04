@@ -80,30 +80,10 @@ async function bulkPublishByProgramme(
   const now = serverNowIso();
   const result = await db
     .update(results)
-    .set(
-      isPublished
-        ? { isPublished: true, updatedAt: now }
-        : {
-            isPublished: false,
-            isAnnounced: false,
-            announcedAt: null,
-            updatedAt: now,
-          },
-    )
+    .set({ isPublished, updatedAt: now })
     .where(eq(results.programmeId, programmeId))
     .returning();
   return result;
-}
-
-async function bulkAnnounceByProgramme(programmeId: string) {
-  const now = serverNowIso();
-  return db
-    .update(results)
-    .set({ isAnnounced: true, announcedAt: now, updatedAt: now })
-    .where(
-      and(eq(results.programmeId, programmeId), eq(results.isPublished, true)),
-    )
-    .returning();
 }
 
 async function bulkPublishByFestival(festivalId: string, isPublished: boolean) {
@@ -161,7 +141,6 @@ export const ResultModel = {
   findByProgramme,
   togglePublish,
   bulkPublishByProgramme,
-  bulkAnnounceByProgramme,
   bulkPublishByFestival,
   upsert,
 };

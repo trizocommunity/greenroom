@@ -8,8 +8,12 @@ export default function PublicLayout({
 }>) {
   return (
     <>
+      {/* No top spacer here on purpose. The navbar is a floating island, so
+          each page's first section runs to the very top of the viewport and
+          owns the padding that clears the navbar — otherwise the spacer
+          shows as a blank band above every hero's background. */}
       <Navbar />
-      <div className="pt-18">{children}</div>
+      {children}
       <Footer />
     </>
   );

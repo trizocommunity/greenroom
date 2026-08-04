@@ -10,8 +10,8 @@ import {
   festival as festivalTable,
   participant as participantTable,
 } from "@/core/database/schema";
-import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { serverNowIso } from "@/core/datetime/server";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { generateProfileSlug } from "@/core/utils/slug";
 
 export async function getChestNumberSettings(festivalId: string) {

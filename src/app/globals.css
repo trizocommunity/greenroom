@@ -247,6 +247,139 @@ h6 {
   .shadow-primary-glow {
     box-shadow: 0 12px 28px -12px rgba(215, 38, 38, 0.35);
   }
+
+  /* ── Motion primitives (marketing site + public festival site) ─────────
+     Everything below is presentation-only: no layout impact, and each one
+     degrades to a static state under `prefers-reduced-motion`. */
+
+  /* Faint blueprint grid, masked so it dissolves toward the edges. */
+  .bg-grid {
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 72px 72px;
+  }
+
+  .mask-radial-fade {
+    -webkit-mask-image: radial-gradient(
+      ellipse 65% 55% at 50% 35%,
+      black,
+      transparent 100%
+    );
+    mask-image: radial-gradient(
+      ellipse 65% 55% at 50% 35%,
+      black,
+      transparent 100%
+    );
+  }
+
+  /* Fades a horizontally-scrolling strip out at both ends. */
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+  }
+
+  /* Brand gradient applied to text — used once per page, on the hero. */
+  .text-gradient-brand {
+    background-image: linear-gradient(
+      100deg,
+      var(--heading) 0%,
+      var(--heading) 40%,
+      var(--primary) 70%,
+      var(--secondary) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .animate-marquee {
+    animation: gr-marquee 42s linear infinite;
+  }
+
+  /* Slow drifting colour field behind the hero. */
+  .animate-aurora {
+    animation: gr-aurora 18s ease-in-out infinite alternate;
+  }
+
+  /* Light sweep across a surface — the "live" tell on the demo frame. */
+  .animate-sheen {
+    animation: gr-sheen 4.5s ease-in-out infinite;
+  }
+
+  .animate-pulse-dot {
+    animation: gr-pulse-dot 2s ease-in-out infinite;
+  }
+
+}
+
+@keyframes gr-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes gr-aurora {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, -3%, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-3%, 4%, 0) scale(1.05);
+  }
+}
+
+@keyframes gr-sheen {
+  0%,
+  60%,
+  100% {
+    transform: translateX(-120%);
+  }
+  30% {
+    transform: translateX(220%);
+  }
+}
+
+@keyframes gr-pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  70% {
+    opacity: 0.85;
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+
+/* Unlayered on purpose: rules outside a cascade layer beat the layered
+   utilities above, so this disables the decorative motion without
+   `!important`. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-aurora,
+  .animate-sheen,
+  .animate-pulse-dot {
+    animation: none;
+  }
 }
 
 @layer base {

@@ -40,6 +40,7 @@ export const ERROR_MESSAGES = {
     "The selected group does not belong to this festival.",
   PARTICIPANT_INVALID_CATEGORY:
     "The selected category does not belong to this festival.",
+  PARTICIPANT_INVALID_DOB: "The date of birth you entered does not match.",
   PARTICIPANT_EMAIL_DUPLICATE:
     "A participant with this email is already registered for this festival.",
   PARTICIPANT_NAME_DUPLICATE:
@@ -89,8 +90,26 @@ export const ERROR_MESSAGES = {
   ASSIGNMENT_DEPENDENCIES_MISSING:
     "Please create categories, groups, programmes, and participants before making assignments.",
   ASSIGNMENT_DEADLINE_PASSED_ADMIN: "Deadline passed. Assignments are closed.",
+  ASSIGNMENT_WINDOW_NOT_OPEN:
+    "Assignments haven't opened yet. Please wait for the start date.",
+  ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT:
+    "INDIVIDUAL programme assignments must reference a participant, not a group.",
+  ASSIGNMENT_GROUP_REQUIRES_GROUP:
+    "GROUP programme assignments must reference a group and team number, not a participant.",
+  ASSIGNMENT_GROUP_REQUIRES_TEAM_NUMBER:
+    "GROUP programme assignments must include a team number of at least 1.",
+  ASSIGNMENT_GROUP_ONLY_OPERATION:
+    "This operation is only valid for GROUP programme assignments.",
+  ASSIGNMENT_INVALID_SHAPE:
+    "Assignment shape does not match the programme type (INDIVIDUAL requires participantId; GROUP requires groupId + teamNumber).",
+  PROGRAMME_TYPE_UNKNOWN:
+    "Programme type is unknown or missing. Every programme must explicitly declare its type as INDIVIDUAL or GROUP.",
+  PROGRAMME_TYPE_MISMATCH:
+    "Programme type does not match the expected type for this operation.",
   PARTICIPANT_CREATION_DEADLINE_PASSED:
     "Deadline passed. Adding new participants is closed.",
+  PARTICIPANT_CREATION_WINDOW_NOT_OPEN:
+    "Participant registration hasn't opened yet. Please wait for the start date.",
 
   // ─── Usage / Limits ───────────────────────────────────────────────────────
   USAGE_LIMIT_EXCEEDED:

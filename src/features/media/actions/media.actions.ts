@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
-import { festivalMediaImage } from "@/core/database/schema";
+import { festivalMediaImage, festivalMediaVideo } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
@@ -21,6 +21,16 @@ export async function getMediaImagesAction(festivalId: string) {
     orderBy: (t, { asc }) => [asc(t.order)],
   });
   return images;
+}
+
+export async function getMediaVideosAction(festivalId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+  const videos = await db.query.festivalMediaVideo.findMany({
+    where: eq(festivalMediaVideo.festivalId, festivalId),
+    orderBy: (t, { asc }) => [asc(t.order)],
+  });
+  return videos;
 }
 
 export async function addMediaImageAction(festivalId: string, url: string) {

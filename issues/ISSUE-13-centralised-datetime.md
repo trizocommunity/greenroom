@@ -14,14 +14,22 @@
 |---|---|---|
 | 1 | `core/datetime` module + tests | **Merged-ready** (PR #1) |
 | 2 | Schema: `timestamptz` migration + `user.timezone` + `festival.timezone` | **Merged-ready** (PR #2) — migration applied to dev DB; 109 columns converted; existing rows backfilled with `UTC` |
-| 3 | Server actions / services / repositories call-site replacement | **Done** (this PR) |
-| 4 | Server API route handlers call-site replacement | **Done** (this PR) |
-| 5 | Onboarding: auto-detect TZ + inline `<TimezoneSelect>` | **Done** (this PR) |
-| 6 | Profile settings: timezone edit field | **Done** (this PR) |
-| 7 | Wire `user.timezone` / `festival.timezone` into client display helpers | **Done (foundation)** — `UserTimezoneProvider` + `getCurrentUserTimezone()` server helper; per-component `tz` plumbing is the Phase 8 follow-up. Critical bug fixes (DOB login, judgement day key, festival-schedule-day expansion) are in. |
-| 8 | Festival public site + dashboard: render in `festival.timezone` | **Done** (this PR) — 31 legacy `parseStoredInstant` callers migrated to `parseInstant` + `formatDate`/`formatDateTime` with `useDisplayTimezone()` (client) or `festival.timezone` (server). |
-| 9 | PDFs / exports: render in `festival.timezone` | **Done** (this PR) — `buildSectionedPdf`, call-list/results generators, QR PDF, manual book all render in `festival.timezone` |
-| 10 | Biome guardrails (forbid raw `new Date()` outside `core/datetime/`) | **Done** — `noRestrictedImports` rule active in `biome.json`; `@/core/utils/date-time` deprecated shim remains as compatibility layer; new imports are blocked. |
+| 3 | Server actions / services / repositories call-site replacement | **Done** |
+| 4 | Server API route handlers call-site replacement | **Done** |
+| 5 | Onboarding: auto-detect TZ + inline `<TimezoneSelect>` | **Done** |
+| 6 | Profile settings: timezone edit field | **Done** |
+| 7 | Wire `user.timezone` / `festival.timezone` into client display helpers | **Done** — `UserTimezoneProvider` + `getCurrentUserTimezone()` server helper; per-component `tz` plumbing via `useDisplayTimezone()` (client) or `festival.timezone` (server). Critical bug fixes (DOB login off-by-one midnight, judgement day key, festival-schedule-day expansion) included. |
+| 8 | Festival public site + dashboard: render in `festival.timezone` | **Done** — 31 legacy `parseStoredInstant` callers migrated to `parseInstant` + `formatDate`/`formatDateTime`/`formatTime`/`formatRelative` with the explicit `tz` option. |
+| 9 | PDFs / exports: render in `festival.timezone` | **Done** — `buildSectionedPdf`, call-list/results generators, QR PDF, manual book all render in `festival.timezone`. |
+| 10 | Biome guardrails (forbid raw `new Date()` outside `core/datetime/`) | **Done** — `noRestrictedImports` rule active in `biome.json`; `@/core/utils/date-time` deprecated shim remains as compatibility layer. |
+
+### Followup rounds (post-deploy fixes)
+
+| Commit | Symptom | Fix |
+|---|---|---|
+| `a3c96d3` | Runtime crash `Cannot read properties of null (reading 'getTime')` in festival dashboard layout | `parseInstant(festival.expiresAt)!.getTime()` → `new Date(festival.expiresAt).getTime()`; `Date.now()` → `serverNowMs()`. |
+| `e455ed8` | "NaNd ago" / "NaN days remaining" in festival status badge | `parseInstant` returns `null` for `Date` instances whose `getTime()` is `NaN` (rather than letting them leak); `festival-status.service.ts` guards every countdown branch with a `null` check so the badge suffix disappears instead of rendering "NaN days"; `formatFestivalDateDDMMYY` distinguishes missing (`"—"`) from invalid (`"Invalid date"`). |
+| `6e798ed` | "Everywhere none/empty" (DOB, createdAt, festival.status dates all rendered as `—` on Vercel deploy) | `parseInstant` accepts Drizzle `mode: "string"` `timestamptz` outputs by normalising `±00(:?MM)?` to `Z`; last-resort fallback restricted to 13-digit epoch ms only (no browser-locale drift); one-shot `console.warn` debug hook available for round N+1. |
 
 ---
 

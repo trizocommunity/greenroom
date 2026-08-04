@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  AlertTriangle,
   Edit,
   KeyRound,
   Megaphone,
   MoreVertical,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   Users,
   X,
@@ -18,6 +20,7 @@ interface Stage {
   name: string;
   description: string | null;
   createdBy: string | null;
+  isOffStage?: boolean;
 }
 
 import { useState } from "react";
@@ -29,6 +32,7 @@ import {
   useUnassignStageManager,
 } from "@/api/client/stage-assignments";
 import { useDeleteStage } from "@/api/client/stages";
+import { useProvisionOffStage } from "@/api/client/server-actions";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { StageAssignmentToggleDialog } from "@/components/festival/stage-assignment/StageAssignmentToggleDialog";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
@@ -95,6 +99,18 @@ export function StagesClient({
   const { data: stageAssignments = [] } = useStageAssignments(festivalId);
   const assignManager = useAssignStageManager();
   const unassignManager = useUnassignStageManager();
+  const provisionOffStage = useProvisionOffStage();
+
+  const hasOffStage = stages.some((s) => s.isOffStage);
+
+  const handleProvisionOffStage = async () => {
+    try {
+      const result = await provisionOffStage.mutateAsync({ festivalId });
+      toast.success(`Off-Stage stage provisioned (${result.name}).`);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to provision Off-Stage stage.");
+    }
+  };
 
   const stageManagers = members.filter(
     (m) => m.role === "STAGE_MANAGER" && m.isActive,
@@ -217,6 +233,36 @@ export function StagesClient({
         </div>
       </div>
 
+      {!hasOffStage && !isReadOnly && (
+        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-amber-500/40 bg-amber-500/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                Off-Stage stage is missing
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Programmes without a scheduled time slot cannot be judged
+                until the Off-Stage stage is provisioned. Click to create it
+                with a portal credential.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 shrink-0 gap-1.5 border-amber-500/40"
+            onClick={handleProvisionOffStage}
+            disabled={provisionOffStage.isPending}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            {provisionOffStage.isPending
+              ? "Provisioning…"
+              : "Provision Off-Stage"}
+          </Button>
+        </div>
+      )}
+
       {stages.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/20">
           <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -254,12 +300,19 @@ export function StagesClient({
                       <Megaphone className="h-4 w-4 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <h3
-                        className="font-semibold text-base leading-tight text-foreground line-clamp-2"
-                        title={stage.name}
-                      >
-                        {stage.name}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3
+                          className="font-semibold text-base leading-tight text-foreground line-clamp-2"
+                          title={stage.name}
+                        >
+                          {stage.name}
+                        </h3>
+                        {stage.isOffStage && (
+                          <Badge variant="secondary" className="shrink-0 text-[10px] font-medium uppercase tracking-wide">
+                            Virtual
+                          </Badge>
+                        )}
+                      </div>
                       <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
                         {stage.description || "No description provided."}
                       </p>
@@ -295,14 +348,18 @@ export function StagesClient({
                             <KeyRound className="h-4 w-4 mr-2" />
                             Portal access
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onSelect={() => setStageToDelete(stage.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
+                          {!stage.isOffStage && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onSelect={() => setStageToDelete(stage.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </>
                       )}
                     </DropdownMenuContent>

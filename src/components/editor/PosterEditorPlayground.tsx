@@ -74,6 +74,7 @@ export default function PosterEditorPlayground({
   previewDataHint,
   resetTemplate,
   saveNowLabel,
+  dbTemplates,
 }: {
   initialDocument?: PosterEditorDocument | null;
   templateCode?: string;
@@ -88,6 +89,7 @@ export default function PosterEditorPlayground({
   resetTemplate?: ResetTemplateConfig;
   /** Custom label for the Save / Save now button */
   saveNowLabel?: string;
+  dbTemplates?: any[];
 } = {}) {
   const editor = usePosterEditorState({ previewBindings });
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -274,6 +276,7 @@ export default function PosterEditorPlayground({
             onHideSidebar={() => setSidebarOpen(false)}
             brandHref={sidebarBrandHref}
             brandLabel={sidebarBrandLabel}
+            dbTemplates={dbTemplates}
           />
         )}
 

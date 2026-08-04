@@ -107,10 +107,18 @@ export async function updateFestivalAction(
           ? parseInstant(validated.endDate)?.toISOString()
           : undefined,
         programmeAssignmentDeadline: validated.programmeAssignmentDeadline
-          ? parseInstant(
-              validated.programmeAssignmentDeadline,
-            )?.toISOString()
+          ? parseInstant(validated.programmeAssignmentDeadline)?.toISOString()
           : validated.programmeAssignmentDeadline === null
+            ? null
+            : undefined,
+        programmeAssignmentStartDate: validated.programmeAssignmentStartDate
+          ? parseInstant(validated.programmeAssignmentStartDate)?.toISOString()
+          : validated.programmeAssignmentStartDate === null
+            ? null
+            : undefined,
+        participantCreationStartDate: validated.participantCreationStartDate
+          ? parseInstant(validated.participantCreationStartDate)?.toISOString()
+          : validated.participantCreationStartDate === null
             ? null
             : undefined,
         updatedAt: serverNowIso(),

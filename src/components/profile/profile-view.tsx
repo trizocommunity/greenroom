@@ -24,14 +24,15 @@ export function ProfileView({ user }: ProfileViewProps) {
     user.displayName || user.fullName || user.email.split("@")[0];
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-      {/* Sidebar - hidden on mobile, accessible via top navigation menu sidebar */}
-      <aside className="hidden md:block w-64 shrink-0">
-        <ProfileSidebarContent user={user} />
+    <div className="flex flex-col gap-8 md:flex-row md:gap-14">
+      {/* Sidebar — hidden on mobile, reachable from the top navigation menu */}
+      <aside className="hidden w-52 shrink-0 md:block">
+        <div className="sticky top-28">
+          <ProfileSidebarContent user={user} />
+        </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 min-w-0">
+      <main className="min-w-0 flex-1">
         {activeTab === "overview" && (
           <OverviewTab displayName={displayName} userId={user.id} />
         )}

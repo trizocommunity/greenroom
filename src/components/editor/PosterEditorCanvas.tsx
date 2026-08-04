@@ -14,6 +14,7 @@ import {
   Text,
   Transformer,
 } from "react-konva";
+import { PosterElementRenderer } from "./PosterElementRenderer";
 import { EditorCanvasGuides } from "./EditorCanvasGuides";
 import { EditorTransformHud } from "./EditorTransformHud";
 import { konvaShadowProps } from "./editor-konva-props";
@@ -44,6 +45,8 @@ import type {
   PosterEditorState,
   SelectionBounds,
 } from "./use-poster-editor-state";
+import { documentFontsFromElements, buildGoogleFontsCssUrl } from "./editor-font-catalog";
+import { measureInlineTextEditorLayout, CanvasInlineTextEditor, type InlineTextEditorLayout } from "./inline-text-editor";
 
 interface PosterEditorCanvasProps {
   editor: PosterEditorState;
@@ -88,60 +91,7 @@ function BackgroundImage({
   return <KonvaImage image={image} x={0} y={0} width={width} height={height} />;
 }
 
-function ElementImage({
-  id,
-  url,
-  x,
-  y,
-  width,
-  height,
-  draggable,
-  onSelect,
-  hoverHandlers,
-  dragHandlers,
-  onBoundsChange,
-}: {
-  id: string;
-  url: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  draggable: boolean;
-  onSelect?: (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
-  hoverHandlers: ElementHoverHandlers;
-  dragHandlers: ElementDragHandlers;
-  onBoundsChange: () => void;
-}) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-  useEffect(() => {
-    const img = new window.Image();
-    img.onload = () => setImage(img);
-    img.src = url;
-  }, [url]);
-  if (!image) return null;
-  return (
-    <KonvaImage
-      id={id}
-      image={image}
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      draggable={draggable}
-      onClick={onSelect}
-      onTap={onSelect}
-      onMouseEnter={hoverHandlers.onMouseEnter}
-      onMouseLeave={hoverHandlers.onMouseLeave}
-      onDragStart={dragHandlers.onDragStart}
-      onDragMove={dragHandlers.onDragMove}
-      onDragEnd={(e) => {
-        dragHandlers.onDragEnd(e);
-        onBoundsChange();
-      }}
-    />
-  );
-}
+
 
 function renderBackground(
   doc: NonNullable<PosterEditorState["doc"]>,
@@ -203,6 +153,11 @@ export function PosterEditorCanvas({
   presentZoom,
 }: PosterEditorCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const stageContainerRef = useRef<HTMLDivElement>(null);
+  
+
+
+  // Disable browser context menu
   const transformerRef = useRef<Konva.Transformer>(null);
   const [guideState, setGuideState] = useState<SnapGuideResult | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -214,6 +169,9 @@ export function PosterEditorCanvas({
     shiftKey: boolean;
   } | null>(null);
   const skipClearClickRef = useRef(false);
+
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [editingLayout, setEditingLayout] = useState<InlineTextEditorLayout | null>(null);
 
   const {
     doc,
@@ -232,6 +190,22 @@ export function PosterEditorCanvas({
     setFormatPainterActive,
     snapGuidesEnabled,
   } = editor;
+
+  // Eagerly load fonts used in the current document so they render correctly on canvas
+  useEffect(() => {
+    if (!doc?.elements) return;
+    const fonts = documentFontsFromElements(doc.elements).filter(f => f.googleFamily);
+    for (const font of fonts) {
+      const id = `greenroom-editor-font-${font.id}`;
+      if (!document.getElementById(id)) {
+        const link = document.createElement("link");
+        link.id = id;
+        link.rel = "stylesheet";
+        link.href = buildGoogleFontsCssUrl([font]);
+        document.head.appendChild(link);
+      }
+    }
+  }, [doc?.elements]);
 
   const interactive = !presentMode;
   const scale = presentZoom ?? zoom;
@@ -790,235 +764,39 @@ export function PosterEditorCanvas({
                       handleElementSelect(el, e)
                   : undefined;
                 const hoverHandlers = makeHoverHandlers(el);
+                const onDblClick = interactive && el.type === "text" && hostRef.current && stageRef.current
+                  ? () => {
+                      const host = hostRef.current;
+                      if (!host || !stageRef.current) return;
+                      const tw = el.width ?? estimateTextWidth(getEditableText(el), el.fontSize ?? 24);
+                      const layout = measureInlineTextEditorLayout(el, stageRef.current, host, scale, tw);
+                      if (layout) {
+                        setEditingTextId(el.id);
+                        setEditingLayout(layout);
+                        // Hide transformer while editing
+                        if (transformerRef.current) {
+                           transformerRef.current.nodes([]);
+                        }
+                      }
+                    }
+                  : undefined;
 
-                if (el.type === "text") {
-                  const content = displayText(el);
-                  const fontSize = el.fontSize ?? 24;
-                  const textWidth =
-                    el.width ??
-                    estimateTextWidth(getEditableText(el), fontSize);
-                  const deco = el.textDecoration ?? "";
-                  const shadow = konvaShadowProps(el);
-                  return (
-                    <Group
-                      key={el.id}
-                      id={el.id}
-                      x={el.x}
-                      y={el.y}
-                      scaleX={el.scaleX ?? 1}
-                      scaleY={el.scaleY ?? 1}
-                      opacity={nodeOpacity}
-                      draggable={draggable}
-                      rotation={el.rotation ?? 0}
-                      onClick={onSelect}
-                      onTap={onSelect}
-                      {...hoverHandlers}
-                      onDragStart={dragHandlers.onDragStart}
-                      onDragMove={dragHandlers.onDragMove}
-                      onDragEnd={dragHandlers.onDragEnd}
-                    >
-                      <Text
-                        text={content}
-                        fontSize={fontSize}
-                        fontFamily={el.fontFamily}
-                        fontStyle={el.fontStyle}
-                        fill={el.fill ?? EDITOR_COLORS.foreground}
-                        align={el.align ?? "left"}
-                        width={textWidth}
-                        lineHeight={el.lineHeight ?? 1.2}
-                        letterSpacing={el.letterSpacing ?? 0}
-                        wrap="word"
-                        listening
-                        onClick={onSelect}
-                        onTap={onSelect}
-                        {...hoverHandlers}
-                        {...shadow}
-                      />
-                      {deco.includes("underline") && (
-                        <Line
-                          points={[0, fontSize + 4, textWidth, fontSize + 4]}
-                          stroke={el.fill ?? EDITOR_COLORS.foreground}
-                          strokeWidth={2}
-                          listening={false}
-                        />
-                      )}
-                      {deco.includes("line-through") && (
-                        <Line
-                          points={[
-                            0,
-                            fontSize * 0.55,
-                            textWidth,
-                            fontSize * 0.55,
-                          ]}
-                          stroke={el.fill ?? EDITOR_COLORS.foreground}
-                          strokeWidth={2}
-                          listening={false}
-                        />
-                      )}
-                    </Group>
-                  );
-                }
-
-                if (el.type === "rect") {
-                  return (
-                    <Rect
-                      key={el.id}
-                      id={el.id}
-                      x={el.x}
-                      y={el.y}
-                      width={el.width ?? 100}
-                      height={el.height ?? 80}
-                      cornerRadius={el.cornerRadius ?? 0}
-                      fill={el.fill}
-                      stroke={el.stroke}
-                      strokeWidth={el.strokeWidth}
-                      opacity={nodeOpacity}
-                      scaleX={el.scaleX ?? 1}
-                      scaleY={el.scaleY ?? 1}
-                      rotation={el.rotation ?? 0}
-                      {...konvaShadowProps(el)}
-                      draggable={draggable}
-                      onClick={onSelect}
-                      onTap={onSelect}
-                      {...hoverHandlers}
-                      onDragStart={dragHandlers.onDragStart}
-                      onDragMove={dragHandlers.onDragMove}
-                      onDragEnd={dragHandlers.onDragEnd}
-                    />
-                  );
-                }
-
-                if (el.type === "circle") {
-                  return (
-                    <Circle
-                      key={el.id}
-                      id={el.id}
-                      x={el.x}
-                      y={el.y}
-                      radius={el.radius ?? 50}
-                      fill={el.fill}
-                      stroke={el.stroke}
-                      strokeWidth={el.strokeWidth}
-                      opacity={nodeOpacity}
-                      draggable={draggable}
-                      onClick={onSelect}
-                      onTap={onSelect}
-                      {...hoverHandlers}
-                      onDragStart={dragHandlers.onDragStart}
-                      onDragMove={dragHandlers.onDragMove}
-                      onDragEnd={dragHandlers.onDragEnd}
-                    />
-                  );
-                }
-
-                if (el.type === "triangle") {
-                  return (
-                    <RegularPolygon
-                      key={el.id}
-                      id={el.id}
-                      x={el.x}
-                      y={el.y}
-                      sides={3}
-                      radius={el.radius ?? 60}
-                      fill={el.fill}
-                      stroke={el.stroke}
-                      strokeWidth={el.strokeWidth}
-                      opacity={nodeOpacity}
-                      draggable={draggable}
-                      onClick={onSelect}
-                      onTap={onSelect}
-                      {...hoverHandlers}
-                      onDragStart={dragHandlers.onDragStart}
-                      onDragMove={dragHandlers.onDragMove}
-                      onDragEnd={dragHandlers.onDragEnd}
-                    />
-                  );
-                }
-
-                if (el.type === "line") {
-                  return (
-                    <Line
-                      key={el.id}
-                      id={el.id}
-                      x={el.x}
-                      y={el.y}
-                      points={el.points ?? [0, 0, 200, 0]}
-                      stroke={el.stroke ?? "#0f172a"}
-                      strokeWidth={el.strokeWidth ?? 4}
-                      opacity={nodeOpacity}
-                      draggable={draggable}
-                      onClick={onSelect}
-                      onTap={onSelect}
-                      {...hoverHandlers}
-                      onDragStart={dragHandlers.onDragStart}
-                      onDragMove={dragHandlers.onDragMove}
-                      onDragEnd={dragHandlers.onDragEnd}
-                    />
-                  );
-                }
-
-                if (el.type === "qr") {
-                  const qw = el.width ?? 160;
-                  const qh = el.height ?? 160;
-                  return (
-                    <Group
-                      key={el.id}
-                      id={el.id}
-                      x={el.x}
-                      y={el.y}
-                      opacity={nodeOpacity}
-                      draggable={draggable}
-                      onClick={onSelect}
-                      onTap={onSelect}
-                      {...hoverHandlers}
-                      onDragStart={dragHandlers.onDragStart}
-                      onDragMove={dragHandlers.onDragMove}
-                      onDragEnd={dragHandlers.onDragEnd}
-                    >
-                      <Rect
-                        width={qw}
-                        height={qh}
-                        fill={el.fill ?? EDITOR_COLORS.white}
-                        stroke={el.stroke ?? EDITOR_COLORS.mutedForeground}
-                        strokeWidth={el.strokeWidth ?? 2}
-                        dash={[8, 6]}
-                        onClick={onSelect}
-                        onTap={onSelect}
-                        {...hoverHandlers}
-                      />
-                      <Text
-                        y={qh / 2 - 10}
-                        width={qw}
-                        align="center"
-                        text={previewMode ? "QR" : "QR CODE"}
-                        fontSize={14}
-                        fill={EDITOR_COLORS.mutedForeground}
-                        listening={false}
-                      />
-                    </Group>
-                  );
-                }
-
-                if (el.type === "image" && el.imageUrl) {
-                  return (
-                    <ElementImage
-                      key={el.id}
-                      id={el.id}
-                      url={el.imageUrl}
-                      x={el.x}
-                      y={el.y}
-                      width={el.width ?? 200}
-                      height={el.height ?? 150}
-                      draggable={draggable}
-                      onSelect={onSelect}
-                      hoverHandlers={hoverHandlers}
-                      dragHandlers={dragHandlers}
-                      onBoundsChange={notifyBounds}
-                    />
-                  );
-                }
-
-                return null;
+                return (
+                  <PosterElementRenderer
+                    key={el.id}
+                    el={el}
+                    interactive={interactive}
+                    previewMode={previewMode}
+                    draggable={draggable}
+                    nodeOpacity={nodeOpacity}
+                    displayText={el.type === "text" ? displayText(el) : ""}
+                    onSelect={onSelect}
+                    hoverHandlers={hoverHandlers}
+                    dragHandlers={dragHandlers}
+                    onBoundsChange={notifyBounds}
+                    onDblClick={onDblClick}
+                  />
+                );
               })}
 
               {showHoverRing && hoverBox && (
@@ -1062,6 +840,40 @@ export function PosterEditorCanvas({
             )}
           </Layer>
         </Stage>
+        {editingTextId && editingLayout && (() => {
+           const el = doc.elements.find(e => e.id === editingTextId);
+           if (!el || el.type !== "text") return null;
+           return (
+             <CanvasInlineTextEditor
+               element={el}
+               value={getEditableText(el)}
+               layout={editingLayout}
+               onCommit={(text) => {
+                 updateElement(el.id, { text });
+                 setEditingTextId(null);
+                 setEditingLayout(null);
+                 // Restore transformer
+                 setTimeout(() => {
+                   if (transformerRef.current && stageRef.current) {
+                     const node = stageRef.current.findOne(`#${el.id}`);
+                     if (node) transformerRef.current.nodes([node]);
+                   }
+                 }, 0);
+               }}
+               onCancel={() => {
+                 setEditingTextId(null);
+                 setEditingLayout(null);
+                 // Restore transformer
+                 setTimeout(() => {
+                   if (transformerRef.current && stageRef.current) {
+                     const node = stageRef.current.findOne(`#${el.id}`);
+                     if (node) transformerRef.current.nodes([node]);
+                   }
+                 }, 0);
+               }}
+             />
+           );
+        })()}
       </div>
     </div>
   );

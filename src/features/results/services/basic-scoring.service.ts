@@ -2,6 +2,7 @@ import { and, count, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
+  programmeAssignmentMember as assignmentMemberTable,
   programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
@@ -10,6 +11,7 @@ import { resolveScoringPolicy } from "@/features/judgement/services/scoring-poli
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import { ResultModel } from "@/features/results/repositories/result.repository";
 import { calculatePosition } from "@/features/results/services/results-calculator";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 
 export type BasicScoreRow =
   | { kind: "assignment"; assignmentId: string; points: number }
@@ -22,20 +24,12 @@ function validatePoints(points: number) {
 }
 
 async function countTeamMembers(
-  programmeId: string,
-  groupId: string,
-  teamNumber: number,
+  assignmentId: string,
 ): Promise<number> {
   const [row] = await db
     .select({ c: count() })
-    .from(assignmentTable)
-    .where(
-      and(
-        eq(assignmentTable.programmeId, programmeId),
-        eq(assignmentTable.groupId, groupId),
-        eq(assignmentTable.teamNumber, teamNumber),
-      ),
-    );
+    .from(assignmentMemberTable)
+    .where(eq(assignmentMemberTable.assignmentId, assignmentId));
   return Math.max(1, row?.c ?? 0);
 }
 
@@ -57,6 +51,10 @@ export async function saveBasicProgrammeScores(input: {
   if (!programme || programme.festivalId !== input.festivalId) {
     throw new AppError("Programme not found.");
   }
+  const programmeType = requireProgrammeType(
+    programme.type,
+    `basic scoring: programme ${input.programmeId}`,
+  );
 
   const assignments = await db.query.programmeAssignment.findMany({
     where: eq(assignmentTable.programmeId, input.programmeId),
@@ -85,6 +83,11 @@ export async function saveBasicProgrammeScores(input: {
       continue;
     }
 
+    if (programmeType !== "GROUP") {
+      throw new AppError(
+        "Team scores are only valid for GROUP programmes.",
+      );
+    }
     const teamAssignments = assignments.filter(
       (a) =>
         a.groupId === row.groupId && (a.teamNumber ?? 1) === row.teamNumber,
@@ -115,12 +118,13 @@ export async function saveBasicProgrammeScores(input: {
   for (const [assignmentId, points] of pointsByAssignment) {
     const assignment = assignments.find((a) => a.id === assignmentId)!;
     let participantsCount = 1;
-    if (programme.type === "GROUP" && assignment.groupId) {
-      participantsCount = await countTeamMembers(
-        input.programmeId,
-        assignment.groupId,
-        assignment.teamNumber ?? 1,
-      );
+    if (programmeType === "GROUP") {
+      if (!assignment.groupId) {
+        throw new AppError(
+          "GROUP programme assignment is missing its groupId.",
+        );
+      }
+      participantsCount = await countTeamMembers(assignmentId);
     }
 
     const policyResolved = await resolveScoringPolicy({
@@ -128,7 +132,7 @@ export async function saveBasicProgrammeScores(input: {
       programme: {
         id: programme.id,
         categoryId: programme.categoryId,
-        type: programme.type,
+        type: programmeType,
       },
       participantsCount,
       points,

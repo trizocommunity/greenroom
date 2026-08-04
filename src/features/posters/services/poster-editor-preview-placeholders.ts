@@ -6,6 +6,9 @@ const RESULT_HINT =
 const CANDIDATE_HINT =
   "Candidate details are placeholders until participants have chest numbers in this festival.";
 
+const CERTIFICATE_HINT =
+  "Certificate details are placeholders until results are published for at least one item.";
+
 const TEAM_HINT =
   "Team names and points are placeholders until group standings are published.";
 
@@ -72,6 +75,29 @@ export function buildCandidatePlaceholderBindings(
       teamName: "Team name",
       placeName: "Team name",
       qrCode: "0000",
+    },
+  };
+}
+
+/** Certificate preview when no published results exist. */
+export function buildCertificatePlaceholderBindings(
+  festivalName: string,
+  festDate: string,
+  festLocation: string,
+): EditorPreviewBindingsPayload {
+  return {
+    usesPlaceholders: true,
+    hint: CERTIFICATE_HINT,
+    bindings: {
+      ...festMeta(festivalName, festDate, festLocation),
+      certificateTitle: "Certificate of Participation",
+      participantName: "Candidate Name",
+      programmeName: "Sample programme",
+      categoryName: "Sample category",
+      placeName: "Sample school",
+      resultLabel: "1st Prize",
+      chestNumber: "0000",
+      teamName: "Team name",
     },
   };
 }

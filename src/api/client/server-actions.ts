@@ -10,9 +10,11 @@ import {
 } from "@/features/festivals/actions/festival-crud.actions";
 import {
   getStagePortalBoardAction,
+  getStagePortalScorePayloadAction,
   markCodeLetterAbsenceAction,
   previewJudgeSubmissionSummaryAction,
   restartJudgementAction,
+  cancelJudgementAction,
   startJudgementAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
@@ -59,6 +61,7 @@ import {
   getStagePortalCredentialAction,
   resetStagePortalCredentialAction,
 } from "@/features/stage-portal/actions/stage-portal-credential.actions";
+import { provisionOffStageAction } from "@/features/stages/actions/off-stage.actions";
 import { queryKeys } from "./_query-keys";
 
 export function useStagePortalLogin() {
@@ -197,11 +200,37 @@ export function useRestartJudgement() {
   });
 }
 
+export function useCancelJudgement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { festivalId: string; programmeId: string }) => {
+      return cancelJudgementAction(input);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({
+        queryKey: queryKeys.judgement.dashboard(input.festivalId),
+      });
+    },
+  });
+}
+
 export function useStagePortalBoard(day?: string) {
   return useQuery({
     queryKey: ["stage-portal", "board", day ?? "today"],
     queryFn: async () => getStagePortalBoardAction(day),
     refetchInterval: 5000,
+  });
+}
+
+export function useStagePortalScorePayload(configId: string) {
+  return useQuery({
+    queryKey: ["stage-portal", "score-payload", configId],
+    queryFn: async () => getStagePortalScorePayloadAction(configId),
+    enabled: !!configId,
+    refetchInterval: 3000,
   });
 }
 
@@ -235,6 +264,24 @@ export function useResetStagePortalCredential() {
       qc.invalidateQueries({
         queryKey: ["stage-portal-credential", input.festivalId, input.stageId],
       });
+    },
+  });
+}
+
+export function useProvisionOffStage() {
+  const qc = useQueryClient();
+  return useMutation<
+    { stageId: string; name: string },
+    Error,
+    { festivalId: string }
+  >({
+    mutationFn: async ({ festivalId }) =>
+      provisionOffStageAction(festivalId),
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, { festivalId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.stages.all(festivalId) });
     },
   });
 }
@@ -657,14 +704,14 @@ export function useUpdateFestivalSettings() {
     mutationFn: async (input: {
       festivalId: string;
       data: {
+        programmeAssignmentStartDate?: string | null;
         programmeAssignmentDeadline?: string | null;
+        participantCreationStartDate?: string | null;
         participantCreationDeadline?: string | null;
         teamLeaderLimit?: number;
-        announcerResultsPerStandings?: number;
         startDate?: string | null;
         endDate?: string | null;
         scoringSystem?: "POSITION_BASED" | "SCORE_BASED" | null;
-        publicDisplayMode?: "programme_results" | "team_standings" | null;
         chestNumberSettings?: {
           autoGenerate?: boolean;
           prefix?: string;

@@ -15,10 +15,8 @@ import {
   BulkUploadFlow,
   type ParsedItem,
 } from "@/components/common/bulk-upload/BulkUploadFlow";
-import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DateOfBirthPicker } from "@/components/ui/date-picker";
 import {
   Form,
   FormControl,
@@ -40,67 +38,20 @@ import {
 
 interface ParticipantData {
   name: string;
-  email: string;
-  phone: string;
-  gender: string;
   groupName: string;
   categoryName: string;
-  groupId?: string; // Optional because it might be invalid initially
+  gender: "MALE" | "FEMALE" | "OTHER";
+  groupId?: string;
   categoryId?: string;
-  dateOfBirth?: string;
-  standard?: string;
 }
 
 const ParticipantSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  gender: z.enum(["MALE", "FEMALE", "OTHER"]),
   groupId: z.string().min(1, "Group is required"),
   categoryId: z.string().min(1, "Category is required"),
-  dateOfBirth: z.string().min(1, "Date of birth is required"),
-  standard: z.string().optional(),
 });
 
 type ParticipantFormValues = z.infer<typeof ParticipantSchema>;
-
-function dateOfBirthToIsoString(date: Date | undefined): string {
-  if (!date) return "";
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function isoStringToDate(value: string | undefined): Date | undefined {
-  if (!value) return undefined;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? undefined : d;
-}
-
-function parseDateOfBirthFromCell(raw: unknown): string | undefined {
-  if (raw === undefined || raw === null || raw === "") return undefined;
-  // Excel cells can come in as a number (Excel serial), a Date, or a string.
-  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
-    return dateOfBirthToIsoString(raw);
-  }
-  if (typeof raw === "number" && Number.isFinite(raw)) {
-    // Excel date serial: days since 1900-01-01 (taking the 1900 leap bug into
-    // account). Treat as midnight UTC to avoid timezone drift on the day.
-    const serial = Math.floor(raw);
-    const epoch = Date.UTC(1899, 11, 30);
-    const ms = epoch + serial * 24 * 60 * 60 * 1000;
-    const d = new Date(ms);
-    if (!Number.isNaN(d.getTime())) return dateOfBirthToIsoString(d);
-  }
-  const text = String(raw).trim();
-  if (!text) return undefined;
-  const candidate = new Date(text);
-  if (!Number.isNaN(candidate.getTime())) {
-    return dateOfBirthToIsoString(candidate);
-  }
-  return undefined;
-}
 
 // --- Edit Component ---
 
@@ -110,41 +61,33 @@ function ParticipantEditForm({
   categories,
   onSave,
   onCancel,
-  isBasic,
 }: {
   data: ParticipantData;
   groups: any[];
   categories: any[];
   onSave: (updated: ParticipantData) => void;
   onCancel: () => void;
-  isBasic?: boolean;
 }) {
   const form = useForm<ParticipantFormValues>({
     resolver: zodResolver(ParticipantSchema),
-    mode: "onChange",
+    mode: "onTouched",
     defaultValues: {
       name: data.name,
-      email: data.email,
-      phone: data.phone,
-      gender: (data.gender as any) || "MALE",
       groupId: data.groupId || "",
       categoryId: data.categoryId || "",
-      dateOfBirth: data.dateOfBirth ?? "",
-      standard: data.standard,
     },
   });
 
   useEffect(() => {
-    form.reset({
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      gender: (data.gender as any) || "MALE",
-      groupId: data.groupId || "",
-      categoryId: data.categoryId || "",
-      dateOfBirth: data.dateOfBirth ?? "",
-      standard: data.standard,
-    });
+    form.reset(
+      {
+        name: data.name,
+        groupId: data.groupId || "",
+        categoryId: data.categoryId || "",
+      },
+      { keepDirty: false },
+    );
+    form.trigger();
   }, [data, form]);
 
   const onSubmit = (values: ParticipantFormValues) => {
@@ -154,15 +97,10 @@ function ParticipantEditForm({
     onSave({
       ...data,
       name: values.name,
-      email: values.email || "",
-      phone: values.phone || "",
-      gender: values.gender,
       groupId: values.groupId,
       categoryId: values.categoryId,
       groupName: group?.name || "",
       categoryName: category?.name || "",
-      dateOfBirth: values.dateOfBirth,
-      standard: values.standard,
     });
   };
 
@@ -182,37 +120,6 @@ function ParticipantEditForm({
             </FormItem>
           )}
         />
-
-        {!isBasic && (
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Optional" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Optional" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
@@ -266,63 +173,6 @@ function ParticipantEditForm({
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="gender"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Gender</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Gender" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="MALE">Male</SelectItem>
-                  <SelectItem value="FEMALE">Female</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="dateOfBirth"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Date of Birth</FormLabel>
-              <FormControl>
-                <DateOfBirthPicker
-                  date={isoStringToDate(field.value)}
-                  onChange={(d) =>
-                    field.onChange(d ? dateOfBirthToIsoString(d) : "")
-                  }
-                  placeholder="Pick a date"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="standard"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Class/Standard</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="Optional" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
@@ -353,9 +203,6 @@ export function BulkUploadParticipantsModal({
   festivalId,
   trigger,
 }: BulkUploadParticipantsModalProps) {
-  const festivalContext = useFestival();
-  const isBasicTier = festivalContext.tier === "BASIC";
-
   const { data: groups = [], isLoading: loadingGroups } = useGroups(festivalId);
   const { data: categories = [], isLoading: loadingCategories } =
     useCategories(festivalId);
@@ -371,20 +218,10 @@ export function BulkUploadParticipantsModal({
     const groupName = row[1]?.toString().trim() || "";
     const categoryName = row[2]?.toString().trim() || "";
     const genderRaw = row[3]?.toString().trim().toUpperCase() || "";
-    const email = row[4]?.toString().trim() || "";
-    const phone = row[5]?.toString().trim() || "";
-    const dateOfBirthRaw = row[6];
-    const standard = row[7]?.toString().trim() || "";
 
     const errors: string[] = [];
     if (!name) errors.push("Name is required");
 
-    const dateOfBirth = parseDateOfBirthFromCell(dateOfBirthRaw);
-    if (!dateOfBirth) {
-      errors.push("Date of birth is required");
-    }
-
-    // Loose match for group
     const group = groups.find(
       (g: any) => g.name.toLowerCase() === groupName.toLowerCase(),
     );
@@ -394,7 +231,6 @@ export function BulkUploadParticipantsModal({
       errors.push(`Group '${groupName}' not found`);
     }
 
-    // Loose match for category
     const category = categories.find(
       (c: any) => c.name.toLowerCase() === categoryName.toLowerCase(),
     );
@@ -404,16 +240,12 @@ export function BulkUploadParticipantsModal({
       errors.push(`Category '${categoryName}' not found`);
     }
 
-    let gender = "MALE";
-    if (!genderRaw) {
-      gender = "MALE"; // Default if missing
-    } else if (["MALE", "M"].includes(genderRaw)) {
-      gender = "MALE";
-    } else if (["FEMALE", "F"].includes(genderRaw)) {
+    let gender: "MALE" | "FEMALE" | "OTHER" = "MALE";
+    if (genderRaw === "FEMALE" || genderRaw === "F") {
       gender = "FEMALE";
-    } else if (["OTHER", "O"].includes(genderRaw)) {
+    } else if (genderRaw === "OTHER" || genderRaw === "O") {
       gender = "OTHER";
-    } else {
+    } else if (genderRaw && genderRaw !== "MALE" && genderRaw !== "M") {
       errors.push("Invalid Gender");
     }
 
@@ -422,15 +254,11 @@ export function BulkUploadParticipantsModal({
       originalRowIndex: index,
       data: {
         name,
-        email,
-        phone,
-        gender,
         groupName,
         categoryName,
+        gender,
         groupId: group?.id,
         categoryId: category?.id,
-        dateOfBirth,
-        standard,
       },
       isValid: errors.length === 0,
       errors,
@@ -440,21 +268,13 @@ export function BulkUploadParticipantsModal({
   const validateRows = async (
     items: ParsedItem<ParticipantData>[],
   ): Promise<ParsedItem<ParticipantData>[]> => {
-    // 1. Internal Duplicate Check (within this upload)
-    // Primary check: name + category + group
-    // Secondary check: email
     const compositeCounts = new Map<string, number>();
-    const emailCounts = new Map<string, number>();
 
     for (const item of items) {
       const name = item.data.name?.trim().toLowerCase();
-      const email = item.data.email?.trim().toLowerCase();
       if (name && item.data.categoryId && item.data.groupId) {
         const key = `${name}|${item.data.categoryId}|${item.data.groupId}`;
         compositeCounts.set(key, (compositeCounts.get(key) || 0) + 1);
-      }
-      if (email) {
-        emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
       }
     }
 
@@ -464,72 +284,46 @@ export function BulkUploadParticipantsModal({
         .map(([key]) => key),
     );
 
-    const internalEmailDuplicates = new Set(
-      Array.from(emailCounts.entries())
-        .filter(([_, count]) => count > 1)
-        .map(([email]) => email),
-    );
-
-    // 2. Server-Side Duplicate Check
     const candidatesToCheck = items
       .filter((p) => p.data.name && p.data.categoryId && p.data.groupId)
       .map((p) => ({
         name: p.data.name,
-        email: p.data.email,
         categoryId: p.data.categoryId!,
         groupId: p.data.groupId!,
       }));
 
-    if (candidatesToCheck.length > 0) {
-      const conflicts = await validateParticipants.mutateAsync({
-        candidates: candidatesToCheck,
-      });
+    if (candidatesToCheck.length === 0) return items;
 
-      return items.map((p) => {
-        const name = p.data.name?.trim().toLowerCase();
-        const email = p.data.email?.trim().toLowerCase();
-        const newErrors = [...p.errors];
+    const conflicts = await validateParticipants.mutateAsync({
+      festivalId,
+      data: { candidates: candidatesToCheck },
+    });
 
-        // Check Server Conflicts
-        if (email && conflicts[`email:${email}`]) {
-          if (!newErrors.includes(conflicts[`email:${email}`])) {
-            newErrors.push(conflicts[`email:${email}`]);
-          }
+    return items.map((p) => {
+      const name = p.data.name?.trim().toLowerCase();
+      const newErrors = [...p.errors];
+
+      if (name && conflicts[`name:${name}`]) {
+        if (!newErrors.includes(conflicts[`name:${name}`])) {
+          newErrors.push(conflicts[`name:${name}`]);
         }
+      }
 
-        if (name && p.data.categoryId && p.data.groupId) {
-          const serverKey = `composite:${name}:${p.data.categoryId}:${p.data.groupId}`;
-          if (conflicts[serverKey]) {
-            if (!newErrors.includes(conflicts[serverKey])) {
-              newErrors.push(conflicts[serverKey]);
-            }
-          }
-        }
-
-        // Check Internal Duplicates
-        if (email && internalEmailDuplicates.has(email)) {
-          const error = "Duplicate email in upload";
+      if (name && p.data.categoryId && p.data.groupId) {
+        const internalKey = `${name}|${p.data.categoryId}|${p.data.groupId}`;
+        if (internalCompositeDuplicates.has(internalKey)) {
+          const error =
+            "Duplicate participant (same name, category, and group) in upload";
           if (!newErrors.includes(error)) newErrors.push(error);
         }
+      }
 
-        if (name && p.data.categoryId && p.data.groupId) {
-          const internalKey = `${name}|${p.data.categoryId}|${p.data.groupId}`;
-          if (internalCompositeDuplicates.has(internalKey)) {
-            const error =
-              "Duplicate participant (same name, category, and group) in upload";
-            if (!newErrors.includes(error)) newErrors.push(error);
-          }
-        }
-
-        return {
-          ...p,
-          errors: newErrors,
-          isValid: newErrors.length === 0,
-        };
-      });
-    }
-
-    return items;
+      return {
+        ...p,
+        errors: newErrors,
+        isValid: newErrors.length === 0,
+      };
+    });
   };
 
   const handleCommit = async (validItems: ParticipantData[]) => {
@@ -537,11 +331,7 @@ export function BulkUploadParticipantsModal({
       name: s.name,
       groupId: s.groupId!,
       categoryId: s.categoryId!,
-      gender: s.gender as "MALE" | "FEMALE" | "OTHER",
-      email: s.email,
-      phone: s.phone,
-      dateOfBirth: s.dateOfBirth!,
-      standard: s.standard,
+      gender: s.gender,
     }));
 
     const result = await bulkCreateParticipants.mutateAsync({
@@ -557,7 +347,13 @@ export function BulkUploadParticipantsModal({
   };
 
   if (loadingGroups || loadingCategories) {
-    return null;
+    if (trigger) return <>{trigger}</>;
+    return (
+      <Button size="sm" variant="outline" disabled>
+        <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+        <span className="hidden sm:inline">Bulk Upload</span>
+      </Button>
+    );
   }
 
   return (
@@ -565,25 +361,9 @@ export function BulkUploadParticipantsModal({
       trigger={trigger}
       title="Bulk Upload Participants"
       templateName="participants_template.xlsx"
-      templateHeaders={[
-        "Name",
-        "Group",
-        "Category",
-        "Gender",
-        ...(isBasicTier ? [] : ["Email", "Phone"]),
-        "Date of Birth",
-        "Class/Standard",
-      ]}
+      templateHeaders={["Name", "Group", "Category", "Gender (Optional)"]}
       templateData={[
-        [
-          "(Name)",
-          "(Group Name)",
-          "(Category Name)",
-          "(Male/Female/Other)",
-          ...(isBasicTier ? [] : ["(Email - Optional)", "(Phone - Optional)"]),
-          "(YYYY-MM-DD)",
-          "(Class/Standard - Optional)",
-        ],
+        ["(Name)", "(Group Name)", "(Category Name)", "(MALE/FEMALE/OTHER)"],
       ]}
       parseRow={parseParticipantRow}
       validateRows={validateRows}
@@ -593,7 +373,6 @@ export function BulkUploadParticipantsModal({
           {...props}
           groups={groups}
           categories={categories}
-          isBasic={isBasicTier}
         />
       )}
       columns={[
@@ -603,11 +382,6 @@ export function BulkUploadParticipantsModal({
           cell: (item) => (
             <div className="flex flex-col">
               <span className="font-semibold text-sm">{item.name}</span>
-              {!isBasicTier && (
-                <span className="text-[11px] text-muted-foreground">
-                  {item.email}
-                </span>
-              )}
             </div>
           ),
         },

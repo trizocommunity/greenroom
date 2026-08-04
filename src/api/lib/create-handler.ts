@@ -160,8 +160,8 @@ export function createCronHandler(handlers: RouteHandlers) {
   return createHandler({
     GET: handlers.GET
       ? async (ctx) => {
-          const cronSecret = ctx.request.headers.get("x-cron-secret");
-          if (!cronSecret || !cronSecretEnv || cronSecret !== cronSecretEnv) {
+          const auth = ctx.request.headers.get("authorization");
+          if (!auth || auth !== `Bearer ${cronSecretEnv}`) {
             return forbidden("Invalid or missing cron secret");
           }
           return handlers.GET!(ctx);

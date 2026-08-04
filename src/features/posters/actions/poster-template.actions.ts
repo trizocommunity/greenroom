@@ -84,7 +84,7 @@ export async function getEditorPreviewBindingsAction(
 
 export async function listPosterTemplatesAction(
   festivalId: string,
-): Promise<ActionResponse<PosterTemplateListItem[]>> {
+): Promise<ActionResponse<PosterTemplateRecord[]>> {
   try {
     const session = await getSession();
     if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
@@ -100,7 +100,7 @@ export async function listPosterTemplatesAction(
     const rows = await PosterTemplateRepo.listByFestival(festivalId);
     return {
       success: true,
-      data: rows.map(toPosterTemplateListItem),
+      data: rows,
     };
   } catch (error) {
     return handleActionError(error);
@@ -166,13 +166,6 @@ export async function savePosterTemplateDraftAction(
 
     const type = templateTypeFromCode(parsed.code);
     if (!type) return { success: false, error: "Invalid template code" };
-    if (type === "TEAM_POINTS") {
-      return {
-        success: false,
-        error: "Team points templates are no longer supported.",
-      };
-    }
-
     const doc = parsed.document;
     const existing = await PosterTemplateRepo.findByFestivalAndCode(
       parsed.festivalId,
@@ -215,13 +208,6 @@ export async function publishPosterTemplateAction(
     );
     if (!existing) {
       return { success: false, error: "Save a draft before publishing" };
-    }
-
-    if (existing.type === "TEAM_POINTS") {
-      return {
-        success: false,
-        error: "Team points templates are no longer supported.",
-      };
     }
 
     if (existing.type === "RESULT" && isResultSlotCode(code)) {

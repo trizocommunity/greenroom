@@ -21,11 +21,13 @@ import {
 } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
 import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
+import * as AssignmentRepo from "@/features/posters/repositories/template-assignment.repository";
 import {
   buildResultPosterBindings,
   type ResultPosterBindingInput,
 } from "@/features/posters/services/poster-bindings.service";
 import type { PosterTemplateRecord } from "@/features/posters/types/poster-template.types";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 
 export interface ResultPosterExportPayload {
   programmeId: string;
@@ -35,6 +37,7 @@ export interface ResultPosterExportPayload {
   publishedTemplateCodes: string[];
   bindings: ResultPosterBindingInput;
   templates: PosterTemplateRecord[];
+  assignedTemplateCode: string | null;
 }
 
 export async function getResultPosterExportPayloadAction(
@@ -48,6 +51,7 @@ export async function getResultPosterExportPayloadAction(
         id: true,
         name: true,
         festivalId: true,
+        resultNumber: true,
       },
     });
     if (!programme) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
@@ -110,8 +114,10 @@ export async function getResultPosterExportPayloadAction(
       return { success: true, data: null };
     }
 
-    const programmeType =
-      progMeta?.type ?? rows[0]?.programmeType ?? "INDIVIDUAL";
+    const programmeType = requireProgrammeType(
+      progMeta?.type ?? rows[0]?.programmeType,
+      `poster export: programme ${programmeId}`,
+    );
     const winners = rows.map((r) => ({
       position: r.position ?? 0,
       name:
@@ -141,8 +147,31 @@ export async function getResultPosterExportPayloadAction(
       programmeName: programme.name,
       categoryName,
       programmeResultCode: codeLetter?.code ?? null,
+      resultNumber: programme.resultNumber,
       winners,
     };
+
+    const assignments = await AssignmentRepo.listByKind(festival.id, "RESULT_RANGE");
+
+    let assignedTemplateCode: string | null = null;
+    if (programme.resultNumber !== null) {
+      for (const a of assignments) {
+        if (
+          a.fromResultNo !== null &&
+          a.toResultNo !== null &&
+          programme.resultNumber >= a.fromResultNo &&
+          programme.resultNumber <= a.toResultNo
+        ) {
+          assignedTemplateCode = a.templateCode;
+          break;
+        }
+      }
+    }
+
+    // Default to the first published template if none assigned, to avoid breaking legacy behaviour
+    if (!assignedTemplateCode && published.length > 0) {
+      assignedTemplateCode = published[0].code;
+    }
 
     return {
       success: true,
@@ -154,6 +183,7 @@ export async function getResultPosterExportPayloadAction(
         publishedTemplateCodes: published.map((p) => p.code),
         bindings: bindingInput,
         templates: published,
+        assignedTemplateCode,
       },
     };
   } catch (error) {
@@ -179,7 +209,7 @@ export async function getPublicResultPosterPayloadAction(
     });
     if (!festival) return { success: true, data: null };
 
-    const hasAnnounced = await db
+    const hasPublished = await db
       .select({ id: resultTable.id })
       .from(resultTable)
       .innerJoin(
@@ -189,12 +219,12 @@ export async function getPublicResultPosterPayloadAction(
       .where(
         and(
           eq(programmeAssignment.programmeId, programmeId),
-          eq(resultTable.isAnnounced, true),
+          eq(resultTable.isPublished, true),
         ),
       )
       .limit(1);
 
-    if (hasAnnounced.length === 0) {
+    if (hasPublished.length === 0) {
       return { success: true, data: null };
     }
 

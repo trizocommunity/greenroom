@@ -70,6 +70,13 @@ export const DELETE = async (
     return notFound("STAGE_NOT_FOUND", "Stage not found");
   }
 
+  if (existing.isOffStage) {
+    return badRequest(
+      "OFF_STAGE_NOT_DELETABLE",
+      "The Off-Stage stage cannot be deleted. It is required for judging programmes without a scheduled time slot.",
+    );
+  }
+
   await db.delete(stage).where(eq(stage.id, stageId));
   return ok({ success: true });
 };

@@ -1,17 +1,20 @@
 "use client";
 
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { CalendarIcon, Clock } from "lucide-react";
 import * as React from "react";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { composePickerValue } from "@/components/ui/date-picker-utils";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { TimePicker } from "@/components/ui/time-picker";
+import { DEFAULT_TZ } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 
 function rangeDisabledMatcher(from?: Date, to?: Date) {
@@ -218,6 +221,13 @@ interface DateTimePickerProps {
   to?: Date;
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * Timezone the picked wall-clock is anchored to. Defaults to `DEFAULT_TZ`
+   * (`"UTC"`). Festival-scoped pickers (e.g. `<DeadlinesDialog>`) must pass
+   * `festival.timezone` so the stored UTC instant round-trips correctly
+   * regardless of the browser's local TZ.
+   */
+  tz?: string;
 }
 
 export function DateTimePicker({
@@ -228,30 +238,28 @@ export function DateTimePicker({
   to,
   placeholder = "Pick date & time",
   disabled,
+  tz = DEFAULT_TZ,
 }: DateTimePickerProps) {
   const [internalDate, setInternalDate] = React.useState<Date | undefined>(
     value ?? undefined,
   );
   const [time, setTime] = React.useState(
-    value ? format(value, "HH:mm") : "09:00",
+    value ? formatInTimeZone(value, tz, "HH:mm") : "09:00",
   );
 
   React.useEffect(() => {
     setInternalDate(value ?? undefined);
     if (value) {
-      setTime(format(value, "HH:mm"));
+      setTime(formatInTimeZone(value, tz, "HH:mm"));
     }
-  }, [value]);
+  }, [value, tz]);
 
   const commit = (nextDate: Date | undefined, nextTime: string) => {
     if (!nextDate) {
       onChange(null);
       return;
     }
-    const [h, m] = nextTime.split(":").map((s) => parseInt(s || "0", 10));
-    const withTime = new Date(nextDate);
-    withTime.setHours(h || 0, m || 0, 0, 0);
-    onChange(withTime);
+    onChange(composePickerValue(nextDate, nextTime, tz));
   };
 
   return (
@@ -268,7 +276,7 @@ export function DateTimePicker({
         >
           <CalendarIcon />
           {value ? (
-            <span>{format(value, "PPP, HH:mm")}</span>
+            <span>{formatInTimeZone(value, tz, "PPP, HH:mm")}</span>
           ) : (
             <span>{placeholder}</span>
           )}

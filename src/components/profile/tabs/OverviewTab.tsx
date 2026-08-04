@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowRight, Check, Loader2, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Loader2, Plus, RotateCcw } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -9,7 +10,13 @@ import {
   useMyFestivals,
   useUnusedCredit,
 } from "@/api/client";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import {
+  AppPageHeader,
+  AppPanel,
+  AppSectionHeading,
+  Meter,
+  StatusPill,
+} from "@/components/app/AppSection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,21 +27,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { FestivalCardSkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PRICING_TIERS } from "@/config/pricing";
+import { getFestivalDurationDays, PRICING_TIERS } from "@/config/pricing";
 import { parseInstant } from "@/core/datetime";
+import { MS } from "@/core/datetime/constants";
 import type { Tier } from "@/core/types/app-enums";
-import { cn } from "@/core/utils/cn";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
@@ -50,7 +49,6 @@ export function OverviewTab({
 }: OverviewTabProps) {
   const router = useRouter();
   const [confirmationTier, setConfirmationTier] = useState<Tier | null>(null);
-  const displayTz = useDisplayTimezone();
 
   const { data: myFestivalData, isLoading: isFestivalLoading } =
     useMyFestivals();
@@ -62,9 +60,7 @@ export function OverviewTab({
 
   const proTier = PRICING_TIERS.find((t) => t.id === "PRO");
 
-  const handlePayClick = (tierId: Tier) => {
-    setConfirmationTier(tierId);
-  };
+  const handlePayClick = (tierId: Tier) => setConfirmationTier(tierId);
 
   const handleConfirmPayment = () => {
     if (confirmationTier) {
@@ -75,271 +71,150 @@ export function OverviewTab({
 
   if (!proTier) return null;
 
-  // Render Joined Festivals Section (Loading or Data)
-  const renderJoinedSection = () => {
-    if (isJoinedLoading) {
-      return (
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold tracking-tight">
-            Joined Festivals
-          </h3>
-          <div className="grid gap-6">
-            <FestivalCardSkeleton />
-          </div>
-        </div>
-      );
-    }
+  const ownedContent = isFestivalLoading ? (
+    <FestivalCardSkeleton />
+  ) : festival ? (
+    <FestivalCard festival={festival} />
+  ) : null;
 
-    if (joinedFestivals && joinedFestivals.length > 0) {
-      return (
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold tracking-tight">
-            Joined Festivals
-          </h3>
-          <div className="grid gap-6">
-            {joinedFestivals.map((f: any) => (
-              <JoinedFestivalCard key={f.id} festival={f} />
-            ))}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Render Owned Festival (Loading or Data)
-  const renderOwnedSection = () => {
-    if (isFestivalLoading) {
-      return <FestivalCardSkeleton />;
-    }
-
-    if (festival) {
-      return <FestivalCard festival={festival} />;
-    }
-    return null; // Fall through to Credit/Plans if no active festival
-  };
-
-  const ownedContent = renderOwnedSection();
-  // Check if we should show plans: If NOT loading festival, and NO owned content (or expired).
-  // Note: renderOwnedSection returns null if expired or no festival.
-  // Exception: If isLoading, it returns skeleton.
-
-  // We need to know if we effectively have an owned festival (active) to decide whether to show plans.
-  // If isFestivalLoading is true, we showed skeleton, so we don't show plans yet.
+  // Plans only appear once we know there is no active festival to show.
   const showPlans = !isFestivalLoading && !ownedContent;
 
-  return (
-    <div className="space-y-12 animate-in fade-in duration-500">
-      <div className="space-y-2">
-        <h2 className="text-3xl font-semibold tracking-tight text-heading">
-          Welcome back,{" "}
-          <span className="font-display italic font-normal text-primary">
-            {displayName}
-          </span>
-        </h2>
-      </div>
+  const isExpiredFestival =
+    festival &&
+    getDerivedFestivalStatus({
+      status: festival.status,
+      startDate: festival.startDate,
+      endDate: festival.endDate,
+      expiresAt: festival.expiresAt,
+    }) === "EXPIRED";
 
-      {!festival && renderJoinedSection()}
+  return (
+    <div className="animate-in fade-in space-y-10 duration-500">
+      <AppPageHeader
+        eyebrow="Overview"
+        title={
+          <>
+            Welcome back,{" "}
+            <span className="font-display font-normal italic text-primary">
+              {displayName}
+            </span>
+          </>
+        }
+      />
+
+      {/* Memberships — only when the user has no festival of their own */}
+      {!festival && (isJoinedLoading || joinedFestivals?.length) ? (
+        <section>
+          <AppSectionHeading title="Joined festivals" />
+          {isJoinedLoading ? (
+            <FestivalCardSkeleton />
+          ) : (
+            <ul className="divide-y divide-border border-y border-border">
+              {joinedFestivals?.map((f: any) => (
+                <JoinedFestivalCard key={f.id} festival={f} />
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
 
       {ownedContent}
 
       {showPlans && (
-        <div className="space-y-8">
+        <section className="space-y-6">
           {isCreditLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-48 mb-2" />
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-40" />
               <FestivalCardSkeleton />
             </div>
           ) : credit ? (
-            <div className="space-y-4">
-              <Card className="border-primary/20 bg-card relative overflow-hidden shadow-premium">
-                <div className="absolute right-0 top-0 p-4 opacity-[0.06] pointer-events-none">
-                  <Sparkles className="w-32 h-32 text-primary" />
-                </div>
-                <CardContent className="p-5 sm:p-6 md:p-8">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
-                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <div className="p-3 sm:p-4 bg-primary/8 rounded-2xl shrink-0">
-                        <Check className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className="text-lg sm:text-xl font-semibold tracking-tight text-heading flex flex-wrap items-center gap-2">
-                          {credit.tier} plan credit
-                          <Badge
-                            variant="secondary"
-                            className="bg-primary/10 text-primary hover:bg-primary/15 border-0 text-[10px] sm:text-xs px-1.5 py-0 sm:py-0.5"
-                          >
-                            Available
-                          </Badge>
-                        </h4>
-                        <p className="text-xs sm:text-sm text-muted-foreground w-full">
-                          Value: ₹{credit.amount}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="w-full sm:w-auto shrink-0 z-10 pt-2 sm:pt-0">
-                      <Button
-                        size="lg"
-                        onClick={() =>
-                          router.push(`/festival-setup?paymentId=${credit.id}`)
-                        }
-                        className="w-full md:w-auto h-12 text-sm font-medium rounded-full shadow-primary-glow hover:opacity-90 transition-opacity"
-                      >
-                        <Plus className="mr-2 h-5 w-5" />
-                        Launch festival now
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Expiry Progress Section */}
-                  <div className="mt-8 pt-6 border-t border-border">
-{(() => {
-                      const start = parseInstant(
-                        credit.validFrom as string | Date,
-                      );
-                      const endDate = credit.validUntil
-                        ? parseInstant(credit.validUntil as string | Date)
-                        : null;
-                      const end =
-                        endDate ??
-                        new Date((start?.getTime() ?? Date.now()) + 30 * 24 * 60 * 60 * 1000);
-                      const startMs = start?.getTime() ?? Date.now();
-                      const now = new Date();
-
-                      const totalDuration = end.getTime() - startMs;
-                      const elapsed = now.getTime() - startMs;
-                      let progress =
-                        totalDuration > 0
-                          ? (elapsed / totalDuration) * 100
-                          : 0;
-                      progress = Math.min(100, Math.max(0, progress));
-
-                      const daysLeft = Math.ceil(
-                        (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-                      );
-                      const isExpiringSoon = daysLeft <= 7;
-
-                      return (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-muted-foreground flex items-center gap-1.5">
-                              <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
-                              Credit Validity
-                            </span>
-                            <span
-                              className={cn(
-                                "font-bold",
-                                isExpiringSoon
-                                  ? "text-destructive"
-                                  : "text-foreground",
-                              )}
-                            >
-                              {daysLeft > 0
-                                ? `${daysLeft} days remaining`
-                                : "Expires today"}
-                            </span>
-                          </div>
-                          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all duration-1000",
-                                isExpiringSoon
-                                  ? "bg-destructive"
-                                  : "bg-primary",
-                              )}
-                              style={{ width: `${100 - progress}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Activate your festival before{" "}
-                            {end.toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })}{" "}
-                            to use this credit.
-                          </p>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <CreditPanel
+              credit={credit}
+              onLaunch={() =>
+                router.push(`/festival-setup?paymentId=${credit.id}`)
+              }
+            />
           ) : (
             <>
-              <div className="space-y-2">
-                {festival &&
-                  getDerivedFestivalStatus({
-                    status: festival.status,
-                    startDate: festival.startDate,
-                    endDate: festival.endDate,
-                    expiresAt: festival.expiresAt,
-                  }) === "EXPIRED" && (
-                    <div className="p-4 bg-destructive/10 text-destructive rounded-md mb-4 border border-destructive/20">
-                      <p className="font-semibold">
-                        Your previous festival has expired.
-                      </p>
-                      <p className="text-sm opacity-80">
-                        To assign a new festival, please purchase a plan below.
-                      </p>
-                    </div>
-                  )}
-              </div>
+              {isExpiredFestival && festival && (
+                <div className="rounded-2xl border border-destructive/30 bg-destructive/[0.06] p-5">
+                  <p className="text-[15px] font-medium text-destructive">
+                    Your previous festival has expired.
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Relaunch with a fresh {getFestivalDurationDays()}-day plan,
+                    or start a new festival below.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-4 gap-2 rounded-full border-destructive/30 text-destructive hover:bg-destructive/10"
+                    asChild
+                  >
+                    <Link
+                      href={`/festivals/new?from=${encodeURIComponent(festival.slug ?? "")}`}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Relaunch festival
+                    </Link>
+                  </Button>
+                </div>
+              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* PRO PLAN - Highlighted */}
-                {proTier && (
-                  <Card className="flex flex-col hover:border-primary/30 transition-all duration-300 border-primary/20 bg-card relative overflow-hidden shadow-premium">
-                    <div className="absolute top-0 right-0 p-2 opacity-[0.06]">
-                      <Sparkles className="w-14 h-14 text-primary" />
-                    </div>
-                    <CardHeader className="pb-2">
-                      <Badge className="w-fit mb-1.5 text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20 font-medium">
-                        Recommended
-                      </Badge>
-                      <CardTitle className="text-xl font-semibold tracking-tight text-heading">
-                        {proTier.name}
-                      </CardTitle>
-                      <CardDescription className="text-sm mt-0.5 line-clamp-2">
-                        {proTier.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col flex-1 space-y-4 pt-0">
-                      <div className="text-2xl font-semibold tracking-tight text-heading">
-                        ₹{proTier.price}
-                        <span className="text-xs font-normal text-muted-foreground ml-1">
-                          /festival
-                        </span>
-                      </div>
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-muted-foreground flex-1 min-h-0">
-                        {proTier.features.map((feature, i) => (
-                          <li key={i} className="flex items-center gap-1.5">
-                            <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="truncate" title={feature}>
-                              {feature}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      <Button
-                        size="sm"
-                        className="w-full font-medium mt-auto rounded-full shadow-primary-glow hover:opacity-90 transition-opacity"
-                        onClick={() => handlePayClick(proTier.id)}
-                        disabled={isPaymentProcessing}
-                      >
-                        {isPaymentProcessing &&
-                        confirmationTier === proTier.id ? (
-                          <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" />
-                        ) : null}
-                        Pay to proceed
-                        <ArrowRight className="ml-1.5 w-3.5 h-3.5" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+              <AppSectionHeading
+                title="Start a festival"
+                description="One payment covers the whole festival for its full run."
+              />
+
+              <AppPanel tinted className="p-5 sm:p-7">
+                <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+                  <div>
+                    <StatusPill tone="ready" className="mb-3">
+                      Recommended
+                    </StatusPill>
+                    <h3 className="text-xl font-semibold tracking-tight text-heading">
+                      {proTier.name}
+                    </h3>
+                    <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                      {proTier.description}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-semibold tracking-tight text-heading">
+                      ₹{proTier.price.toLocaleString("en-IN")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">/ festival</p>
+                  </div>
+                </div>
+
+                <ul className="mt-6 grid gap-x-8 border-t border-border pt-5 sm:grid-cols-2">
+                  {proTier.features.map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex items-start gap-2.5 py-1.5 text-sm text-muted-foreground"
+                    >
+                      <Check
+                        className="mt-1 h-3 w-3 shrink-0 text-primary"
+                        strokeWidth={3}
+                      />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  className="mt-6 h-11 w-full justify-center rounded-full text-sm font-medium shadow-primary-glow sm:w-auto sm:px-8"
+                  onClick={() => handlePayClick(proTier.id)}
+                  disabled={isPaymentProcessing}
+                >
+                  {isPaymentProcessing && confirmationTier === proTier.id && (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  )}
+                  Pay to proceed
+                  <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                </Button>
+              </AppPanel>
 
               <AlertDialog
                 open={!!confirmationTier}
@@ -347,27 +222,114 @@ export function OverviewTab({
               >
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Confirm Payment</AlertDialogTitle>
+                    <AlertDialogTitle>Confirm payment</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Please note that once the payment is completed, it is{" "}
-                      <span className="font-bold text-destructive">
+                      Once the payment is completed it is{" "}
+                      <span className="font-semibold text-destructive">
                         non-refundable
                       </span>
-                      . Do you wish to proceed with the transaction?
+                      . Do you want to proceed?
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleConfirmPayment}>
-                      I Understand, Proceed
+                      I understand, proceed
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
             </>
           )}
-        </div>
+        </section>
       )}
     </div>
+  );
+}
+
+/** An unredeemed payment, with how long is left to spend it. */
+function CreditPanel({
+  credit,
+  onLaunch,
+}: {
+  credit: {
+    id: string;
+    /** Null when the payment predates per-tier credits. */
+    tier: string | null;
+    amount: number;
+    validFrom: string | Date;
+    validUntil?: string | Date | null;
+  };
+  onLaunch: () => void;
+}) {
+  const start = parseInstant(credit.validFrom);
+  const startMs = start?.getTime() ?? Date.now();
+  const end =
+    (credit.validUntil ? parseInstant(credit.validUntil) : null) ??
+    new Date(startMs + getFestivalDurationDays() * MS.day);
+
+  const now = Date.now();
+  const totalDuration = end.getTime() - startMs;
+  const elapsed = now - startMs;
+  const used =
+    totalDuration > 0
+      ? Math.min(100, Math.max(0, (elapsed / totalDuration) * 100))
+      : 0;
+
+  const daysLeft = Math.ceil((end.getTime() - now) / MS.day);
+  const isExpiringSoon = daysLeft <= 7;
+
+  return (
+    <AppPanel tinted className="p-5 sm:p-7">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <div>
+          <StatusPill tone="ready" className="mb-3">
+            Credit available
+          </StatusPill>
+          <h3 className="text-xl font-semibold tracking-tight text-heading">
+            {credit.tier ? `${credit.tier} plan credit` : "Plan credit"}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Worth ₹{credit.amount.toLocaleString("en-IN")} — already paid, not
+            yet used.
+          </p>
+        </div>
+
+        <Button
+          onClick={onLaunch}
+          className="h-11 w-full justify-center rounded-full text-sm font-medium shadow-primary-glow sm:w-auto sm:px-7"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Launch festival
+        </Button>
+      </div>
+
+      <div className="mt-7 border-t border-border pt-5">
+        <div className="mb-2.5 flex items-baseline justify-between gap-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Credit validity
+          </span>
+          <span
+            className={
+              isExpiringSoon
+                ? "text-sm font-semibold tabular-nums text-destructive"
+                : "text-sm font-semibold tabular-nums text-foreground"
+            }
+          >
+            {daysLeft > 0 ? `${daysLeft} days remaining` : "Expires today"}
+          </span>
+        </div>
+        <Meter value={used} tone={isExpiringSoon ? "danger" : "primary"} />
+        <p className="mt-2.5 text-xs text-muted-foreground">
+          Activate your festival before{" "}
+          {end.toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}{" "}
+          to use this credit.
+        </p>
+      </div>
+    </AppPanel>
   );
 }

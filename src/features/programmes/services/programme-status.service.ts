@@ -1,10 +1,11 @@
-import { and, count, desc, eq, inArray, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, max, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
+import { AppError } from "@/core/errors/errors";
 import {
-  group as groupTable,
-  programmeAssignment,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
+  group as groupTable,
+  programmeAssignment,
   programmeReportedParticipant,
   programme as programmeTable,
   programmeReportingSession as reportingSessionTable,
@@ -18,14 +19,14 @@ import {
 } from "@/features/plan-features/services/tier";
 
 export type ProgrammeStatus =
-  | "READY"
-  | "RESET"
+  | "DRAFT"
+  | "CANCELLED"
   | "ASSIGNED"
   | "SCHEDULED"
   | "REPORTING"
-  | "STARTED"
-  | "ENDED"
-  | "JUDGED"
+  | "PENDING_JUDGMENT"
+  | "JUDGING"
+  | "PENDING_PUBLICATION"
   | "PUBLISHED"
   | "ANNOUNCED";
 export type Tier = "BASIC" | "STANDARD" | "PRO";
@@ -39,15 +40,15 @@ export function getEventWorksMinimumStatus(tier: Tier): ProgrammeStatus {
 
 function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
   return tier === "BASIC"
-    ? new Set<ProgrammeStatus>(["ASSIGNED", "JUDGED", "PUBLISHED", "ANNOUNCED"])
+    ? new Set<ProgrammeStatus>(["ASSIGNED", "PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"])
     : new Set<ProgrammeStatus>([
         "SCHEDULED",
         "REPORTING",
-        "STARTED",
-        "ENDED",
-        "JUDGED",
+        "PENDING_JUDGMENT",
+        "JUDGING",
+        "PENDING_PUBLICATION",
         "PUBLISHED",
-        "ANNOUNCED",
+        "ANNOUNCED"
       ]);
 }
 
@@ -55,17 +56,18 @@ function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
  * Returns true if the given programme status is allowed in Event Works for the tier.
  */
 export function isProgrammeInEventWorks(
-  status: ProgrammeStatus,
+  status: string,
   tier: Tier,
 ): boolean {
-  return getAllowedEventWorksStatuses(tier).has(status);
+  return getAllowedEventWorksStatuses(tier).has(status as ProgrammeStatus);
 }
 
 /**
  * Filter programmes to those that should appear in Event Works (Marks, Results, Leaderboard) for the given tier.
  */
-type ProgrammeForEventWorksFilter = {
-  status: ProgrammeStatus;
+export type ProgrammeForEventWorksFilter = {
+  status: string;
+  id: string;
   assignments?: readonly unknown[];
 };
 
@@ -76,7 +78,7 @@ export function filterProgrammesForEventWorks<
   return programmes.filter((p) => {
     if (isProgrammeInEventWorks(p.status, resolvedTier)) return true;
     // BASIC: programmes with any assignment belong in Marks / Event Works even if
-    // status is still READY (e.g. legacy rows or status not recomputed yet).
+    // status is still DRAFT (e.g. legacy rows or status not recomputed yet).
     if (
       resolvedTier === "BASIC" &&
       Array.isArray(p.assignments) &&
@@ -132,7 +134,7 @@ function computePreWorksStatus(input: PreWorksStatusInput): ProgrammeStatus {
   if (input.hasAssignments && input.isFullyAssignedAcrossAllGroups) {
     return "ASSIGNED";
   }
-  return "READY";
+  return "DRAFT";
 }
 
 /**
@@ -155,7 +157,7 @@ export async function updateProgrammeStatus(
     },
   });
 
-  if (!programme) return "READY";
+  if (!programme) return "DRAFT";
 
   const latestClosedReportingSession = reportingSessionId
     ? await db.query.programmeReportingSession.findFirst({
@@ -209,15 +211,13 @@ export async function updateProgrammeStatus(
 
     const expectedAssignmentIds = programmeReportedParticipants
       .filter(
-        (r) =>
-          !(r.participantId && absentParticipantIds.has(r.participantId)),
+        (r) => !(r.participantId && absentParticipantIds.has(r.participantId)),
       )
       .map((r) => r.assignmentId);
     const reportedTotal = expectedAssignmentIds.length;
 
     let reportedScored = 0;
     let reportedPublished = 0;
-    let reportedAnnounced = 0;
 
     if (reportedTotal > 0) {
       const scoredCount = await db
@@ -242,37 +242,33 @@ export async function updateProgrammeStatus(
           ),
         );
       reportedPublished = publishedCount[0].c;
-
-      const announcedCount = await db
-        .select({ c: count() })
-        .from(resultTable)
-        .where(
-          and(
-            eq(resultTable.programmeId, programmeId),
-            inArray(resultTable.assignmentId, expectedAssignmentIds),
-            eq(resultTable.isAnnounced, true),
-          ),
-        );
-      reportedAnnounced = announcedCount[0].c;
     }
 
-    let status: ProgrammeStatus = "STARTED";
-    if (reportedTotal > 0 && reportedAnnounced === reportedTotal) {
-      status = "ANNOUNCED";
-    } else if (reportedTotal > 0 && reportedPublished === reportedTotal) {
+    let status: ProgrammeStatus = "PENDING_JUDGMENT";
+    if (reportedTotal > 0 && reportedPublished === reportedTotal) {
       status = "PUBLISHED";
     } else if (reportedTotal > 0 && reportedScored === reportedTotal) {
-      status = "ENDED";
+      status = "PENDING_PUBLICATION";
+    }
+
+    let finalResultNumber = programme.resultNumber;
+    if (
+      ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(status) &&
+      finalResultNumber === null
+    ) {
+      const nextNumRes = await db
+        .select({ maxNum: max(programmeTable.resultNumber) })
+        .from(programmeTable)
+        .where(eq(programmeTable.festivalId, programme.festivalId));
+      finalResultNumber = (nextNumRes[0]?.maxNum ?? 0) + 1;
     }
 
     await db
       .update(programmeTable)
       .set({
         status,
-        publishedAt:
-          status === "PUBLISHED" || status === "ANNOUNCED"
-            ? serverNowIso()
-            : null,
+        resultNumber: finalResultNumber,
+        publishedAt: status === "PUBLISHED" ? serverNowIso() : null,
         updatedAt: serverNowIso(),
       })
       .where(eq(programmeTable.id, programmeId));
@@ -285,7 +281,6 @@ export async function updateProgrammeStatus(
     scheduleEntryCount,
     resultCount,
     publishedResultCount,
-    announcedResultCount,
     groupCountResult,
   ] = await Promise.all([
     db
@@ -316,15 +311,6 @@ export async function updateProgrammeStatus(
       ),
     db
       .select({ c: count() })
-      .from(resultTable)
-      .where(
-        and(
-          eq(resultTable.programmeId, programmeId),
-          eq(resultTable.isAnnounced, true),
-        ),
-      ),
-    db
-      .select({ c: count() })
       .from(groupTable)
       .where(eq(groupTable.festivalId, programme.festivalId)),
   ]);
@@ -346,20 +332,16 @@ export async function updateProgrammeStatus(
     assignmentCount[0].c > 0 && resultCount[0].c >= assignmentCount[0].c;
   const allResultsPublished =
     resultCount[0].c > 0 && publishedResultCount[0].c >= resultCount[0].c;
-  const allResultsAnnounced =
-    resultCount[0].c > 0 && announcedResultCount[0].c >= resultCount[0].c;
 
   const isBasic = isBasicTier(programme.festival.tier);
 
   let status: ProgrammeStatus;
 
   if (isBasic) {
-    if (allResultsAnnounced) {
-      status = "ANNOUNCED";
-    } else if (allResultsPublished) {
+    if (allResultsPublished) {
       status = "PUBLISHED";
     } else if (allAssignmentsHaveResult) {
-      status = "JUDGED";
+      status = "PENDING_PUBLICATION";
     } else {
       status = computePreWorksStatus({
         hasAssignments,
@@ -386,9 +368,9 @@ export async function updateProgrammeStatus(
       status = "REPORTING";
     } else if (
       activeReportingSession?.status === "RESET" &&
-      programme.status === "RESET"
+      programme.status === "CANCELLED"
     ) {
-      status = "RESET";
+      status = "CANCELLED";
     } else {
       status = computePreWorksStatus({
         hasAssignments,
@@ -399,43 +381,29 @@ export async function updateProgrammeStatus(
     }
   }
 
+  let finalResultNumber = programme.resultNumber;
+  if (
+    ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(status) &&
+    finalResultNumber === null
+  ) {
+    const nextNumRes = await db
+      .select({ maxNum: max(programmeTable.resultNumber) })
+      .from(programmeTable)
+      .where(eq(programmeTable.festivalId, programme.festivalId));
+    finalResultNumber = (nextNumRes[0]?.maxNum ?? 0) + 1;
+  }
+
   await db
     .update(programmeTable)
     .set({
       status,
-      publishedAt:
-        status === "PUBLISHED" || status === "ANNOUNCED"
-          ? serverNowIso()
-          : null,
+      resultNumber: finalResultNumber,
+      publishedAt: status === "PUBLISHED" ? serverNowIso() : null,
       updatedAt: serverNowIso(),
     })
     .where(eq(programmeTable.id, programmeId));
 
   return status;
-}
-
-export async function setProgrammeAnnounced(
-  programmeId: string,
-  announced: boolean,
-): Promise<void> {
-  if (!announced) {
-    await db
-      .update(programmeTable)
-      .set({
-        status: "PUBLISHED",
-        updatedAt: serverNowIso(),
-      })
-      .where(eq(programmeTable.id, programmeId));
-    return;
-  }
-  await db
-    .update(programmeTable)
-    .set({
-      status: "ANNOUNCED",
-      publishedAt: serverNowIso(),
-      updatedAt: serverNowIso(),
-    })
-    .where(eq(programmeTable.id, programmeId));
 }
 
 export async function setProgrammePublished(
@@ -458,4 +426,26 @@ export async function setProgrammePublished(
       updatedAt: serverNowIso(),
     })
     .where(eq(programmeTable.id, programmeId));
+}
+
+export function assertProgrammePreReporting(status: ProgrammeStatus) {
+  if (
+    [
+      "REPORTING",
+      "PENDING_JUDGMENT",
+      "JUDGING",
+      "PENDING_PUBLICATION",
+      "PUBLISHED",
+      "ANNOUNCED",
+      "CANCELLED",
+    ].includes(status)
+  ) {
+    throw new AppError("Programme is locked for modification because reporting or judging has already started.");
+  }
+}
+
+export function assertProgrammePrePublishing(status: ProgrammeStatus) {
+  if (["PUBLISHED", "ANNOUNCED"].includes(status)) {
+    throw new AppError("Programme results are already published.");
+  }
 }

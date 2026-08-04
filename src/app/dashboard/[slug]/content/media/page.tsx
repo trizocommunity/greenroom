@@ -1,6 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import { getMediaImagesAction } from "@/features/media/actions/media.actions";
+import {
+  getMediaImagesAction,
+  getMediaVideosAction,
+} from "@/features/media/actions/media.actions";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
 import { MediaClient } from "./MediaClient";
 
@@ -18,7 +21,10 @@ export default async function MediaPage({ params }: PageProps) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=media`);
   }
 
-  const images = await getMediaImagesAction(festival.id);
+  const [images, videos] = await Promise.all([
+    getMediaImagesAction(festival.id),
+    getMediaVideosAction(festival.id),
+  ]);
 
   return (
     <div className="pt-4 sm:pt-6">
@@ -26,6 +32,7 @@ export default async function MediaPage({ params }: PageProps) {
         festivalId={festival.id}
         festivalSlug={festival.slug}
         initialImages={images}
+        initialVideos={videos}
       />
     </div>
   );

@@ -3,17 +3,14 @@
 import type Konva from "konva";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Circle,
+  Layer,
+  Rect,
+  Stage,
   Group,
   Image as KonvaImage,
-  Layer,
-  Line,
-  Rect,
-  RegularPolygon,
-  Stage,
-  Text,
 } from "react-konva";
-import { konvaShadowProps } from "@/components/editor/editor-konva-props";
+import { PosterElementRenderer, type ElementDragHandlers } from "@/components/editor/PosterElementRenderer";
+import { documentFontsFromElements, buildGoogleFontsCssUrl } from "@/components/editor/editor-font-catalog";
 import { applyTextCase } from "@/components/editor/editor-utils";
 import type {
   EditorElement,
@@ -51,120 +48,8 @@ function resolveText(el: EditorElement, bindings: PosterBindings): string {
   return applyTextCase(raw, el.textCase);
 }
 
-function ExportTextElement({
-  el,
-  bindings,
-}: {
-  el: EditorElement;
-  bindings: PosterBindings;
-}) {
-  const content = resolveText(el, bindings);
-  const fontSize = el.fontSize ?? 24;
-  const textWidth =
-    el.width ?? Math.max(fontSize * 2, content.length * fontSize * 0.55);
-  const deco = el.textDecoration ?? "";
-  const shadow = konvaShadowProps(el);
-
-  return (
-    <Group
-      x={el.x}
-      y={el.y}
-      scaleX={el.scaleX ?? 1}
-      scaleY={el.scaleY ?? 1}
-      opacity={el.opacity ?? 1}
-      rotation={el.rotation ?? 0}
-      listening={false}
-    >
-      <Text
-        text={content}
-        fontSize={fontSize}
-        fontFamily={el.fontFamily}
-        fontStyle={el.fontStyle}
-        fill={el.fill ?? "#0f172a"}
-        align={el.align ?? "left"}
-        width={textWidth}
-        lineHeight={el.lineHeight ?? 1.2}
-        letterSpacing={el.letterSpacing ?? 0}
-        wrap="word"
-        listening={false}
-        {...shadow}
-      />
-      {deco.includes("underline") && (
-        <Line
-          points={[0, fontSize + 4, textWidth, fontSize + 4]}
-          stroke={el.fill ?? "#0f172a"}
-          strokeWidth={2}
-          listening={false}
-        />
-      )}
-      {deco.includes("line-through") && (
-        <Line
-          points={[0, fontSize * 0.55, textWidth, fontSize * 0.55]}
-          stroke={el.fill ?? "#0f172a"}
-          strokeWidth={2}
-          listening={false}
-        />
-      )}
-    </Group>
-  );
-}
-
-function ExportImageElement({ el }: { el: EditorElement }) {
-  const img = useImage(el.imageUrl);
-  if (!img) return null;
-  return (
-    <KonvaImage
-      x={el.x}
-      y={el.y}
-      width={el.width ?? 200}
-      height={el.height ?? 150}
-      image={img}
-      opacity={el.opacity ?? 1}
-      scaleX={el.scaleX ?? 1}
-      scaleY={el.scaleY ?? 1}
-      rotation={el.rotation ?? 0}
-      listening={false}
-    />
-  );
-}
-
-function ExportQrElement({
-  el,
-  bindings,
-}: {
-  el: EditorElement;
-  bindings: PosterBindings;
-}) {
-  const qw = el.width ?? 160;
-  const qh = el.height ?? 160;
-  return (
-    <Group
-      x={el.x}
-      y={el.y}
-      opacity={el.opacity ?? 1}
-      rotation={el.rotation ?? 0}
-      listening={false}
-    >
-      <Rect
-        width={qw}
-        height={qh}
-        fill={el.fill ?? "#ffffff"}
-        stroke={el.stroke ?? "#cbd5e1"}
-        strokeWidth={el.strokeWidth ?? 2}
-        dash={[8, 6]}
-      />
-      <Text
-        y={qh / 2 - 8}
-        width={qw}
-        align="center"
-        text={bindings.qrCode ?? "QR"}
-        fontSize={14}
-        fill="#64748b"
-        listening={false}
-      />
-    </Group>
-  );
-}
+const NO_HOVER = { onMouseEnter: () => {}, onMouseLeave: () => {} };
+const NO_DRAG: ElementDragHandlers = { onDragStart: () => {}, onDragMove: () => {}, onDragEnd: () => {} };
 
 // ─── Background renderer ──────────────────────────────────────────────────────
 
@@ -242,7 +127,7 @@ export function PosterExportCanvas({
 }: {
   doc: PosterEditorDocument;
   bindings: PosterBindings;
-  stageRef: React.RefObject<Konva.Stage | null>;
+  stageRef?: React.RefObject<Konva.Stage | null>;
   scale?: number;
   /** Render in normal layout (e.g. publish preview dialog) instead of off-screen. */
   inline?: boolean;
@@ -252,6 +137,22 @@ export function PosterExportCanvas({
     () => documentWithBindings(doc, bindings, true),
     [doc, bindings],
   );
+  
+  // Eagerly load fonts used in this specific document so export renders correctly
+  useEffect(() => {
+    if (!boundDoc.elements) return;
+    const fonts = documentFontsFromElements(boundDoc.elements).filter(f => f.googleFamily);
+    for (const font of fonts) {
+      const id = `greenroom-editor-font-${font.id}`;
+      if (!document.getElementById(id)) {
+        const link = document.createElement("link");
+        link.id = id;
+        link.rel = "stylesheet";
+        link.href = buildGoogleFontsCssUrl([font]);
+        document.head.appendChild(link);
+      }
+    }
+  }, [boundDoc.elements]);
 
   const bgImage = useImage(
     boundDoc.background.type === "image"
@@ -289,98 +190,25 @@ export function PosterExportCanvas({
             <ExportBackground doc={boundDoc} bgImage={bgImage} />
 
             {sorted.map((el) => {
-              if (el.type === "text") {
-                return (
-                  <ExportTextElement key={el.id} el={el} bindings={bindings} />
-                );
-              }
+              const display = el.type === "text" 
+                ? resolveText(el, bindings) 
+                : el.type === "qr" 
+                ? bindings.qrCode || ""
+                : "";
 
-              if (el.type === "rect") {
-                return (
-                  <Rect
-                    key={el.id}
-                    x={el.x}
-                    y={el.y}
-                    width={el.width ?? 100}
-                    height={el.height ?? 80}
-                    fill={el.fill}
-                    stroke={el.stroke}
-                    strokeWidth={el.strokeWidth}
-                    cornerRadius={el.cornerRadius ?? 0}
-                    opacity={el.opacity ?? 1}
-                    scaleX={el.scaleX ?? 1}
-                    scaleY={el.scaleY ?? 1}
-                    rotation={el.rotation ?? 0}
-                    listening={false}
-                    {...konvaShadowProps(el)}
-                  />
-                );
-              }
-
-              if (el.type === "circle") {
-                return (
-                  <Circle
-                    key={el.id}
-                    x={el.x}
-                    y={el.y}
-                    radius={el.radius ?? 50}
-                    fill={el.fill}
-                    stroke={el.stroke}
-                    strokeWidth={el.strokeWidth}
-                    opacity={el.opacity ?? 1}
-                    rotation={el.rotation ?? 0}
-                    listening={false}
-                    {...konvaShadowProps(el)}
-                  />
-                );
-              }
-
-              if (el.type === "triangle") {
-                return (
-                  <RegularPolygon
-                    key={el.id}
-                    x={el.x}
-                    y={el.y}
-                    sides={3}
-                    radius={el.radius ?? 60}
-                    fill={el.fill}
-                    stroke={el.stroke}
-                    strokeWidth={el.strokeWidth}
-                    opacity={el.opacity ?? 1}
-                    rotation={el.rotation ?? 0}
-                    listening={false}
-                    {...konvaShadowProps(el)}
-                  />
-                );
-              }
-
-              if (el.type === "line") {
-                return (
-                  <Line
-                    key={el.id}
-                    x={el.x}
-                    y={el.y}
-                    points={el.points ?? [0, 0, 200, 0]}
-                    stroke={el.stroke ?? "#0f172a"}
-                    strokeWidth={el.strokeWidth ?? 4}
-                    opacity={el.opacity ?? 1}
-                    rotation={el.rotation ?? 0}
-                    listening={false}
-                  />
-                );
-              }
-
-              if (el.type === "qr") {
-                return (
-                  <ExportQrElement key={el.id} el={el} bindings={bindings} />
-                );
-              }
-
-              if (el.type === "image" && el.imageUrl) {
-                return <ExportImageElement key={el.id} el={el} />;
-              }
-
-              return null;
+              return (
+                <PosterElementRenderer
+                  key={el.id}
+                  el={el}
+                  interactive={false}
+                  previewMode={true}
+                  draggable={false}
+                  nodeOpacity={el.opacity ?? 1}
+                  displayText={display}
+                  hoverHandlers={NO_HOVER}
+                  dragHandlers={NO_DRAG}
+                />
+              );
             })}
           </Group>
         </Layer>

@@ -9,17 +9,17 @@ export const PROGRAMME_STATUS_PRIORITY_RANK: Partial<
 > = {
   // Active / event day first
   REPORTING: 0,
-  STARTED: 1,
+  PENDING_JUDGMENT: 1,
+  JUDGING: 2,
   // After event day
-  ENDED: 2,
+  PENDING_PUBLICATION: 3,
   // Judging/results
-  JUDGED: 3,
   PUBLISHED: 4,
   ANNOUNCED: 5,
   // Pre-start
-  SCHEDULED: 5,
-  ASSIGNED: 6,
-  READY: 7,
+  SCHEDULED: 6,
+  ASSIGNED: 7,
+  DRAFT: 8,
 };
 
 export function getProgrammeStatusPriorityRank(

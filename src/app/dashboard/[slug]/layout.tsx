@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { DashboardBreadcrumb } from "@/components/festival/dashboard/DashboardBreadcrumb";
 import { DashboardCelebration } from "@/components/festival/dashboard/DashboardCelebration";
 import { DashboardRightSidebar } from "@/components/festival/dashboard/DashboardRightSidebar";
+import { ExpiryWarningBanner } from "@/components/festival/dashboard/ExpiryWarningBanner";
 import { FestivalDashboardClientShell } from "@/components/festival/dashboard/FestivalDashboardClientShell";
 import { FestivalDashboardSidebar } from "@/components/festival/dashboard/FestivalDashboardSidebar";
 import { StageContextSelector } from "@/components/festival/dashboard/StageContextSelector";
@@ -22,12 +23,17 @@ import { getCurrentUser } from "@/core/auth/current-user";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { stage as stageTable } from "@/core/database/schema";
-import { parseInstant } from "@/core/datetime";
-import { MS } from "@/core/datetime/server";
+import { MS, serverNowMs } from "@/core/datetime/server";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
+import { getInAppBannerState } from "@/features/notifications/services/in-app-banner.service";
 import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
+import {
+  ALL_FESTIVAL_ROLES,
+  PRIVILEGED_ROLES,
+} from "@/features/role-switch/constants";
+import { getActiveRoleCookie } from "@/features/role-switch/role-switch-cookie.server";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
@@ -51,7 +57,7 @@ export default async function FestivalDashboardLayout({
 
   if (!festivalContext) notFound();
 
-  const { festival, role, isExpired } = festivalContext;
+  const { festival, role, memberRoles, isExpired } = festivalContext;
 
   if (role === "NONE") {
     redirect("/");
@@ -61,6 +67,15 @@ export default async function FestivalDashboardLayout({
   if (isExpired) {
     redirect("/profile?error=expired");
   }
+
+  // 2b. Role Switch — determine effective role for sidebar view
+  const isPrivileged = PRIVILEGED_ROLES.includes(role as any);
+  const activeRoleCookie = await getActiveRoleCookie(
+    festival.id,
+    isPrivileged ? [...ALL_FESTIVAL_ROLES] : memberRoles,
+  );
+  const effectiveRole = activeRoleCookie ?? role;
+  const isSwitchedRole = activeRoleCookie !== null && activeRoleCookie !== role;
 
   // 4. Prepare Data
   const tierLimits = TIER_CONFIG[getResolvedTier(festival.tier)].limits;
@@ -106,12 +121,15 @@ export default async function FestivalDashboardLayout({
       maxStages: tierLimits.stages,
       maxStorageMB: tierLimits.storageMB,
     },
+    participantCreationStartDate: festival.participantCreationStartDate,
     participantCreationDeadline: festival.participantCreationDeadline,
+    programmeAssignmentStartDate: festival.programmeAssignmentStartDate,
     programmeAssignmentDeadline: festival.programmeAssignmentDeadline,
     effectiveFeatures,
   };
 
-  const userRole = role;
+  const userRole = effectiveRole;
+  const actualRole = role;
 
   // 4c. Stage manager's own stage filter (banner selector) — only relevant
   // when they're assigned more than one stage.
@@ -151,7 +169,13 @@ export default async function FestivalDashboardLayout({
       <SidebarProvider defaultOpen={false}>
         <FestivalProvider festival={festivalData}>
           <FestivalDashboardClientShell>
-            <FestivalDashboardSidebar festival={festivalData} role={userRole} />
+            <FestivalDashboardSidebar
+              festival={festivalData}
+              role={userRole}
+              actualRole={actualRole}
+              memberRoles={memberRoles}
+              isSwitchedRole={isSwitchedRole}
+            />
 
             <SidebarInset>
               <header className="sticky top-0 z-10 w-full flex h-14 shrink-0 items-center justify-between border-b bg-card/95 backdrop-blur px-2 md:px-8 shadow-sm">
@@ -184,7 +208,7 @@ export default async function FestivalDashboardLayout({
                     user={userData}
                     festivalSlug={slug}
                     showStatusAndUsage={
-                      userRole === "OWNER" || userRole === "SUPER_ADMIN"
+                      actualRole === "OWNER" || actualRole === "SUPER_ADMIN"
                     }
                     festivalName={festival.name}
                     festivalStatus={derivedStatus}
@@ -195,8 +219,8 @@ export default async function FestivalDashboardLayout({
                     daysRemaining={
                       festival.expiresAt
                         ? Math.ceil(
-                            (parseInstant(festival.expiresAt)!.getTime() -
-                              Date.now()) /
+                            (new Date(festival.expiresAt).getTime() -
+                              serverNowMs()) /
                               MS.day,
                           )
                         : null
@@ -209,7 +233,9 @@ export default async function FestivalDashboardLayout({
                       storageUsedMB: festival.storageUsedMb ?? 0,
                     }}
                     limits={festivalData.limits}
-                    tierLabel={TIER_CONFIG[getResolvedTier(festival.tier)].label}
+                    tierLabel={
+                      TIER_CONFIG[getResolvedTier(festival.tier)].label
+                    }
                     canAccessSettings={effectiveFeatures.festivalSettings}
                   />
                 </div>
@@ -219,6 +245,27 @@ export default async function FestivalDashboardLayout({
                 <Suspense fallback={null}>
                   <DashboardCelebration />
                 </Suspense>
+                {(() => {
+                  const bannerState = getInAppBannerState({
+                    expiresAt: festival.expiresAt,
+                    status: festival.status,
+                  });
+                  if (
+                    !bannerState.visible ||
+                    bannerState.daysRemaining === null
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <ExpiryWarningBanner
+                      daysRemaining={bannerState.daysRemaining}
+                      expiresAtIso={
+                        bannerState.expiresAtIso ?? festival.expiresAt ?? ""
+                      }
+                      festivalName={festival.name}
+                    />
+                  );
+                })()}
                 {children}
               </main>
             </SidebarInset>

@@ -55,6 +55,20 @@ export const TEMPLATE_COLOR_SCHEMES: Record<
     mutedFill: "#e9d5ff",
     highlightFill: "#22d3ee",
   },
+  CERTIFICATE: {
+    background: {
+      type: "gradient",
+      color: "#fffbeb",
+      gradientFrom: "#ffffff",
+      gradientTo: "#fef3c7",
+    },
+    titleFill: "#92400e",
+    accentFill: "#b45309",
+    bodyFill: "#1e293b",
+    mutedFill: "#78716c",
+    highlightFill: "#ca8a04",
+    titleFontFamily: '"Libre Baskerville", Georgia, serif',
+  },
 };
 
 export function presetBackground(

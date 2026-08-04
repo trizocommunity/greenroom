@@ -1,19 +1,9 @@
 "use client";
 
-import { Maximize2, Radio, Sparkles } from "lucide-react";
+import { ExternalLink, Power, Rocket } from "lucide-react";
 import party from "party-js";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/core/utils/cn";
 import { setPublicSiteEnabledAction } from "@/features/festivals/actions/festival-crud.actions";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
@@ -23,157 +13,186 @@ interface FestivalLiveClientProps {
   festivalSlug: string;
   publicSiteEnabled: boolean;
   publicUrl: string;
+  onExit: () => void;
 }
+
+type Phase = "buzzer" | "launching" | "live" | "taking-offline";
 
 export function FestivalLiveClient({
   festivalId,
   festivalSlug,
   publicSiteEnabled,
   publicUrl,
+  onExit,
 }: FestivalLiveClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
   const [enabled, setEnabled] = useState(publicSiteEnabled);
-  const [loading, setLoading] = useState(false);
-  const [justEnabled, setJustEnabled] = useState(false);
+  const [phase, setPhase] = useState<Phase>(publicSiteEnabled ? "live" : "buzzer");
+  const [iframeReady, setIframeReady] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (justEnabled) {
-      party.confetti(document.body, {
-        count: 80,
-        size: 2,
-        speed: 12,
-        spread: 360,
-      });
-      setJustEnabled(false);
-    }
-  }, [justEnabled]);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && (phase === "live" || phase === "buzzer")) {
+        onExit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [phase, onExit]);
 
-  const handleToggle = async (checked: boolean) => {
+  const fireConfetti = useCallback(() => {
+    const burst = (count: number, speed: number) =>
+      party.confetti(document.body, { count, size: 2, speed, spread: 360 });
+    burst(120, 14);
+    setTimeout(() => burst(80, 11), 250);
+    setTimeout(() => burst(50, 8), 600);
+  }, []);
+
+  const handleLaunch = async () => {
     if (isReadOnly) return;
-    setLoading(true);
+    setPhase("launching");
     try {
-      const result = await setPublicSiteEnabledAction(festivalId, checked);
+      const result = await setPublicSiteEnabledAction(festivalId, true);
       if (result?.success) {
-        if (checked) setJustEnabled(true);
-        setEnabled(checked);
-        toast.success(
-          checked
-            ? "Your festival is now live!"
-            : "Public website is now disabled.",
-        );
+        setEnabled(true);
+        setPhase("live");
+        fireConfetti();
       } else {
-        const message =
+        setPhase("buzzer");
+        const msg =
           result && "error" in result && typeof result.error === "string"
             ? result.error
-            : "Failed to update.";
-        toast.error(message);
+            : "Failed to launch.";
+        toast.error(msg);
       }
     } catch {
-      toast.error("Failed to update.");
-    } finally {
-      setLoading(false);
+      setPhase("buzzer");
+      toast.error("Failed to launch.");
+    }
+  };
+
+  const handleTakeOffline = async () => {
+    if (isReadOnly) return;
+    setPhase("taking-offline");
+    try {
+      const result = await setPublicSiteEnabledAction(festivalId, false);
+      if (result?.success) {
+        setEnabled(false);
+        setIframeReady(false);
+        setPhase("buzzer");
+        toast.success("Website is now offline.");
+      } else {
+        setPhase("live");
+        toast.error("Failed to take offline.");
+      }
+    } catch {
+      setPhase("live");
+      toast.error("Failed to take offline.");
     }
   };
 
   const fullPublicUrl = publicUrl || `/${festivalSlug}`;
 
   return (
-    <div className="space-y-8 max-w-8xl mx-auto">
-      <div>
-        <h2 className="text-xl font-semibold mb-1">Festival Live</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage your public-facing festival website.
-        </p>
-      </div>
+    <div ref={overlayRef} className="fixed inset-0 z-50 bg-background">
+      {(phase === "buzzer" || phase === "launching") && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-8">
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
+              Launch Your Website
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Press the button to go live instantly
+            </p>
+          </div>
 
-      <div className="grid gap-6">
-        {enabled && fullPublicUrl && (
-          <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-primary/5 via-background to-background">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-primary">
-                  <Radio className="h-5 w-5 animate-pulse" />
-                  <CardTitle className="text-lg">
-                    Your festival is live
-                  </CardTitle>
-                </div>
-                <Button asChild variant="outline" size="sm" className="gap-2">
-                  <a
-                    href={`/${festivalSlug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Maximize2 className="h-4 w-4" />
-                    Expand
-                  </a>
-                </Button>
-              </div>
-              <CardDescription>
-                Share this link with your audience. Anyone with the link can
-                view your public festival site.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-xl overflow-hidden border bg-muted/30 aspect-video">
-                <iframe
-                  src={`/${festivalSlug}`}
-                  className="w-full h-full"
-                  title="Festival live preview"
-                />
-              </div>
-              <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2.5 font-mono text-sm break-all">
-                <span className="text-muted-foreground shrink-0">URL</span>
-                <span className="min-w-0 truncate" title={fullPublicUrl}>
-                  {fullPublicUrl}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card
-          className={cn(
-            "transition-all duration-500",
-            enabled && "border-primary/50 shadow-md",
-          )}
-        >
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              {enabled && (
-                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+          <button
+            type="button"
+            onClick={handleLaunch}
+            disabled={phase === "launching" || isReadOnly}
+            className={cn(
+              "group relative flex items-center justify-center rounded-full outline-none transition-transform duration-200 active:scale-90",
+              "w-48 h-48 sm:w-56 sm:h-56",
+              phase === "launching"
+                ? "cursor-wait"
+                : "cursor-pointer hover:scale-105",
+            )}
+          >
+            <span className="absolute inset-0 rounded-full bg-primary/10 group-hover:bg-primary/15 transition-colors duration-200" />
+            <span
+              className={cn(
+                "absolute inset-0 rounded-full border-[3px] border-primary/40 group-hover:border-primary/60 transition-colors duration-200",
+                phase === "buzzer" && "animate-pulse",
               )}
-              <CardTitle className="text-lg">Visibility Status</CardTitle>
-            </div>
-            <CardDescription>
-              {enabled
-                ? "Your public festival site is live. Turn it off to make changes before updating."
-                : "Enable your public festival site to share it with your audience."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-4 p-4 rounded-lg border bg-muted/30">
-              <div className="space-y-0.5">
-                <Label
-                  htmlFor="public-site-toggle"
-                  className="text-base font-semibold"
-                >
-                  Public Festival Website
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Make your festival publicly visible.
-                </p>
-              </div>
-              <Switch
-                id="public-site-toggle"
-                className="scale-125 data-[state=checked]:bg-primary"
-                checked={enabled}
-                onCheckedChange={handleToggle}
-                disabled={loading || isReadOnly}
+            />
+            <span className="absolute inset-3 rounded-full border border-primary/20" />
+            <span className="absolute inset-6 rounded-full bg-primary/5" />
+
+            <div className="relative flex flex-col items-center gap-3 text-primary">
+              <Rocket
+                className={cn(
+                  "h-14 w-14 sm:h-16 sm:w-16 transition-transform duration-300",
+                  phase === "launching" && "animate-bounce -rotate-12",
+                )}
               />
+              <span className="text-base font-bold uppercase tracking-widest">
+                {phase === "launching" ? "Launching..." : "Launch"}
+              </span>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </button>
+
+          <p className="text-xs text-muted-foreground/60">
+            Press <kbd className="px-1.5 py-0.5 rounded border bg-muted text-[10px] font-mono">Esc</kbd> to go back
+          </p>
+        </div>
+      )}
+
+      {(phase === "live" || phase === "taking-offline") && (
+        <>
+          {!iframeReady && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background">
+              <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            </div>
+          )}
+
+          <iframe
+            src={`/${festivalSlug}`}
+            className="w-full h-full"
+            title="Festival website preview"
+            onLoad={() => setIframeReady(true)}
+          />
+
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 rounded-full bg-background/80 backdrop-blur-md border shadow-lg px-2 py-1.5">
+            <span className="flex items-center gap-2 px-3 text-sm font-mono text-muted-foreground">
+              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="hidden sm:inline truncate max-w-[200px]">{fullPublicUrl}</span>
+              <span className="sm:hidden">Live</span>
+            </span>
+            <a
+              href={`/${festivalSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-muted transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open
+            </a>
+            <button
+              type="button"
+              onClick={handleTakeOffline}
+              disabled={phase === "taking-offline"}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors",
+                phase === "taking-offline" && "opacity-50 cursor-wait",
+              )}
+            >
+              <Power className="h-3.5 w-3.5" />
+              {phase === "taking-offline" ? "Stopping..." : "Take Offline"}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

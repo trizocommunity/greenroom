@@ -21,7 +21,7 @@ export async function createCategories(
   db: DB,
   festivalId: string,
 ): Promise<CreatedCategory[]> {
-  console.log("📁 Creating Categories (GENERAL, JUNIOR, SENIOR)...");
+  console.log("📁 Creating Y Zone, C Zone, B Zone, H Zone, High School, General...");
   const out: CreatedCategory[] = [];
   for (const cat of CATEGORIES) {
     const id = generateId();
@@ -43,7 +43,7 @@ export async function createGroups(
   db: DB,
   festivalId: string,
 ): Promise<CreatedGroup[]> {
-  console.log("🚩 Creating 2 Groups (Al-Qurtuba & Al-Andalus)...");
+  console.log(`🚩 Creating ${GROUPS.length} Groups...`);
   const out: CreatedGroup[] = [];
   for (const group of GROUPS) {
     const id = generateId();

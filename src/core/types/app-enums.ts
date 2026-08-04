@@ -81,26 +81,20 @@ export const ProgrammeType = {
 export type ProgrammeType = (typeof ProgrammeType)[keyof typeof ProgrammeType];
 
 export const ProgrammeStatus = {
-  READY: "READY",
+  DRAFT: "DRAFT",
   ASSIGNED: "ASSIGNED",
   SCHEDULED: "SCHEDULED",
   REPORTING: "REPORTING",
-  STARTED: "STARTED",
-  ENDED: "ENDED",
-  JUDGED: "JUDGED",
+  PENDING_JUDGMENT: "PENDING_JUDGMENT",
+  JUDGING: "JUDGING",
+  PENDING_PUBLICATION: "PENDING_PUBLICATION",
   PUBLISHED: "PUBLISHED",
   ANNOUNCED: "ANNOUNCED",
-  RESET: "RESET",
+  CANCELLED: "CANCELLED",
 } as const;
 export type ProgrammeStatus =
   (typeof ProgrammeStatus)[keyof typeof ProgrammeStatus];
 
-export const PublicDisplayMode = {
-  PROGRAMME_RESULTS: "programme_results",
-  TEAM_STANDINGS: "team_standings",
-} as const;
-export type PublicDisplayMode =
-  (typeof PublicDisplayMode)[keyof typeof PublicDisplayMode];
 
 export const ProgrammeReportingStatus = {
   NOT_STARTED: "NOT_STARTED",

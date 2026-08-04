@@ -40,6 +40,29 @@ export const reorderMediaInput = z.object({
   imageIds: z.array(z.string()),
 });
 
+export const mediaVideoSchema = z.object({
+  id: z.string(),
+  festivalId: z.string(),
+  url: z.string(),
+  order: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const createMediaVideoInput = z.object({
+  festivalId: z.string(),
+  url: z.string().url(),
+});
+
+export const deleteMediaVideoInput = z.object({
+  festivalId: z.string(),
+  videoId: z.string(),
+});
+
+export type MediaVideo = z.infer<typeof mediaVideoSchema>;
+export type CreateMediaVideoInput = z.infer<typeof createMediaVideoInput>;
+export type DeleteMediaVideoInput = z.infer<typeof deleteMediaVideoInput>;
+
 export type MediaImage = z.infer<typeof mediaImageSchema>;
 export type CreateMediaImageInput = z.infer<typeof createMediaImageInput>;
 export type CreateManyMediaImagesInput = z.infer<

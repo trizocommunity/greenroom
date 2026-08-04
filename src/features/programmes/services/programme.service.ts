@@ -3,9 +3,11 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment,
   programme as programmes,
+  scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { assertProgrammePreReporting } from "./programme-status.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 import {
@@ -151,6 +153,7 @@ export const ProgrammeService = {
     },
   ) {
     const existingDetails = await this.getDetails(id, festivalId);
+    assertProgrammePreReporting(existingDetails.status);
 
     if (data.name || data.categoryId || data.type) {
       const existingComposite = await db.query.programme.findFirst({
@@ -201,6 +204,15 @@ export const ProgrammeService = {
 
     if (assignmentCount > 0) {
       throw new AppError(ERROR_MESSAGES.PROGRAMME_HAS_ASSIGNMENTS);
+    }
+
+    const [{ scheduleCount }] = await db
+      .select({ scheduleCount: count() })
+      .from(scheduleEntryTable)
+      .where(eq(scheduleEntryTable.programmeId, id));
+
+    if (scheduleCount > 0) {
+      throw new AppError("Programme is scheduled. Remove it from the schedule before deleting.");
     }
 
     await UsageCounterService.incrementUsage(

@@ -1,9 +1,10 @@
 import { Mail } from "lucide-react";
 import Link from "next/link";
+import { PageHeader, Section } from "@/components/layout/Section";
 import { LifecycleInfo } from "@/components/pricing/LifecycleInfo";
-import { PricingCard } from "@/components/pricing/PricingCard";
+import { PlanShowcase } from "@/components/pricing/PlanShowcase";
 import { Button } from "@/components/ui/button";
-import { PRICING_TIERS } from "@/config/pricing";
+import { PRICING_TIERS, TIER_CONFIG } from "@/config/pricing";
 
 export const metadata = {
   title: "Pricing | Greenroom",
@@ -12,73 +13,52 @@ export const metadata = {
 };
 
 export default function PricingPage() {
+  // Only the Pro plan is offered publicly; the other tiers stay in config for
+  // existing festivals and Super Admin assignment.
+  const tier = PRICING_TIERS.find((t) => t.id === "PRO");
+  const durationDays = TIER_CONFIG.PRO.festivalDurationDays;
+
   return (
-    <main className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="py-16 md:py-20">
-        <div className="container max-w-7xl px-4 md:px-6 mx-auto">
-          {/* Header */}
-          <div className="text-center mb-16">
-            <p className="text-eyebrow mb-4 justify-center">Pricing</p>
-            <h1 className="text-4xl md:text-6xl font-semibold tracking-tight mb-5 text-heading">
-              Simple,{" "}
-              <span className="font-display italic font-normal text-primary">
-                transparent
-              </span>{" "}
-              pricing
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              No hidden fees. No monthly subscriptions. Pay only when you create
-              a festival.
-            </p>
-          </div>
+    <>
+      <PageHeader
+        eyebrow="Pricing"
+        title={
+          <>
+            One price.{" "}
+            <span className="font-display font-normal italic text-primary">
+              One festival.
+            </span>
+          </>
+        }
+        lede="No monthly subscription and no per-participant billing. You pay once, when you create the festival."
+      />
 
-          {/* Pricing Cards */}
-          <div className="flex flex-col md:flex-row justify-center gap-8 mb-16 relative">
-            <div className="absolute inset-x-0 top-10 bottom-10 bg-linear-to-r from-transparent via-primary/5 to-transparent blur-3xl -z-10" />
-            {PRICING_TIERS.filter((tier) => tier.id === "PRO").map(
-              (tier, index) => (
-                <div key={tier.id} className="w-full max-w-md">
-                  <PricingCard tier={tier} index={index} />
-                </div>
-              ),
-            )}
-          </div>
+      {tier && <PlanShowcase tier={tier} durationDays={durationDays} />}
 
-          <div className="text-center mb-16">
-            <p className="text-muted-foreground bg-muted/40 py-3 px-6 rounded-full inline-flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              Festival identity stays forever. Pay once per festival creation.
-            </p>
-          </div>
+      <LifecycleInfo durationDays={durationDays} />
 
-          {/* Lifecycle Info */}
-          <LifecycleInfo />
-        </div>
-      </section>
-
-      {/* Secondary CTA */}
-      <section className="py-16 border-t border-border">
-        <div className="container max-w-7xl px-4 md:px-6 mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-heading mb-4">
-            Need a custom solution?
+      <Section bordered className="py-16 md:py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-2xl font-semibold tracking-tight text-heading md:text-3xl">
+            Running more than one festival?
           </h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Running multiple festivals or need enterprise features? Let&apos;s
-            talk about a plan that works for you.
+          <p className="mx-auto mt-4 max-w-lg leading-relaxed text-muted-foreground">
+            Multi-festival management, white-labelling and custom domains are
+            part of Pro. If you need something beyond it — a shared institution
+            account, a custom integration — tell us what you are running.
           </p>
-          <Link href="/contact">
+          <Link href="/contact" className="mt-8 inline-block">
             <Button
               variant="outline"
               size="lg"
-              className="h-12 px-8 rounded-full font-medium border-border hover:bg-muted"
+              className="h-12 rounded-full px-8 font-medium"
             >
               <Mail className="mr-2 h-4 w-4" />
               Contact sales
             </Button>
           </Link>
         </div>
-      </section>
-    </main>
+      </Section>
+    </>
   );
 }

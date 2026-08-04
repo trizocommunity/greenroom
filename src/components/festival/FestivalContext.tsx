@@ -30,8 +30,10 @@ export type FestivalPublicData = {
     maxStages?: number;
     maxStorageMB?: number;
   } | null;
-  // Deadlines
+  // Deadline windows (start = when team leaders may begin, deadline = when they're locked out)
+  participantCreationStartDate?: string | Date | null;
   participantCreationDeadline: string | Date | null;
+  programmeAssignmentStartDate?: string | Date | null;
   programmeAssignmentDeadline: string | Date | null;
   /** Admin overrides for plan features (from Super Admin). When set, useFeature uses these instead of config. */
   effectiveFeatures?: Partial<Record<FeaturePath, boolean>>;

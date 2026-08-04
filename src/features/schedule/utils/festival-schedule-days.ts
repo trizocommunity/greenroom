@@ -1,8 +1,7 @@
 import { eachDayOfInterval } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
-
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import { DEFAULT_TZ } from "@/core/datetime/constants";
-import { formatInTimeZone } from "date-fns-tz";
+import { parseInstant } from "@/core/datetime/parse";
 
 const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -20,7 +19,10 @@ export function getFestivalDateKeySet(
   if (!startISO || !endISO) return null;
   const startParsed = new Date(startISO);
   const endParsed = new Date(endISO);
-  if (Number.isNaN(startParsed.getTime()) || Number.isNaN(endParsed.getTime())) {
+  if (
+    Number.isNaN(startParsed.getTime()) ||
+    Number.isNaN(endParsed.getTime())
+  ) {
     return null;
   }
   const startKey = formatInTimeZone(startParsed, tz, "yyyy-MM-dd");
@@ -28,8 +30,21 @@ export function getFestivalDateKeySet(
   if (startKey > endKey) return null;
   const startUtc = fromZonedTime(`${startKey}T00:00:00`, tz);
   const endUtc = fromZonedTime(`${endKey}T23:59:59`, tz);
-  const days = eachDayOfInterval({ start: toZonedTime(startUtc, tz), end: toZonedTime(endUtc, tz) });
+  const days = eachDayOfInterval({
+    start: toZonedTime(startUtc, tz),
+    end: toZonedTime(endUtc, tz),
+  });
   return new Set(days.map((d) => formatInTimeZone(d, tz, "yyyy-MM-dd")));
+}
+
+export function getScheduleDateKeyUpperBound(
+  endDate: string | null,
+  tz: string = DEFAULT_TZ,
+): string | null {
+  if (!endDate) return null;
+  const parsed = parseInstant(endDate);
+  if (!parsed) return null;
+  return formatInTimeZone(parsed, tz, "yyyy-MM-dd");
 }
 
 export function isValidScheduleDayKey(key: string): boolean {

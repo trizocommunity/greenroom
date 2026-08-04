@@ -12,6 +12,7 @@ import {
   MapPin,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -71,12 +72,14 @@ interface FestivalSetupFormProps {
   paymentId: string;
   planValidFrom?: string;
   accountType?: "PERSONAL" | "INSTITUTIONAL";
+  relaunchContext?: { slug: string; name: string } | null;
 }
 
 export function FestivalSetupForm({
   paymentId,
   planValidFrom,
   accountType,
+  relaunchContext,
 }: FestivalSetupFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -251,6 +254,19 @@ export function FestivalSetupForm({
                   <p className="text-muted-foreground text-sm">
                     Give it a catchy name and secure your unique subdomain.
                   </p>
+                  {relaunchContext && (
+                    <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+                      Relaunching after{" "}
+                      <Link
+                        href={`/profile/festivals/${relaunchContext.slug}/expired`}
+                        className="font-semibold underline"
+                      >
+                        {relaunchContext.name}
+                      </Link>
+                      . A fresh 90-day plan starts here — your previous data
+                      stays available from your profile.
+                    </div>
+                  )}
                 </div>
 
                 <form

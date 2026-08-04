@@ -6,8 +6,8 @@ export interface ResultPosterBindingInput {
   festivalName: string;
   programmeName: string;
   categoryName: string;
-  /** Programme code letter (e.g. spin-wheel code) shown as result number on poster. */
   programmeResultCode?: string | null;
+  resultNumber?: number | null;
   winners: Array<{
     position: number;
     name: string;
@@ -27,8 +27,10 @@ export function buildResultPosterBindings(
     programmeName: input.programmeName,
     resultLabel: "Results",
     resultNo:
-      input.programmeResultCode?.trim() ||
-      String(input.winners[0]?.position ?? ""),
+      input.resultNumber != null
+        ? String(input.resultNumber)
+        : (input.programmeResultCode?.trim() ||
+          String(input.winners[0]?.position ?? "")),
   };
 
   const sorted = [...input.winners].sort((a, b) => a.position - b.position);
@@ -85,6 +87,34 @@ export function buildCandidateCardBindings(input: {
     teamName: input.teamName,
     placeName: input.teamName,
     qrCode: input.qrPayload,
+  };
+}
+
+export interface CertificateBindingInput {
+  festivalName: string;
+  certificateTitle: string;
+  participantName: string;
+  programmeName: string;
+  categoryName: string;
+  placeName: string;
+  resultLabel: string;
+  chestNumber: string;
+  teamName: string;
+}
+
+export function buildCertificateBindings(
+  input: CertificateBindingInput,
+): PosterBindings {
+  return {
+    festName: input.festivalName,
+    certificateTitle: input.certificateTitle,
+    participantName: input.participantName,
+    programmeName: input.programmeName,
+    categoryName: input.categoryName,
+    placeName: input.placeName,
+    resultLabel: input.resultLabel,
+    chestNumber: input.chestNumber,
+    teamName: input.teamName,
   };
 }
 

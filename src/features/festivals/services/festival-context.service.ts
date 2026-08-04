@@ -17,6 +17,8 @@ export type FestivalAccessRole =
 export interface FestivalContext {
   festival: NonNullable<Awaited<ReturnType<typeof findFestivalBySlugOrId>>>;
   role: FestivalAccessRole;
+  /** All festival roles this member holds (from role + metadata.additionalRoles). Empty for OWNER/SUPER_ADMIN. */
+  memberRoles: FestivalRole[];
   isExpired: boolean;
   /** Kept for backward compat; always false (no read-only after expiry). */
   readOnlyExpired?: boolean;
@@ -45,6 +47,8 @@ export async function getFestivalContext(
       ? "OWNER"
       : "NONE";
 
+  let memberRoles: FestivalRole[] = [];
+
   if (!isCreator && !isSuperAdmin && userId) {
     const member = await withDbRetry(() =>
       db.query.festivalMember.findFirst({
@@ -57,6 +61,14 @@ export async function getFestivalContext(
 
     if (member?.isActive) {
       role = member.role as FestivalRole;
+      const primaryRole = member.role as FestivalRole;
+      const meta = member.metadata as { additionalRoles?: string[] } | null;
+      const additional = (meta?.additionalRoles ?? []).filter(
+        (r): r is FestivalRole =>
+          ["ADMIN", "ANNOUNCER", "STAGE_MANAGER", "MEDIA"].includes(r) &&
+          r !== primaryRole,
+      );
+      memberRoles = [primaryRole, ...additional];
     }
   }
 
@@ -68,6 +80,7 @@ export async function getFestivalContext(
   return {
     festival,
     role,
+    memberRoles,
     isExpired: expired,
     readOnlyExpired,
   };

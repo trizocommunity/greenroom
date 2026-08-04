@@ -162,12 +162,15 @@ export function useValidateParticipants() {
   return useMutation<
     ValidateParticipantsResponse,
     Error,
-    ValidateParticipantsInput
+    { festivalId: string; data: ValidateParticipantsInput }
   >({
-    mutationFn: async (data) => {
+    mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<
         ApiResponse<ValidateParticipantsResponse>
-      >("/participants/validate", { data });
+      >(
+        `/participants/validate?festivalId=${encodeURIComponent(festivalId)}`,
+        { data },
+      );
       return handleApiResponse(response.data);
     },
   });

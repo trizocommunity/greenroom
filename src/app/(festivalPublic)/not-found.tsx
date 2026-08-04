@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
 export default function FestivalPublicNotFound() {
   const pathname = usePathname();
   // First URL segment is the festival slug. Layout only calls notFound() after
@@ -15,13 +14,10 @@ export default function FestivalPublicNotFound() {
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
-      {/* Ambient glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-      >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-secondary/10 blur-[100px]" />
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div
+          className="absolute left-1/2 top-1/3 h-[22rem] w-[30rem] -translate-x-1/2 rounded-full bg-primary/6 blur-[120px]"
+        />
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-5 text-center">

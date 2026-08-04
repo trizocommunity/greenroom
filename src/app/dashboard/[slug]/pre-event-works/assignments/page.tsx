@@ -8,7 +8,6 @@ import {
   participant as participantTable,
   programme as programmeTable,
 } from "@/core/database/schema";
-import { parseInstant } from "@/core/datetime";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
 export default async function AssignmentsPage({
@@ -58,14 +57,7 @@ export default async function AssignmentsPage({
 
   return (
     <div className="pt-4 sm:pt-6">
-      <AssignmentsClient
-        festivalId={festival.id}
-        programmeAssignmentDeadline={
-          festival.programmeAssignmentDeadline
-            ? (parseInstant(festival.programmeAssignmentDeadline) ?? null)
-            : null
-        }
-      >
+      <AssignmentsClient festivalId={festival.id}>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
           Programme Assignments
         </h1>

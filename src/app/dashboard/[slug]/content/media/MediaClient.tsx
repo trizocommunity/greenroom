@@ -6,16 +6,23 @@ import {
   ChevronRight,
   ImagePlus,
   Loader2,
+  Plus,
   Square,
   Trash2,
   Upload,
   X,
+  Youtube,
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCloudinaryUpload } from "@/api/client";
-import { useCreateMediaItem, useDeleteMediaItem } from "@/api/client/media";
+import {
+  useCreateMediaItem,
+  useCreateMediaVideo,
+  useDeleteMediaItem,
+  useDeleteMediaVideo,
+} from "@/api/client/media";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { Button } from "@/components/ui/button";
@@ -28,28 +35,41 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import {
+  extractYouTubeId,
+  getYouTubeThumbnail,
+} from "@/features/media/utils/youtube";
 
 type ImageRecord = { id: string; url: string; order: number };
+type VideoRecord = { id: string; url: string; order: number };
 
 interface MediaClientProps {
   festivalId: string;
   festivalSlug: string;
   initialImages: ImageRecord[];
+  initialVideos: VideoRecord[];
 }
 
 export function MediaClient({
   festivalId,
   festivalSlug: _festivalSlug,
   initialImages,
+  initialVideos,
 }: MediaClientProps) {
   const dirtySourceId = `media:${festivalId}`;
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
   const [images, setImages] = useState<ImageRecord[]>(initialImages);
+  const [videos, setVideos] = useState<VideoRecord[]>(initialVideos);
+  const [videoUrlInput, setVideoUrlInput] = useState("");
+  const createMediaVideo = useCreateMediaVideo();
+  const deleteMediaVideo = useDeleteMediaVideo();
   const [pendingUpload, setPendingUpload] = useState<{
     files: File[];
     previewUrls: string[];
@@ -249,6 +269,41 @@ export function MediaClient({
     }
   }, [festivalId, selectedIds, isReadOnly, deleteMediaItem.mutateAsync]);
 
+  const handleAddVideo = useCallback(async () => {
+    if (isReadOnly) return;
+    const url = videoUrlInput.trim();
+    if (!url) return;
+    if (!extractYouTubeId(url)) {
+      toast.error("Enter a valid YouTube link.");
+      return;
+    }
+    try {
+      const video = await createMediaVideo.mutateAsync({
+        festivalId,
+        data: { festivalId, url },
+      });
+      setVideos((prev) => [...prev, video]);
+      setVideoUrlInput("");
+      toast.success("Video added.");
+    } catch {
+      // error toast handled by the mutation hook
+    }
+  }, [createMediaVideo, festivalId, isReadOnly, videoUrlInput]);
+
+  const handleDeleteVideo = useCallback(
+    async (videoId: string) => {
+      if (isReadOnly) return;
+      try {
+        await deleteMediaVideo.mutateAsync({ festivalId, videoId });
+        setVideos((prev) => prev.filter((v) => v.id !== videoId));
+        toast.success("Video removed.");
+      } catch {
+        // error toast handled by the mutation hook
+      }
+    },
+    [deleteMediaVideo, festivalId, isReadOnly],
+  );
+
   const toggleSelect = (id: string) => {
     setSelectedIds((s) => {
       const next = new Set(s);
@@ -296,161 +351,262 @@ export function MediaClient({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Media</h1>
-        <div className="flex items-center gap-2 shrink-0">
-          <HowItWorksButton
-            title="How the Media works"
-            description="Photos appear on your festival's public media page."
-          >
-            <p className="text-sm text-muted-foreground">
-              Upload images to show on your festival&apos;s public media. You
-              can upload multiple photos at once, reorder them, and remove
-              single or multiple images.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Use the lightbox to preview the media. Photos are displayed in the
-              order you set; drag to reorder or use bulk delete for selected
-              items.
-            </p>
-          </HowItWorksButton>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={openUploadModal}
-          />
-          <Button
-            size="sm"
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isReadOnly}
-          >
-            <ImagePlus className="h-4 w-4 sm:mr-2" />
-            Upload photos
-          </Button>
-        </div>
+        <HowItWorksButton
+          title="How Media works"
+          description="Photos and YouTube videos appear together on your festival's public media page."
+        >
+          <p className="text-sm text-muted-foreground">
+            Upload images to show on your festival&apos;s public media. You can
+            upload multiple photos at once, reorder them, and remove single or
+            multiple images.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Paste YouTube links in the Videos tab to feature highlight reels and
+            coverage alongside your photos.
+          </p>
+        </HowItWorksButton>
       </div>
 
-      {hasSelection && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
-          <span className="font-medium">{selectedCount} selected</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={selectAll}
-            disabled={isReadOnly}
-          >
-            Select all
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearSelection}
-            disabled={isReadOnly}
-          >
-            Clear
-          </Button>
-          <DeleteDialog
-            title="Remove selected photos"
-            description={`${selectedCount} photo(s) will be removed from the media.`}
-            onDelete={handleBulkDelete}
-            isDeleting={deletingIds.size > 0}
-            trigger={
-              <Button variant="destructive" size="sm" disabled={isReadOnly}>
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete selected
-              </Button>
-            }
-          />
-        </div>
-      )}
+      <Tabs defaultValue="photos">
+        <TabsList>
+          <TabsTrigger value="photos">Photos</TabsTrigger>
+          <TabsTrigger value="videos">Videos</TabsTrigger>
+        </TabsList>
 
-      {images.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-muted/30 flex flex-col items-center justify-center py-16 px-4 text-center">
-          <ImagePlus className="h-12 w-12 text-muted-foreground mb-3" />
-          <p className="text-sm font-medium">No photos yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload photos to show on your public media page.
-          </p>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isReadOnly}
-          >
-            Upload photos
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {images.map((img, index) => {
-            const isSelected = img.id ? selectedIds.has(img.id) : false;
-            return (
-              <div
-                key={img.id || img.url}
-                className={cn(
-                  "group relative aspect-square rounded-xl overflow-hidden bg-muted border",
-                  index % 5 === 0 && "sm:col-span-2 sm:row-span-2",
-                  isSelected && "ring-2 ring-primary ring-offset-2",
-                )}
+        <TabsContent value="photos" className="space-y-6 pt-4">
+          <div className="flex justify-end">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={openUploadModal}
+            />
+            <Button
+              size="sm"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isReadOnly}
+            >
+              <ImagePlus className="h-4 w-4 sm:mr-2" />
+              Upload photos
+            </Button>
+          </div>
+
+          {hasSelection && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
+              <span className="font-medium">{selectedCount} selected</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={selectAll}
+                disabled={isReadOnly}
               >
-                <button
-                  type="button"
-                  className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 ring-primary ring-inset"
-                  onClick={() => openLightbox(index)}
-                >
-                  <Image
-                    src={img.url}
-                    alt="Media image"
-                    fill
-                    className="object-cover transition group-hover:scale-105"
-                  />
-                </button>
-                {img.id && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleSelect(img.id);
-                    }}
-                    disabled={isReadOnly}
+                Select all
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSelection}
+                disabled={isReadOnly}
+              >
+                Clear
+              </Button>
+              <DeleteDialog
+                title="Remove selected photos"
+                description={`${selectedCount} photo(s) will be removed from the media.`}
+                onDelete={handleBulkDelete}
+                isDeleting={deletingIds.size > 0}
+                trigger={
+                  <Button variant="destructive" size="sm" disabled={isReadOnly}>
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete selected
+                  </Button>
+                }
+              />
+            </div>
+          )}
+
+          {images.length === 0 ? (
+            <div className="rounded-xl border border-dashed bg-muted/30 flex flex-col items-center justify-center py-16 px-4 text-center">
+              <ImagePlus className="h-12 w-12 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium">No photos yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Upload photos to show on your public media page.
+              </p>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isReadOnly}
+              >
+                Upload photos
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {images.map((img, index) => {
+                const isSelected = img.id ? selectedIds.has(img.id) : false;
+                return (
+                  <div
+                    key={img.id || img.url}
                     className={cn(
-                      "absolute top-2 left-2 z-10 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition",
-                      isSelected && "bg-primary text-primary-foreground",
+                      "group relative aspect-square rounded-xl overflow-hidden bg-muted border",
+                      index % 5 === 0 && "sm:col-span-2 sm:row-span-2",
+                      isSelected && "ring-2 ring-primary ring-offset-2",
                     )}
-                    aria-label={isSelected ? "Deselect" : "Select"}
                   >
-                    {isSelected ? (
-                      <CheckSquare className="h-5 w-5" />
-                    ) : (
-                      <Square className="h-5 w-5 opacity-80" />
-                    )}
-                  </button>
-                )}
-                <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition flex gap-1">
-                  <DeleteDialog
-                    title="Remove photo"
-                    description="This photo will be removed from the media."
-                    onDelete={() => handleDelete(img.id)}
-                    isDeleting={false}
-                    trigger={
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="h-8 w-8 rounded-full shadow"
+                    <button
+                      type="button"
+                      className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 ring-primary ring-inset"
+                      onClick={() => openLightbox(index)}
+                    >
+                      <Image
+                        src={img.url}
+                        alt="Media image"
+                        fill
+                        className="object-cover transition group-hover:scale-105"
+                      />
+                    </button>
+                    {img.id && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(img.id);
+                        }}
                         disabled={isReadOnly}
+                        className={cn(
+                          "absolute top-2 left-2 z-10 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition",
+                          isSelected && "bg-primary text-primary-foreground",
+                        )}
+                        aria-label={isSelected ? "Deselect" : "Select"}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    }
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                        {isSelected ? (
+                          <CheckSquare className="h-5 w-5" />
+                        ) : (
+                          <Square className="h-5 w-5 opacity-80" />
+                        )}
+                      </button>
+                    )}
+                    <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition flex gap-1">
+                      <DeleteDialog
+                        title="Remove photo"
+                        description="This photo will be removed from the media."
+                        onDelete={() => handleDelete(img.id)}
+                        isDeleting={false}
+                        trigger={
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8 rounded-full shadow"
+                            disabled={isReadOnly}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="videos" className="space-y-6 pt-4">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              value={videoUrlInput}
+              onChange={(e) => setVideoUrlInput(e.target.value)}
+              placeholder="Paste a YouTube link (e.g. https://youtube.com/watch?v=...)"
+              disabled={isReadOnly}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddVideo();
+                }
+              }}
+            />
+            <Button
+              type="button"
+              onClick={handleAddVideo}
+              disabled={isReadOnly || createMediaVideo.isPending}
+            >
+              {createMediaVideo.isPending ? (
+                <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4 sm:mr-2" />
+              )}
+              Add video
+            </Button>
+          </div>
+
+          {videos.length === 0 ? (
+            <div className="rounded-xl border border-dashed bg-muted/30 flex flex-col items-center justify-center py-16 px-4 text-center">
+              <Youtube className="h-12 w-12 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium">No videos yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add YouTube links to show on your public media page.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {videos.map((video) => {
+                const videoId = extractYouTubeId(video.url);
+                return (
+                  <div
+                    key={video.id}
+                    className="group relative aspect-video rounded-xl overflow-hidden bg-muted border"
+                  >
+                    <a
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute inset-0"
+                    >
+                      {videoId ? (
+                        <Image
+                          src={getYouTubeThumbnail(videoId)}
+                          alt="YouTube video thumbnail"
+                          fill
+                          className="object-cover transition group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Youtube className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition">
+                        <Youtube className="h-8 w-8 text-white" />
+                      </div>
+                    </a>
+                    <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition">
+                      <DeleteDialog
+                        title="Remove video"
+                        description="This video will be removed from the media."
+                        onDelete={() => handleDeleteVideo(video.id)}
+                        isDeleting={false}
+                        trigger={
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8 rounded-full shadow"
+                            disabled={isReadOnly}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Upload preview modal: list of selected images, then Upload all */}
       <Dialog

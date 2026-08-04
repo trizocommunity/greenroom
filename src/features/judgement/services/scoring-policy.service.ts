@@ -7,8 +7,8 @@ import {
   festivalScoringAwardRule as scoringAwardRuleTable,
   festivalScoringPolicy as scoringPolicyTable,
 } from "@/core/database/schema";
-import { AppError } from "@/core/errors/errors";
 import { serverNowIso } from "@/core/datetime/server";
+import { AppError } from "@/core/errors/errors";
 
 export type GradeRule = {
   grade: string;

@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Plus, User } from "lucide-react";
+import { Crown, Loader2, Plus, User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   useProgramme,
   useUpdateProgramme,
 } from "@/api/client/programmes";
+import { StatusPill } from "@/components/app/AppSection";
 import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,16 +43,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
+import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
 import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
 
 const ProgrammeBaseSchema = z.object({
@@ -150,6 +144,22 @@ export function ProgrammeDialog({
   );
 
   const canUseAuditDrawer = useFeatureTag("programme.auditDrawer");
+
+  /* Who leads each team. `{}` on non-PRO tiers, so the list simply shows no
+     lead rather than failing. */
+  const { data: teamLeads } = useQuery({
+    queryKey: ["programme-dialog-team-leads", festivalId, programme?.id],
+    queryFn: async () => {
+      if (!programme?.id) return {};
+      try {
+        return await getProgrammeTeamLeadsAction(festivalId, programme.id);
+      } catch {
+        return {};
+      }
+    },
+    enabled: Boolean(open && readOnly && programme?.id),
+    staleTime: 30_000,
+  });
   const { data: activityDetail, isLoading: isLoadingActivity } = useQuery({
     queryKey: ["programme-detail-drawer", festivalId, programme?.id],
     queryFn: () => getProgrammeDetailForDrawerAction(festivalId, programme!.id),
@@ -160,10 +170,16 @@ export function ProgrammeDialog({
   useEffect(() => {
     if (open) {
       if (programme) {
+        if (!programme.type) {
+          toast.error(
+            "This programme has no type assigned. Fix the data before editing.",
+          );
+          return;
+        }
         form.reset({
           name: programme.name || "",
           categoryId: programme.categoryId || "",
-          type: programme.type || "INDIVIDUAL",
+          type: programme.type,
           stageType: programme.stageType || "STAGE",
           maxParticipantsPerGroup: programme.maxParticipantsPerGroup || 1,
           maxTeamsPerGroup: programme.maxTeamsPerGroup || 1,
@@ -249,6 +265,73 @@ export function ProgrammeDialog({
     if (!details) return <div className="p-4">Failed to load details.</div>;
 
     const assignments = details.assignments || [];
+    const isGroupProgramme = details.type === "GROUP";
+
+    /* Group-wise, then team-wise inside each group. A flat list of 200 rows
+       gave no sense of which group had how many, or who leads a team. */
+    const byGroup = new Map<
+      string,
+      {
+        groupId: string;
+        groupName: string;
+        groupColor: string | null;
+        teams: Map<number, any[]>;
+        members: any[];
+      }
+    >();
+
+    for (const a of assignments as any[]) {
+      const group = a.group ?? a.participant?.group ?? null;
+      const groupId = group?.id ?? a.groupId ?? "ungrouped";
+      const groupName = group?.name ?? "No group";
+
+      if (!byGroup.has(groupId)) {
+        byGroup.set(groupId, {
+          groupId,
+          groupName,
+          groupColor: group?.color ?? null,
+          teams: new Map(),
+          members: [],
+        });
+      }
+
+      const entry = byGroup.get(groupId)!;
+      entry.members.push(a);
+
+      if (isGroupProgramme) {
+        const teamNumber = Number(a.teamNumber ?? 1);
+        if (!entry.teams.has(teamNumber)) entry.teams.set(teamNumber, []);
+        entry.teams.get(teamNumber)!.push(a);
+      }
+    }
+
+    const groupBlocks = Array.from(byGroup.values()).sort((x, y) =>
+      x.groupName.localeCompare(y.groupName, undefined, {
+        sensitivity: "base",
+      }),
+    );
+
+    const renderMember = (a: any, leadParticipantId?: string | null) => {
+      const isLead =
+        Boolean(leadParticipantId) &&
+        (a.participant?.id ?? a.participantId) === leadParticipantId;
+
+      return (
+        <li key={a.id} className="flex items-center gap-3 py-2.5">
+          <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+            {a.participant?.chestNumber ?? "—"}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
+            {a.participant?.name ?? "—"}
+          </span>
+          {isLead ? (
+            <StatusPill tone="ready" icon={Crown} className="shrink-0">
+              Lead
+            </StatusPill>
+          ) : null}
+        </li>
+      );
+    };
 
     const detailsBody = (
       <div className="flex flex-col flex-1 min-h-0 space-y-4">
@@ -290,68 +373,84 @@ export function ProgrammeDialog({
         </div>
 
         <div className="space-y-2 flex flex-col flex-1 min-h-0">
-          <div className="flex items-center justify-between shrink-0">
-            <h4 className="text-sm font-semibold">
-              Assigned Participants ({assignments.length})
+          <div className="flex items-baseline justify-between gap-3 shrink-0">
+            <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Assigned participants
             </h4>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {assignments.length} in {groupBlocks.length} group
+              {groupBlocks.length === 1 ? "" : "s"}
+            </span>
           </div>
-          <div className="rounded-md border flex-1 min-h-0 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1">
-              <Table>
-                <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                  <TableRow>
-                    <TableHead className="w-[50px]">#</TableHead>
-                    <TableHead>Participant</TableHead>
-                    <TableHead>Group</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assignments.map((assignment: any, index: number) => (
-                    <TableRow key={assignment.id}>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {index + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {assignment.participant?.name}
-                      </TableCell>
-                      <TableCell>
-                        {assignment.participant?.group ? (
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="h-2 w-2 rounded-full"
-                              style={{
-                                backgroundColor:
-                                  assignment.participant.group.color ||
-                                  "#2563eb",
-                              }}
-                            />
-                            <span className="font-medium">
-                              {assignment.participant.group.name}
-                            </span>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {assignments.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={3}
-                        className="h-24 text-center text-muted-foreground"
-                      >
-                        <div className="flex flex-col items-center justify-center gap-1">
-                          <User className="h-5 w-5 text-muted-foreground/50" />
-                          <span className="text-xs">No assignments yet</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </div>
+
+          <ScrollArea className="flex-1 min-h-0 pr-1">
+            {groupBlocks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-1 py-12 text-muted-foreground">
+                <User className="h-5 w-5 opacity-50" />
+                <span className="text-xs">No assignments yet</span>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {groupBlocks.map((block) => (
+                  <div key={block.groupId}>
+                    <div className="mb-2 flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor: block.groupColor || "var(--primary)",
+                        }}
+                      />
+                      <h5 className="min-w-0 flex-1 truncate text-sm font-semibold text-heading">
+                        {block.groupName}
+                      </h5>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {block.members.length}
+                      </span>
+                    </div>
+
+                    {isGroupProgramme ? (
+                      <div className="space-y-4 pl-4">
+                        {Array.from(block.teams.entries())
+                          .sort((x, y) => x[0] - y[0])
+                          .map(([teamNumber, members]) => {
+                            const lead = (teamLeads as any)?.[block.groupId]?.[
+                              teamNumber
+                            ];
+                            return (
+                              <div key={teamNumber}>
+                                <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                    Team {teamNumber}
+                                  </span>
+                                  {lead ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                      <Crown className="h-3 w-3 text-primary" />
+                                      Lead:{" "}
+                                      <span className="font-medium text-heading">
+                                        {lead.participantName}
+                                      </span>
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <ul className="divide-y divide-border border-y border-border">
+                                  {members.map((a: any) =>
+                                    renderMember(a, lead?.participantId),
+                                  )}
+                                </ul>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-border border-y border-border pl-4">
+                        {block.members.map((a: any) => renderMember(a))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </div>
       </div>
     );
@@ -360,7 +459,10 @@ export function ProgrammeDialog({
       <div className="flex flex-col flex-1 min-h-0 space-y-4 py-1">
         <div className="flex-1 flex flex-col min-h-0">
           {canUseAuditDrawer ? (
-            <Tabs defaultValue="details" className="flex flex-col flex-1 min-h-0">
+            <Tabs
+              defaultValue="details"
+              className="flex flex-col flex-1 min-h-0"
+            >
               <TabsList className="w-full">
                 <TabsTrigger value="details" className="flex-1">
                   Details
@@ -369,10 +471,16 @@ export function ProgrammeDialog({
                   Activity
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="details" className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3">
+              <TabsContent
+                value="details"
+                className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3"
+              >
                 {detailsBody}
               </TabsContent>
-              <TabsContent value="activity" className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3">
+              <TabsContent
+                value="activity"
+                className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3"
+              >
                 <div className="rounded-lg border overflow-hidden flex-1 flex flex-col">
                   <ProgrammeActivityTimeline
                     entries={activityDetail?.auditTimeline ?? []}

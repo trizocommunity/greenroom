@@ -80,9 +80,14 @@ export function ProgrammeProgressFunnel({
             <p className="text-[10px] font-medium text-muted-foreground truncate">
               {b.label}
             </p>
-            <div className={cn("h-1.5 w-full rounded-full overflow-hidden", b.bg)}>
+            <div
+              className={cn("h-1.5 w-full rounded-full overflow-hidden", b.bg)}
+            >
               <div
-                className={cn("h-full rounded-full transition-all duration-500", b.color)}
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  b.color,
+                )}
                 style={{ width: `${pct}%` }}
               />
             </div>

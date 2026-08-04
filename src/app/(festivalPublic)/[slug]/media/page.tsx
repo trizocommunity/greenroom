@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import {
+  PublicSection,
+  SectionHeader,
+} from "@/components/festival/public/PublicSection";
 import { getPublicMediaData } from "@/features/media/loaders/media-public.loader";
 import { PublicMediaView } from "./PublicMediaView";
 
@@ -25,19 +29,22 @@ export default async function MediaPage({ params }: Props) {
   if (!data) return notFound();
 
   return (
-    <div className="min-h-screen bg-background">
-      <section className="max-w-7xl mx-auto px-4 md:px-6 py-16 md:py-20">
-        <div className="text-center mb-12">
-          <p className="text-eyebrow justify-center mb-3">Moments</p>
-          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-heading">
-            Media
-          </h1>
-          <p className="mt-3 max-w-xl mx-auto text-muted-foreground leading-relaxed">
-            Photos and moments from {data.festival.name}.
-          </p>
-        </div>
-        <PublicMediaView images={data.images} />
-      </section>
-    </div>
+    <PublicSection>
+      <SectionHeader
+        as="h1"
+        eyebrow="Moments"
+        title="Media"
+        subtitle={`Photos and videos from ${data.festival.name}.`}
+        className="mb-10"
+      />
+      <PublicMediaView
+        images={data.images}
+        videos={data.videos}
+        total={data.total}
+        hasMore={data.hasMore}
+        pageSize={data.pageSize}
+        festivalSlug={data.festival.slug}
+      />
+    </PublicSection>
   );
 }

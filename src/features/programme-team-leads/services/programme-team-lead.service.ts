@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
+  programmeAssignmentMember as assignmentMemberTable,
   programme as programmeTable,
   programmeTeamLead,
 } from "@/core/database/schema";
@@ -64,12 +65,23 @@ async function assertParticipantInTeam(
   teamNumber: number,
   participantId: string,
 ) {
-  const member = await executor.query.programmeAssignment.findFirst({
+  const team = await executor.query.programmeAssignment.findFirst({
     where: and(
       eq(assignmentTable.programmeId, programmeId),
       eq(assignmentTable.groupId, groupId),
       eq(assignmentTable.teamNumber, teamNumber),
-      eq(assignmentTable.participantId, participantId),
+    ),
+  });
+  if (!team) {
+    throw new AppError(
+      "The selected team does not exist on this programme.",
+      "TEAM_NOT_FOUND",
+    );
+  }
+  const member = await executor.query.programmeAssignmentMember.findFirst({
+    where: and(
+      eq(assignmentMemberTable.assignmentId, team.id),
+      eq(assignmentMemberTable.participantId, participantId),
     ),
   });
   if (!member) {

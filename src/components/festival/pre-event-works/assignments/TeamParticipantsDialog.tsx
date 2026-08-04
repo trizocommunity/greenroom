@@ -1,6 +1,7 @@
 "use client";
 
-import { Users } from "lucide-react";
+import { Crown } from "lucide-react";
+import { StatusPill } from "@/components/app/AppSection";
 import {
   Drawer,
   DrawerContent,
@@ -8,14 +9,6 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 export interface TeamParticipantRow {
   id: string;
@@ -31,6 +24,8 @@ interface TeamParticipantsDialogProps {
   teamLabel: string;
   groupName: string;
   participants: TeamParticipantRow[];
+  /** PRO only; null when the tier has no team leads or none is appointed. */
+  teamLeadParticipantId?: string | null;
 }
 
 export function TeamParticipantsDialog({
@@ -40,54 +35,62 @@ export function TeamParticipantsDialog({
   teamLabel,
   groupName,
   participants,
+  teamLeadParticipantId = null,
 }: TeamParticipantsDialogProps) {
+  const lead = participants.find((p) => p.id === teamLeadParticipantId) ?? null;
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Team members
+        <DrawerHeader className="text-left">
+          <DrawerTitle className="text-lg font-semibold tracking-tight text-heading">
+            {teamLabel}
           </DrawerTitle>
-          <DrawerDescription>
-            Participants in <span className="font-medium">{teamLabel}</span> for{" "}
-            <span className="font-medium">{programmeName}</span> ({groupName})
+          <DrawerDescription className="text-xs">
+            {programmeName} · {groupName} · {participants.length} member
+            {participants.length === 1 ? "" : "s"}
           </DrawerDescription>
         </DrawerHeader>
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-12">#</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="text-right">Chest</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {participants.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={3}
-                    className="text-center text-muted-foreground py-6"
-                  >
-                    No participants in this team.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                participants.map((s, idx) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="text-muted-foreground font-mono">
-                      {idx + 1}
-                    </TableCell>
-                    <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="text-right font-mono text-muted-foreground">
+
+        <div className="px-4 pb-6">
+          {lead && (
+            <p className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Crown className="h-3 w-3 text-primary" />
+              Team lead:{" "}
+              <span className="font-medium text-heading">{lead.name}</span>
+            </p>
+          )}
+
+          {participants.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No participants in this team.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border border-y border-border">
+              {participants.map((s) => {
+                const isLead = s.id === teamLeadParticipantId;
+                return (
+                  <li key={s.id} className="flex items-center gap-3 py-3">
+                    <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                       {s.chestNumber ?? "—"}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
+                      {s.name}
+                    </span>
+                    {isLead && (
+                      <StatusPill
+                        tone="ready"
+                        icon={Crown}
+                        className="shrink-0"
+                      >
+                        Lead
+                      </StatusPill>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </DrawerContent>
     </Drawer>

@@ -6,11 +6,11 @@ import {
   Camera,
   CheckCircle,
   Loader2,
+  SwitchCamera,
   Upload,
   X,
   Zap,
   ZapOff,
-  SwitchCamera,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -317,6 +317,7 @@ export function QrScanner({
     const nextMode = facingMode === "environment" ? "user" : "environment";
     setFacingMode(nextMode);
     void startCamera("default", nextMode);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: startCamera is intentionally omitted
   }, [facingMode]);
 
   const enterScannerFullscreen = useCallback(() => {
@@ -726,6 +727,7 @@ export function QrScanner({
         mode !== "manual" &&
         typeof document !== "undefined" &&
         createPortal(
+          // biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
           <div
             ref={scannerSurfaceRef}
             className="fixed inset-0 z-[100000] flex flex-col bg-black h-[100dvh] w-screen"

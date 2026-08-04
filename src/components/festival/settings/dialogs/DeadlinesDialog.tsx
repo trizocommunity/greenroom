@@ -4,7 +4,10 @@ import { Loader2, Pencil } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { DateTimePicker } from "@/components/ui/date-picker";
+import {
+  DateRangePicker,
+  type DateRangeValue,
+} from "@/components/ui/date-range-picker";
 import {
   Drawer,
   DrawerContent,
@@ -21,10 +24,19 @@ import { updateFestivalSettingsAction } from "@/features/festivals/actions/festi
 interface DeadlinesDialogProps {
   festival: {
     id: string;
+    programmeAssignmentStartDate?: Date | string | null;
     programmeAssignmentDeadline?: Date | string | null;
+    participantCreationStartDate?: Date | string | null;
     participantCreationDeadline?: Date | string | null;
     startDate?: Date | string | null;
     createdAt?: Date | string | null;
+    /**
+     * IANA timezone the picked wall-clock is anchored to. Required so the
+     * stored UTC instant round-trips correctly regardless of the admin's
+     * browser TZ. Falls back to `DEFAULT_TZ` (`"UTC"`) when absent (e.g.
+     * for legacy festivals created before the migration).
+     */
+    timezone?: string | null;
   };
   onSuccess?: () => void;
   trigger?: React.ReactNode;
@@ -40,18 +52,16 @@ export function DeadlinesDialog({
   isParticipantDeadlineFeatureEnabled = true,
 }: DeadlinesDialogProps) {
   const [open, setOpen] = useState(false);
-  const [programmeAssignmentDeadline, setProgrammeAssignmentDeadline] =
-    useState<Date | null>(
-      festival.programmeAssignmentDeadline
-        ? (parseInstant(festival.programmeAssignmentDeadline) ?? null)
-        : null,
-    );
-  const [participantCreationDeadline, setParticipantCreationDeadline] =
-    useState<Date | null>(
-      festival.participantCreationDeadline
-        ? (parseInstant(festival.participantCreationDeadline) ?? null)
-        : null,
-    );
+  const [programmeAssignment, setProgrammeAssignment] =
+    useState<DateRangeValue>(() => ({
+      start: parseInstant(festival.programmeAssignmentStartDate ?? null),
+      end: parseInstant(festival.programmeAssignmentDeadline ?? null),
+    }));
+  const [participantCreation, setParticipantCreation] =
+    useState<DateRangeValue>(() => ({
+      start: parseInstant(festival.participantCreationStartDate ?? null),
+      end: parseInstant(festival.participantCreationDeadline ?? null),
+    }));
   const [isSaving, setIsSaving] = useState(false);
 
   const durationStart = festival.createdAt
@@ -70,15 +80,34 @@ export function DeadlinesDialog({
   }, [festivalStartDate]);
 
   const handleSave = async () => {
+    if (
+      programmeAssignment.start &&
+      programmeAssignment.end &&
+      programmeAssignment.start >= programmeAssignment.end
+    ) {
+      toast.error("Programme assignments must open before they close");
+      return;
+    }
+    if (
+      participantCreation.start &&
+      participantCreation.end &&
+      participantCreation.start >= participantCreation.end
+    ) {
+      toast.error("Participant registration must open before it closes");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const res = await updateFestivalSettingsAction(festival.id, {
-        programmeAssignmentDeadline: programmeAssignmentDeadline
-          ? programmeAssignmentDeadline.toISOString()
-          : null,
-        participantCreationDeadline: participantCreationDeadline
-          ? participantCreationDeadline.toISOString()
-          : null,
+        programmeAssignmentStartDate:
+          programmeAssignment.start?.toISOString() ?? null,
+        programmeAssignmentDeadline:
+          programmeAssignment.end?.toISOString() ?? null,
+        participantCreationStartDate:
+          participantCreation.start?.toISOString() ?? null,
+        participantCreationDeadline:
+          participantCreation.end?.toISOString() ?? null,
       });
 
       if (res.success) {
@@ -109,54 +138,61 @@ export function DeadlinesDialog({
         <DrawerHeader>
           <DrawerTitle>Deadlines</DrawerTitle>
           <DrawerDescription>
-            Set deadlines for programme assignments and participant
-            registration.
+            Set the windows during which Team Leaders can assign programmes and
+            register participants.
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-6 py-4">
           {isFeatureEnabled && (
-            <div className="space-y-2">
-              <Label htmlFor="programmeAssignmentDeadline">
-                Programme Assignment Deadline
-              </Label>
-              <DateTimePicker
-                id="programmeAssignmentDeadline"
-                value={programmeAssignmentDeadline}
-                onChange={(value) => {
-                  if (festivalHasStarted) return;
-                  setProgrammeAssignmentDeadline(value);
-                }}
-                placeholder="Pick deadline"
-                from={durationStart}
-                to={festivalStartDate ?? undefined}
-                disabled={festivalHasStarted}
-              />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="programmeAssignmentRange">
+                  Programme Assignment Window
+                </Label>
+                <DateRangePicker
+                  id="programmeAssignmentRange"
+                  value={programmeAssignment}
+                  onChange={(value) => {
+                    if (festivalHasStarted) return;
+                    setProgrammeAssignment(value);
+                  }}
+                  placeholder="Pick open → close (optional start)"
+                  from={durationStart}
+                  to={festivalStartDate ?? undefined}
+                  disabled={festivalHasStarted}
+                  tz={festival.timezone ?? undefined}
+                />
+              </div>
               <p className="text-sm text-muted-foreground">
-                Team Leaders cannot assign participants to programmes after this
-                time.
+                Team Leaders can assign participants to programmes only inside
+                this window. Leave the start empty to open it immediately.
               </p>
             </div>
           )}
           {isParticipantDeadlineFeatureEnabled && (
-            <div className="space-y-2">
-              <Label htmlFor="participantCreationDeadline">
-                Participant Registration Deadline
-              </Label>
-              <DateTimePicker
-                id="participantCreationDeadline"
-                value={participantCreationDeadline}
-                onChange={(value) => {
-                  if (festivalHasStarted) return;
-                  setParticipantCreationDeadline(value);
-                }}
-                placeholder="Pick deadline"
-                from={durationStart}
-                to={festivalStartDate ?? undefined}
-                disabled={festivalHasStarted}
-              />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="participantCreationRange">
+                  Participant Registration Window
+                </Label>
+                <DateRangePicker
+                  id="participantCreationRange"
+                  value={participantCreation}
+                  onChange={(value) => {
+                    if (festivalHasStarted) return;
+                    setParticipantCreation(value);
+                  }}
+                  placeholder="Pick open → close (optional start)"
+                  from={durationStart}
+                  to={festivalStartDate ?? undefined}
+                  disabled={festivalHasStarted}
+                  tz={festival.timezone ?? undefined}
+                />
+              </div>
               <p className="text-sm text-muted-foreground">
-                Team Leaders cannot add new participants after this time.
+                Team Leaders can add new participants only inside this window.
+                Leave the start empty to open it immediately.
               </p>
             </div>
           )}

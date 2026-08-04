@@ -27,8 +27,17 @@ interface MemberDetailsDialogProps {
   assignedStageIds?: string[];
   canAssignStages?: boolean;
   onSaveStages?: (newStageIds: string[]) => void;
+  onSaveRoles?: (roles: string[]) => void;
+  canEditRoles?: boolean;
   isSaving?: boolean;
 }
+
+const ALL_ROLES = [
+  { value: "ADMIN", label: "Admin" },
+  { value: "ANNOUNCER", label: "Announcer" },
+  { value: "STAGE_MANAGER", label: "Stage Manager" },
+  { value: "MEDIA", label: "Media" },
+];
 
 export function MemberDetailsDialog({
   member,
@@ -38,6 +47,8 @@ export function MemberDetailsDialog({
   assignedStageIds = [],
   canAssignStages = false,
   onSaveStages,
+  onSaveRoles,
+  canEditRoles = false,
   isSaving = false,
 }: MemberDetailsDialogProps) {
   const fullName = member.user?.fullName || member.fullName || "Unknown";
@@ -58,11 +69,21 @@ export function MemberDetailsDialog({
   const [selectedStages, setSelectedStages] =
     useState<string[]>(assignedStageIds);
 
+  const memberAdditionalRoles =
+    (member.metadata as { additionalRoles?: string[] } | null)
+      ?.additionalRoles ?? [];
+  const initialRoles = [member.role, ...memberAdditionalRoles];
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(initialRoles);
+
   useEffect(() => {
     if (open) {
       setSelectedStages(assignedStageIds);
+      const meta =
+        (member.metadata as { additionalRoles?: string[] } | null)
+          ?.additionalRoles ?? [];
+      setSelectedRoles([member.role, ...meta]);
     }
-  }, [open, assignedStageIds]);
+  }, [open, assignedStageIds, member.role, member.metadata]);
 
   const toggleStage = (id: string) => {
     setSelectedStages((prev) =>
@@ -124,6 +145,49 @@ export function MemberDetailsDialog({
             </span>
           </div>
 
+          {canEditRoles && (
+            <div className="space-y-2 mt-2">
+              <div className="font-semibold text-sm">Roles</div>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_ROLES.map((r) => {
+                  const isSelected = selectedRoles.includes(r.value);
+                  return (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => {
+                        setSelectedRoles((prev) =>
+                          isSelected
+                            ? prev.filter((v) => v !== r.value)
+                            : [...prev, r.value],
+                        );
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors text-left",
+                        isSelected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted/40",
+                      )}
+                    >
+                      <CheckCircle2
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          isSelected ? "text-primary" : "text-muted-foreground/40",
+                        )}
+                      />
+                      {r.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedRoles.length === 0 && (
+                <p className="text-xs text-destructive">
+                  At least one role is required.
+                </p>
+              )}
+            </div>
+          )}
+
           {member.role === "STAGE_MANAGER" && stages && (
             <div className="space-y-2 mt-2">
               <div className="font-semibold text-sm">
@@ -174,14 +238,21 @@ export function MemberDetailsDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSaving}
           >
-            {canAssignStages ? "Cancel" : "Close"}
+            {canAssignStages || canEditRoles ? "Cancel" : "Close"}
           </Button>
-          {canAssignStages && (
+          {(canAssignStages || canEditRoles) && (
             <Button
               variant="default"
               size="sm"
-              onClick={() => onSaveStages?.(selectedStages)}
-              disabled={isSaving}
+              onClick={() => {
+                if (canEditRoles && selectedRoles.length > 0) {
+                  onSaveRoles?.(selectedRoles);
+                }
+                if (canAssignStages) {
+                  onSaveStages?.(selectedStages);
+                }
+              }}
+              disabled={isSaving || (canEditRoles && selectedRoles.length === 0)}
             >
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes

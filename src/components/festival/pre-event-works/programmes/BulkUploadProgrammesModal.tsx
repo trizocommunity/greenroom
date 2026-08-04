@@ -33,6 +33,10 @@ import {
   bulkCreateProgrammesAction,
   validateProgrammesAction,
 } from "@/features/programmes/actions/programme.actions";
+import {
+  parseProgrammeRow,
+  type ParsedProgrammeData,
+} from "@/components/festival/pre-event-works/programmes/programme-row-parser";
 
 // --- Types & Schema ---
 
@@ -97,18 +101,18 @@ function ProgrammeEditForm({
   onSave,
   onCancel,
 }: {
-  data: ProgrammeData;
+  data: ParsedProgrammeData;
   categories: any[];
-  onSave: (updated: ProgrammeData) => void;
+  onSave: (updated: ParsedProgrammeData) => void;
   onCancel: () => void;
 }) {
   const form = useForm<ProgrammeFormValues>({
     resolver: zodResolver(ProgrammeSchema) as any,
-    mode: "onChange",
+    mode: "onTouched",
     defaultValues: {
       name: data.name,
       categoryId: data.categoryId || "",
-      type: data.type,
+      type: (data.type || "INDIVIDUAL") as ProgrammeType,
       stageType: data.stageType,
       maxParticipantsPerGroup: data.maxParticipantsPerGroup,
       maxTeamsPerGroup: data.maxTeamsPerGroup,
@@ -117,15 +121,19 @@ function ProgrammeEditForm({
   });
 
   useEffect(() => {
-    form.reset({
-      name: data.name,
-      categoryId: data.categoryId || "",
-      type: data.type,
-      stageType: data.stageType,
-      maxParticipantsPerGroup: data.maxParticipantsPerGroup,
-      maxTeamsPerGroup: data.maxTeamsPerGroup,
-      maxParticipantsPerTeam: data.maxParticipantsPerTeam,
-    });
+    form.reset(
+      {
+        name: data.name,
+        categoryId: data.categoryId || "",
+        type: (data.type || "INDIVIDUAL") as ProgrammeType,
+        stageType: data.stageType,
+        maxParticipantsPerGroup: data.maxParticipantsPerGroup,
+        maxTeamsPerGroup: data.maxTeamsPerGroup,
+        maxParticipantsPerTeam: data.maxParticipantsPerTeam,
+      },
+      { keepDirty: false },
+    );
+    form.trigger();
   }, [data, form]);
 
   const watchType = form.watch("type");
@@ -319,80 +327,12 @@ export function BulkUploadProgrammesModal({
 
   const { data: categories = [], isLoading } = useCategories(festivalId);
 
-  const parseProgrammeRow = (
-    row: any[],
-    index: number,
-  ): ParsedItem<ProgrammeData> => {
-    const name = row[0]?.toString().trim() || "";
-    const categoryName = row[1]?.toString().trim() || "";
-    const typeRaw = row[2]?.toString().trim() || "";
-    const stageTypeRaw = row[3]?.toString().trim() || "";
-
-    const errors: string[] = ["Set limits manually"];
-
-    // 1. Basic Validation
-    if (!name) errors.push("Name is required");
-    if (!categoryName) errors.push("Category is required");
-
-    // 2. Category Lookup
-    const category = categories.find(
-      (c: any) => c.name.toLowerCase() === categoryName.toLowerCase(),
-    );
-    if (categoryName && !category) {
-      errors.push(`Category '${categoryName}' not found`);
-    }
-
-    // 3. Enum Mapping
-    let type: "INDIVIDUAL" | "GROUP" = "INDIVIDUAL";
-    if (["GROUP", "group", "Group"].includes(typeRaw)) type = "GROUP";
-    else if (
-      !["INDIVIDUAL", "individual", "Individual", ""].includes(typeRaw)
-    ) {
-      errors.push(`Invalid Type: ${typeRaw}`);
-    }
-
-    let stageType: "STAGE" | "NON_STAGE" = "STAGE";
-    if (
-      [
-        "OFF-STAGE",
-        "off-stage",
-        "Off-Stage",
-        "NON_STAGE",
-        "NON-STAGE",
-        "Non-Stage",
-      ].includes(stageTypeRaw)
-    ) {
-      stageType = "NON_STAGE";
-    } else if (!["STAGE", "stage", "Stage", ""].includes(stageTypeRaw)) {
-      errors.push(`Invalid Stage Type: ${stageTypeRaw}`);
-    }
-
-    // 4. Force manual configuration (initialize to 0)
-    const maxParticipantsPerGroup = 0;
-    const maxTeamsPerGroup = 0;
-    const maxParticipantsPerTeam = 0;
-
-    return {
-      id: "",
-      originalRowIndex: index,
-      data: {
-        name,
-        categoryName,
-        type,
-        stageType,
-        maxParticipantsPerGroup,
-        maxTeamsPerGroup,
-        maxParticipantsPerTeam,
-        categoryId: category?.id,
-      },
-      isValid: false, // Always false initially to force configuration
-      errors,
-    };
-  };
+  const parseRow = (row: unknown[], index: number): ParsedItem<ParsedProgrammeData> =>
+    parseProgrammeRow(row, index, categories);
 
   const validateRows = async (
-    items: ParsedItem<ProgrammeData>[],
-  ): Promise<ParsedItem<ProgrammeData>[]> => {
+    items: ParsedItem<ParsedProgrammeData>[],
+  ): Promise<ParsedItem<ParsedProgrammeData>[]> => {
     // 1. Internal Duplicate Check (within the spreadsheet)
     // Key: name|categoryId|type
     const keyCounts = new Map<string, number>();
@@ -462,16 +402,23 @@ export function BulkUploadProgrammesModal({
     });
   };
 
-  const handleCommit = async (validItems: ProgrammeData[]) => {
-    const programmesToCreate = validItems.map((p) => ({
-      name: p.name,
-      categoryId: p.categoryId!,
-      type: p.type,
-      stageType: p.stageType,
-      maxParticipantsPerGroup: p.maxParticipantsPerGroup,
-      maxTeamsPerGroup: p.maxTeamsPerGroup,
-      maxParticipantsPerTeam: p.maxParticipantsPerTeam,
-    }));
+  const handleCommit = async (validItems: ParsedProgrammeData[]) => {
+    const programmesToCreate = validItems.map((p) => {
+      if (!p.type) {
+        throw new Error(
+          "A row has an invalid type and cannot be saved. Fix all validation errors first.",
+        );
+      }
+      return {
+        name: p.name,
+        categoryId: p.categoryId!,
+        type: p.type,
+        stageType: p.stageType,
+        maxParticipantsPerGroup: p.maxParticipantsPerGroup,
+        maxTeamsPerGroup: p.maxTeamsPerGroup,
+        maxParticipantsPerTeam: p.maxParticipantsPerTeam,
+      };
+    });
 
     const result = await bulkCreateProgrammesAction(
       festivalId,
@@ -492,10 +439,18 @@ export function BulkUploadProgrammesModal({
     };
   };
 
-  if (isLoading) return null;
+  if (isLoading) {
+    if (trigger) return <>{trigger}</>;
+    return (
+      <Button size="sm" variant="outline" disabled>
+        <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+        <span className="hidden sm:inline">Bulk Upload</span>
+      </Button>
+    );
+  }
 
   return (
-    <BulkUploadFlow<ProgrammeData>
+    <BulkUploadFlow<ParsedProgrammeData>
       trigger={trigger}
       title="Bulk Upload Programmes"
       templateName="programmes_template.xlsx"
@@ -513,11 +468,20 @@ export function BulkUploadProgrammesModal({
           "(Stage/Non-Stage)",
         ],
       ]}
-      parseRow={parseProgrammeRow}
+      parseRow={parseRow}
       validateRows={validateRows}
       onCommit={handleCommit}
       EditComponent={(props) => (
-        <ProgrammeEditForm {...props} categories={categories} />
+        <ProgrammeEditForm
+          {...props}
+          categories={categories}
+          onSave={(updated) => {
+            props.onSave({
+              ...updated,
+              type: updated.type || props.data.type,
+            });
+          }}
+        />
       )}
       columns={[
         {

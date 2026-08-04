@@ -21,7 +21,6 @@ interface TeamResultsDialogProps {
   festival: {
     id: string;
     teamLeaderLimit?: number | null;
-    announcerResultsPerStandings?: number | null;
   };
   onSuccess?: () => void;
   trigger?: React.ReactNode;
@@ -36,8 +35,6 @@ export function TeamResultsDialog({
   const [teamLeaderLimit, setTeamLeaderLimit] = useState<number>(
     festival.teamLeaderLimit ?? 2,
   );
-  const [announcerResultsPerStandings, setAnnouncerResultsPerStandings] =
-    useState<number>(festival.announcerResultsPerStandings ?? 10);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
@@ -45,19 +42,11 @@ export function TeamResultsDialog({
       toast.error("Team leader limit must be between 1 and 10.");
       return;
     }
-    if (
-      announcerResultsPerStandings < 1 ||
-      announcerResultsPerStandings > 100
-    ) {
-      toast.error("Results per standings must be between 1 and 100.");
-      return;
-    }
 
     setIsSaving(true);
     try {
       const res = await updateFestivalSettingsAction(festival.id, {
         teamLeaderLimit,
-        announcerResultsPerStandings,
       });
 
       if (res.success) {
@@ -108,25 +97,6 @@ export function TeamResultsDialog({
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="announcerResultsPerStandings">
-              Number of results
-            </Label>
-            <Input
-              id="announcerResultsPerStandings"
-              type="number"
-              min={1}
-              max={100}
-              value={announcerResultsPerStandings}
-              onChange={(e) =>
-                setAnnouncerResultsPerStandings(Number(e.target.value))
-              }
-            />
-            <p className="text-sm text-muted-foreground">
-              After this many results are announced on-air (per block), publish
-              group standings to the public site before the next batch.
-            </p>
-          </div>
         </div>
 
         <DrawerFooter>

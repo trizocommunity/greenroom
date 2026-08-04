@@ -7,8 +7,10 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/api/client";
+import { AppEmptyState, AppPageHeader } from "@/components/app/AppSection";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/core/utils/cn";
 
 export function ProgrammeNotificationsClient({
   participantId,
@@ -28,45 +30,44 @@ export function ProgrammeNotificationsClient({
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
-          <p className="text-sm text-muted-foreground">
-            Live updates for programme reporting and code letters.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => markAllReadMutation.mutate({ participantId })}
-          disabled={unreadCount === 0}
-        >
-          Mark all read ({unreadCount})
-        </Button>
-      </div>
+    <div className="space-y-8">
+      <AppPageHeader
+        eyebrow="Updates"
+        title="Notifications"
+        description="Programme reporting and code letters, as they happen."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-full"
+            onClick={() => markAllReadMutation.mutate({ participantId })}
+            disabled={unreadCount === 0}
+          >
+            Mark all read{unreadCount > 0 ? ` (${unreadCount})` : ""}
+          </Button>
+        }
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Recent notifications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">
-              Loading notifications...
-            </p>
-          ) : isError ? (
-            <div className="text-sm text-destructive">
-              Error: {error.message}
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Bell className="h-4 w-4" />
-              No notifications yet.
-            </div>
-          ) : (
-            notifications.map((n) => (
+      {isLoading ? (
+        <div className="space-y-px">
+          <Skeleton className="h-20 w-full rounded-none" />
+          <Skeleton className="h-20 w-full rounded-none" />
+        </div>
+      ) : isError ? (
+        <p className="text-sm text-destructive" role="alert">
+          Could not load notifications: {error.message}
+        </p>
+      ) : notifications.length === 0 ? (
+        <AppEmptyState
+          icon={Bell}
+          title="Nothing yet"
+          description="You will be notified here when reporting opens for one of your programmes."
+        />
+      ) : (
+        <ul className="border-y border-border">
+          {notifications.map((n) => (
+            <li key={n.id}>
               <button
-                key={n.id}
                 type="button"
                 onClick={() =>
                   markOneReadMutation.mutate({
@@ -74,22 +75,40 @@ export function ProgrammeNotificationsClient({
                     notificationId: n.id,
                   })
                 }
-                className={`w-full rounded-lg border p-3 text-left ${
-                  n.isRead ? "bg-background" : "bg-primary/5 border-primary/30"
-                }`}
+                className={cn(
+                  "flex w-full gap-3 border-b border-l-2 border-border px-4 py-4 text-left transition-opacity last:border-b-0 hover:opacity-80",
+                  n.isRead
+                    ? "border-l-transparent"
+                    : "border-l-primary bg-primary/[0.04]",
+                )}
               >
-                <div className="text-sm font-semibold">{n.title}</div>
-                <div className="text-sm text-muted-foreground">{n.body}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(n.createdAt), {
-                    addSuffix: true,
-                  })}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-medium text-heading">
+                    {n.title}
+                  </p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                    {n.body}
+                  </p>
+                  <p className="mt-1.5 text-xs text-muted-foreground/70">
+                    {formatDistanceToNow(new Date(n.createdAt), {
+                      addSuffix: true,
+                    })}
+                  </p>
                 </div>
+                {!n.isRead && (
+                  <>
+                    <span className="sr-only">Unread</span>
+                    <span
+                      aria-hidden
+                      className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                    />
+                  </>
+                )}
               </button>
-            ))
-          )}
-        </CardContent>
-      </Card>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

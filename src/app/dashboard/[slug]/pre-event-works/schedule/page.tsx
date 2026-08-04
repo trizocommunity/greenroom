@@ -1,14 +1,14 @@
-import { asc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { ScheduleClient } from "@/components/festival/pre-event-works/schedule/ScheduleClient";
 import { getSession } from "@/core/auth/session";
-import { db } from "@/core/database/client";
-import { programme as programmeTable } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
-import { getScheduleEntries } from "@/features/schedule/actions/schedule.actions";
+import {
+  getSchedulableProgrammesAction,
+  getScheduleEntriesEnriched,
+} from "@/features/schedule/actions/schedule.actions";
 import { getStages } from "@/features/stages/actions/stage.actions";
 import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
 
@@ -32,34 +32,11 @@ export default async function SchedulePage({ params }: PageProps) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=schedule`);
   }
 
-  const [entries, stages, allProgrammes] = await Promise.all([
-    getScheduleEntries(festival.id),
+  const [entries, stages, programmes] = await Promise.all([
+    getScheduleEntriesEnriched(festival.id),
     getStages(festival.id),
-    db.query.programme.findMany({
-      where: eq(programmeTable.festivalId, festival.id),
-      with: {
-        category: {
-          columns: { id: true, name: true },
-        },
-      },
-      columns: { id: true, name: true },
-      orderBy: [asc(programmeTable.name)],
-    }),
+    getSchedulableProgrammesAction(festival.id),
   ]);
-
-  const scheduledProgrammeIds = new Set(
-    entries
-      .filter((e) => e.type === "PROGRAMME" && e.programmeId)
-      .map((e) => e.programmeId!),
-  );
-  const programmes = allProgrammes
-    .filter((p) => !scheduledProgrammeIds.has(p.id))
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      categoryId: p.category?.id ?? null,
-      categoryName: p.category?.name ?? null,
-    }));
 
   const session = await getSession();
   const context = await getFestivalContext({

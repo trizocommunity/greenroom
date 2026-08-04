@@ -1,53 +1,107 @@
 /**
- * Festival expiration: snapshot all data for Manual Book, delete live data, set EXPIRED.
- * Festival duration is 90 days from creation. After 90 days + 7 grace = data deleted.
+ * Festival expiration: strip descriptive data, clean orphan tables, keep
+ * operational tables on the festival row for the on-demand Manual Book.
+ * Festival duration is 90 days from creation (see getFestivalDurationDays()).
+ * After 90 days the festival is hard-expired — no read-only window.
  *
  * Lifecycle:
- *   READY/ONGOING/PAST → pre-archival (7 days before expiresAt)
- *   pre-archival → EXPIRED → data deleted, Manual Book available for download
+ *   READY/ONGOING/PAST → pre-archival (T-7 days before expiresAt)
+ *   pre-archival → EXPIRED → descriptive fields nulled, orphans deleted,
+ *                       operational tables retained for Manual Book regen.
  */
 
-import { eq, lt, ne } from "drizzle-orm";
+import { eq, inArray, lt, ne, sql } from "drizzle-orm";
 import { jsPDF } from "jspdf";
 import { db } from "@/core/database/client";
 import {
-  category as categories,
-  expiredFestivalManualBook,
-  expiredFestivalResult,
   festivalLifecycleEvent,
-  festivalMediaImage,
-  festivalMember,
-  festivalNews,
+  festivalPosterTemplate,
+  festivalScoringAwardRule,
+  festivalScoringPolicy,
   festival as festivals,
-  group as groups,
+  judge,
+  judgementConfig,
+  judgeStageAssignment,
   participant as participants,
+  pendingInvitation,
   programmeAssignment,
+  programmeCodeLetter,
+  programmeCodeLetterRecipient,
+  programmeNotification,
+  programmeReportedParticipant,
+  programmeReportingSession,
   programme as programmes,
+  programmeTeamLead,
   result as results,
-  scheduleEntry,
-  stage as stages,
+  stageManagerAssignment,
+  stagePortalCredential,
+  stagePortalSession,
+  user as users,
 } from "@/core/database/schema";
 import { isAfter, parseInstant } from "@/core/datetime";
-import {
-  MS,
-  nowPlus,
-  serverNow,
-  serverNowIso,
-} from "@/core/datetime/server";
-import { getPublicFestivalResults } from "@/features/festivals/loaders/festival-results.loader";
+import { MS, nowPlus, serverNow, serverNowIso } from "@/core/datetime/server";
+import { sendEmail } from "@/core/integrations/email/index";
+import { createAuditLog } from "@/features/auth/services/audit-log.service";
+import { sendExpiryWarningEmail } from "@/features/notifications/services/expiry-notification.service";
 
 const PRE_ARCHIVAL_DAYS = 7;
+
+/**
+ * Columns to clear on expiry. Keeps the festival row as an anchor
+ * (id, ownerId, name, slug, tier, createdAt, expiresAt) plus operational
+ * tables. Anything in here is non-essential for the EXPIRED view + Manual
+ * Book regen, and is removed so a Relaunch can start from a clean slate.
+ */
+const DESCRIPTIVE_FIELDS_TO_CLEAR = {
+  category: null,
+  description: null,
+  orgName: null,
+  orgDescription: null,
+  orgWebsite: null,
+  orgLocation: null,
+  establishedYear: null,
+  founderName: null,
+  founderMessage: null,
+  branding: null,
+  rules: null,
+  structure: null,
+  institutionName: null,
+  institutionId: null,
+  location: null,
+  programmeAssignmentStartDate: null,
+  programmeAssignmentDeadline: null,
+  participantCreationStartDate: null,
+  participantCreationDeadline: null,
+  chestNumberSettings: null,
+  teamStandings: null,
+  standingsPublishedAtResultNumber: null,
+  standingsPublishedAt: null,
+  publicSiteEnabled: false,
+  scoringSystem: "SCORE_BASED",
+  resultPdfUrl: null,
+  startDate: null,
+  endDate: null,
+  festivalExpiringSoonEmailSentAt: null,
+  maxResultScore: null,
+  isLocked: true,
+} as const;
+
+const SYSTEM_CRON_ACTOR = {
+  actorId: "system:cron",
+  actorRole: "SYSTEM",
+} as const;
 
 export const FestivalExpirationService = {
   /**
    * Find festivals within the pre-archival window (expiring within PRE_ARCHIVAL_DAYS).
-   * These are ONGOING/PAST festivals not yet EXPIRED that are approaching expiry.
    */
-  async getFestivalsApproachingExpiry(): Promise<
+  async getFestivalsApproachingExpiry(
+    withinDays: number = PRE_ARCHIVAL_DAYS,
+  ): Promise<
     { id: string; name: string; slug: string; expiresAt: string | null }[]
   > {
     const now = serverNow();
-    const windowEnd = nowPlus(PRE_ARCHIVAL_DAYS * MS.day);
+    const windowEnd = nowPlus(withinDays * MS.day);
     const list = await db
       .select({
         id: festivals.id,
@@ -69,8 +123,9 @@ export const FestivalExpirationService = {
 
   /**
    * Pre-archive a festival before it expires.
-   * Snapshots results and emits a warning lifecycle event — festival remains active.
-   * Called proactively so data is preserved even if the expiry cron fails.
+   * Emits an ACTIVATED lifecycle event so the audit trail reflects that we
+   * were aware of the upcoming expiry. No data is mutated at this stage.
+   * (The new model keeps the live tables, so there is no snapshot to take.)
    */
   async preArchiveFestival(festivalId: string): Promise<void> {
     const { randomUUID } = await import("crypto");
@@ -79,33 +134,17 @@ export const FestivalExpirationService = {
     });
     if (!festival || festival.status === "EXPIRED") return;
 
-    const publishedResults = await getPublicFestivalResults(festivalId);
-
     await db.transaction(async (tx) => {
-      for (const r of publishedResults) {
-        await tx.insert(expiredFestivalResult).values({
-          id: randomUUID(),
-          festivalId,
-          programmeName: r.programName,
-          categoryName: r.category ?? null,
-          participantName: r.winner ?? r.team ?? "—",
-          position: r.position ?? null,
-          grade: r.grade ?? null,
-          score: null,
-          points: r.points ?? null,
-        } as any);
-      }
-
       await tx.insert(festivalLifecycleEvent).values({
         id: randomUUID(),
         festivalId,
         event: "ACTIVATED",
         metadata: {
           type: "PRE_ARCHIVAL",
-          snapshotCount: publishedResults.length,
           archivedAt: serverNowIso(),
+          note: "T-7 window entered; live tables retained for Manual Book regen.",
         },
-      } as any);
+      });
     });
   },
 
@@ -128,148 +167,226 @@ export const FestivalExpirationService = {
   },
 
   /**
-   * Run expiration for one festival: snapshot all data to Manual Book, delete live data, set EXPIRED.
+   * Run the expiry transition for one festival:
+   *   1. Idempotency guard — no-op if already EXPIRED.
+   *   2. Delete every `festivalId`-keyed table NOT in the keep list
+   *      (FK cascades cover child rows).
+   *   3. Strip the descriptive fields on the festival row.
+   *   4. Stamp `status=EXPIRED`, `expiredAt`, `archivedAt`.
+   *   5. Record an EXPIRED lifecycle event + EXPIRE_FESTIVAL audit log.
+   *
+   * Operational tables (`programme`, `participant`, `result`, `group`,
+   * `category`, `stage`, `scheduleEntry`, `programmeAssignment`,
+   * `festivalMember`, `festivalNews`, `festivalMediaImage`) are kept so the
+   * owner can download the Manual Book PDF on demand (regenerated from the
+   * live kept tables — no snapshot blob).
    */
   async expireFestival(festivalId: string): Promise<void> {
     const { randomUUID } = await import("crypto");
     const festival = await db.query.festival.findFirst({
       where: eq(festivals.id, festivalId),
     });
-    if (!festival || festival.status === "EXPIRED") return;
+    if (!festival) return;
+    if (festival.status === "EXPIRED") return;
 
-    const [
-      participantsData,
-      programmesData,
-      categoriesData,
-      groupsData,
-      stagesData,
-      scheduleData,
-      resultsData,
-    ] = await Promise.all([
-      db.query.participant.findMany({
-        where: eq(participants.festivalId, festivalId),
-      }),
-      db.query.programme.findMany({
-        where: eq(programmes.festivalId, festivalId),
-      }),
-      db.query.category.findMany({
-        where: eq(categories.festivalId, festivalId),
-      }),
-      db.query.group.findMany({ where: eq(groups.festivalId, festivalId) }),
-      db.query.stage.findMany({ where: eq(stages.festivalId, festivalId) }),
-      db.query.scheduleEntry.findMany({
-        where: eq(scheduleEntry.festivalId, festivalId),
-      }),
-      db.query.result.findMany({ where: eq(results.festivalId, festivalId) }),
-    ]);
+    const nowIso = serverNowIso();
 
-    const publishedResults = await getPublicFestivalResults(festivalId);
-
-    const manualBookData = {
-      festival,
-      participants: participantsData,
-      programmes: programmesData,
-      categories: categoriesData,
-      groups: groupsData,
-      stages: stagesData,
-      schedule: scheduleData,
-      results: resultsData,
-    };
-
-    await db.transaction(async (tx) => {
-      // 1. Store Manual Book data
-      await tx.insert(expiredFestivalManualBook).values({
-        id: randomUUID(),
-        festivalId,
-        data: manualBookData as any,
-      });
-
-      // 2. Snapshot to ExpiredFestivalResult (for backward compatibility)
-      for (const r of publishedResults) {
-        await tx.insert(expiredFestivalResult).values({
-          id: randomUUID(),
-          festivalId,
-          programmeName: r.programName,
-          categoryName: r.category ?? null,
-          participantName: r.winner ?? r.team ?? "—",
-          position: r.position ?? null,
-          grade: r.grade ?? null,
-          score: null,
-          points: r.points ?? null,
-        } as any);
-      }
-
-      // 3. Delete in order (respect FKs)
-      await tx.delete(results).where(eq(results.festivalId, festivalId));
+    const { keptCounts } = await db.transaction(async (tx) => {
+      // 1. Orphan cleanup. Delete top-level festivalId-keyed tables first;
+      //    FK CASCADE deletes child rows of the parents (judgementScore,
+      //    programmeCodeLetterRecipient, programmeReportedParticipant,
+      //    judgementConfigJudge). programmeTeamLead is kept-table-leaved
+      //    (FK → programme.id) so it is purged by subquery on programmeId.
       await tx
-        .delete(programmeAssignment)
-        .where(eq(programmeAssignment.festivalId, festivalId));
+        .delete(judgeStageAssignment)
+        .where(eq(judgeStageAssignment.festivalId, festivalId));
       await tx
-        .delete(scheduleEntry)
-        .where(eq(scheduleEntry.festivalId, festivalId));
+        .delete(stageManagerAssignment)
+        .where(eq(stageManagerAssignment.festivalId, festivalId));
       await tx
-        .delete(participants)
+        .delete(stagePortalSession)
+        .where(eq(stagePortalSession.festivalId, festivalId));
+      await tx
+        .delete(stagePortalCredential)
+        .where(eq(stagePortalCredential.festivalId, festivalId));
+      await tx
+        .delete(pendingInvitation)
+        .where(eq(pendingInvitation.festivalId, festivalId));
+      await tx
+        .delete(programmeNotification)
+        .where(eq(programmeNotification.festivalId, festivalId));
+      await tx
+        .delete(festivalPosterTemplate)
+        .where(eq(festivalPosterTemplate.festivalId, festivalId));
+      await tx
+        .delete(programmeCodeLetter)
+        .where(eq(programmeCodeLetter.festivalId, festivalId));
+      await tx
+        .delete(programmeReportingSession)
+        .where(eq(programmeReportingSession.festivalId, festivalId));
+      await tx
+        .delete(judgementConfig)
+        .where(eq(judgementConfig.festivalId, festivalId));
+      await tx.delete(judge).where(eq(judge.festivalId, festivalId));
+      await tx
+        .delete(festivalScoringAwardRule)
+        .where(eq(festivalScoringAwardRule.festivalId, festivalId));
+      await tx
+        .delete(festivalScoringPolicy)
+        .where(eq(festivalScoringPolicy.festivalId, festivalId));
+
+      // programme_team_lead.programmeId → programme.id (cascade SET NULL is
+      // configured, but we want a hard purge since the team-lead table is
+      // an "orphan" per the new lifecycle policy). Delete by subquery on
+      // the kept programme rows under this festival.
+      const programmeIdsForFestival = tx
+        .select({ id: programmes.id })
+        .from(programmes)
+        .where(eq(programmes.festivalId, festivalId));
+      await tx
+        .delete(programmeTeamLead)
+        .where(inArray(programmeTeamLead.programmeId, programmeIdsForFestival));
+
+      // Snapshot kept-table row counts for the lifecycle event.
+      const [programmesCount] = await tx
+        .select({ c: sql<number>`count(*)::int` })
+        .from(programmes)
+        .where(eq(programmes.festivalId, festivalId));
+      const [participantsCount] = await tx
+        .select({ c: sql<number>`count(*)::int` })
+        .from(participants)
         .where(eq(participants.festivalId, festivalId));
-      await tx.delete(programmes).where(eq(programmes.festivalId, festivalId));
-      await tx.delete(categories).where(eq(categories.festivalId, festivalId));
-      await tx.delete(groups).where(eq(groups.festivalId, festivalId));
-      await tx
-        .delete(festivalMediaImage)
-        .where(eq(festivalMediaImage.festivalId, festivalId));
-      await tx
-        .delete(festivalNews)
-        .where(eq(festivalNews.festivalId, festivalId));
-      await tx.delete(stages).where(eq(stages.festivalId, festivalId));
-      await tx
-        .delete(festivalMember)
-        .where(eq(festivalMember.festivalId, festivalId));
+      const [resultsCount] = await tx
+        .select({ c: sql<number>`count(*)::int` })
+        .from(results)
+        .where(eq(results.festivalId, festivalId));
+      const keptCounts = {
+        programmes: programmesCount?.c ?? 0,
+        participants: participantsCount?.c ?? 0,
+        results: resultsCount?.c ?? 0,
+      };
 
-      // 4. Lifecycle event
+      // 2. Strip descriptive fields + stamp EXPIRED + archivedAt.
+      await tx
+        .update(festivals)
+        .set({
+          ...DESCRIPTIVE_FIELDS_TO_CLEAR,
+          status: "EXPIRED",
+          expiredAt: nowIso,
+          archivedAt: nowIso,
+          updatedAt: nowIso,
+        })
+        .where(eq(festivals.id, festivalId));
+
+      // 3. Record the lifecycle event.
       await tx.insert(festivalLifecycleEvent).values({
         id: randomUUID(),
         festivalId,
         event: "EXPIRED",
         metadata: {
-          snapshotCount: publishedResults.length,
-          manualBookArchived: true,
+          expiredAt: nowIso,
+          archivedAt: nowIso,
+          keptCounts,
+          policy: "ISSUE-15 §1.4",
         },
-      } as any);
+      });
 
-      // 5. Update festival — resultPdfUrl intentionally left null so
-      // on-demand PDF generation is used (avoids stale stored PDFs)
-      const now = serverNowIso();
-      await tx
-        .update(festivals)
-        .set({
-          status: "EXPIRED",
-          expiredAt: now,
-          participantsCount: 0,
-          programmesCount: 0,
-          stagesCount: 0,
-          storageUsedMb: 0,
-        })
-        .where(eq(festivals.id, festivalId));
+      return { keptCounts };
     });
+
+    // 4. Audit log (outside the transaction — uses its own connection).
+    try {
+      await createAuditLog({
+        action: "EXPIRE_FESTIVAL",
+        targetType: "FESTIVAL",
+        targetId: festivalId,
+        actor: SYSTEM_CRON_ACTOR,
+        metadata: { ...keptCounts, expiredAt: nowIso },
+      });
+    } catch (err) {
+      console.error(
+        `[Expiration] Audit log insert failed for festival ${festival.slug}:`,
+        err,
+      );
+    }
   },
 
   /**
-   * Generate results PDF buffer for an expired festival (from ExpiredFestivalResult).
+   * Generate results PDF buffer for an expired festival by reading the
+   * live kept `result` table (no snapshot blob). Falls back to the legacy
+   * `expired_festival_result` rows if the kept table is empty and that
+   * table still exists (back-compat with the pre-§1.4 model).
    */
   async generateExpiredResultsPdfBuffer(
     festivalId: string,
     festivalName: string,
   ): Promise<Buffer> {
-    const rows = await db.query.expiredFestivalResult.findMany({
-      where: eq(expiredFestivalResult.festivalId, festivalId),
-      orderBy: (t, { asc }) => [asc(t.programmeName), asc(t.position)],
+    const liveRows = await db.query.result.findMany({
+      where: eq(results.festivalId, festivalId),
     });
+
+    const programmeIds = Array.from(
+      new Set(liveRows.map((r) => r.programmeId)),
+    );
+    const programmeRows =
+      programmeIds.length > 0
+        ? await db.query.programme.findMany({
+            where: (p, { inArray }) => inArray(p.id, programmeIds),
+          })
+        : [];
+    const assignmentIds = Array.from(
+      new Set(liveRows.map((r) => r.assignmentId)),
+    );
+    const assignmentRows =
+      assignmentIds.length > 0
+        ? await db.query.programmeAssignment.findMany({
+            where: (a, { inArray }) => inArray(a.id, assignmentIds),
+          })
+        : [];
+    const participantIds = Array.from(
+      new Set(
+        assignmentRows
+          .map((a) => a.participantId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const participantRows =
+      participantIds.length > 0
+        ? await db.query.participant.findMany({
+            where: (p, { inArray }) => inArray(p.id, participantIds),
+          })
+        : [];
+
+    const progName = new Map(programmeRows.map((p) => [p.id, p.name]));
+    const partName = new Map(participantRows.map((p) => [p.id, p.name]));
+
+    const rows = liveRows
+      .slice()
+      .sort((a, b) => {
+        const ap = a.position ?? Number.MAX_SAFE_INTEGER;
+        const bp = b.position ?? Number.MAX_SAFE_INTEGER;
+        if (ap !== bp) return ap - bp;
+        return (progName.get(a.programmeId) ?? "").localeCompare(
+          progName.get(b.programmeId) ?? "",
+        );
+      })
+      .map((r) => ({
+        programmeName: progName.get(r.programmeId) ?? "Unknown",
+        participantName:
+          partName.get(
+            assignmentRows.find((a) => a.id === r.assignmentId)
+              ?.participantId ?? "",
+          ) ?? "—",
+        position: r.position ?? null,
+        grade: r.grade ?? null,
+        points: r.points ?? null,
+      }));
 
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
       format: "a4",
     });
-    const pageW = doc.internal.pageSize.getWidth();
     const margin = 15;
     let y = 20;
 
@@ -340,5 +457,188 @@ export const FestivalExpirationService = {
       }
     }
     return { processed: toExpire.length };
+  },
+
+  /**
+   * T-7 notification cycle: idempotently emit a warning email + a lifecycle
+   * event row that the in-app banner reads. Idempotency is enforced by
+   * checking for an `EXPIRATION_WARNING` lifecycle event row first.
+   *
+   * Returns `{processed, warned, skipped}`.
+   */
+  async runNotificationsCycle(): Promise<{
+    processed: number;
+    warned: number;
+    skipped: number;
+  }> {
+    const { randomUUID } = await import("crypto");
+    const approaching = await this.getFestivalsApproachingExpiry();
+    let warned = 0;
+    let skipped = 0;
+
+    for (const f of approaching) {
+      try {
+        const existing = await db.query.festivalLifecycleEvent.findFirst({
+          where: (t, { and, eq }) =>
+            and(eq(t.festivalId, f.id), eq(t.event, "EXPIRATION_WARNING")),
+        });
+        if (existing) {
+          skipped++;
+          continue;
+        }
+
+        const fresh = await db.query.festival.findFirst({
+          where: eq(festivals.id, f.id),
+        });
+        if (!fresh || !f.expiresAt) {
+          skipped++;
+          continue;
+        }
+
+        const daysRemaining = Math.max(
+          1,
+          Math.ceil(
+            (parseInstant(f.expiresAt)!.getTime() - serverNow().getTime()) /
+              MS.day,
+          ),
+        );
+
+        const owner = await db.query.user.findFirst({
+          where: eq(users.id, fresh.ownerId),
+        });
+
+        if (owner?.email) {
+          const expiresAtDate = parseInstant(f.expiresAt);
+          if (expiresAtDate) {
+            const emailResult = await sendExpiryWarningEmail({
+              to: owner.email,
+              festivalName: fresh.name,
+              festivalSlug: fresh.slug ?? "",
+              daysRemaining,
+              expiresAt: expiresAtDate,
+            });
+            if (!emailResult.ok) {
+              console.info(
+                `[ExpirationWarning] Email not sent for festival ${f.slug} (${emailResult.reason}); still recording lifecycle event.`,
+              );
+            }
+          }
+        }
+
+        await db.transaction(async (tx) => {
+          await tx.insert(festivalLifecycleEvent).values({
+            id: randomUUID(),
+            festivalId: f.id,
+            event: "EXPIRATION_WARNING",
+            metadata: {
+              daysRemaining,
+              expiresAt: f.expiresAt,
+              sentAt: serverNowIso(),
+            },
+          });
+        });
+
+        warned++;
+      } catch (err) {
+        console.error(
+          `[ExpirationWarning] Failed for festival ${f.slug}:`,
+          err,
+        );
+        skipped++;
+      }
+    }
+
+    return { processed: approaching.length, warned, skipped };
+  },
+
+  /**
+   * Send the "festival expiring soon" email to the owner of every
+   * festival in the 7-day pre-archival window, once per festival.
+   *
+   * Idempotent — `festivalExpiringSoonEmailSentAt` is set after a
+   * successful send so a cron retry (or a second cron tick in the
+   * window) doesn't spam the owner.
+   */
+  async runFestivalExpiringSoonEmails(): Promise<{
+    processed: number;
+    sent: number;
+    skipped: number;
+  }> {
+    const approaching = await this.getFestivalsApproachingExpiry();
+    let sent = 0;
+    let skipped = 0;
+
+    for (const f of approaching) {
+      try {
+        const fresh = await db.query.festival.findFirst({
+          where: eq(festivals.id, f.id),
+        });
+        if (!fresh || fresh.festivalExpiringSoonEmailSentAt) {
+          skipped++;
+          continue;
+        }
+
+        const owner = await db.query.user.findFirst({
+          where: eq(users.id, fresh.ownerId),
+        });
+        if (!owner?.email) {
+          console.warn(
+            `[FestivalExpiringSoon] No owner email for festival ${f.slug}; skipping.`,
+          );
+          skipped++;
+          continue;
+        }
+
+        if (!f.expiresAt) continue;
+        const daysRemaining = Math.max(
+          1,
+          Math.ceil(
+            (parseInstant(f.expiresAt)!.getTime() - serverNow().getTime()) /
+              MS.day,
+          ),
+        );
+
+        const result = await sendEmail({
+          to: owner.email,
+          kind: {
+            kind: "festival_expiring_soon",
+            festivalName: fresh.name,
+            daysRemaining,
+            expiresOn:
+              parseInstant(f.expiresAt)!.toISOString().split("T")[0] ?? "",
+            dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || ""}/dashboard/${fresh.slug}`,
+          },
+        });
+
+        if ("kindDisabled" in result) {
+          console.info(
+            `[FestivalExpiringSoon] Kind disabled; not marking festival ${f.slug}.`,
+          );
+          skipped++;
+          continue;
+        }
+        if ("error" in result) {
+          console.error(
+            `[FestivalExpiringSoon] Email error for festival ${f.slug}:`,
+            result.error,
+          );
+          continue;
+        }
+
+        await db
+          .update(festivals)
+          .set({ festivalExpiringSoonEmailSentAt: serverNowIso() })
+          .where(eq(festivals.id, f.id));
+
+        sent++;
+      } catch (err) {
+        console.error(
+          `[FestivalExpiringSoon] Failed for festival ${f.slug}:`,
+          err,
+        );
+      }
+    }
+
+    return { processed: approaching.length, sent, skipped };
   },
 };

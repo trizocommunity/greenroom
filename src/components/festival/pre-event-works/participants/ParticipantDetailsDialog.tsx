@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDate, formatDateTime } from "@/core/datetime";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import { getTeamLeadForTeamAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
 import { computeAgeFromDateOfBirth } from "@/lib/age";
 
 interface ParticipantDetailsDialogProps {
@@ -64,12 +65,14 @@ export function ParticipantDetailsDialog({
       chestNumber?: string | null;
       categoryName?: string;
     }[];
+    teamLeadParticipantId: string | null;
   }>({
     open: false,
     programmeName: "",
     teamLabel: "",
     groupName: "",
     participants: [],
+    teamLeadParticipantId: null,
   });
   const [loadingTeamFor, setLoadingTeamFor] = useState<string | null>(null);
 
@@ -86,18 +89,29 @@ export function ParticipantDetailsDialog({
     if (!programmeId || !groupId) return;
     setLoadingTeamFor(assignment.id);
     try {
-      const participants = await getProgrammeTeamMembersAction(
-        festivalId,
-        programmeId,
-        groupId,
-        teamNumber,
-      );
+      /* The lead lookup returns null on non-PRO tiers rather than throwing,
+         so it is safe to ask for unconditionally. */
+      const [participants, teamLead] = await Promise.all([
+        getProgrammeTeamMembersAction(
+          festivalId,
+          programmeId,
+          groupId,
+          teamNumber,
+        ),
+        getTeamLeadForTeamAction(festivalId, {
+          programmeId,
+          groupId,
+          teamNumber,
+        }).catch(() => null),
+      ]);
+
       setTeamDialog({
         open: true,
         programmeName: assignment.programme?.name ?? "—",
         teamLabel: `${groupName} – Team ${teamNumber}`,
         groupName,
         participants,
+        teamLeadParticipantId: (teamLead as any)?.participantId ?? null,
       });
     } finally {
       setLoadingTeamFor(null);
@@ -360,6 +374,7 @@ export function ParticipantDetailsDialog({
       <TeamParticipantsDialog
         open={teamDialog.open}
         onOpenChange={(open) => setTeamDialog((p) => ({ ...p, open }))}
+        teamLeadParticipantId={teamDialog.teamLeadParticipantId}
         programmeName={teamDialog.programmeName}
         teamLabel={teamDialog.teamLabel}
         groupName={teamDialog.groupName}

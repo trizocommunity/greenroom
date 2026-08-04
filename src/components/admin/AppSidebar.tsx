@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, LogOut, GalleryVerticalEnd } from "lucide-react";
+import { ChevronsUpDown, GalleryVerticalEnd, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";

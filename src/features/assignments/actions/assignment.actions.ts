@@ -16,8 +16,10 @@ import {
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
+import type { BulkAssignmentInput } from "@/features/assignments/services/assignment.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
+import { resolveDeadlineWindow } from "@/features/festivals/services/deadline-window";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 
 function auditActorForContext(actorContext: AssignmentActorContext) {
@@ -60,11 +62,32 @@ export async function getActorForCreatedBy(userId: string) {
   };
 }
 
+/**
+ * The assignment window gates Team Leaders only — organisers keep full
+ * control of assignments from the dashboard at any time.
+ */
 function assertAssignmentWindowOpen(
-  festival: { programmeAssignmentDeadline?: string | null } | null | undefined,
+  festival:
+    | {
+        programmeAssignmentStartDate?: string | null;
+        programmeAssignmentDeadline?: string | null;
+      }
+    | null
+    | undefined,
+  actorContext: AssignmentActorContext,
 ) {
-  if (isExpired(festival?.programmeAssignmentDeadline)) {
+  if (actorContext.type === "user") return;
+
+  const { state } = resolveDeadlineWindow({
+    start: festival?.programmeAssignmentStartDate,
+    end: festival?.programmeAssignmentDeadline,
+  });
+
+  if (state === "CLOSED") {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DEADLINE_PASSED);
+  }
+  if (state === "UPCOMING") {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_WINDOW_NOT_OPEN);
   }
 }
 
@@ -141,7 +164,7 @@ export async function createAssignmentAction(
   await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
-  assertAssignmentWindowOpen(festival);
+  assertAssignmentWindowOpen(festival, actorContext);
 
   // Validate Dependencies
   const [categoryCount, groupCount, programmeCount, participantCount] =
@@ -187,7 +210,26 @@ export async function createAssignmentAction(
     }
   }
 
-  const created = await AssignmentService.create(festivalId, data, actor);
+  let created;
+  if (data.participantId) {
+    created = await AssignmentService.create(
+      festivalId,
+      { programmeId: data.programmeId, participantId: data.participantId },
+      actor,
+    );
+  } else if (data.groupId) {
+    created = await AssignmentService.create(
+      festivalId,
+      {
+        programmeId: data.programmeId,
+        groupId: data.groupId,
+        teamNumber: data.teamNumber,
+      },
+      actor,
+    );
+  } else {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_REQUIRES_PARTICIPANT);
+  }
   await createAuditLog({
     action: "ASSIGN_PARTICIPANTS",
     targetType: "PROGRAMME_ASSIGNMENT",
@@ -195,6 +237,8 @@ export async function createAssignmentAction(
     metadata: {
       programmeId: data.programmeId,
       participantId: data.participantId,
+      groupId: data.groupId,
+      teamNumber: data.teamNumber,
     },
     actor: auditActorForContext(actorContext),
   }).catch((err) =>
@@ -205,11 +249,7 @@ export async function createAssignmentAction(
 
 export async function bulkCreateAssignmentAction(
   festivalId: string,
-  assignments: {
-    programmeId: string;
-    participantId: string;
-    teamNumber?: number;
-  }[],
+  assignments: BulkAssignmentInput[],
   teamLeadsByTeam?: Record<string, string>,
 ) {
   const actorContext = await resolveAssignmentActorContext(festivalId, {
@@ -227,29 +267,38 @@ export async function bulkCreateAssignmentAction(
   await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
-  assertAssignmentWindowOpen(festival);
+  assertAssignmentWindowOpen(festival, actorContext);
 
   if (assignments.length === 0) return [];
 
   if (actorContext.type === "teamLeader") {
-    const participantIds = Array.from(
-      new Set(assignments.map((a) => a.participantId)),
-    );
-    const participants = await db.query.participant.findMany({
-      where: and(
-        eq(participantTable.festivalId, festivalId),
-        inArray(participantTable.id, participantIds),
-      ),
-      columns: { id: true, festivalId: true, groupId: true },
-    });
-    if (
-      participants.length !== participantIds.length ||
-      participants.some(
-        (s) =>
-          s.festivalId !== festivalId || s.groupId !== actorContext.groupId,
-      )
-    ) {
-      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+    const memberIds = new Set<string>();
+    for (const a of assignments) {
+      if ("participantId" in a && a.participantId) {
+        memberIds.add(a.participantId);
+      }
+      if ("participantIds" in a && Array.isArray(a.participantIds)) {
+        for (const pid of a.participantIds) memberIds.add(pid);
+      }
+    }
+    const participantIds = Array.from(memberIds);
+    if (participantIds.length > 0) {
+      const participants = await db.query.participant.findMany({
+        where: and(
+          eq(participantTable.festivalId, festivalId),
+          inArray(participantTable.id, participantIds),
+        ),
+        columns: { id: true, festivalId: true, groupId: true },
+      });
+      if (
+        participants.length !== participantIds.length ||
+        participants.some(
+          (s) =>
+            s.festivalId !== festivalId || s.groupId !== actorContext.groupId,
+        )
+      ) {
+        throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+      }
     }
   }
 
@@ -297,7 +346,7 @@ export async function deleteAssignmentAction(
   await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
-  assertAssignmentWindowOpen(festival);
+  assertAssignmentWindowOpen(festival, actorContext);
 
   if (actorContext.type === "teamLeader") {
     const assignment = await db.query.programmeAssignment.findFirst({
@@ -349,7 +398,7 @@ export async function deleteTeamAssignmentAction(
   const festival = await findFestivalById(festivalId);
   await assertFestivalMutationAllowed(festivalId);
 
-  assertAssignmentWindowOpen(festival);
+  assertAssignmentWindowOpen(festival, actorContext);
 
   if (actorContext.type === "teamLeader" && groupId !== actorContext.groupId) {
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
@@ -388,7 +437,7 @@ export async function updateAssignmentAction(
   await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
-  assertAssignmentWindowOpen(festival);
+  assertAssignmentWindowOpen(festival, actorContext);
 
   if (actorContext.type === "teamLeader") {
     const existing = await db.query.programmeAssignment.findFirst({

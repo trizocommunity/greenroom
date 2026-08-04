@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Crown, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
@@ -9,8 +9,8 @@ import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
 import { useParticipants } from "@/api/client/participants";
 import { useProgrammes } from "@/api/client/programmes";
+import { StatusPill } from "@/components/app/AppSection";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Drawer,
   DrawerContent,
+  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
@@ -33,12 +34,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { formatDate, formatDateTime, isAfter, parseInstant } from "@/core/datetime";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  formatDate,
+  formatDateTime,
+  isAfter,
+  parseInstant,
+} from "@/core/datetime";
 import {
   deleteAssignmentAction,
   deleteTeamAssignmentAction,
 } from "@/features/assignments/actions/assignment.actions";
-import { useDeadlineLock } from "@/features/festivals/hooks/use-deadline-lock";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
@@ -192,18 +198,17 @@ function ProgrammeCard({
 
 interface AssignmentsClientProps {
   festivalId: string;
-  programmeAssignmentDeadline?: Date | null;
   children?: React.ReactNode;
 }
 
 export function AssignmentsClient({
   festivalId,
-  programmeAssignmentDeadline,
   children,
 }: AssignmentsClientProps) {
   const { data: assignments = [], isLoading: isAssignmentsLoading } =
     useAssignments(festivalId);
   const deleteAssignment = useDeleteAssignment();
+  const queryClient = useQueryClient();
   const { data: programmes = [] } = useProgrammes(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
   const { data: groups = [] } = useGroups(festivalId);
@@ -221,6 +226,9 @@ export function AssignmentsClient({
   const [selectedProgrammeCard, setSelectedProgrammeCard] =
     useState<ProgrammeCardRow | null>(null);
   const [detailsSearch, setDetailsSearch] = useState("");
+  const [detailsTab, setDetailsTab] = useState<"OVERVIEW" | "ASSIGNMENTS">(
+    "OVERVIEW",
+  );
 
   const canUseTeamLead = useFeatureTag("programme.teamLead");
   const canUseAuditDrawer = useFeatureTag("programme.auditDrawer");
@@ -247,22 +255,15 @@ export function AssignmentsClient({
   const [filterType, setFilterType] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { isLocked: isReadOnly, justLocked } = useDeadlineLock(
-    programmeAssignmentDeadline ?? null,
-  );
+  // The assignment deadline gates Team Leaders only — organisers can always
+  // assign from the dashboard, so only the festival lifecycle locks this view.
   const { isReadOnly: isFestivalReadOnly } = useFestivalReadOnly();
-  const isReadOnlyMode = isReadOnly || isFestivalReadOnly;
+  const isReadOnlyMode = isFestivalReadOnly;
   const displayTz = useDisplayTimezone();
 
-  // If deadline expires while the modal is open, close it to prevent confusing UX.
   useEffect(() => {
     if (isReadOnlyMode) setAssignmentModalOpen(false);
   }, [isReadOnlyMode]);
-
-  useEffect(() => {
-    if (!justLocked) return;
-    toast.error("Deadline passed. Assignments are closed.");
-  }, [justLocked]);
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter((a: any) => {
@@ -590,6 +591,7 @@ export function AssignmentsClient({
         programmes={programmes}
         participants={participants}
         assignments={assignments}
+        requiresTeamLead={canUseTeamLead}
       />
 
       {/* Header row */}
@@ -620,9 +622,6 @@ export function AssignmentsClient({
               queue to form teams.
             </p>
           </HowItWorksButton>
-          <div className="flex items-center">
-            <DeadlinesCard isLockedOverride={isReadOnlyMode} />
-          </div>
           <Button
             size="sm"
             onClick={() => setAssignmentModalOpen(true)}
@@ -775,6 +774,7 @@ export function AssignmentsClient({
               deleteTarget.row.groupId,
               deleteTarget.row.teamNumber,
             );
+            await queryClient.invalidateQueries({ queryKey: ["assignments"] });
             setDeleteTarget(null);
           }
         }}
@@ -786,456 +786,463 @@ export function AssignmentsClient({
         open={Boolean(selectedProgrammeCard)}
         onOpenChange={(open) => {
           if (!open) setSelectedProgrammeCard(null);
+          else setDetailsTab("OVERVIEW");
         }}
       >
         <DrawerContent>
-          <DrawerHeader className="shrink-0">
-            <DrawerTitle>Programme details</DrawerTitle>
+          <DrawerHeader className="shrink-0 text-left">
+            <DrawerTitle className="text-lg font-semibold tracking-tight text-heading">
+              {selectedProgrammeCard?.programmeName ?? "Programme details"}
+            </DrawerTitle>
+            <DrawerDescription className="text-xs">
+              {selectedProgrammeCard
+                ? `${
+                    selectedProgrammeCard.programmeType === "GROUP"
+                      ? "Team programme"
+                      : "Individual programme"
+                  } · ${selectedProgrammeCard.attendeesCount} assigned${
+                    selectedProgrammeCard.programmeType === "GROUP"
+                      ? ` · ${selectedProgrammeCard.teamCount} teams`
+                      : ""
+                  }`
+                : ""}
+            </DrawerDescription>
           </DrawerHeader>
           {selectedProgrammeCard ? (
-            <div className="space-y-4 p-4 pt-0 overflow-y-auto flex-1 min-h-0">
-              <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Programme:</span>{" "}
-                  <span className="font-medium">
-                    {selectedProgrammeCard.programmeName}
+            <Tabs
+              value={detailsTab}
+              onValueChange={(v: string) =>
+                setDetailsTab(v as "OVERVIEW" | "ASSIGNMENTS")
+              }
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <TabsList className=" w-fit shrink-0 gap-1">
+                <TabsTrigger value="OVERVIEW">Overview</TabsTrigger>
+                <TabsTrigger value="ASSIGNMENTS">
+                  Assignments
+                  <span className="ml-1.5 text-xs tabular-nums opacity-70">
+                    {selectedProgrammeCard.attendeesCount}
                   </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Type:</span>{" "}
-                  {selectedProgrammeCard.programmeType}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Attendees:</span>{" "}
-                  {selectedProgrammeCard.attendeesCount}
-                </div>
-                {selectedProgrammeCard.programmeType === "GROUP" ? (
-                  <div>
-                    <span className="text-muted-foreground">Teams:</span>{" "}
-                    {selectedProgrammeCard.teamCount}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent
+                value="OVERVIEW"
+                className="min-h-0 flex-1 space-y-4 overflow-y-auto py-4"
+              >
+                {/* Panel A — lifecycle summary (always visible) */}
+                {programmeDetailLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading
+                    programme summary…
+                  </div>
+                ) : programmeDetail ? (
+                  <div className="rounded-lg border bg-muted/10 p-3 space-y-2 text-xs">
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                      Summary
+                    </div>
+                    <div className="grid gap-1.5 sm:grid-cols-2">
+                      <div>
+                        Reporting:{" "}
+                        {programmeDetail.reportingSession?.startedAt ? (
+                          <span>
+                            started
+                            {programmeDetail.reportingSession.startedByName
+                              ? ` by ${programmeDetail.reportingSession.startedByName}`
+                              : ""}
+                            {programmeDetail.reportingSession.endedAt
+                              ? `, closed${
+                                  programmeDetail.reportingSession.endedByName
+                                    ? ` by ${programmeDetail.reportingSession.endedByName}`
+                                    : ""
+                                }`
+                              : ""}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            not started
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        Reported: {programmeDetail.counts.reported}/
+                        {programmeDetail.counts.totalAssigned}
+                      </div>
+                      <div>
+                        Judging:{" "}
+                        {programmeDetail.judgingSession ? (
+                          <span>
+                            {programmeDetail.judgingSession.judgeCount} judge(s)
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            not configured
+                          </span>
+                        )}
+                      </div>
+                      <div>Scored: {programmeDetail.counts.scored}</div>
+                      <div>
+                        Results:{" "}
+                        {programmeDetail.results.savedAt ? (
+                          <span>
+                            saved
+                            {programmeDetail.results.savedByName
+                              ? ` by ${programmeDetail.results.savedByName}`
+                              : ""}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            not saved
+                          </span>
+                        )}
+                      </div>
+                      <div>Published: {programmeDetail.counts.published}</div>
+                    </div>
                   </div>
                 ) : null}
-              </div>
 
-              {/* Panel A — lifecycle summary (always visible) */}
-              {programmeDetailLoading ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Loading programme
-                  summary…
-                </div>
-              ) : programmeDetail ? (
-                <div className="rounded-lg border bg-muted/10 p-3 space-y-2 text-xs">
-                  <div className="text-[10px] font-bold uppercase text-muted-foreground">
-                    Summary
-                  </div>
-                  <div className="grid gap-1.5 sm:grid-cols-2">
-                    <div>
-                      Reporting:{" "}
-                      {programmeDetail.reportingSession?.startedAt ? (
-                        <span>
-                          started
-                          {programmeDetail.reportingSession.startedByName
-                            ? ` by ${programmeDetail.reportingSession.startedByName}`
-                            : ""}
-                          {programmeDetail.reportingSession.endedAt
-                            ? `, closed${
-                                programmeDetail.reportingSession.endedByName
-                                  ? ` by ${programmeDetail.reportingSession.endedByName}`
-                                  : ""
-                              }`
-                            : ""}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          not started
-                        </span>
-                      )}
+                {/* Panel B — programme team leads (PRO, GROUP only) */}
+                {canUseTeamLead &&
+                selectedProgrammeCard.programmeType === "GROUP" &&
+                programmeDetail &&
+                Object.keys(programmeDetail.teamLeads).length > 0 ? (
+                  <div className="rounded-lg border bg-muted/10 p-3 space-y-2 text-xs">
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">
+                      Team Leads
                     </div>
-                    <div>
-                      Reported: {programmeDetail.counts.reported}/
-                      {programmeDetail.counts.totalAssigned}
-                    </div>
-                    <div>
-                      Judging:{" "}
-                      {programmeDetail.judgingSession ? (
-                        <span>
-                          {programmeDetail.judgingSession.judgeCount} judge(s)
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          not configured
-                        </span>
-                      )}
-                    </div>
-                    <div>Scored: {programmeDetail.counts.scored}</div>
-                    <div>
-                      Results:{" "}
-                      {programmeDetail.results.savedAt ? (
-                        <span>
-                          saved
-                          {programmeDetail.results.savedByName
-                            ? ` by ${programmeDetail.results.savedByName}`
-                            : ""}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">not saved</span>
-                      )}
-                    </div>
-                    <div>
-                      Published: {programmeDetail.counts.published} · Announced:{" "}
-                      {programmeDetail.counts.announced}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Panel B — programme team leads (PRO, GROUP only) */}
-              {canUseTeamLead &&
-              selectedProgrammeCard.programmeType === "GROUP" &&
-              programmeDetail &&
-              Object.keys(programmeDetail.teamLeads).length > 0 ? (
-                <div className="rounded-lg border bg-muted/10 p-3 space-y-2 text-xs">
-                  <div className="text-[10px] font-bold uppercase text-muted-foreground">
-                    Team Leads
-                  </div>
-                  <div className="grid gap-1.5 sm:grid-cols-2">
-                    {Object.entries(programmeDetail.teamLeads).flatMap(
-                      ([groupId, teams]) =>
-                        Object.entries(teams).map(([teamNumber, lead]) => (
-                          <div key={`${groupId}:${teamNumber}`}>
-                            Team {teamNumber}:{" "}
-                            <span className="font-medium">
-                              {lead.participantName}
-                            </span>{" "}
-                            {lead.chestNumber ? `(#${lead.chestNumber})` : ""}
-                          </div>
-                        )),
-                    )}
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Panel C — audit timeline (PRO) */}
-              {canUseAuditDrawer ? (
-                <div className="rounded-lg border overflow-hidden">
-                  <div className="border-b bg-muted/10 px-3 py-2 text-[10px] font-bold uppercase text-muted-foreground">
-                    Activity
-                  </div>
-                  <ProgrammeActivityTimeline
-                    entries={programmeDetail?.auditTimeline ?? []}
-                    isLoading={programmeDetailLoading}
-                    className="p-3"
-                  />
-                </div>
-              ) : null}
-
-              {/* Progress in detail view */}
-              <div className="rounded-lg border bg-muted/10 p-3 space-y-3">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider">
-                    <span className="text-muted-foreground">
-                      Total Assignment Progress
-                    </span>
-                    <span
-                      className={
-                        selectedProgrammeCard.progress === 100
-                          ? "text-green-600 dark:text-green-500"
-                          : "text-primary"
-                      }
-                    >
-                      {selectedProgrammeCard.progressLabel} (
-                      {selectedProgrammeCard.progress}%)
-                    </span>
-                  </div>
-                  <Progress
-                    value={selectedProgrammeCard.progress}
-                    className="h-2"
-                  />
-                </div>
-
-                <Separator className="opacity-50" />
-
-                <div className="space-y-2">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground block">
-                    Group-wise Breakdown
-                  </span>
-                  <div className="grid gap-2 sm:grid-cols-2 max-h-40 overflow-y-auto pr-1">
-                    {(() => {
-                      const progInfo = programmes.find(
-                        (p) => p.id === selectedProgrammeCard.programmeId,
-                      );
-                      const catInfo = categories.find(
-                        (cat: any) =>
-                          cat.id === selectedProgrammeCard.categoryId,
-                      );
-                      const isGeneral = catInfo?.type === "GENERAL";
-
-                      const eligibleParticipants =
-                        isGeneral || !selectedProgrammeCard.categoryId
-                          ? participants
-                          : participants.filter(
-                              (s: any) =>
-                                s.categoryId ===
-                                selectedProgrammeCard.categoryId,
-                            );
-
-                      // Groups that have at least one eligible participant
-                      const eligibleGroupIds = Array.from(
-                        new Set(
-                          eligibleParticipants.map((s: any) => s.groupId),
-                        ),
-                      );
-
-                      const limit =
-                        selectedProgrammeCard.programmeType === "GROUP"
-                          ? progInfo?.maxTeamsPerGroup || 1
-                          : progInfo?.maxParticipantsPerGroup || 1;
-
-                      return eligibleGroupIds
-                        .map((gId) => {
-                          const group = groups.find((g: any) => g.id === gId);
-                          if (!group) return null;
-
-                          // Current count for THIS group
-                          let current = 0;
-                          if (selectedProgrammeCard.programmeType === "GROUP") {
-                            current = selectedProgrammeCard.rows.filter(
-                              (r): r is GroupTeamRow =>
-                                r.kind === "team" && r.groupId === gId,
-                            ).length;
-                          } else {
-                            current = selectedProgrammeCard.rows.filter(
-                              (r): r is IndividualAssignmentRow =>
-                                r.kind === "individual" &&
-                                (r.assignment.groupId === gId ||
-                                  r.assignment.participant?.groupId === gId),
-                            ).length;
-                          }
-
-                          // Target for THIS specific group
-                          const groupParticipantCount =
-                            eligibleParticipants.filter(
-                              (s: any) => s.groupId === gId,
-                            ).length;
-                          const target =
-                            selectedProgrammeCard.programmeType === "GROUP"
-                              ? limit
-                              : Math.min(limit, groupParticipantCount);
-
-                          const percent =
-                            target > 0
-                              ? Math.min(
-                                  100,
-                                  Math.round((current / target) * 100),
-                                )
-                              : 0;
-
-                          return {
-                            id: gId,
-                            name: group.name,
-                            current,
-                            target,
-                            percent,
-                          };
-                        })
-                        .filter(Boolean)
-                        .sort((a, b) => (b?.percent ?? 0) - (a?.percent ?? 0))
-                        .map((g: any) => (
-                          <div
-                            key={g.id}
-                            className="bg-card border rounded p-2 flex flex-col gap-1.5"
-                          >
-                            <div className="flex items-center justify-between gap-2 overflow-hidden">
-                              <span className="text-[11px] font-medium truncate">
-                                {g.name}
-                              </span>
-                              <span className="text-[10px] tabular-nums text-muted-foreground whitespace-nowrap">
-                                {g.current}/{g.target}
-                              </span>
+                    <div className="grid gap-1.5 sm:grid-cols-2">
+                      {Object.entries(programmeDetail.teamLeads).flatMap(
+                        ([groupId, teams]) =>
+                          Object.entries(teams).map(([teamNumber, lead]) => (
+                            <div key={`${groupId}:${teamNumber}`}>
+                              Team {teamNumber}:{" "}
+                              <span className="font-medium">
+                                {lead.participantName}
+                              </span>{" "}
+                              {lead.chestNumber ? `(#${lead.chestNumber})` : ""}
                             </div>
-                            <Progress value={g.percent} className="h-1" />
-                          </div>
-                        ));
-                    })()}
+                          )),
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Panel C — audit timeline (PRO) */}
+                {canUseAuditDrawer ? (
+                  <div className="rounded-lg border overflow-hidden">
+                    <div className="border-b bg-muted/10 px-3 py-2 text-[10px] font-bold uppercase text-muted-foreground">
+                      Activity
+                    </div>
+                    <ProgrammeActivityTimeline
+                      entries={programmeDetail?.auditTimeline ?? []}
+                      isLoading={programmeDetailLoading}
+                      className="p-3 max-h-48 overflow-y-auto scrollbar-none"
+                    />
+                  </div>
+                ) : null}
+
+                {/* Progress in detail view */}
+                <div className="rounded-lg border bg-muted/10 p-3 space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider">
+                      <span className="text-muted-foreground">
+                        Total Assignment Progress
+                      </span>
+                      <span
+                        className={
+                          selectedProgrammeCard.progress === 100
+                            ? "text-green-600 dark:text-green-500"
+                            : "text-primary"
+                        }
+                      >
+                        {selectedProgrammeCard.progressLabel} (
+                        {selectedProgrammeCard.progress}%)
+                      </span>
+                    </div>
+                    <Progress
+                      value={selectedProgrammeCard.progress}
+                      className="h-2"
+                    />
+                  </div>
+
+                  <Separator className="opacity-50" />
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground block">
+                      Group-wise Breakdown
+                    </span>
+                    <div className="grid gap-2 sm:grid-cols-2 max-h-40 overflow-y-auto pr-1">
+                      {(() => {
+                        const progInfo = programmes.find(
+                          (p) => p.id === selectedProgrammeCard.programmeId,
+                        );
+                        const catInfo = categories.find(
+                          (cat: any) =>
+                            cat.id === selectedProgrammeCard.categoryId,
+                        );
+                        const isGeneral = catInfo?.type === "GENERAL";
+
+                        const eligibleParticipants =
+                          isGeneral || !selectedProgrammeCard.categoryId
+                            ? participants
+                            : participants.filter(
+                                (s: any) =>
+                                  s.categoryId ===
+                                  selectedProgrammeCard.categoryId,
+                              );
+
+                        // Groups that have at least one eligible participant
+                        const eligibleGroupIds = Array.from(
+                          new Set(
+                            eligibleParticipants.map((s: any) => s.groupId),
+                          ),
+                        );
+
+                        const limit =
+                          selectedProgrammeCard.programmeType === "GROUP"
+                            ? progInfo?.maxTeamsPerGroup || 1
+                            : progInfo?.maxParticipantsPerGroup || 1;
+
+                        return eligibleGroupIds
+                          .map((gId) => {
+                            const group = groups.find((g: any) => g.id === gId);
+                            if (!group) return null;
+
+                            // Current count for THIS group
+                            let current = 0;
+                            if (
+                              selectedProgrammeCard.programmeType === "GROUP"
+                            ) {
+                              current = selectedProgrammeCard.rows.filter(
+                                (r): r is GroupTeamRow =>
+                                  r.kind === "team" && r.groupId === gId,
+                              ).length;
+                            } else {
+                              current = selectedProgrammeCard.rows.filter(
+                                (r): r is IndividualAssignmentRow =>
+                                  r.kind === "individual" &&
+                                  (r.assignment.groupId === gId ||
+                                    r.assignment.participant?.groupId === gId),
+                              ).length;
+                            }
+
+                            // Target for THIS specific group
+                            const groupParticipantCount =
+                              eligibleParticipants.filter(
+                                (s: any) => s.groupId === gId,
+                              ).length;
+                            const target =
+                              selectedProgrammeCard.programmeType === "GROUP"
+                                ? limit
+                                : Math.min(limit, groupParticipantCount);
+
+                            const percent =
+                              target > 0
+                                ? Math.min(
+                                    100,
+                                    Math.round((current / target) * 100),
+                                  )
+                                : 0;
+
+                            return {
+                              id: gId,
+                              name: group.name,
+                              current,
+                              target,
+                              percent,
+                            };
+                          })
+                          .filter(Boolean)
+                          .sort((a, b) => (b?.percent ?? 0) - (a?.percent ?? 0))
+                          .map((g: any) => (
+                            <div
+                              key={g.id}
+                              className="bg-card border rounded p-2 flex flex-col gap-1.5"
+                            >
+                              <div className="flex items-center justify-between gap-2 overflow-hidden">
+                                <span className="text-[11px] font-medium truncate">
+                                  {g.name}
+                                </span>
+                                <span className="text-[10px] tabular-nums text-muted-foreground whitespace-nowrap">
+                                  {g.current}/{g.target}
+                                </span>
+                              </div>
+                              <Progress value={g.percent} className="h-1" />
+                            </div>
+                          ));
+                      })()}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </TabsContent>
 
-              <Input
-                inputSize="s"
-                placeholder="Search attendees by name, chest number or group..."
-                value={detailsSearch}
-                onChange={(e) => setDetailsSearch(e.target.value)}
-              />
+              <TabsContent
+                value="ASSIGNMENTS"
+                className="min-h-0 flex-1 space-y-4 overflow-y-auto py-4"
+              >
+                <Input
+                  inputSize="s"
+                  className="rounded-full"
+                  placeholder="Search by name, chest number or group…"
+                  value={detailsSearch}
+                  onChange={(e) => setDetailsSearch(e.target.value)}
+                />
 
-              {selectedProgrammeCard.programmeType === "INDIVIDUAL" ? (
-                <div className="space-y-2 max-h-80 overflow-auto pr-1">
-                  {selectedProgrammeCard.rows
-                    .filter(
-                      (r): r is IndividualAssignmentRow =>
-                        r.kind === "individual",
-                    )
-                    .filter((r) => {
-                      const q = detailsSearch.trim().toLowerCase();
-                      if (!q) return true;
-                      const s = r.assignment.participant;
-                      const g =
-                        r.assignment.group || r.assignment.participant?.group;
-                      return (
-                        (s?.name ?? "").toLowerCase().includes(q) ||
-                        (s?.chestNumber ?? "").toLowerCase().includes(q) ||
-                        (g?.name ?? "").toLowerCase().includes(q)
-                      );
-                    })
-                    .map((r) => (
-                      <div
-                        key={r.assignment.id}
-                        className="rounded-md border p-2 text-sm flex items-center justify-between gap-3"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">
-                              {r.assignment.participant?.name ?? "—"}
-                            </span>
-                            {r.assignment.participant?.isTeamLeader && (
-                              <Badge
-                                variant="secondary"
-                                className="h-4 px-1 text-[9px] uppercase font-bold bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
-                              >
-                                Team Leader
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            #{r.assignment.participant?.chestNumber ?? "—"} ·{" "}
-                            {r.assignment.group?.name ||
-                              r.assignment.participant?.group?.name ||
-                              "—"}{" "}
-                            ·{" "}
-                            {r.assignment.assignedAt
-                              ? formatDateTime(r.assignment.assignedAt, {
-                                  tz: displayTz,
-                                  dateStyle: "long",
-                                  timeStyle: "short",
-                                })
-                              : "—"}
-                            {r.assignment.createdByName && (
-                              <span className="ml-1 text-[10px] opacity-70 italic">
-                                (by {r.assignment.createdByName})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {!isReadOnlyMode ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive h-8"
-                            onClick={() =>
-                              setDeleteTarget({
-                                kind: "individual",
-                                assignment: r.assignment,
-                              })
-                            }
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-1" />
-                            Remove
-                          </Button>
-                        ) : null}
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-80 overflow-auto pr-1">
-                  {selectedProgrammeCard.rows
-                    .filter((r): r is GroupTeamRow => r.kind === "team")
-                    .filter((row) => {
-                      const q = detailsSearch.trim().toLowerCase();
-                      if (!q) return true;
-                      if (row.groupName.toLowerCase().includes(q)) return true;
-                      if (`team ${row.teamNumber}`.includes(q)) return true;
-                      return row.assignments.some((a: any) => {
-                        const s = a.participant;
+                {selectedProgrammeCard.programmeType === "INDIVIDUAL" ? (
+                  <ul className="divide-y divide-border border-y border-border">
+                    {selectedProgrammeCard.rows
+                      .filter(
+                        (r): r is IndividualAssignmentRow =>
+                          r.kind === "individual",
+                      )
+                      .filter((r) => {
+                        const q = detailsSearch.trim().toLowerCase();
+                        if (!q) return true;
+                        const s = r.assignment.participant;
                         return (
                           (s?.name ?? "").toLowerCase().includes(q) ||
-                          (s?.chestNumber ?? "").toLowerCase().includes(q)
+                          (s?.chestNumber ?? "").toLowerCase().includes(q) ||
+                          (r.assignment.group?.name ?? "")
+                            .toLowerCase()
+                            .includes(q)
                         );
-                      });
-                    })
-                    .map((row) => (
-                      <div
-                        key={`${row.groupId}:${row.teamNumber}`}
-                        className="rounded-md border p-3"
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <div className="text-sm font-medium">
-                            {row.groupName} - Team {row.teamNumber}
+                      })
+                      .map((r) => (
+                        <li
+                          key={r.assignment.id}
+                          className="flex items-center gap-3 py-3"
+                        >
+                          <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                            {r.assignment.participant?.chestNumber ?? "—"}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-heading">
+                              {r.assignment.participant?.name ?? "—"}
+                            </p>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {r.assignment.group?.name ??
+                                r.assignment.participant?.group?.name ??
+                                "No group"}
+                            </p>
                           </div>
                           {!isReadOnlyMode ? (
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive h-8"
+                              size="icon"
+                              className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-destructive"
+                              aria-label="Remove assignment"
                               onClick={() =>
-                                setDeleteTarget({ kind: "team", row })
+                                setDeleteTarget({
+                                  kind: "individual",
+                                  assignment: r.assignment,
+                                })
                               }
                             >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" />
-                              Remove team
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           ) : null}
-                        </div>
-                        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5 flex-wrap">
-                          <span>
-                            Attendees: {row.assignments.length} · Assigned at:{" "}
-                            {row.assignedAt ?? "—"}
-                          </span>
-                          {row.assignments[0]?.createdByName && (
-                            <span className="opacity-70 italic text-[10px]">
-                              (by {row.assignments[0].createdByName})
-                            </span>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          {row.assignments.map((a: any) => (
-                            <div
-                              key={a.id}
-                              className="text-xs flex items-center gap-1.5"
-                            >
-                              <span>
-                                {a.participant?.name ?? "—"}{" "}
-                                <span className="text-muted-foreground">
-                                  (#{a.participant?.chestNumber ?? "—"})
+                        </li>
+                      ))}
+                  </ul>
+                ) : (
+                  /* Grouped by team, matching the team-leader assignments view. */
+                  <div className="space-y-6">
+                    {selectedProgrammeCard.rows
+                      .filter((r): r is GroupTeamRow => r.kind === "team")
+                      .filter((row) => {
+                        const q = detailsSearch.trim().toLowerCase();
+                        if (!q) return true;
+                        if (row.groupName.toLowerCase().includes(q))
+                          return true;
+                        if (`team ${row.teamNumber}`.includes(q)) return true;
+                        return row.assignments.some((a: any) => {
+                          const s = a.participant;
+                          return (
+                            (s?.name ?? "").toLowerCase().includes(q) ||
+                            (s?.chestNumber ?? "").toLowerCase().includes(q)
+                          );
+                        });
+                      })
+                      .map((row) => {
+                        const lead =
+                          programmeDetail?.teamLeads?.[row.groupId]?.[
+                            row.teamNumber
+                          ];
+
+                        return (
+                          <div key={`${row.groupId}:${row.teamNumber}`}>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-semibold text-heading">
+                                  {canUseTeamLead && lead ? `${lead.participantName} & Team` : "Team"}
+                                </h3>
+                                <span className="text-[11px] text-muted-foreground border-l border-border pl-2">
+                                  {row.groupName} · Team {row.teamNumber}
                                 </span>
-                              </span>
-                              {a.participant?.isTeamLeader && (
-                                <Badge
-                                  variant="secondary"
-                                  className="h-3.5 px-1 text-[8px] uppercase font-bold bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+                              </div>
+                              {!isReadOnlyMode ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 rounded-full px-2.5 text-xs text-destructive hover:text-destructive"
+                                  onClick={() =>
+                                    setDeleteTarget({ kind: "team", row })
+                                  }
                                 >
-                                  Leader
-                                </Badge>
-                              )}
-                              {canUseTeamLead &&
-                                programmeDetail?.teamLeads[row.groupId]?.[
-                                  row.teamNumber
-                                ]?.participantId ===
-                                  (a.participant?.id ?? a.participantId) && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="h-3.5 px-1 text-[8px] uppercase font-bold bg-primary/10 text-primary border-primary/30"
-                                  >
-                                    Lead
-                                  </Badge>
-                                )}
+                                  <Trash2 className="mr-1 h-3 w-3" />
+                                  Remove team
+                                </Button>
+                              ) : null}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
+
+                            <ul className="divide-y divide-border border-y border-border">
+                              {row.assignments.map((a: any, index: number) => {
+                                const isLead =
+                                  canUseTeamLead &&
+                                  lead?.participantId ===
+                                    (a.participant?.id ?? a.participantId);
+                                return (
+                                  <li
+                                    key={`${a.id}-${index}`}
+                                    className="flex items-center gap-3 py-2.5"
+                                  >
+                                    <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                                      {a.participant?.chestNumber ?? "—"}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
+                                      {a.participant?.name ?? "—"}
+                                    </span>
+                                    {isLead ? (
+                                      <StatusPill
+                                        tone="ready"
+                                        icon={Crown}
+                                        className="shrink-0"
+                                      >
+                                        Lead
+                                      </StatusPill>
+                                    ) : null}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+
+                            <p className="mt-2 text-[11px] text-muted-foreground">
+                              {row.assignments.length} member
+                              {row.assignments.length === 1 ? "" : "s"}
+                              {row.assignedAt
+                                ? ` · assigned ${row.assignedAt}`
+                                : ""}
+                              {row.assignments[0]?.createdByName
+                                ? ` by ${row.assignments[0].createdByName}`
+                                : ""}
+                            </p>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           ) : null}
         </DrawerContent>
       </Drawer>

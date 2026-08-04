@@ -84,7 +84,7 @@ export function validatePublicSiteRequirements(
   // All plans: organization details required to enable (no enable without org info)
   if (!orgDetailsComplete(input)) {
     errors.push(
-      "Organization name and organization description are required to enable Festival Live.",
+      "Organization name and organization description are required to launch the website.",
     );
   }
 

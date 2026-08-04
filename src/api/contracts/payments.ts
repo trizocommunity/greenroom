@@ -46,6 +46,7 @@ export const initiatePaymentInput = z.object({
 });
 
 export const initiatePaymentResponse = z.object({
+  paymentId: z.string(),
   orderId: z.string(),
   amount: z.number(),
   currency: z.string(),

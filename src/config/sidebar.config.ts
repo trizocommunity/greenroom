@@ -17,6 +17,7 @@ import {
   LayoutTemplate,
   LifeBuoy,
   ListChecks,
+  Mail,
   Megaphone,
   Mic2,
   Newspaper,
@@ -74,6 +75,11 @@ export const SUPER_ADMIN_SIDEBAR_ITEMS = [
     icon: Layers,
   },
   {
+    title: "Email Settings",
+    url: "/super-admin/email-settings",
+    icon: Mail,
+  },
+  {
     title: "Settings",
     url: "#",
     icon: Settings,
@@ -126,12 +132,7 @@ export const getFestivalDashboardSidebarConfig = (
       items: [
         {
           title: "Overview",
-          href:
-            normalizedRole === "STAGE_MANAGER"
-              ? `${basePath}/stage-manager`
-              : normalizedRole === "ANNOUNCER"
-                ? `${basePath}/announcer`
-                : basePath,
+          href: basePath,
           icon: LayoutDashboard,
         },
         {
@@ -232,6 +233,13 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
+          title: "Announcer",
+          href: `${basePath}/event-works/announcer`,
+          icon: Mic2,
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
+          disabled: !canUseResultsPage,
+        },
+        {
           title: "Results",
           href: `${basePath}/event-works/results`,
           icon: ListChecks,
@@ -239,18 +247,10 @@ export const getFestivalDashboardSidebarConfig = (
           disabled: !canUseResultsPage,
         },
         {
-          title: "Announcement",
-          href: `${basePath}/event-works/announcement-desk`,
-          icon: Mic2,
-          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
-          disabled: !canUseResultsPage,
-        },
-        {
-          title: "Group Standings",
-          href: `${basePath}/event-works/group-standings`,
-          icon: UsersRound,
-          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
-          disabled: !canUseResultsPage,
+          title: "Templates",
+          href: `${basePath}/templates`,
+          icon: LayoutTemplate,
+          allowedRoles: ["ADMIN", "OWNER", "MEDIA"] as FestivalRole[],
         },
         {
           title: "Leaderboard",

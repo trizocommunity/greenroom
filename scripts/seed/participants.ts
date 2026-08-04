@@ -49,9 +49,10 @@ export async function createParticipants(
         const participantId = generateId();
         const chestNumber = `${group.start + chestCount}`;
         const isFemale = i % 2 === 1;
-        const participantName = isFemale
+        const baseName = isFemale
           ? ISLAMIC_FEMALE_NAMES[(globalIdx >> 1) % ISLAMIC_FEMALE_NAMES.length]
           : ISLAMIC_MALE_NAMES[(globalIdx >> 1) % ISLAMIC_MALE_NAMES.length];
+        const participantName = `${baseName} ${chestNumber}`;
 
         const isLeader =
           leadersAssignedForGroup < TEAM_LEADERS_PER_GROUP && i === 0;

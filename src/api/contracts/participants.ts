@@ -45,7 +45,17 @@ export const createParticipantInput = z.object({
 export const updateParticipantInput = createParticipantInput.partial();
 
 export const bulkCreateParticipantInput = z.object({
-  participants: z.array(createParticipantInput).min(1).max(1000),
+  participants: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        groupId: z.string().min(1),
+        categoryId: z.string().min(1),
+        gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+      }),
+    )
+    .min(1)
+    .max(1000),
 });
 
 export const validateParticipantCandidate = z.object({

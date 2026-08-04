@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function PublicNotFound() {
   return (
-    <div className="relative min-h-[70vh] flex flex-col items-center justify-center overflow-hidden px-6 py-24">
+    <div className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden px-6 pb-24 pt-32">
       {/* Subtle background glow */}
       <div
         aria-hidden

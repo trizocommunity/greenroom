@@ -1,11 +1,10 @@
 "use client";
 
-import { Radio } from "lucide-react";
+import { ChevronRight, Crown } from "lucide-react";
 import { useMemo, useState } from "react";
+import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -13,6 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { cn } from "@/core/utils/cn";
 
 type MemberChip = {
   id: string;
@@ -55,28 +62,31 @@ export type ProgrammeCardData = {
 export function AllProgrammesClient({
   items,
   categoryOptions,
+  teamLeadByKey = {},
 }: {
   items: ProgrammeCardData[];
   categoryOptions: { id: string; name: string }[];
+  /** `${programmeId}:${teamNumber}` -> team lead name, for this group. */
+  teamLeadByKey?: Record<string, string>;
 }) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [openProgrammeId, setOpenProgrammeId] = useState<string | null>(null);
 
   const visibleItems = useMemo(() => {
-    return items.filter((p) => {
-      return (
-        selectedCategoryId === "all" || p.category.id === selectedCategoryId
-      );
-    });
+    return items.filter(
+      (p) =>
+        selectedCategoryId === "all" || p.category.id === selectedCategoryId,
+    );
   }, [items, selectedCategoryId]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Select
           value={selectedCategoryId}
           onValueChange={setSelectedCategoryId}
         >
-          <SelectTrigger className="h-10 w-full sm:w-[220px]">
+          <SelectTrigger className="h-9 w-full rounded-full sm:w-[220px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -88,32 +98,44 @@ export function AllProgrammesClient({
             ))}
           </SelectContent>
         </Select>
+
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {visibleItems.length} of {items.length}
+        </p>
       </div>
 
       {visibleItems.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground text-sm">
-            No programmes match your filters.
-          </CardContent>
-        </Card>
+        <AppEmptyState
+          title="No programmes match"
+          description="Try a different category."
+        />
       ) : (
-        <div className="space-y-2">
+        <ul className="border-y border-border">
           {visibleItems.map((p) => (
-            <ProgrammeCard key={p.programmeId} p={p} />
+            <ProgrammeRow
+              key={p.programmeId}
+              p={p}
+              onOpen={() => setOpenProgrammeId(p.programmeId)}
+            />
           ))}
-        </div>
+        </ul>
       )}
+
+      <ProgrammeDetailsDrawer
+        p={items.find((i) => i.programmeId === openProgrammeId) ?? null}
+        teamLeadByKey={teamLeadByKey}
+        onOpenChange={(open) => !open && setOpenProgrammeId(null)}
+      />
     </div>
   );
 }
 
-function programmeCardBorderClass(
-  highlight: ProgrammeCardData["reportingHighlight"],
-) {
-  if (highlight === "live") return "border-emerald-500/40 bg-emerald-500/5";
-  if (highlight === "closed") return "border-blue-500/35 bg-blue-500/5";
-  if (highlight === "reset") return "border-amber-500/40 bg-amber-500/10";
-  return "";
+/** Left-edge tint on theme tokens — the old literals were unreadable in dark mode. */
+function rowAccentClass(highlight: ProgrammeCardData["reportingHighlight"]) {
+  if (highlight === "live") return "border-l-success bg-success/[0.04]";
+  if (highlight === "closed") return "border-l-info bg-info/[0.04]";
+  if (highlight === "reset") return "border-l-warning bg-warning/[0.04]";
+  return "border-l-transparent";
 }
 
 function isReportingCodeChipNote(note: string): boolean {
@@ -154,178 +176,242 @@ function memberReportingChipLabel(
   return note;
 }
 
-function ProgrammeCard({ p }: { p: ProgrammeCardData }) {
+function ProgrammeRow({
+  p,
+  onOpen,
+}: {
+  p: ProgrammeCardData;
+  onOpen: () => void;
+}) {
+  const isFullyAssigned =
+    p.expectedAssignments > 0 && p.assignedCount >= p.expectedAssignments;
+
   return (
-    <Card className={programmeCardBorderClass(p.reportingHighlight)}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <span className="truncate">{p.name}</span>
-          <div className="flex items-center gap-3 flex-wrap sm:justify-end">
-            {p.reportingHighlight === "live" ? (
-              <>
-                <Badge className="bg-emerald-600 text-white gap-1">
-                  <Radio className="h-3 w-3" />
-                  Live reporting
-                </Badge>
-                {p.reportingWindowEndsAt ? (
-                  <ReportingEndsInCountdown
-                    endsAt={p.reportingWindowEndsAt}
-                    autoRefreshOnExpire
-                  />
-                ) : null}
-              </>
-            ) : null}
-            {p.reportingHighlight === "closed" ? (
-              <Badge className="bg-blue-600 text-white gap-1">
-                Reporting ended
-                {p.sessionCodeLetter ? (
-                  <span className="font-mono font-normal">
-                    ·{" "}
-                    {p.type === "GROUP"
-                      ? `Team code ${p.sessionCodeLetter}`
-                      : p.sessionCodeLetter}
-                  </span>
-                ) : null}
-              </Badge>
-            ) : null}
-            {p.reportingHighlight === "reset" ? (
-              <Badge className="bg-amber-600 text-white">
-                Reporting closed
-              </Badge>
-            ) : null}
-            {p.teamReportingCounts ? (
-              <Badge variant="outline" className="text-xs font-normal">
-                Team: {p.teamReportingCounts.reported}/
-                {p.teamReportingCounts.total} reported
-                {p.teamReportingCounts.pending > 0
-                  ? ` · ${p.teamReportingCounts.pending} pending`
-                  : ""}
-              </Badge>
-            ) : null}
-            <Badge variant="secondary" className="text-xs bg-muted/40">
-              {p.myParticipantCount} participant
-              {p.myParticipantCount === 1 ? "" : "s"}
-            </Badge>
-            <Badge
-              variant={
-                p.assignedCount >= p.expectedAssignments
-                  ? "secondary"
-                  : "outline"
-              }
-              className="text-xs"
-            >
-              {p.expectedAssignments > 0
-                ? p.assignedCount >= p.expectedAssignments
-                  ? "Fully assigned"
-                  : `Assigned: ${p.assignedCount}/${p.expectedAssignments}`
-                : `Assigned: ${p.assignedCount}`}
-            </Badge>
+    <li
+      className={cn(
+        "border-b border-l-2 border-border last:border-b-0",
+        rowAccentClass(p.reportingHighlight),
+      )}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group flex w-full items-center gap-4 px-4 py-4 text-left transition-opacity hover:opacity-80"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-[15px] font-medium text-heading">
+              {p.name}
+            </span>
             <ProgrammeStatusBadge status={p.status} />
           </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0 text-sm text-muted-foreground">
-        Category: {p.category?.name ?? "—"} · Type: {p.type}
-        <div className="mt-3">
-          <details className="group">
-            <summary className="cursor-pointer select-none text-sm text-foreground/90 hover:text-foreground">
-              Your team & reporting
-            </summary>
-            <div className="mt-2 text-xs text-muted-foreground space-y-3">
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {p.category?.name ?? "Uncategorised"} ·{" "}
+            {p.type === "GROUP" ? "Team" : "Individual"}
+          </p>
+        </div>
+
+        <div className="hidden shrink-0 flex-wrap items-center gap-1.5 sm:flex">
+          {p.reportingHighlight === "live" && (
+            <StatusPill tone="live" pulse>
+              Live
+            </StatusPill>
+          )}
+          {p.reportingHighlight === "reset" && (
+            <StatusPill tone="warning">Reset</StatusPill>
+          )}
+          {/* Group-scoped: how many of *your* participants are in. */}
+          <StatusPill tone={isFullyAssigned ? "ready" : "muted"}>
+            {p.expectedAssignments > 0
+              ? `${p.assignedCount}/${p.expectedAssignments} assigned`
+              : `${p.assignedCount} assigned`}
+          </StatusPill>
+        </div>
+
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </button>
+    </li>
+  );
+}
+
+/**
+ * Everything about one programme, including who leads each of your teams.
+ * This used to be an inline `<details>` on every row, which made the board
+ * unscannable once a few were expanded.
+ */
+function ProgrammeDetailsDrawer({
+  p,
+  teamLeadByKey,
+  onOpenChange,
+}: {
+  p: ProgrammeCardData | null;
+  teamLeadByKey: Record<string, string>;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Sheet open={Boolean(p)} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full overflow-y-auto p-0 sm:max-w-lg"
+      >
+        {p && (
+          <>
+            <SheetHeader className="space-y-0 border-b border-border p-5 text-left">
+              <div className="flex items-start gap-2">
+                <SheetTitle className="min-w-0 flex-1 text-lg font-semibold tracking-tight text-heading">
+                  {p.name}
+                </SheetTitle>
+                <ProgrammeStatusBadge status={p.status} />
+              </div>
+              <SheetDescription className="text-xs">
+                {p.category?.name ?? "Uncategorised"} ·{" "}
+                {p.type === "GROUP" ? "Team programme" : "Individual programme"}
+              </SheetDescription>
+
+              <div className="flex flex-wrap items-center gap-1.5 pt-3">
+                {p.reportingHighlight === "live" && (
+                  <>
+                    <StatusPill tone="live" pulse>
+                      Live reporting
+                    </StatusPill>
+                    {p.reportingWindowEndsAt && (
+                      <ReportingEndsInCountdown
+                        endsAt={p.reportingWindowEndsAt}
+                        autoRefreshOnExpire
+                      />
+                    )}
+                  </>
+                )}
+                {p.reportingHighlight === "closed" && (
+                  <StatusPill tone="muted">
+                    Reporting ended
+                    {p.sessionCodeLetter
+                      ? ` · ${p.type === "GROUP" ? "Team code" : "Code"} ${p.sessionCodeLetter}`
+                      : ""}
+                  </StatusPill>
+                )}
+                {p.reportingHighlight === "reset" && (
+                  <StatusPill tone="warning">Reporting reset</StatusPill>
+                )}
+                {p.teamReportingCounts && (
+                  <StatusPill>
+                    {p.teamReportingCounts.reported}/
+                    {p.teamReportingCounts.total} reported
+                  </StatusPill>
+                )}
+                <StatusPill tone="muted">
+                  {p.assignedCount} from your group
+                </StatusPill>
+              </div>
+            </SheetHeader>
+
+            <div className="space-y-6 p-5">
               {p.type === "GROUP" ? (
                 p.myGroupTeams.length > 0 ? (
-                  p.myGroupTeams.map((t) => (
-                    <div key={`${t.groupId}-${t.teamNumber}`}>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="font-medium text-foreground">
-                          {t.groupName} – Team {t.teamNumber}
+                  p.myGroupTeams.map((t) => {
+                    const teamCode = extractTeamCodeFromMembers(t.members);
+                    const lead =
+                      teamLeadByKey[`${p.programmeId}:${t.teamNumber}`];
+
+                    return (
+                      <div key={`${t.groupId}-${t.teamNumber}`}>
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            {t.groupName} — Team {t.teamNumber}
+                          </h3>
+                          {teamCode && (
+                            <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-heading">
+                              {teamCode}
+                            </span>
+                          )}
                         </div>
-                        {extractTeamCodeFromMembers(t.members) ? (
-                          <span className="rounded border border-blue-500/35 bg-blue-500/10 px-1.5 py-0.5 font-mono text-[11px] text-blue-900 dark:text-blue-100">
-                            Team code {extractTeamCodeFromMembers(t.members)}
-                          </span>
-                        ) : null}
+
+                        {lead && (
+                          <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Crown className="h-3 w-3 text-primary" />
+                            Team lead:{" "}
+                            <span className="font-medium text-heading">
+                              {lead}
+                            </span>
+                          </p>
+                        )}
+
+                        <MemberList
+                          members={t.members}
+                          programmeType={p.type}
+                        />
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {t.members.map((m) => (
-                          <span
-                            key={m.assignmentId ?? m.id}
-                            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 bg-muted/30"
-                          >
-                            <span>{m.name}</span>
-                            {m.chestNumber ? (
-                              <span className="text-muted-foreground font-mono text-[11px]">
-                                {m.chestNumber}
-                              </span>
-                            ) : null}
-                            {m.reportingNote ? (
-                              <span
-                                className={
-                                  isReportingCodeChipNote(m.reportingNote)
-                                    ? "ml-1 rounded border border-blue-500/35 bg-blue-500/10 px-1 font-mono text-[11px] text-blue-900 dark:text-blue-100"
-                                    : "ml-1 text-[11px] text-muted-foreground"
-                                }
-                              >
-                                {memberReportingChipLabel(
-                                  m.reportingNote,
-                                  p.type,
-                                )}
-                              </span>
-                            ) : null}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
-                  <div>No participants from your team in this programme.</div>
+                  <p className="text-sm text-muted-foreground">
+                    None of your participants are in this programme.
+                  </p>
                 )
-              ) : (
+              ) : p.myIndividualMembers.length > 0 ? (
                 <div>
-                  {p.myIndividualMembers.length > 0 ? (
-                    <div className="space-y-2">
-                      <div className="font-medium text-foreground">
-                        Individual participants
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {p.myIndividualMembers.map((m) => (
-                          <span
-                            key={m.assignmentId ?? m.id}
-                            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 bg-muted/30"
-                          >
-                            <span>{m.name}</span>
-                            {m.chestNumber ? (
-                              <span className="text-muted-foreground font-mono text-[11px]">
-                                {m.chestNumber}
-                              </span>
-                            ) : null}
-                            {m.reportingNote ? (
-                              <span
-                                className={
-                                  isReportingCodeChipNote(m.reportingNote)
-                                    ? "ml-1 rounded border border-blue-500/35 bg-blue-500/10 px-1 font-mono text-[11px] text-blue-900 dark:text-blue-100"
-                                    : "ml-1 text-[11px] text-muted-foreground"
-                                }
-                              >
-                                {formatReportingChipNote(
-                                  m.reportingNote,
-                                  "INDIVIDUAL",
-                                )}
-                              </span>
-                            ) : null}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div>No participants from your team in this programme.</div>
-                  )}
+                  <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Your participants
+                  </h3>
+                  <MemberList
+                    members={p.myIndividualMembers}
+                    programmeType="INDIVIDUAL"
+                  />
                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  None of your participants are in this programme.
+                </p>
               )}
             </div>
-          </details>
-        </div>
-      </CardContent>
-    </Card>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function MemberList({
+  members,
+  programmeType,
+}: {
+  members: MemberChip[];
+  programmeType: string;
+}) {
+  return (
+    <ul className="divide-y divide-border border-y border-border">
+      {members.map((m) => {
+        const label = memberReportingChipLabel(m.reportingNote, programmeType);
+        const isCode = m.reportingNote
+          ? isReportingCodeChipNote(m.reportingNote)
+          : false;
+
+        return (
+          <li
+            key={m.assignmentId ?? m.id}
+            className="flex items-center gap-3 py-2.5"
+          >
+            <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+              {m.chestNumber ?? "—"}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
+              {m.name}
+            </span>
+            {label && (
+              <span
+                className={cn(
+                  "shrink-0 text-[11px]",
+                  isCode
+                    ? "font-mono font-semibold text-primary"
+                    : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

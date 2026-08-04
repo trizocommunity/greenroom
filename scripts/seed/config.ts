@@ -1,5 +1,35 @@
 import { TIER_CONFIG } from "../../src/config/pricing";
 
+const MS_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Deterministic `createdAt` for the seed festival so QA snapshots stay
+ * stable across re-runs. Anchored to the current env date when this file
+ * is loaded — adjust `FESTIVAL_CREATED_AT_DAY_OFFSET` (or set
+ * `SEED_DAY_OFFSET` at run time) to shift the festival back in time and
+ * exercise the T-7 expiry window manually.
+ */
+const FESTIVAL_CREATED_AT_BASE = "2026-08-02T09:00:00.000Z";
+
+export function getSeedCreatedAt(): string {
+  const offset = getSeedDayOffset();
+  return new Date(
+    new Date(FESTIVAL_CREATED_AT_BASE).getTime() - offset * MS_DAY,
+  ).toISOString();
+}
+
+export function getSeedDayOffset(): number {
+  const raw = process.env.SEED_DAY_OFFSET;
+  if (!raw) return 0;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(
+      `SEED_DAY_OFFSET must be a non-negative integer, got: ${raw}`,
+    );
+  }
+  return n;
+}
+
 export const SUPER_ADMIN_EMAIL = "trizocommunity@gmail.com";
 export const SUPER_ADMIN_NAME = "TRIZO Community Admin";
 
@@ -25,8 +55,8 @@ export const FESTIVAL = {
   tierLabel: "Pro",
   status: "READY" as const,
   scoringSystem: "SCORE_BASED" as const,
-  startDate: "2026-08-15T09:00:00.000Z",
-  endDate: "2026-08-18T21:30:00.000Z",
+  startDate: "2026-09-20T09:00:00.000Z",
+  endDate: "2026-09-26T09:00:00.000Z",
   chestNumberSettings: {
     autoGenerate: true,
     prefix: "AHL-",
@@ -36,10 +66,13 @@ export const FESTIVAL = {
 };
 
 export const FESTIVAL_DAYS = [
-  "2026-08-15",
-  "2026-08-16",
-  "2026-08-17",
-  "2026-08-18",
+  "2026-09-20",
+  "2026-09-21",
+  "2026-09-22",
+  "2026-09-23",
+  "2026-09-24",
+  "2026-09-25",
+  "2026-09-26",
 ];
 
 export const FESTIVAL_MEMBERS: Array<{
@@ -50,25 +83,41 @@ export const FESTIVAL_MEMBERS: Array<{
 
 export const CATEGORIES = [
   {
-    name: "GENERAL",
+    name: "Y Zone",
+    type: "SINGLE" as const,
+    description: "Y Zone category participants",
+  },
+  {
+    name: "C Zone",
+    type: "SINGLE" as const,
+    description: "C Zone category participants",
+  },
+  {
+    name: "B Zone",
+    type: "SINGLE" as const,
+    description: "B Zone category participants",
+  },
+  {
+    name: "H Zone",
     type: "GENERAL" as const,
-    description: "Open to all age groups",
+    description: "Open programmes for H Zone participants",
   },
   {
-    name: "JUNIOR",
+    name: "High School",
     type: "SINGLE" as const,
-    description: "Junior Category Under 15",
+    description: "High School category participants",
   },
   {
-    name: "SENIOR",
-    type: "SINGLE" as const,
-    description: "Senior Category 15 to 19",
+    name: "General",
+    type: "GENERAL" as const,
+    description: "Programmes open to all participants",
   },
 ];
 
 export const GROUPS = [
   { name: "Al-Qurtuba Cordoba", color: "#2563eb", start: 100 },
   { name: "Al-Andalus Andalusia", color: "#10b981", start: 200 },
+  { name: "Alhambra Granada", color: "#f59e0b", start: 300 },
 ];
 
 export const STAGES = [
@@ -172,48 +221,48 @@ export const SESSIONS = [
     title: "Inaugural Ceremony & Opening Remarks",
     sessionType: "CEREMONY" as const,
     description: "Official opening ceremony of the festival",
-    startTime: "2026-08-15T14:00:00.000Z",
-    endTime: "2026-08-15T15:00:00.000Z",
+    startTime: "2026-09-20T14:00:00.000Z",
+    endTime: "2026-09-20T15:00:00.000Z",
     stageIdx: 0,
   },
   {
     title: "Islamic Heritage & Arts Symposium",
     sessionType: "TALK" as const,
     description: "Keynote symposium on classical calligraphy & literature",
-    startTime: "2026-08-15T17:30:00.000Z",
-    endTime: "2026-08-15T18:45:00.000Z",
+    startTime: "2026-09-20T17:30:00.000Z",
+    endTime: "2026-09-20T18:45:00.000Z",
     stageIdx: 0,
   },
   {
     title: "Qur'an & Modern Science Forum",
     sessionType: "GENERAL" as const,
     description: "Interactive evening forum with scholars",
-    startTime: "2026-08-15T19:30:00.000Z",
-    endTime: "2026-08-15T20:30:00.000Z",
+    startTime: "2026-09-20T19:30:00.000Z",
+    endTime: "2026-09-20T20:30:00.000Z",
     stageIdx: 1,
   },
   {
     title: "Grand Nasheed & Spiritual Evening",
     sessionType: "CONCERT" as const,
     description: "Afternoon spiritual gathering featuring choir performances",
-    startTime: "2026-08-16T14:00:00.000Z",
-    endTime: "2026-08-16T15:15:00.000Z",
+    startTime: "2026-09-21T14:00:00.000Z",
+    endTime: "2026-09-21T15:15:00.000Z",
     stageIdx: 0,
   },
   {
     title: "Islamic Calligraphy & Literary Colloquium",
     sessionType: "TALK" as const,
     description: "Evening scholarly colloquium on Islamic arts",
-    startTime: "2026-08-16T17:30:00.000Z",
-    endTime: "2026-08-16T18:30:00.000Z",
+    startTime: "2026-09-21T17:30:00.000Z",
+    endTime: "2026-09-21T18:30:00.000Z",
     stageIdx: 1,
   },
   {
     title: "Valedictory & Grand Award Ceremony",
     sessionType: "CEREMONY" as const,
     description: "Closing speech and distribution of prizes",
-    startTime: "2026-08-16T19:00:00.000Z",
-    endTime: "2026-08-16T20:30:00.000Z",
+    startTime: "2026-09-21T19:00:00.000Z",
+    endTime: "2026-09-21T20:30:00.000Z",
     stageIdx: 0,
   },
 ];
@@ -221,164 +270,134 @@ export const SESSIONS = [
 export type ProgrammeTemplate = {
   name: string;
   type: "INDIVIDUAL" | "GROUP";
-  stageType: "STAGE" | "NON_STAGE";
+  stageType: "stage" | "off-stage";
   maxParticipantsPerGroup: number;
   maxTeamsPerGroup: number;
   maxParticipantsPerTeam: number;
-  durationMins: number;
+  timePerUnitMinutes: number;
 };
 
-export const PROGRAMME_TEMPLATES: ProgrammeTemplate[] = [
-  {
-    name: "Qira'at",
-    type: "INDIVIDUAL",
-    stageType: "STAGE",
-    maxParticipantsPerGroup: 3,
-    maxTeamsPerGroup: 1,
-    maxParticipantsPerTeam: 1,
-    durationMins: 60,
-  },
-  {
-    name: "Adhan Competition",
-    type: "INDIVIDUAL",
-    stageType: "STAGE",
-    maxParticipantsPerGroup: 3,
-    maxTeamsPerGroup: 1,
-    maxParticipantsPerTeam: 1,
-    durationMins: 45,
-  },
-  {
-    name: "Arabic Elocution",
-    type: "INDIVIDUAL",
-    stageType: "STAGE",
-    maxParticipantsPerGroup: 2,
-    maxTeamsPerGroup: 1,
-    maxParticipantsPerTeam: 1,
-    durationMins: 50,
-  },
-  {
-    name: "Islamic Calligraphy & Art",
-    type: "INDIVIDUAL",
-    stageType: "NON_STAGE",
-    maxParticipantsPerGroup: 3,
-    maxTeamsPerGroup: 1,
-    maxParticipantsPerTeam: 1,
-    durationMins: 60,
-  },
-  {
-    name: "Group Nasheed",
-    type: "GROUP",
-    stageType: "STAGE",
-    maxParticipantsPerGroup: 10,
-    maxTeamsPerGroup: 2,
-    maxParticipantsPerTeam: 4,
-    durationMins: 75,
-  },
-  {
-    name: "Islamic Quiz Competition",
-    type: "GROUP",
-    stageType: "STAGE",
-    maxParticipantsPerGroup: 6,
-    maxTeamsPerGroup: 2,
-    maxParticipantsPerTeam: 3,
-    durationMins: 60,
-  },
-];
-
-export const PROGRAMME_SCHEDULE: Record<
-  string,
-  { startTime: string; endTime: string; stageIdx: number }
-> = {
-  "Qira'at - GENERAL": {
-    startTime: "2026-08-15T09:30:00.000Z",
-    endTime: "2026-08-15T10:30:00.000Z",
-    stageIdx: 0,
-  },
-  "Qira'at - JUNIOR": {
-    startTime: "2026-08-15T10:45:00.000Z",
-    endTime: "2026-08-15T11:45:00.000Z",
-    stageIdx: 0,
-  },
-  "Qira'at - SENIOR": {
-    startTime: "2026-08-15T12:00:00.000Z",
-    endTime: "2026-08-15T13:00:00.000Z",
-    stageIdx: 0,
-  },
-  "Group Nasheed - JUNIOR": {
-    startTime: "2026-08-15T15:15:00.000Z",
-    endTime: "2026-08-15T16:30:00.000Z",
-    stageIdx: 0,
-  },
-  "Group Nasheed - SENIOR": {
-    startTime: "2026-08-16T09:30:00.000Z",
-    endTime: "2026-08-16T10:45:00.000Z",
-    stageIdx: 0,
-  },
-  "Group Nasheed - GENERAL": {
-    startTime: "2026-08-16T11:00:00.000Z",
-    endTime: "2026-08-16T12:15:00.000Z",
-    stageIdx: 0,
-  },
-  "Islamic Quiz Competition - GENERAL": {
-    startTime: "2026-08-16T15:30:00.000Z",
-    endTime: "2026-08-16T16:30:00.000Z",
-    stageIdx: 0,
-  },
-  "Adhan Competition - GENERAL": {
-    startTime: "2026-08-15T09:30:00.000Z",
-    endTime: "2026-08-15T10:15:00.000Z",
-    stageIdx: 1,
-  },
-  "Adhan Competition - JUNIOR": {
-    startTime: "2026-08-15T10:30:00.000Z",
-    endTime: "2026-08-15T11:15:00.000Z",
-    stageIdx: 1,
-  },
-  "Adhan Competition - SENIOR": {
-    startTime: "2026-08-15T11:30:00.000Z",
-    endTime: "2026-08-15T12:15:00.000Z",
-    stageIdx: 1,
-  },
-  "Arabic Elocution - GENERAL": {
-    startTime: "2026-08-15T14:15:00.000Z",
-    endTime: "2026-08-15T15:05:00.000Z",
-    stageIdx: 1,
-  },
-  "Arabic Elocution - JUNIOR": {
-    startTime: "2026-08-15T15:20:00.000Z",
-    endTime: "2026-08-15T16:10:00.000Z",
-    stageIdx: 1,
-  },
-  "Arabic Elocution - SENIOR": {
-    startTime: "2026-08-16T09:30:00.000Z",
-    endTime: "2026-08-16T10:20:00.000Z",
-    stageIdx: 1,
-  },
-  "Islamic Quiz Competition - JUNIOR": {
-    startTime: "2026-08-16T10:40:00.000Z",
-    endTime: "2026-08-16T11:40:00.000Z",
-    stageIdx: 1,
-  },
-  "Islamic Quiz Competition - SENIOR": {
-    startTime: "2026-08-16T14:30:00.000Z",
-    endTime: "2026-08-16T15:30:00.000Z",
-    stageIdx: 1,
-  },
-  "Islamic Calligraphy & Art - GENERAL": {
-    startTime: "2026-08-15T10:00:00.000Z",
-    endTime: "2026-08-15T11:00:00.000Z",
-    stageIdx: 2,
-  },
-  "Islamic Calligraphy & Art - JUNIOR": {
-    startTime: "2026-08-15T14:30:00.000Z",
-    endTime: "2026-08-15T15:30:00.000Z",
-    stageIdx: 2,
-  },
-  "Islamic Calligraphy & Art - SENIOR": {
-    startTime: "2026-08-16T10:00:00.000Z",
-    endTime: "2026-08-16T11:00:00.000Z",
-    stageIdx: 2,
-  },
+export const PROGRAMMES_BY_CATEGORY: Record<string, ProgrammeTemplate[]> = {
+  "Y Zone": [
+    {
+      name: "Y Zone Recitation",
+      type: "INDIVIDUAL",
+      stageType: "stage",
+      maxParticipantsPerGroup: 3,
+      maxTeamsPerGroup: 1,
+      maxParticipantsPerTeam: 1,
+      timePerUnitMinutes: 5,
+    },
+    {
+      name: "Y Zone Team Quiz",
+      type: "GROUP",
+      stageType: "stage",
+      maxParticipantsPerGroup: 6,
+      maxTeamsPerGroup: 2,
+      maxParticipantsPerTeam: 3,
+      timePerUnitMinutes: 20,
+    },
+  ],
+  "C Zone": [
+    {
+      name: "C Zone Elocution",
+      type: "INDIVIDUAL",
+      stageType: "stage",
+      maxParticipantsPerGroup: 3,
+      maxTeamsPerGroup: 1,
+      maxParticipantsPerTeam: 1,
+      timePerUnitMinutes: 5,
+    },
+    {
+      name: "C Zone Nasheed",
+      type: "GROUP",
+      stageType: "stage",
+      maxParticipantsPerGroup: 8,
+      maxTeamsPerGroup: 2,
+      maxParticipantsPerTeam: 4,
+      timePerUnitMinutes: 20,
+    },
+  ],
+  "B Zone": [
+    {
+      name: "B Zone Calligraphy",
+      type: "INDIVIDUAL",
+      stageType: "off-stage",
+      maxParticipantsPerGroup: 3,
+      maxTeamsPerGroup: 1,
+      maxParticipantsPerTeam: 1,
+      timePerUnitMinutes: 5,
+    },
+    {
+      name: "B Zone Cultural Showcase",
+      type: "GROUP",
+      stageType: "stage",
+      maxParticipantsPerGroup: 8,
+      maxTeamsPerGroup: 2,
+      maxParticipantsPerTeam: 4,
+      timePerUnitMinutes: 20,
+    },
+  ],
+  "H Zone": [
+    {
+      name: "H Zone Open Speech",
+      type: "INDIVIDUAL",
+      stageType: "stage",
+      maxParticipantsPerGroup: 3,
+      maxTeamsPerGroup: 1,
+      maxParticipantsPerTeam: 1,
+      timePerUnitMinutes: 5,
+    },
+    {
+      name: "H Zone Open Performance",
+      type: "GROUP",
+      stageType: "stage",
+      maxParticipantsPerGroup: 8,
+      maxTeamsPerGroup: 2,
+      maxParticipantsPerTeam: 4,
+      timePerUnitMinutes: 20,
+    },
+  ],
+  "High School": [
+    {
+      name: "High School Debate",
+      type: "INDIVIDUAL",
+      stageType: "stage",
+      maxParticipantsPerGroup: 3,
+      maxTeamsPerGroup: 1,
+      maxParticipantsPerTeam: 1,
+      timePerUnitMinutes: 5,
+    },
+    {
+      name: "High School Knowledge League",
+      type: "GROUP",
+      stageType: "stage",
+      maxParticipantsPerGroup: 6,
+      maxTeamsPerGroup: 2,
+      maxParticipantsPerTeam: 3,
+      timePerUnitMinutes: 20,
+    },
+  ],
+  General: [
+    {
+      name: "General Qur'an Recitation",
+      type: "INDIVIDUAL",
+      stageType: "stage",
+      maxParticipantsPerGroup: 3,
+      maxTeamsPerGroup: 1,
+      maxParticipantsPerTeam: 1,
+      timePerUnitMinutes: 5,
+    },
+    {
+      name: "General Islamic Quiz",
+      type: "GROUP",
+      stageType: "stage",
+      maxParticipantsPerGroup: 6,
+      maxTeamsPerGroup: 2,
+      maxParticipantsPerTeam: 3,
+      timePerUnitMinutes: 20,
+    },
+  ],
 };
 
 /**
@@ -389,6 +408,7 @@ export const PROGRAMME_SCHEDULE: Record<
 export const TEAM_LEADER_DOB_BY_GROUP: Record<string, string> = {
   "Al-Qurtuba Cordoba": "2007-03-14T00:00:00.000Z",
   "Al-Andalus Andalusia": "2007-09-22T00:00:00.000Z",
+  "Alhambra Granada": "2008-01-11T00:00:00.000Z",
 };
 
 /**
@@ -402,9 +422,14 @@ export function dateOfBirthFor(index: number): string {
   return new Date(base + offset * oneDay).toISOString();
 }
 
-export function expiresAt(startDate: string): string {
-  return new Date(
-    new Date(startDate).getTime() +
-      TIER_CONFIG.PRO.festivalDurationDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
+/**
+ * Compute `expiresAt` from the festival's `createdAt`, mirroring the production
+ * rule in `festival-crud.actions.ts` (`createdAt + festivalDurationDays`). The
+ * previous version derived expiry from `startDate`, which silently inflated the
+ * window by `startDate - createdAt` days and surfaced as "103 days left" on the
+ * profile card for the seeded festival.
+ */
+export function expiresAtFromCreatedAt(createdAtIso: string): string {
+  const days = TIER_CONFIG.PRO.festivalDurationDays;
+  return new Date(new Date(createdAtIso).getTime() + days * MS_DAY).toISOString();
 }

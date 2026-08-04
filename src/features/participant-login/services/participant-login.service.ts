@@ -7,7 +7,10 @@ import {
 } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
 import { participantOtp, participantSession } from "@/core/database/schema";
-import { dateKeyLocal } from "@/core/datetime";
+import {
+  dateKeyLocal,
+  wallClockToInstant,
+} from "@/core/datetime";
 import { fromNow, MS, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
@@ -75,10 +78,27 @@ export const ParticipantLoginService = {
         throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
       }
       const festivalTz = festival.timezone ?? "UTC";
-      const participantDob = dateKeyLocal(participantData.dateOfBirth, festivalTz);
-      const inputDob = dateKeyLocal(input.identifierValue, festivalTz);
-      if (!participantDob || !inputDob || participantDob !== inputDob) {
+
+      const storedDayKey = dateKeyLocal(
+        wallClockToInstant(
+          dateKeyLocal(participantData.dateOfBirth, festivalTz),
+          "00:00",
+          festivalTz,
+        ),
+        festivalTz,
+      );
+      const submittedDayKey = dateKeyLocal(input.identifierValue, festivalTz);
+
+      if (!storedDayKey || !submittedDayKey) {
         throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
+      }
+      if (storedDayKey !== submittedDayKey) {
+        console.warn(
+          `[participant-login] DOB day mismatch chestNumber=${input.chestNumber} festival=${input.festivalSlug} stored=${storedDayKey} submitted=${submittedDayKey} storedRaw=${participantData.dateOfBirth}`,
+        );
+        throw new AppError(
+          `${ERROR_MESSAGES.PARTICIPANT_INVALID_DOB} (expected ${storedDayKey}).`,
+        );
       }
     } else if (input.identifierKind === "GROUP") {
       if (participantData.groupId !== input.identifierValue) {
