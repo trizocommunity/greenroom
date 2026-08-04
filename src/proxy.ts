@@ -37,7 +37,7 @@ function isStateChangeMethod(method: string): boolean {
   return ["POST", "PUT", "PATCH", "DELETE"].includes(method);
 }
 
-export async function middleware(_request: NextRequest) {
+export async function proxy(_request: NextRequest) {
   const response = NextResponse.next();
 
   const nonce = generateNonce();

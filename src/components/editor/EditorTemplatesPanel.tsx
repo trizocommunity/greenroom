@@ -193,7 +193,8 @@ export function EditorTemplatesPanel({
     };
     if (dbTemplates) {
       for (const t of dbTemplates) {
-        if (map[t.type]) map[t.type].push(t);
+        const type = t.type as PosterTemplateType;
+        if (map[type]) map[type].push(t);
       }
     }
     return map;

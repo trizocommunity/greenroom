@@ -3,7 +3,7 @@
 import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { toast } from "sonner";
 import { useInitiatePayment, useVerifyPayment } from "@/api/client";
 import {
@@ -37,6 +37,20 @@ import type { Tier } from "@/core/types/app-enums";
  * festival in context of their previous one.
  */
 export default function NewFestivalPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container max-w-4xl py-12 flex items-center justify-center text-muted-foreground">
+          <Loader2 className="animate-spin mr-2 h-4 w-4" /> Loading...
+        </div>
+      }
+    >
+      <NewFestivalContent />
+    </Suspense>
+  );
+}
+
+function NewFestivalContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromExpiredSlug = searchParams.get("from") ?? null;
