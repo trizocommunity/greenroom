@@ -258,8 +258,8 @@ export function BulkUploadFlow<T>({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[calc(100vw-40px)] h-[calc(100vh-40px)] max-w-none max-h-none p-0 gap-0 overflow-hidden sm:rounded-2xl border-none shadow-2xl bg-muted/5 flex flex-col fixed inset-5 translate-x-0 translate-y-0">
-        <DialogHeader className="px-8 py-6 border-b bg-background shrink-0 flex flex-row items-center justify-between space-y-0">
+      <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 gap-0 overflow-hidden rounded-none border-none shadow-none bg-background flex flex-col outline-none z-50 fixed !inset-0 !left-0 !top-0 !translate-x-0 !translate-y-0 sm:rounded-none sm:max-w-none">
+        <DialogHeader className="px-6 py-4 border-b bg-background shrink-0 flex flex-row items-center justify-between space-y-0">
           <div className="flex items-center gap-4">
             <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
           </div>
@@ -292,58 +292,68 @@ export function BulkUploadFlow<T>({
 
         <div className="flex-1 flex flex-col bg-background min-h-0 relative">
           {(step === "INSTRUCTIONS" || step === "UPLOAD") && (
-            <div className="flex flex-col items-center justify-center p-8 h-full gap-10 animate-in fade-in duration-500">
-              <div className="grid md:grid-cols-2 gap-12 w-full max-w-4xl items-center">
-                {/* Step 1 */}
-                <div className="flex flex-col items-center text-center space-y-4 p-8 rounded-2xl border-2 border-dashed border-transparent hover:border-emerald-100 hover:bg-emerald-50/30 transition-all duration-300">
-                  <div className="bg-emerald-50 text-emerald-600 w-16 h-16 rounded-3xl flex items-center justify-center mb-2 shadow-sm">
-                    <FileSpreadsheet className="h-8 w-8" />
+            <div className="flex flex-col items-center justify-center p-6 sm:p-12 h-full animate-in fade-in duration-500 bg-background overflow-y-auto">
+              <div className="w-full max-w-4xl text-center space-y-12 my-auto">
+                
+                <div className="space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+                    <CloudUpload className="h-8 w-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground">
-                    1. Prepare your data
-                  </h3>
-                  <p className="text-muted-foreground text-sm max-w-xs">
-                    Download the template and fill it with your data. Don't
-                    remove the headers.
+                  <h2 className="text-3xl font-bold tracking-tight">Bulk Upload Data</h2>
+                  <p className="text-muted-foreground text-base max-w-md mx-auto">
+                    Upload your spreadsheet to easily import multiple records at once.
+                    Supported formats: .xlsx, .csv
                   </p>
-                  <Button
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-6 relative text-left">
+                  {/* Step 1 Module */}
+                  <button 
                     onClick={handleDownloadTemplate}
-                    variant="outline"
-                    className="mt-2"
+                    className="group relative flex flex-col items-center text-center space-y-4 p-10 rounded-3xl border border-dashed border-primary/20 bg-muted/20 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md w-full"
                   >
-                    <Download className="mr-2 h-4 w-4" /> Download Template
-                  </Button>
-                </div>
-
-                {/* Divider mobile */}
-                <div className="md:hidden h-px w-full bg-border" />
-
-                {/* Divider desktop */}
-                <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/20">
-                  <ChevronRight className="w-12 h-12" />
-                </div>
-
-                {/* Step 2 */}
-                <div className="flex flex-col items-center text-center space-y-4 w-full">
-                  <h3 className="text-xl font-bold text-foreground mb-4">
-                    2. Upload your file
-                  </h3>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full aspect-4/3 max-h-[300px] border-2 border-dashed border-primary/20 rounded-3xl bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer group flex flex-col items-center justify-center shadow-inner"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <div className="bg-background text-primary w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-300">
-                      <CloudUpload className="h-10 w-10" />
+                    <div className="w-16 h-16 bg-background text-primary rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-sm">
+                      <Download className="h-8 w-8" />
                     </div>
-                    <p className="text-lg font-semibold">
-                      Click to upload spreadsheet
+                    <div className="space-y-1">
+                      <div className="text-xs font-bold uppercase tracking-wider text-primary">Step 1</div>
+                      <h3 className="font-semibold text-lg">Download Template</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground max-w-[200px] whitespace-normal">
+                      Get the template spreadsheet. Do not remove the headers.
                     </p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      .xlsx or .csv files supported
+                  </button>
+
+                  {/* Step 2 Module */}
+                  <button 
+                    onClick={() => !isProcessing && fileInputRef.current?.click()}
+                    disabled={isProcessing}
+                    className={cn(
+                      "group relative flex flex-col items-center text-center space-y-4 p-10 rounded-3xl border border-dashed border-primary/20 bg-muted/20 transition-all duration-300 shadow-sm w-full",
+                      isProcessing 
+                        ? "opacity-70 cursor-not-allowed"
+                        : "hover:border-primary/50 hover:bg-primary/5 cursor-pointer hover:shadow-md"
+                    )}
+                  >
+                    <div className="w-16 h-16 bg-background text-primary rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-sm">
+                      {isProcessing ? (
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                      ) : (
+                        <Upload className="h-8 w-8" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-bold uppercase tracking-wider text-primary">Step 2</div>
+                      <h3 className="font-semibold text-lg">Upload File</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground whitespace-normal">
+                      Upload your filled spreadsheet.
                     </p>
-                  </Button>
+                    <div className="flex gap-2 justify-center mt-2">
+                      <Badge variant="outline" className="text-[10px] uppercase font-bold bg-background text-primary">.XLSX</Badge>
+                      <Badge variant="outline" className="text-[10px] uppercase font-bold bg-background text-primary">.CSV</Badge>
+                    </div>
+                  </button>
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -352,6 +362,7 @@ export function BulkUploadFlow<T>({
                     onChange={handleFileUpload}
                   />
                 </div>
+
               </div>
             </div>
           )}
@@ -594,7 +605,7 @@ export function BulkUploadFlow<T>({
         </div>
 
         {step !== "COMPLETION" && (
-          <DialogFooter className="px-8 py-6 border-t bg-background shrink-0 flex items-center justify-between sm:justify-between w-full">
+          <DialogFooter className="px-4 py-3 border-t bg-background shrink-0 flex items-center justify-between sm:justify-between w-full">
             <Button variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>

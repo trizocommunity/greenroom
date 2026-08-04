@@ -148,7 +148,7 @@ export async function bulkCreateParticipantsAction(
     gender?: string;
     email?: string;
     phone?: string;
-    dateOfBirth: string;
+    dateOfBirth?: string;
     standard?: string;
   }[],
 ) {
@@ -190,7 +190,7 @@ export async function bulkCreateParticipantsAction(
         email: participant.email,
         phone: participant.phone,
         gender: (participant.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
-        dateOfBirth: participant.dateOfBirth,
+        dateOfBirth: participant.dateOfBirth || "2000-01-01",
         standard: participant.standard,
       });
       await assignChestNumberForNewParticipant(festivalId, newParticipant.id);
