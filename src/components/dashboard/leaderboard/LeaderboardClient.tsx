@@ -242,100 +242,97 @@ export function LeaderboardClient({
   const restTeams = publishedStandingsFiltered.slice(3);
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-row items-center justify-between gap-4">
-        {children ?? (
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25">
-                <Trophy className="h-4.5 w-4.5" />
-              </span>
-              Leaderboard
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Group and participant standings from published results.
-            </p>
-          </div>
-        )}
-      </div>
+    <div className="space-y-6">
+      {/* Hero: title + podium */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-fuchsia-600 to-rose-500 p-5 sm:p-7 text-white shadow-xl shadow-violet-500/20">
+        <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-amber-300/20 blur-2xl" />
 
-      {/* Two-panel layout */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
-        {/* Left panel: Published group standings */}
-        <Card className="p-0 overflow-hidden border-0 shadow-lg shadow-emerald-500/5 ring-1 ring-emerald-500/20 lg:col-span-1">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-4 flex items-center justify-between">
-            <h3 className="font-bold flex items-center gap-2 text-white">
-              <Crown className="w-4 h-4" />
-              Group Standings
-            </h3>
-            <Sparkles className="w-4 h-4 text-emerald-100/70" />
-          </div>
+        <div className="relative flex flex-col gap-6">
+          {children ?? (
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-2.5">
+                <Trophy className="h-7 w-7 text-amber-300" />
+                Leaderboard
+              </h1>
+              <p className="text-sm sm:text-base text-white/80 mt-1">
+                Group and participant standings from published results.
+              </p>
+            </div>
+          )}
 
-          {publishedStandingsFiltered.length > 0 ? (
-            <div className="p-3 space-y-2">
-              {/* Podium: top 3 */}
-              {topThreeTeams.map((team: any, idx: number) => {
-                const style = RANK_STYLES[idx];
-                return (
-                  <div
-                    key={team.name}
-                    className={cn(
-                      "flex items-center justify-between gap-3 rounded-xl border border-transparent px-3 py-3 transition-colors",
-                      style.row,
-                    )}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <RankBadge rank={idx + 1} />
-                      <span className="text-sm font-semibold truncate">
-                        {team.name}
-                      </span>
-                      {idx === 0 && (
-                        <Crown className="w-4 h-4 shrink-0 text-amber-500" />
-                      )}
-                    </div>
-                    <span
-                      className={cn(
-                        "rounded-lg px-2.5 py-1 text-sm font-black tabular-nums",
-                        style.badge,
-                      )}
-                    >
-                      {team.points}
-                    </span>
-                  </div>
-                );
-              })}
+          {/* Podium: top 3 groups */}
+          {topThreeTeams.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:items-end">
+              {/* 2nd */}
+              <div className="order-2 sm:order-1 rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20 p-4 text-center">
+                <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-slate-200 to-slate-400 text-sm font-black text-slate-800 shadow">
+                  2
+                </span>
+                <p className="mt-2 font-semibold truncate">
+                  {topThreeTeams[1]?.name ?? "—"}
+                </p>
+                <p className="text-2xl font-black tabular-nums text-slate-100">
+                  {topThreeTeams[1]?.points ?? 0}
+                </p>
+              </div>
+              {/* 1st */}
+              <div className="order-1 sm:order-2 rounded-xl bg-white/15 backdrop-blur-sm ring-2 ring-amber-300/60 p-5 text-center sm:pb-8">
+                <Crown className="mx-auto h-6 w-6 text-amber-300 mb-1" />
+                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-yellow-500 text-base font-black text-amber-950 shadow-lg">
+                  1
+                </span>
+                <p className="mt-2 text-lg font-bold truncate">
+                  {topThreeTeams[0]?.name ?? "—"}
+                </p>
+                <p className="text-3xl font-black tabular-nums text-amber-200">
+                  {topThreeTeams[0]?.points ?? 0}
+                </p>
+              </div>
+              {/* 3rd */}
+              <div className="order-3 rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20 p-4 text-center">
+                <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-orange-300 to-amber-600 text-sm font-black text-orange-950 shadow">
+                  3
+                </span>
+                <p className="mt-2 font-semibold truncate">
+                  {topThreeTeams[2]?.name ?? "—"}
+                </p>
+                <p className="text-2xl font-black tabular-nums text-orange-100">
+                  {topThreeTeams[2]?.points ?? 0}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20 py-8 text-center">
+              <Medal className="mx-auto h-8 w-8 mb-2 text-white/40" />
+              <p className="text-sm text-white/70">No published standings yet.</p>
+            </div>
+          )}
 
-              {/* Rest */}
+          {/* Remaining groups: chip strip */}
+          {restTeams.length > 0 && (
+            <div className="flex flex-wrap gap-2">
               {restTeams.map((team: any, idx: number) => (
                 <div
                   key={team.name}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background px-3 py-2.5 hover:bg-muted/40 transition-colors"
+                  className="flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm ring-1 ring-white/15 px-3 py-1.5 text-sm"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <RankBadge rank={idx + 4} />
-                    <span className="text-sm font-medium truncate">
-                      {team.name}
-                    </span>
-                  </div>
-                  <span className="text-sm font-bold tabular-nums text-muted-foreground">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-bold">
+                    {idx + 4}
+                  </span>
+                  <span className="font-medium">{team.name}</span>
+                  <span className="font-black tabular-nums text-amber-200">
                     {team.points}
                   </span>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="py-12 text-center">
-              <Medal className="mx-auto h-8 w-8 mb-2 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">
-                No published standings yet.
-              </p>
-            </div>
           )}
-        </Card>
+        </div>
+      </div>
 
-        {/* Right panel: Top participants (individual programmes only) */}
-        <Card className="p-0 overflow-hidden border-0 shadow-lg shadow-violet-500/5 ring-1 ring-violet-500/20 lg:col-span-3">
+      {/* Top Scorers — full width */}
+      <Card className="p-0 overflow-hidden border-0 shadow-lg shadow-violet-500/5 ring-1 ring-violet-500/20">
           <div className="p-4 border-b border-violet-500/10 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/5 to-transparent">
             <div className="flex flex-col gap-1 mb-4">
               <h3 className="text-xl font-bold flex items-center gap-2 text-foreground">
@@ -529,8 +526,7 @@ export function LeaderboardClient({
               </p>
             )}
           </div>
-        </Card>
-      </div>
+      </Card>
     </div>
   );
 }
