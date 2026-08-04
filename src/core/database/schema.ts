@@ -483,7 +483,6 @@ export const programme = pgTable(
     durationMode: durationMode("duration_mode").default("SEQUENTIAL").notNull(),
     timePerUnitMinutes: integer("time_per_unit_minutes").default(5).notNull(),
     parallelDurationMinutes: integer("parallel_duration_minutes"),
-    resultPosterTemplateCode: text("result_poster_template_code"),
     resultNumber: integer("result_number"),
   },
   (table) => [

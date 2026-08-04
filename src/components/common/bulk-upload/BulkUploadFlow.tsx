@@ -3,18 +3,15 @@
 import {
   AlertCircle,
   Check,
-  ChevronLeft,
-  ChevronRight,
   CloudUpload,
   Download,
   Edit2,
-  FileSpreadsheet,
   Loader2,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import party from "party-js";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import * as XLSX from "xlsx";
@@ -23,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -260,8 +258,12 @@ export function BulkUploadFlow<T>({
       </DialogTrigger>
       <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 gap-0 overflow-hidden rounded-none border-none shadow-none bg-background flex flex-col outline-none z-50 fixed !inset-0 !left-0 !top-0 !translate-x-0 !translate-y-0 sm:rounded-none sm:max-w-none">
         <DialogHeader className="px-6 py-4 border-b bg-background shrink-0 flex flex-row items-center justify-between space-y-0">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-col items-start gap-1">
             <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
+            <DialogDescription className="sr-only">
+              Bulk upload your spreadsheet, review and fix any validation
+              errors, then commit the valid rows.
+            </DialogDescription>
           </div>
           <div className="flex gap-2 absolute left-1/2 -translate-x-1/2">
             {STEPS.map((s, idx) => {
@@ -308,7 +310,8 @@ export function BulkUploadFlow<T>({
 
                 <div className="grid sm:grid-cols-2 gap-6 relative text-left">
                   {/* Step 1 Module */}
-                  <button 
+                  <button
+                    type="button"
                     onClick={handleDownloadTemplate}
                     className="group relative flex flex-col items-center text-center space-y-4 p-10 rounded-3xl border border-dashed border-primary/20 bg-muted/20 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md w-full"
                   >
@@ -325,7 +328,8 @@ export function BulkUploadFlow<T>({
                   </button>
 
                   {/* Step 2 Module */}
-                  <button 
+                  <button
+                    type="button"
                     onClick={() => !isProcessing && fileInputRef.current?.click()}
                     disabled={isProcessing}
                     className={cn(
@@ -517,62 +521,12 @@ export function BulkUploadFlow<T>({
           )}
 
           {step === "COMPLETION" && (
-            <div
-              ref={(el) => {
-                if (el) {
-                  import("party-js").then((party) => {
-                    party.default.confetti(el, {
-                      count: party.default.variation.range(40, 60),
-                      spread: party.default.variation.range(40, 50),
-                    });
-                  });
-                }
-              }}
-              className="flex flex-col items-center justify-center space-y-10 p-12 text-center h-full animate-in fade-in zoom-in-95 duration-500"
-            >
-              <div className="relative">
-                <div className="absolute inset-0 bg-emerald-100 blur-lg rounded-full opacity-50 animate-pulse" />
-                <div className="h-32 w-32 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center relative shadow-sm border border-emerald-100">
-                  <Check className="h-16 w-16" />
-                </div>
-              </div>
-
-              <div className="space-y-1 max-w-md">
-                <h3 className="text-3xl font-bold tracking-tight text-green-500">
-                  Import Complete!
-                </h3>
-                <p className="text-muted-foreground text-lg">
-                  Successfully imported{" "}
-                  <span className="text-foreground font-semibold">
-                    {resultSummary.success}
-                  </span>{" "}
-                  items.
-                  {resultSummary.failed > 0 && (
-                    <span className="block text-red-600 text-sm mt-2 font-medium">
-                      {resultSummary.failed} items were skipped or failed.
-                    </span>
-                  )}
-                </p>
-              </div>
-
-              <div className="flex justify-center gap-4 mt-8">
-                <Button
-                  onClick={() => setOpen(false)}
-                  variant="outline"
-                  size="lg"
-                  className="min-w-[150px]"
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={resetState}
-                  size="lg"
-                  className="min-w-[150px]"
-                >
-                  Upload More
-                </Button>
-              </div>
-            </div>
+            <CompletionStep
+              success={resultSummary.success}
+              failed={resultSummary.failed}
+              onClose={() => setOpen(false)}
+              onReset={resetState}
+            />
           )}
 
           {/* Edit Dialog/Sheet - Rendered conditionally */}
@@ -584,6 +538,10 @@ export function BulkUploadFlow<T>({
               <DialogContent className="max-w-xl">
                 <DialogHeader>
                   <DialogTitle>Edit Row</DialogTitle>
+                  <DialogDescription className="sr-only">
+                    Edit the values for this row, then save to return to the
+                    review table.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
                   {(() => {
@@ -645,5 +603,71 @@ export function BulkUploadFlow<T>({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CompletionStep({
+  success,
+  failed,
+  onClose,
+  onReset,
+}: {
+  success: number;
+  failed: number;
+  onClose: () => void;
+  onReset: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    party.confetti(el, {
+      count: party.variation.range(40, 60),
+      spread: party.variation.range(40, 50),
+    });
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex flex-col items-center justify-center space-y-10 p-12 text-center h-full animate-in fade-in zoom-in-95 duration-500"
+    >
+      <div className="relative">
+        <div className="absolute inset-0 bg-emerald-100 blur-lg rounded-full opacity-50 animate-pulse" />
+        <div className="h-32 w-32 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center relative shadow-sm border border-emerald-100">
+          <Check className="h-16 w-16" />
+        </div>
+      </div>
+
+      <div className="space-y-1 max-w-md">
+        <h3 className="text-3xl font-bold tracking-tight text-green-500">
+          Import Complete!
+        </h3>
+        <p className="text-muted-foreground text-lg">
+          Successfully imported{" "}
+          <span className="text-foreground font-semibold">{success}</span> items.
+          {failed > 0 && (
+            <span className="block text-red-600 text-sm mt-2 font-medium">
+              {failed} items were skipped or failed.
+            </span>
+          )}
+        </p>
+      </div>
+
+      <div className="flex justify-center gap-4 mt-8">
+        <Button
+          onClick={onClose}
+          variant="outline"
+          size="lg"
+          className="min-w-[150px]"
+        >
+          Close
+        </Button>
+        <Button onClick={onReset} size="lg" className="min-w-[150px]">
+          Upload More
+        </Button>
+      </div>
+    </div>
   );
 }

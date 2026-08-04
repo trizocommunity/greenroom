@@ -108,7 +108,7 @@ function ProgrammeEditForm({
 }) {
   const form = useForm<ProgrammeFormValues>({
     resolver: zodResolver(ProgrammeSchema) as any,
-    mode: "onChange",
+    mode: "onTouched",
     defaultValues: {
       name: data.name,
       categoryId: data.categoryId || "",
@@ -121,15 +121,19 @@ function ProgrammeEditForm({
   });
 
   useEffect(() => {
-    form.reset({
-      name: data.name,
-      categoryId: data.categoryId || "",
-      type: (data.type || "INDIVIDUAL") as ProgrammeType,
-      stageType: data.stageType,
-      maxParticipantsPerGroup: data.maxParticipantsPerGroup,
-      maxTeamsPerGroup: data.maxTeamsPerGroup,
-      maxParticipantsPerTeam: data.maxParticipantsPerTeam,
-    });
+    form.reset(
+      {
+        name: data.name,
+        categoryId: data.categoryId || "",
+        type: (data.type || "INDIVIDUAL") as ProgrammeType,
+        stageType: data.stageType,
+        maxParticipantsPerGroup: data.maxParticipantsPerGroup,
+        maxTeamsPerGroup: data.maxTeamsPerGroup,
+        maxParticipantsPerTeam: data.maxParticipantsPerTeam,
+      },
+      { keepDirty: false },
+    );
+    form.trigger();
   }, [data, form]);
 
   const watchType = form.watch("type");
@@ -435,7 +439,15 @@ export function BulkUploadProgrammesModal({
     };
   };
 
-  if (isLoading) return null;
+  if (isLoading) {
+    if (trigger) return <>{trigger}</>;
+    return (
+      <Button size="sm" variant="outline" disabled>
+        <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+        <span className="hidden sm:inline">Bulk Upload</span>
+      </Button>
+    );
+  }
 
   return (
     <BulkUploadFlow<ParsedProgrammeData>

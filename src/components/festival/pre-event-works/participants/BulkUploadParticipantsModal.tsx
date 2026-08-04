@@ -70,7 +70,7 @@ function ParticipantEditForm({
 }) {
   const form = useForm<ParticipantFormValues>({
     resolver: zodResolver(ParticipantSchema),
-    mode: "onChange",
+    mode: "onTouched",
     defaultValues: {
       name: data.name,
       groupId: data.groupId || "",
@@ -79,11 +79,15 @@ function ParticipantEditForm({
   });
 
   useEffect(() => {
-    form.reset({
-      name: data.name,
-      groupId: data.groupId || "",
-      categoryId: data.categoryId || "",
-    });
+    form.reset(
+      {
+        name: data.name,
+        groupId: data.groupId || "",
+        categoryId: data.categoryId || "",
+      },
+      { keepDirty: false },
+    );
+    form.trigger();
   }, [data, form]);
 
   const onSubmit = (values: ParticipantFormValues) => {
@@ -291,7 +295,8 @@ export function BulkUploadParticipantsModal({
     if (candidatesToCheck.length === 0) return items;
 
     const conflicts = await validateParticipants.mutateAsync({
-      candidates: candidatesToCheck,
+      festivalId,
+      data: { candidates: candidatesToCheck },
     });
 
     return items.map((p) => {
@@ -342,7 +347,13 @@ export function BulkUploadParticipantsModal({
   };
 
   if (loadingGroups || loadingCategories) {
-    return null;
+    if (trigger) return <>{trigger}</>;
+    return (
+      <Button size="sm" variant="outline" disabled>
+        <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+        <span className="hidden sm:inline">Bulk Upload</span>
+      </Button>
+    );
   }
 
   return (
