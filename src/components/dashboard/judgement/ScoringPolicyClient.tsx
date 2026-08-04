@@ -87,6 +87,9 @@ function ensurePointsShape(rows: MatrixRow[], grades: string[]): MatrixRow[] {
 
 function normalizeForComparison(input: {
   noGradeBelow: number;
+  positionPoints1st: number;
+  positionPoints2nd: number;
+  positionPoints3rd: number;
   gradeRules: GradeRule[];
   matrixRows: MatrixRow[];
 }) {
@@ -129,6 +132,9 @@ function normalizeForComparison(input: {
 
   return {
     noGradeBelow: Number(input.noGradeBelow),
+    positionPoints1st: Number(input.positionPoints1st),
+    positionPoints2nd: Number(input.positionPoints2nd),
+    positionPoints3rd: Number(input.positionPoints3rd),
     gradeRules: normalizedGrades,
     matrixRows: rows,
   };
@@ -191,6 +197,77 @@ function ScoringPolicySection(props: {
               className="h-8 w-full sm:w-24"
             />
             <span className="text-xs text-muted-foreground">%</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PositionPointsSection(props: {
+  positionPoints1st: number;
+  positionPoints2nd: number;
+  positionPoints3rd: number;
+  setPositionPoints1st: (value: number) => void;
+  setPositionPoints2nd: (value: number) => void;
+  setPositionPoints3rd: (value: number) => void;
+}) {
+  const {
+    positionPoints1st,
+    positionPoints2nd,
+    positionPoints3rd,
+    setPositionPoints1st,
+    setPositionPoints2nd,
+    setPositionPoints3rd,
+  } = props;
+  return (
+    <Card>
+      <CardHeader className="space-y-2 pb-3">
+        <CardTitle className="text-base sm:text-lg">Default Position Points</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          These points are added on top of the regular grade points for the 1st, 2nd, and 3rd place finishers.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-4 rounded-md border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-start">
+          <div className="space-y-1.5 flex-1 max-w-32">
+            <Label htmlFor="pos-1" className="text-xs font-medium">
+              1st Place Points
+            </Label>
+            <Input
+              id="pos-1"
+              type="number"
+              min={0}
+              value={positionPoints1st}
+              onChange={(e) => setPositionPoints1st(Number(e.target.value))}
+              className="h-8 w-full"
+            />
+          </div>
+          <div className="space-y-1.5 flex-1 max-w-32">
+            <Label htmlFor="pos-2" className="text-xs font-medium">
+              2nd Place Points
+            </Label>
+            <Input
+              id="pos-2"
+              type="number"
+              min={0}
+              value={positionPoints2nd}
+              onChange={(e) => setPositionPoints2nd(Number(e.target.value))}
+              className="h-8 w-full"
+            />
+          </div>
+          <div className="space-y-1.5 flex-1 max-w-32">
+            <Label htmlFor="pos-3" className="text-xs font-medium">
+              3rd Place Points
+            </Label>
+            <Input
+              id="pos-3"
+              type="number"
+              min={0}
+              value={positionPoints3rd}
+              onChange={(e) => setPositionPoints3rd(Number(e.target.value))}
+              className="h-8 w-full"
+            />
           </div>
         </div>
       </CardContent>
@@ -307,6 +384,9 @@ export function ScoringPolicyClient({
     policyVersion: number;
     normalizeTo: number;
     noGradeBelow: number;
+    positionPoints1st: number;
+    positionPoints2nd: number;
+    positionPoints3rd: number;
     gradeRules: GradeRule[];
     awardRules: AwardRule[];
     isPersisted: boolean;
@@ -330,6 +410,9 @@ export function ScoringPolicyClient({
 
   const [isPending, startTransition] = useTransition();
   const [noGradeBelow, setNoGradeBelow] = useState<number>(policy.noGradeBelow);
+  const [positionPoints1st, setPositionPoints1st] = useState<number>(policy.positionPoints1st);
+  const [positionPoints2nd, setPositionPoints2nd] = useState<number>(policy.positionPoints2nd);
+  const [positionPoints3rd, setPositionPoints3rd] = useState<number>(policy.positionPoints3rd);
   const [gradeRules, setGradeRules] = useState<GradeRule[]>(policy.gradeRules);
   const [addGradeOpen, setAddGradeOpen] = useState(false);
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
@@ -588,6 +671,9 @@ export function ScoringPolicyClient({
         await saveScoringPolicyAction({
           festivalId,
           noGradeBelow,
+          positionPoints1st,
+          positionPoints2nd,
+          positionPoints3rd,
           gradeRules: normalizedGrades,
           awardRules,
         });
@@ -607,6 +693,9 @@ export function ScoringPolicyClient({
     gradeRules,
     matrixRows,
     noGradeBelow,
+    positionPoints1st,
+    positionPoints2nd,
+    positionPoints3rd,
     setDirty,
   ]);
 
@@ -615,6 +704,9 @@ export function ScoringPolicyClient({
       JSON.stringify(
         normalizeForComparison({
           noGradeBelow: policy.noGradeBelow,
+          positionPoints1st: policy.positionPoints1st,
+          positionPoints2nd: policy.positionPoints2nd,
+          positionPoints3rd: policy.positionPoints3rd,
           gradeRules: policy.gradeRules,
           matrixRows: (() => {
             const grouped = new Map<string, MatrixRow>();
@@ -666,7 +758,14 @@ export function ScoringPolicyClient({
           })(),
         }),
       ),
-    [policy.awardRules, policy.gradeRules, policy.noGradeBelow],
+    [
+      policy.awardRules,
+      policy.gradeRules,
+      policy.noGradeBelow,
+      policy.positionPoints1st,
+      policy.positionPoints2nd,
+      policy.positionPoints3rd,
+    ],
   );
 
   const currentComparisonKey = useMemo(
@@ -674,11 +773,14 @@ export function ScoringPolicyClient({
       JSON.stringify(
         normalizeForComparison({
           noGradeBelow,
+          positionPoints1st,
+          positionPoints2nd,
+          positionPoints3rd,
           gradeRules,
           matrixRows,
         }),
       ),
-    [noGradeBelow, gradeRules, matrixRows],
+    [noGradeBelow, positionPoints1st, positionPoints2nd, positionPoints3rd, gradeRules, matrixRows],
   );
 
   const hasChanges = initialComparisonKey !== currentComparisonKey;
@@ -724,6 +826,15 @@ export function ScoringPolicyClient({
           isPersisted={policy.isPersisted}
           noGradeBelow={noGradeBelow}
           setNoGradeBelow={setNoGradeBelow}
+        />
+
+        <PositionPointsSection
+          positionPoints1st={positionPoints1st}
+          positionPoints2nd={positionPoints2nd}
+          positionPoints3rd={positionPoints3rd}
+          setPositionPoints1st={setPositionPoints1st}
+          setPositionPoints2nd={setPositionPoints2nd}
+          setPositionPoints3rd={setPositionPoints3rd}
         />
 
         <GradeRulesSection

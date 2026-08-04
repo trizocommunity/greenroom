@@ -525,6 +525,9 @@ export const festivalScoringPolicy = pgTable(
     isActive: boolean("is_active").default(true).notNull(),
     normalizeTo: integer("normalize_to").default(100).notNull(),
     noGradeBelow: integer("no_grade_below").default(50).notNull(),
+    positionPoints1st: integer("position_points_1st").default(5).notNull(),
+    positionPoints2nd: integer("position_points_2nd").default(3).notNull(),
+    positionPoints3rd: integer("position_points_3rd").default(1).notNull(),
     gradeRules: jsonb("grade_rules").notNull(),
     createdBy: text("created_by"),
     createdAt: tzTimestampNamed("created_at")

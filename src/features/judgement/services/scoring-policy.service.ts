@@ -38,6 +38,9 @@ export type ScoringPolicyData = {
   gradeRules: GradeRule[];
   awardRules: AwardRule[];
   isPersisted: boolean;
+  positionPoints1st: number;
+  positionPoints2nd: number;
+  positionPoints3rd: number;
 };
 
 const DEFAULT_GRADE_RULES: GradeRule[] = [
@@ -166,6 +169,9 @@ const defaultScoringPolicyData = (): ScoringPolicyData => ({
   gradeRules: DEFAULT_GRADE_RULES,
   awardRules: DEFAULT_AWARD_RULES,
   isPersisted: false,
+  positionPoints1st: 5,
+  positionPoints2nd: 3,
+  positionPoints3rd: 1,
 });
 
 function isMissingScoringSchemaError(error: unknown): boolean {
@@ -223,6 +229,9 @@ export async function getScoringPolicyWithRules(
         version: true,
         normalizeTo: true,
         noGradeBelow: true,
+        positionPoints1st: true,
+        positionPoints2nd: true,
+        positionPoints3rd: true,
         gradeRules: true,
       },
       with: {
@@ -277,6 +286,9 @@ export async function getScoringPolicyWithRules(
       priority: r.priority,
     })),
     isPersisted: true,
+    positionPoints1st: policy.positionPoints1st,
+    positionPoints2nd: policy.positionPoints2nd,
+    positionPoints3rd: policy.positionPoints3rd,
   };
 }
 
@@ -294,6 +306,9 @@ function validateGradeRules(gradeRules: GradeRule[]) {
 export async function upsertScoringPolicyActionData(input: {
   festivalId: string;
   noGradeBelow: number;
+  positionPoints1st: number;
+  positionPoints2nd: number;
+  positionPoints3rd: number;
   gradeRules: GradeRule[];
   awardRules: Array<Omit<AwardRule, "id" | "priority"> & { priority?: number }>;
   updatedBy?: string | null;
@@ -324,6 +339,9 @@ export async function upsertScoringPolicyActionData(input: {
           isActive: true,
           normalizeTo: 100,
           noGradeBelow: Math.round(input.noGradeBelow),
+          positionPoints1st: Math.round(input.positionPoints1st),
+          positionPoints2nd: Math.round(input.positionPoints2nd),
+          positionPoints3rd: Math.round(input.positionPoints3rd),
           gradeRules: normalizedGradeRules,
           updatedAt: now,
         } as any)
@@ -336,6 +354,9 @@ export async function upsertScoringPolicyActionData(input: {
         isActive: true,
         normalizeTo: 100,
         noGradeBelow: Math.round(input.noGradeBelow),
+        positionPoints1st: Math.round(input.positionPoints1st),
+        positionPoints2nd: Math.round(input.positionPoints2nd),
+        positionPoints3rd: Math.round(input.positionPoints3rd),
         gradeRules: normalizedGradeRules,
         createdBy: input.updatedBy ?? null,
         createdAt: now,
@@ -424,6 +445,9 @@ export async function resolveScoringPolicy(input: {
   grade: string | null;
   awardPoints: number;
   policyVersion: number;
+  positionPoints1st: number;
+  positionPoints2nd: number;
+  positionPoints3rd: number;
 }> {
   const policy = await getScoringPolicyWithRules(input.festivalId);
   const grade = resolveGrade(
@@ -432,7 +456,14 @@ export async function resolveScoringPolicy(input: {
     policy.gradeRules,
   );
   if (!grade && input.points < policy.noGradeBelow) {
-    return { grade: null, awardPoints: 0, policyVersion: policy.policyVersion };
+    return {
+      grade: null,
+      awardPoints: 0,
+      policyVersion: policy.policyVersion,
+      positionPoints1st: policy.positionPoints1st,
+      positionPoints2nd: policy.positionPoints2nd,
+      positionPoints3rd: policy.positionPoints3rd,
+    };
   }
   if (!grade) {
     throw new AppError(
@@ -484,5 +515,8 @@ export async function resolveScoringPolicy(input: {
         );
       })(),
     policyVersion: policy.policyVersion,
+    positionPoints1st: policy.positionPoints1st,
+    positionPoints2nd: policy.positionPoints2nd,
+    positionPoints3rd: policy.positionPoints3rd,
   };
 }

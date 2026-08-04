@@ -29,7 +29,7 @@ const DEFAULT_OTP_EXPIRY_MINUTES = 10;
 const BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.NODE_ENV === "production"
-    ? "https://trizo-greenroom.vercel.app"
+    ? "https://greenroomm.vercel.app"
     : "http://localhost:3000");
 
 function magicLinkUrl(token: string) {
