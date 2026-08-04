@@ -23,7 +23,10 @@ import { toast } from "sonner";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { useCancelJudgement } from "@/api/client/server-actions";
+import {
+  useCancelJudgement,
+  useForceCompleteJudgement,
+} from "@/api/client/server-actions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -119,6 +122,7 @@ type ActiveConfig = {
 type JudgedProgrammeCard = {
   configId: string;
   createdAt: string | Date;
+  updatedAt: string | Date;
   programmeId: string;
   programmeName: string;
   programmeStatus: string;
@@ -234,7 +238,10 @@ export function JudgementWizardClient({
 
   const [dialogOpen, setDialogOpen] = useState(false);
   
-  const cancelJudgementMutation = useCancelJudgement();
+  const { mutate: cancelJudgement, isPending: isCancelling } =
+    useCancelJudgement();
+  const { mutate: completeJudgement, isPending: isCompleting } =
+    useForceCompleteJudgement();
   const [cancelProgrammeId, setCancelProgrammeId] = useState<string | null>(null);
 
   const [reportedParticipantsView, setReportedParticipantsView] = useState<{
@@ -347,7 +354,11 @@ export function JudgementWizardClient({
           .toUpperCase()
           .includes("PUBLISHED");
         if (aPublished !== bPublished) return aPublished ? 1 : -1;
-        return b.totalJudgements - a.totalJudgements;
+        
+        // Sort by completion time (updatedAt) descending (newest first)
+        const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return bTime - aTime;
       });
   }, [judgedProgrammes]);
 
@@ -670,6 +681,7 @@ export function JudgementWizardClient({
                     <p className="text-xs text-muted-foreground">
                       {p.programmeType === "GROUP" ? "Group" : "Individual"}
                       {p.programmeCategory ? ` · ${p.programmeCategory}` : ""}
+                      {p.reportingDetails?.stageName ? ` · Stage ${p.reportingDetails.stageName}` : ""}
                     </p>
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col gap-2.5 p-4 pt-0 sm:gap-3 sm:p-5 sm:pt-0">
@@ -685,16 +697,30 @@ export function JudgementWizardClient({
                     ) : null}
                     {active ? (
                       <>
-                        <div className="flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/[0.06] px-2 py-1 text-[10px] font-medium text-primary">
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
-                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-                          </span>
-                          Live · {active.judges.length} judge
-                          {active.judges.length !== 1 ? "s" : ""} ·{" "}
-                          {active.judgingMode}
+                        <div className="flex flex-col gap-1.5 rounded-md border border-primary/25 bg-primary/[0.06] px-2 py-1.5 text-[10px] text-primary">
+                          <div className="flex items-center gap-1.5 font-medium">
+                            <span className="relative flex h-1.5 w-1.5 shrink-0">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
+                              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                            </span>
+                            <span>
+                              Live · {active.judges.length} judge
+                              {active.judges.length !== 1 ? "s" : ""} ·{" "}
+                              {active.judgingMode}
+                            </span>
+                          </div>
+                          {judgedByProgrammeId.get(p.id) && (
+                            <div className="flex flex-col border-t border-primary/10 pt-1.5 mt-0.5">
+                              <span className="font-semibold">{judgedByProgrammeId.get(p.id)!.completionSummary}</span>
+                              {judgedByProgrammeId.get(p.id)!.pendingJudgeNames.length > 0 && (
+                                <span className="text-primary/70 line-clamp-1 mt-0.5">
+                                  Pending: {judgedByProgrammeId.get(p.id)!.pendingJudgeNames.join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="mt-auto pt-1">
+                        <div className="mt-auto pt-1 flex flex-col gap-1 sm:gap-1.5">
                           {(() => {
                             const sid = p.reportingDetails?.stageId;
                             const sname = p.reportingDetails?.stageName ?? null;
@@ -717,15 +743,29 @@ export function JudgementWizardClient({
                               </Button>
                             );
                           })()}
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
-                            onClick={() => setCancelProgrammeId(p.id)}
-                          >
-                            Cancel
-                          </Button>
+                          <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="default"
+                              className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+                              disabled={isCompleting}
+                              onClick={() => {
+                                completeJudgement(active.id);
+                              }}
+                            >
+                              Complete
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+                              onClick={() => setCancelProgrammeId(p.id)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -1477,16 +1517,16 @@ export function JudgementWizardClient({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelJudgementMutation.isPending}>
+            <AlertDialogCancel disabled={isCancelling}>
               Keep active
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={cancelJudgementMutation.isPending}
+              disabled={isCancelling}
               onClick={(e) => {
                 e.preventDefault();
                 if (cancelProgrammeId) {
-                  cancelJudgementMutation.mutate(
+                  cancelJudgement(
                     {
                       festivalId,
                       programmeId: cancelProgrammeId,
@@ -1501,7 +1541,7 @@ export function JudgementWizardClient({
                 }
               }}
             >
-              {cancelJudgementMutation.isPending ? "Cancelling..." : "Yes, cancel"}
+              {isCancelling ? "Cancelling..." : "Yes, cancel"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -206,15 +206,17 @@ export function AnnouncerClient({
                     )}
                     <span className="text-xl">{activeProgramme.name}</span>
                   </DrawerTitle>
-                  <DrawerDescription className="flex items-center gap-2">
-                    {activeProgramme.categoryName}
+                  <div className="flex items-center gap-2">
+                    <DrawerDescription>
+                      {activeProgramme.categoryName}
+                    </DrawerDescription>
                     <Badge variant="outline" className="text-[10px]">
                       {activeProgramme.type === "GROUP" ? "Group" : "Individual"}
                     </Badge>
                     <Badge variant="outline" className="text-[10px]">
                       {activeProgramme.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
                     </Badge>
-                  </DrawerDescription>
+                  </div>
                 </DrawerHeader>
 
                 {/* Result roster */}

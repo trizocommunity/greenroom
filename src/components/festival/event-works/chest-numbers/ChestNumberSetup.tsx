@@ -4,7 +4,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { queryKeys } from "@/api/client/_query-keys";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -327,7 +326,7 @@ export function ChestNumberSetup({
   };
 
   return (
-    <div className="flex flex-wrap gap-4 items-center justify-between p-3 sm:px-4 py-3 border rounded-xl bg-muted/20 border-border/80">
+    <div className="flex flex-wrap bg-card gap-4 items-center justify-between p-3 sm:px-4 py-3 border rounded-xl border-border/80">
       <div className="flex items-center gap-3 min-w-0">
         <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
           <Settings2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />

@@ -1,8 +1,10 @@
 "use client";
 
-import { Crown, Loader2, Mail } from "lucide-react";
+import { Crown, Loader2, Mail, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/api/client/_query-keys";
 import { useGroups, useUpdateGroup } from "@/api/client/groups";
 import {
   useParticipants,
@@ -63,12 +65,14 @@ export function AssignTeamLeadersModal({
   const [selectedLeaderIds, setSelectedLeaderIds] = useState<string[]>([]);
   const [step, setStep] = useState<"select" | "emails">("select");
   const [emailInputs, setEmailInputs] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: groups = [] } = useGroups(festivalId);
   const { data: participants = [], isLoading: participantsLoading } =
     useParticipants(festivalId);
   const updateGroup = useUpdateGroup();
   const updateParticipant = useUpdateParticipant();
+  const qc = useQueryClient();
 
   const selectedGroup = useMemo(
     () => groups.find((g: any) => g.id === selectedGroupId),
@@ -79,6 +83,17 @@ export function AssignTeamLeadersModal({
     () => participants.filter((s: any) => s.groupId === selectedGroupId),
     [participants, selectedGroupId],
   );
+
+  const filteredParticipants = useMemo(() => {
+    if (!searchQuery.trim()) return groupParticipants;
+    const lowerQuery = searchQuery.toLowerCase();
+    return groupParticipants.filter(
+      (p: any) =>
+        p.name?.toLowerCase().includes(lowerQuery) ||
+        p.chestNumber?.toLowerCase().includes(lowerQuery) ||
+        p.email?.toLowerCase().includes(lowerQuery)
+    );
+  }, [groupParticipants, searchQuery]);
 
   const existingLeaderIds = useMemo(
     () =>
@@ -131,6 +146,7 @@ export function AssignTeamLeadersModal({
     setSelectedLeaderIds(groupParticipantIds);
     setStep("select");
     setEmailInputs({});
+    setSearchQuery("");
   };
 
   // Proceed to email collection step
@@ -177,7 +193,6 @@ export function AssignTeamLeadersModal({
             participantId: participant.id,
             data: { email: newEmail },
           });
-          toast.success(`Email updated for ${participant.name}`);
         } catch (error) {
           console.error(
             `Failed to update email for ${participant.name}:`,
@@ -199,6 +214,8 @@ export function AssignTeamLeadersModal({
         teamLeaderIds: selectedLeaderIds,
       },
     });
+
+    qc.invalidateQueries({ queryKey: queryKeys.participants.all(festivalId) });
 
     toast.success("Team leaders assigned successfully!");
     setOpen(false);
@@ -246,7 +263,8 @@ export function AssignTeamLeadersModal({
           </DrawerDescription>
         </DrawerHeader>
 
-        {/* Progress Indicator */}
+        <div className="flex-1 overflow-y-auto min-h-0 -mx-4 px-4 sm:-mx-6 sm:px-6 py-1">
+          {/* Progress Indicator */}
         <div className="flex items-center gap-2 py-3">
           <div
             className={`flex items-center gap-2 ${step === "select" ? "text-primary" : "text-muted-foreground"}`}
@@ -306,14 +324,29 @@ export function AssignTeamLeadersModal({
             </div>
           ) : step === "select" ? (
             <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">
-                Participants in{" "}
-                <span className="font-medium">{selectedGroup?.name}</span> (
-                {selectedLeaderIds.length}/{effectiveLimit} selected)
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-muted-foreground shrink-0">
+                  <span className="font-medium">{selectedGroup?.name}</span> (
+                  {selectedLeaderIds.length}/{effectiveLimit})
+                </div>
+                <div className="relative w-full sm:max-w-[220px]">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search..."
+                    className="pl-7 h-8 text-xs bg-muted/20"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="space-y-2 max-h-[420px] overflow-y-auto rounded-lg border bg-muted/10 p-2">
-                {groupParticipants.map((participant: any) => {
-                  const isSelected = selectedLeaderIds.includes(participant.id);
+                {filteredParticipants.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    No participants found
+                  </div>
+                ) : (
+                  filteredParticipants.map((participant: any) => {
+                    const isSelected = selectedLeaderIds.includes(participant.id);
                   const hasValidEmail =
                     !!participant.email &&
                     String(participant.email).includes("@");
@@ -371,7 +404,7 @@ export function AssignTeamLeadersModal({
                       </div>
                     </label>
                   );
-                })}
+                }))}
               </div>
             </div>
           ) : (
@@ -452,6 +485,7 @@ export function AssignTeamLeadersModal({
               </div>
             </div>
           )}
+        </div>
         </div>
 
         <DrawerFooter>

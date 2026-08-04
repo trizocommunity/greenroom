@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   category as categoryTable,
@@ -76,13 +76,22 @@ export async function getAnnouncerQueue(
       groupName: groupTable.name,
       teamNumber: programmeAssignment.teamNumber,
       assignmentId: programmeAssignment.id,
+      individualParticipantName: participantTable.name,
+      individualChestNumber: participantTable.chestNumber,
     })
     .from(resultTable)
     .innerJoin(
       programmeAssignment,
       eq(resultTable.assignmentId, programmeAssignment.id),
     )
-    .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
+    .leftJoin(participantTable, eq(programmeAssignment.participantId, participantTable.id))
+    .leftJoin(
+      groupTable,
+      or(
+        eq(programmeAssignment.groupId, groupTable.id),
+        eq(participantTable.groupId, groupTable.id),
+      ),
+    )
     .where(eq(resultTable.festivalId, festivalId))
     .orderBy(asc(resultTable.position));
 
@@ -103,17 +112,23 @@ export async function getAnnouncerQueue(
   );
 
   const displayByAssignment = new Map<string, { name: string | null; chestNumber: string | null; isTeamLeader: boolean }>();
-  for (const assignmentId of results.map((r) => r.assignmentId)) {
-    const lead = leadByAssignment.get(assignmentId);
+  for (const r of results) {
+    const lead = leadByAssignment.get(r.assignmentId);
     if (lead) {
-      displayByAssignment.set(assignmentId, {
+      displayByAssignment.set(r.assignmentId, {
         name: lead.name,
         chestNumber: lead.chestNumber,
         isTeamLeader: true,
       });
+    } else if (r.individualParticipantName) {
+      displayByAssignment.set(r.assignmentId, {
+        name: r.individualParticipantName,
+        chestNumber: r.individualChestNumber,
+        isTeamLeader: false,
+      });
     } else {
-      const m = memberDisplayByAssignment.get(assignmentId);
-      displayByAssignment.set(assignmentId, {
+      const m = memberDisplayByAssignment.get(r.assignmentId);
+      displayByAssignment.set(r.assignmentId, {
         name: m?.name ?? null,
         chestNumber: m?.chestNumber ?? null,
         isTeamLeader: false,
@@ -295,13 +310,22 @@ export async function getPublishedResults(
       groupName: groupTable.name,
       teamNumber: programmeAssignment.teamNumber,
       assignmentId: programmeAssignment.id,
+      individualParticipantName: participantTable.name,
+      individualChestNumber: participantTable.chestNumber,
     })
     .from(resultTable)
     .innerJoin(
       programmeAssignment,
       eq(resultTable.assignmentId, programmeAssignment.id),
     )
-    .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
+    .leftJoin(participantTable, eq(programmeAssignment.participantId, participantTable.id))
+    .leftJoin(
+      groupTable,
+      or(
+        eq(programmeAssignment.groupId, groupTable.id),
+        eq(participantTable.groupId, groupTable.id),
+      ),
+    )
     .where(
       and(
         eq(resultTable.festivalId, festivalId),
@@ -329,6 +353,12 @@ export async function getPublishedResults(
         name: lead.name,
         chestNumber: lead.chestNumber,
         isTeamLeader: true,
+      });
+    } else if (r.individualParticipantName) {
+      displayByAssignment.set(r.assignmentId, {
+        name: r.individualParticipantName,
+        chestNumber: r.individualChestNumber,
+        isTeamLeader: false,
       });
     } else {
       const m = memberDisplayByAssignment.get(r.assignmentId);
@@ -409,39 +439,56 @@ export async function computeStandings(
   const publishedFilter =
     scope === "published" ? eq(resultTable.isPublished, true) : undefined;
 
-  const results = await db
-    .select({
-      id: resultTable.id,
-      points: resultTable.points,
-      awardPoints: resultTable.awardPoints,
-      isPublished: resultTable.isPublished,
-      programmeId: resultTable.programmeId,
-      programmeType: programmeTable.type,
-      groupId: groupTable.id,
-      groupName: groupTable.name,
-      teamNumber: programmeAssignment.teamNumber,
-    })
-    .from(resultTable)
-    .innerJoin(
-      programmeAssignment,
-      eq(resultTable.assignmentId, programmeAssignment.id),
-    )
-    .innerJoin(
-      programmeTable,
-      eq(resultTable.programmeId, programmeTable.id),
-    )
-    .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
-    .where(
-      publishedFilter
-        ? and(eq(resultTable.festivalId, festivalId), publishedFilter)
-        : eq(resultTable.festivalId, festivalId),
-    );
+  const [results, groups] = await Promise.all([
+    db
+      .select({
+        id: resultTable.id,
+        points: resultTable.points,
+        awardPoints: resultTable.awardPoints,
+        isPublished: resultTable.isPublished,
+        programmeId: resultTable.programmeId,
+        programmeType: programmeTable.type,
+        groupId: groupTable.id,
+        groupName: groupTable.name,
+        teamNumber: programmeAssignment.teamNumber,
+      })
+      .from(resultTable)
+      .innerJoin(
+        programmeAssignment,
+        eq(resultTable.assignmentId, programmeAssignment.id),
+      )
+      .innerJoin(
+        programmeTable,
+        eq(resultTable.programmeId, programmeTable.id),
+      )
+      .leftJoin(participantTable, eq(programmeAssignment.participantId, participantTable.id))
+      .leftJoin(
+        groupTable,
+        or(
+          eq(programmeAssignment.groupId, groupTable.id),
+          eq(participantTable.groupId, groupTable.id),
+        ),
+      )
+      .where(
+        publishedFilter
+          ? and(eq(resultTable.festivalId, festivalId), publishedFilter)
+          : eq(resultTable.festivalId, festivalId),
+      ),
+    db.query.group.findMany({
+      where: eq(groupTable.festivalId, festivalId),
+      columns: { name: true },
+    }),
+  ]);
 
   const standings: Record<
     string,
     { name: string; points: number; isGroup: boolean }
   > = {};
   const countedGroupTeams = new Set<string>();
+
+  for (const g of groups) {
+    standings[g.name] = { name: g.name, points: 0, isGroup: true };
+  }
 
   for (const r of results) {
     const groupName = r.groupName;
@@ -542,4 +589,36 @@ async function loadFirstMemberDisplay(
     });
   }
   return map;
+}
+
+export async function getProgrammeStatusCounts(festivalId: string) {
+  const rows = await db
+    .select({
+      status: programmeTable.status,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(programmeTable)
+    .where(
+      and(
+        eq(programmeTable.festivalId, festivalId),
+        sql`${programmeTable.status} != 'CANCELLED'`
+      )
+    )
+    .groupBy(programmeTable.status);
+
+  const counts: Record<string, number> = {
+    PENDING_JUDGMENT: 0,
+    JUDGING: 0,
+    PENDING_PUBLICATION: 0,
+    PUBLISHED: 0,
+    ANNOUNCED: 0,
+  };
+
+  for (const row of rows) {
+    if (counts[row.status] !== undefined) {
+      counts[row.status] = row.count;
+    }
+  }
+
+  return counts;
 }

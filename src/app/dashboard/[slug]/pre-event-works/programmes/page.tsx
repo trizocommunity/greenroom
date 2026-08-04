@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { Tags, Users } from "lucide-react";
+import { Tags } from "lucide-react";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ProgrammesClient } from "@/components/festival/pre-event-works/programmes/ProgrammesClient";
@@ -7,7 +7,6 @@ import { db } from "@/core/database/client";
 import {
   category as categoryTable,
   group as groupTable,
-  participant as participantTable,
 } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 
@@ -43,29 +42,11 @@ export default async function ProgrammesPage({
   }
 
   // Check for participants
-  const [participantCountResult] = await db
-    .select({ count: sql`count(*)` })
-    .from(participantTable)
-    .where(eq(participantTable.festivalId, festival.id));
-  const participantCount = Number(participantCountResult.count);
-
   const [groupCountResult] = await db
     .select({ count: sql`count(*)` })
     .from(groupTable)
     .where(eq(groupTable.festivalId, festival.id));
   const groupCount = Number(groupCountResult.count);
-
-  if (participantCount === 0) {
-    return (
-      <EmptyState
-        title="No Participants Found"
-        description="You need to create participants before you can manage programmes."
-        actionLabel="Create Participants"
-        actionLink={`/dashboard/${festival.slug}/pre-event-works/participants`}
-        icon={Users}
-      />
-    );
-  }
 
   return (
     <div className="pt-4 sm:pt-6">

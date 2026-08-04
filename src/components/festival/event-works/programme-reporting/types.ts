@@ -7,6 +7,7 @@ export type ProgrammeReportingAssignmentRow = {
   groupId: string | null;
   groupName: string | null;
   teamNumber: number | null;
+  teamLeadName?: string | null;
   /** GROUP-only: participant ids from programme_assignment_member (XOR-migrated data). */
   teamParticipantIds?: string[];
 };

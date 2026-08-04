@@ -130,9 +130,8 @@ export function ParticipantsClient({
 
   // Separate Team Leaders
   const teamLeaders = participants.filter((s: any) => s.isTeamLeader);
-  const regularParticipants = participants.filter((s: any) => !s.isTeamLeader);
 
-  const filteredParticipants = regularParticipants.filter((p: any) => {
+  const filteredParticipants = participants.filter((p: any) => {
     if (selectedGroup !== "ALL") {
       if (p.groupId !== selectedGroup && p.group?.id !== selectedGroup)
         return false;
@@ -271,11 +270,11 @@ export function ParticipantsClient({
       />
 
       {teamLeaders.length > 0 && (
-        <div className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory gap-4 pb-4 px-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-4 px-1">
           {teamLeaders.map((tl) => (
             <Card
               key={tl.id}
-              className="w-[260px] md:w-[280px] lg:w-[calc(25%-0.75rem)] snap-center shrink-0 group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-amber-500/30"
+              className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-amber-500/30"
             >
               <div className="absolute top-2 right-2 p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <DropdownMenu>

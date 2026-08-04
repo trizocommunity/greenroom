@@ -472,6 +472,7 @@ export function ProgrammeReportingClient({
           reportedAt: string | null;
           spunAt: string | null;
           code: string;
+          membersCount?: number | null;
         }>;
       }
     >();
@@ -580,12 +581,13 @@ export function ProgrammeReportingClient({
 
               return {
                 key: teamKey,
-                label: lead?.groupName ?? "Group",
+                label: lead?.teamLeadName ? `${lead.teamLeadName} & ${teamLabel}` : teamLabel,
                 chestOrTeam: teamLabel,
                 group: lead?.groupName ?? "—",
                 reportedAt: firstReported?.reportedAt ?? null,
                 spunAt,
                 code,
+                membersCount: lead?.teamParticipantIds?.length || members.length,
               };
             })
           : programmeAssignments.map((row) => {
@@ -606,6 +608,7 @@ export function ProgrammeReportingClient({
                 reportedAt: reported?.reportedAt ?? null,
                 spunAt,
                 code,
+                membersCount: null,
               };
             });
 
@@ -804,7 +807,7 @@ export function ProgrammeReportingClient({
           isReported: members.some((m) => m.isReported),
           teamLeadName:
             (teamLeadsForProgramme as any)?.[lead.groupId ?? ""]?.[teamNumber]
-              ?.participantName ?? null,
+              ?.participantName ?? lead.teamLeadName ?? null,
         };
       },
     );
@@ -2023,10 +2026,20 @@ export function ProgrammeReportingClient({
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
                                       <p className="truncate text-[11px] font-semibold sm:text-[12px]">
-                                        {index + 1}. {entry.label}
+                                        {index + 1}, {entry.label}
                                       </p>
-                                      <p className="text-[10px] text-muted-foreground">
-                                        {entry.chestOrTeam} • {entry.group}
+                                      <p className="text-[10px] text-muted-foreground flex gap-2">
+                                        {entry.membersCount != null && (
+                                          <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                            {entry.membersCount} Members
+                                          </span>
+                                        )}
+                                        {entry.membersCount == null && (
+                                          <span>{entry.chestOrTeam}</span>
+                                        )}
+                                        <span className="text-green-600 dark:text-green-400 font-medium">
+                                          {entry.group}
+                                        </span>
                                       </p>
                                     </div>
                                     <span className="rounded border bg-purple/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-purple">

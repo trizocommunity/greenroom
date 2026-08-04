@@ -726,11 +726,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         (j) => j.isComplete,
       ).length;
       const isSingle = (config.judgingMode as "SINGLE" | "GROUP") === "SINGLE";
-      const isJudgementComplete = isSingle
-        ? requiredCodeLetters > 0 &&
-          assignedJudgeCount > 0 &&
-          judgesWithCompleteSet === assignedJudgeCount
-        : config.scores.length > 0;
+      const isJudgementComplete = config.status === "SUBMITTED";
       const judgementStatus: ProgrammeJudgementStatus = isJudgementComplete
         ? "COMPLETED"
         : isSingle
@@ -748,6 +744,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
       return {
         configId: config.id,
         createdAt: config.createdAt,
+        updatedAt: config.updatedAt,
         programmeId: config.programme.id,
         programmeName: config.programme.name,
         programmeStatus: config.programme.status,
@@ -1848,15 +1845,6 @@ export async function submitJudgeScoresAction(
     console.error("[AuditLog] SUBMIT_JUDGE_SCORES failed", err),
   );
 
-  await recomputeConfigResults(
-    {
-      id: config.id,
-      programmeId: config.programmeId,
-      reportingSessionId: config.reportingSessionId,
-    },
-    now,
-  );
-
   const mode = (config.judgingMode ?? "GROUP") as "SINGLE" | "GROUP";
   let shouldComplete: boolean;
   if (options?.deactivateLink === false) {
@@ -1882,6 +1870,15 @@ export async function submitJudgeScoresAction(
         updatedAt: now,
       } as any)
       .where(eq(judgementConfigTable.id, config.id));
+
+    await recomputeConfigResults(
+      {
+        id: config.id,
+        programmeId: config.programmeId,
+        reportingSessionId: config.reportingSessionId,
+      },
+      now,
+    );
   }
 
   return { success: true as const, judgementComplete: shouldComplete };
@@ -2102,6 +2099,47 @@ export async function saveScoringPolicyAction(input: {
     awardRules: input.awardRules,
     updatedBy: session?.userId ?? null,
   });
+
+  return { success: true as const };
+}
+
+export async function forceCompleteJudgementAction(configId: string) {
+  const session = await getSession();
+  if (!session) throw new AppError("Unauthorized", "UNAUTHORIZED");
+  
+  const config = await db.query.judgementConfig.findFirst({
+    where: eq(judgementConfigTable.id, configId),
+  });
+  if (!config) throw new AppError("Judgement config not found.");
+  
+  await assertFestivalAccess(session, config.festivalId, {
+    requireWritable: true,
+  });
+
+  if (config.status !== "LIVE") {
+    throw new AppError("Judgement is not in a live state.");
+  }
+
+  const now = serverNowIso();
+  
+  await db
+    .update(judgementConfigTable)
+    .set({
+      status: "SUBMITTED",
+      endedAt: now,
+      endedBy: session.userId,
+      updatedAt: now,
+    } as any)
+    .where(eq(judgementConfigTable.id, config.id));
+
+  await recomputeConfigResults(
+    {
+      id: config.id,
+      programmeId: config.programmeId,
+      reportingSessionId: config.reportingSessionId,
+    },
+    now,
+  );
 
   return { success: true as const };
 }

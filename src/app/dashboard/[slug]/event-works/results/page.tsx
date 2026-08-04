@@ -7,6 +7,7 @@ import {
   getPublishedResults,
   computeStandings,
   getStandingsContext,
+  getProgrammeStatusCounts,
 } from "@/features/announcement/services/announcer.service";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
@@ -48,10 +49,11 @@ export default async function ResultsConsolePage({
   );
   if (!canUse) notFound();
 
-  const [published, standingsContext, liveStandings] = await Promise.all([
+  const [published, standingsContext, liveStandings, statusCounts] = await Promise.all([
     getPublishedResults(festival.id),
     getStandingsContext(festival.id),
     computeStandings(festival.id, "published"),
+    getProgrammeStatusCounts(festival.id),
   ]);
 
   const canUnpublish =
@@ -71,11 +73,12 @@ export default async function ResultsConsolePage({
       </div>
       <ResultsConsoleClient
         festivalId={festival.id}
-        festivalSlug={slug}
+        festivalSlug={festival.slug}
         published={published}
         liveStandings={liveStandings}
         standingsContext={standingsContext}
         canUnpublish={canUnpublish}
+        statusCounts={statusCounts}
       />
     </div>
   );

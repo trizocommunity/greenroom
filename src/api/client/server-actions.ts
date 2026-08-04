@@ -18,6 +18,7 @@ import {
   startJudgementAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
+  forceCompleteJudgementAction,
 } from "@/features/judgement/actions/judgement.actions";
 import { exportParticipantsQrPdfAction } from "@/features/participants/actions/qr.actions";
 import {
@@ -213,6 +214,23 @@ export function useCancelJudgement() {
       qc.invalidateQueries({
         queryKey: queryKeys.judgement.dashboard(input.festivalId),
       });
+    },
+  });
+}
+
+export function useForceCompleteJudgement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (configId: string) => {
+      return forceCompleteJudgementAction(configId);
+    },
+    onSuccess: (_, configId) => {
+      qc.invalidateQueries({ queryKey: ["judgement"] });
+      qc.invalidateQueries({ queryKey: ["programmes"] });
+      toast.success("Judgement forcefully completed");
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 }
