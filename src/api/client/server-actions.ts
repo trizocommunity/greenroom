@@ -14,6 +14,7 @@ import {
   markCodeLetterAbsenceAction,
   previewJudgeSubmissionSummaryAction,
   restartJudgementAction,
+  cancelJudgementAction,
   startJudgementAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
@@ -199,6 +200,23 @@ export function useRestartJudgement() {
   });
 }
 
+export function useCancelJudgement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { festivalId: string; programmeId: string }) => {
+      return cancelJudgementAction(input);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({
+        queryKey: queryKeys.judgement.dashboard(input.festivalId),
+      });
+    },
+  });
+}
+
 export function useStagePortalBoard(day?: string) {
   return useQuery({
     queryKey: ["stage-portal", "board", day ?? "today"],
@@ -212,6 +230,7 @@ export function useStagePortalScorePayload(configId: string) {
     queryKey: ["stage-portal", "score-payload", configId],
     queryFn: async () => getStagePortalScorePayloadAction(configId),
     enabled: !!configId,
+    refetchInterval: 3000,
   });
 }
 

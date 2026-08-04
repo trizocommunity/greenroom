@@ -2,8 +2,6 @@ import { randomUUID } from "crypto";
 import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  category as categoryTable,
-  group as groupTable,
   participant as participantTable,
   programmeAssignment,
   programmeAssignmentMember,
@@ -19,6 +17,7 @@ import {
   findAssignmentsByProgramme,
 } from "@/features/assignments/repositories/assignment.repository";
 import { assertAssignmentShape } from "@/features/assignments/utils/assert-assignment-shape";
+import { assertProgrammePreReporting } from "@/features/programmes/services/programme-status.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantById } from "@/features/participants/repositories/participant.repository";
 import { isProTier } from "@/features/plan-features/services/tier";
@@ -120,9 +119,7 @@ export const AssignmentService = {
     }[]
   > {
     const members = await db.query.programmeAssignmentMember.findMany({
-      where: and(
-        eq(programmeAssignmentMember.festivalId, festivalId),
-      ),
+      where: and(eq(programmeAssignmentMember.festivalId, festivalId)),
       with: {
         assignment: {
           columns: {
@@ -172,11 +169,18 @@ export const AssignmentService = {
     if (!programme || programme.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
 
+    assertProgrammePreReporting(programme.status);
+
     if ("participantId" in data) {
       assertAssignmentShape(programme.type, {
         participantId: data.participantId,
       });
-      return this.createIndividualAssignment(festivalId, programme, data, actor);
+      return this.createIndividualAssignment(
+        festivalId,
+        programme,
+        data,
+        actor,
+      );
     }
 
     assertAssignmentShape(programme.type, {
@@ -194,7 +198,13 @@ export const AssignmentService = {
 
   async createIndividualAssignment(
     festivalId: string,
-    programme: { id: string; type: string; maxParticipantsPerGroup?: number | null; categoryId: string; category?: { type: string } | null },
+    programme: {
+      id: string;
+      type: string;
+      maxParticipantsPerGroup?: number | null;
+      categoryId: string;
+      category?: { type: string } | null;
+    },
     data: { participantId: string },
     actor?: { createdByEmail?: string; createdByName?: string },
   ) {
@@ -233,7 +243,10 @@ export const AssignmentService = {
       }
     }
 
-    const exists = await checkAssignmentExists(programme.id, data.participantId);
+    const exists = await checkAssignmentExists(
+      programme.id,
+      data.participantId,
+    );
     if (exists) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
 
     const created = await createAssignment({
@@ -254,7 +267,12 @@ export const AssignmentService = {
 
   async createGroupTeamAssignment(
     festivalId: string,
-    programme: { id: string; type: string; maxTeamsPerGroup?: number | null; maxParticipantsPerTeam?: number | null },
+    programme: {
+      id: string;
+      type: string;
+      maxTeamsPerGroup?: number | null;
+      maxParticipantsPerTeam?: number | null;
+    },
     groupId: string,
     teamNumber: number,
     actor?: { createdByEmail?: string; createdByName?: string },
@@ -273,10 +291,7 @@ export const AssignmentService = {
       );
     }
 
-    if (
-      programme.maxTeamsPerGroup &&
-      programme.maxTeamsPerGroup > 0
-    ) {
+    if (programme.maxTeamsPerGroup && programme.maxTeamsPerGroup > 0) {
       const [{ teamCount }] = await db
         .select({
           teamCount: sql<number>`COUNT(DISTINCT (${programmeAssignment.groupId}, ${programmeAssignment.teamNumber}))`,
@@ -333,6 +348,7 @@ export const AssignmentService = {
     });
 
     if (!existing) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_NOT_FOUND);
+    assertProgrammePreReporting(existing.programme.status);
     if (existing.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_FESTIVAL);
 
@@ -427,7 +443,9 @@ export const AssignmentService = {
     const rows = await db.query.participant.findMany({
       where: inArray(participantTable.id, participantIds),
     });
-    const validIds = rows.filter((r) => r.festivalId === festivalId).map((r) => r.id);
+    const validIds = rows
+      .filter((r) => r.festivalId === festivalId)
+      .map((r) => r.id);
     if (validIds.length === 0) return;
 
     await db.insert(programmeAssignmentMember).values(
@@ -462,14 +480,13 @@ export const AssignmentService = {
   ) {
     const existing = await db.query.programmeAssignment.findFirst({
       where: eq(programmeAssignment.id, id),
-      with: { programme: { columns: { type: true } } },
+      with: { programme: { columns: { type: true, status: true } } },
     });
     if (!existing) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_NOT_FOUND);
 
-    if (
-      existing.programme?.type === "GROUP" &&
-      existing.groupId
-    ) {
+    assertProgrammePreReporting(existing.programme.status);
+
+    if (existing.programme?.type === "GROUP" && existing.groupId) {
       const lead = await db.query.programmeTeamLead.findFirst({
         where: and(
           eq(programmeTeamLeadTable.programmeId, existing.programmeId),
@@ -555,6 +572,8 @@ export const AssignmentService = {
     const programme = await findProgrammeById(programmeId);
     if (!programme || programme.festivalId !== festivalId)
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
+
+    assertProgrammePreReporting(programme.status);
     if (programme.type !== "GROUP") {
       throw new AppError(ERROR_MESSAGES.ASSIGNMENT_GROUP_ONLY_OPERATION);
     }
@@ -624,7 +643,7 @@ export const AssignmentService = {
     const teamLeadsByTeam = options?.teamLeadsByTeam ?? {};
 
     return await db.transaction(async (tx) => {
-      const finalResults: typeof programmeAssignment.$inferSelect[] = [];
+      const finalResults: (typeof programmeAssignment.$inferSelect)[] = [];
       const assignmentsByProgramme = new Map<string, BulkAssignmentInput[]>();
       for (const a of assignments) {
         const existing = assignmentsByProgramme.get(a.programmeId) || [];
@@ -641,39 +660,43 @@ export const AssignmentService = {
         if (!programme || programme.festivalId !== festivalId) {
           throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PROGRAMME);
         }
+        assertProgrammePreReporting(programme.status);
 
+        const prog = programme;
         const isGroupProgramme = programme.type === "GROUP";
+        const isGeneral = programme.category?.type === "GENERAL";
+
+        const legacyRows: BulkAssignmentRow[] = [];
+        const groupRows: BulkAssignmentGroupRow[] = [];
+        for (const row of progAssignments) {
+          if (isGroupBulkRow(row)) {
+            groupRows.push(row);
+          } else {
+            legacyRows.push(row);
+          }
+        }
 
         if (isGroupProgramme) {
-          for (const row of progAssignments) {
-            if (!isGroupBulkRow(row)) {
-              throw new AppError(ERROR_MESSAGES.ASSIGNMENT_GROUP_REQUIRES_GROUP);
-            }
+          for (const row of groupRows) {
             assertAssignmentShape(programme.type, {
               groupId: row.groupId,
               teamNumber: row.teamNumber,
             });
           }
         } else {
-          for (const row of progAssignments) {
-            if (isGroupBulkRow(row)) {
-              throw new AppError(
-                ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT,
-              );
-            }
-            const id = (row as BulkAssignmentRow).participantId;
-            assertAssignmentShape(programme.type, { participantId: id });
+          for (const row of groupRows) {
+            throw new AppError(
+              ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT,
+            );
           }
         }
 
-        const isGeneral = programme.category?.type === "GENERAL";
         const allParticipantIds = new Set<string>();
-        for (const row of progAssignments) {
-          if (isGroupBulkRow(row)) {
-            for (const pid of row.participantIds) allParticipantIds.add(pid);
-          } else {
-            allParticipantIds.add((row as BulkAssignmentRow).participantId);
-          }
+        for (const row of groupRows) {
+          for (const pid of row.participantIds) allParticipantIds.add(pid);
+        }
+        for (const row of legacyRows) {
+          allParticipantIds.add(row.participantId);
         }
         const participants = await tx.query.participant.findMany({
           where: inArray(participantTable.id, Array.from(allParticipantIds)),
@@ -690,12 +713,6 @@ export const AssignmentService = {
           }
         }
 
-        const groupIds = new Set<string>();
-        for (const pid of allParticipantIds) {
-          const g = participantMap.get(pid)?.groupId;
-          if (g) groupIds.add(g);
-        }
-
         const existingRaw = await tx
           .select({
             participantId: programmeAssignment.participantId,
@@ -704,33 +721,6 @@ export const AssignmentService = {
           })
           .from(programmeAssignment)
           .where(eq(programmeAssignment.programmeId, programmeId));
-
-        const participantsPerGroup = new Map<string, number>();
-        const teamsPerGroup = new Map<string, Set<number>>();
-        const participantsPerTeam = new Map<string, number>();
-
-        for (const a of existingRaw) {
-          const gid = a.groupId;
-          if (!gid) continue;
-
-          if (!isGroupProgramme) {
-            participantsPerGroup.set(
-              gid,
-              (participantsPerGroup.get(gid) || 0) + 1,
-            );
-          } else {
-            const teams = teamsPerGroup.get(gid) || new Set();
-            if (a.teamNumber) teams.add(a.teamNumber);
-            teamsPerGroup.set(gid, teams);
-            if (a.teamNumber) {
-              const key = `${gid}_${a.teamNumber}`;
-              participantsPerTeam.set(
-                key,
-                (participantsPerTeam.get(key) || 0) + 1,
-              );
-            }
-          }
-        }
 
         const existingMemberRows = await tx
           .select({
@@ -749,143 +739,232 @@ export const AssignmentService = {
           set.add(m.participantId);
           memberSetByAssignment.set(m.assignmentId, set);
         }
+
+        const participantsPerGroup = new Map<string, number>();
+        const teamsPerGroup = new Map<string, Set<number>>();
+        const participantsPerTeam = new Map<string, number>();
+        for (const a of existingRaw) {
+          if (!isGroupProgramme) {
+            if (!a.participantId) continue;
+            const g = participantMap.get(a.participantId)?.groupId;
+            if (!g) continue;
+            participantsPerGroup.set(g, (participantsPerGroup.get(g) || 0) + 1);
+          } else {
+            if (!a.groupId) continue;
+            const teams = teamsPerGroup.get(a.groupId) || new Set();
+            if (a.teamNumber) teams.add(a.teamNumber);
+            teamsPerGroup.set(a.groupId, teams);
+            if (a.teamNumber) {
+              const key = `${a.groupId}_${a.teamNumber}`;
+              participantsPerTeam.set(
+                key,
+                (participantsPerTeam.get(key) || 0) + 1,
+              );
+            }
+          }
+        }
+
         const processedParticipantIds = new Set<string>();
         const touchedTeams = new Map<
           string,
           { groupId: string; teamNumber: number; assignmentId: string }
         >();
 
-        if (isGroupProgramme) {
-          for (const row of progAssignments as BulkAssignmentGroupRow[]) {
-            const teamNumber = row.teamNumber;
-
-            const gid = row.groupId;
-            if (
-              programme.maxTeamsPerGroup &&
-              programme.maxTeamsPerGroup > 0
-            ) {
-              const currentTeams = teamsPerGroup.get(gid) || new Set();
-              if (!currentTeams.has(teamNumber)) {
-                if (currentTeams.size >= programme.maxTeamsPerGroup) {
-                  throw new AppError(
-                    `Max Teams per Group (${programme.maxTeamsPerGroup}) reached.`,
-                  );
-                }
-                currentTeams.add(teamNumber);
-                teamsPerGroup.set(gid, currentTeams);
+        async function insertGroupAssignment(
+          gid: string,
+          teamNumber: number,
+          memberPids: string[],
+        ) {
+          if (prog.maxTeamsPerGroup && prog.maxTeamsPerGroup > 0) {
+            const currentTeams = teamsPerGroup.get(gid) || new Set();
+            if (!currentTeams.has(teamNumber)) {
+              if (currentTeams.size >= prog.maxTeamsPerGroup) {
+                throw new AppError(
+                  `Max Teams per Group (${prog.maxTeamsPerGroup}) reached.`,
+                );
               }
+              currentTeams.add(teamNumber);
+              teamsPerGroup.set(gid, currentTeams);
             }
+          }
 
-            const created = (
-              await tx
-                .insert(programmeAssignment)
-                .values({
-                  id: randomUUID(),
-                  festivalId,
-                  programmeId,
-                  groupId: gid,
-                  teamNumber,
-                  assignedAt: serverNowIso(),
-                  updatedAt: serverNowIso(),
-                  ...(actor?.createdByEmail
-                    ? { createdByEmail: actor.createdByEmail }
-                    : {}),
-                  ...(actor?.createdByName
-                    ? { createdByName: actor.createdByName }
-                    : {}),
-                })
-                .returning()
-            )[0];
+          const existing = await tx.query.programmeAssignment.findFirst({
+            where: and(
+              eq(programmeAssignment.programmeId, programmeId),
+              eq(programmeAssignment.groupId, gid),
+              eq(programmeAssignment.teamNumber, teamNumber),
+            ),
+            columns: { id: true },
+          });
+          let assignmentId: string;
+          if (existing) {
+            assignmentId = existing.id;
+          } else {
+            const [created] = await tx
+              .insert(programmeAssignment)
+              .values({
+                id: randomUUID(),
+                festivalId,
+                programmeId,
+                groupId: gid,
+                teamNumber,
+                assignedAt: serverNowIso(),
+                updatedAt: serverNowIso(),
+                ...(actor?.createdByEmail
+                  ? { createdByEmail: actor.createdByEmail }
+                  : {}),
+                ...(actor?.createdByName
+                  ? { createdByName: actor.createdByName }
+                  : {}),
+              })
+              .returning();
             finalResults.push(created);
+            assignmentId = created.id;
+          }
 
-            if (row.participantIds.length > 0) {
-              await tx.insert(programmeAssignmentMember).values(
-                row.participantIds.map((pid) => ({
-                  id: randomUUID(),
-                  assignmentId: created.id,
-                  participantId: pid,
-                  festivalId,
-                  assignedAt: serverNowIso(),
-                  createdAt: serverNowIso(),
-                  updatedAt: serverNowIso(),
-                  ...(actor?.createdByEmail
-                    ? { createdByEmail: actor.createdByEmail }
-                    : {}),
-                  ...(actor?.createdByName
-                    ? { createdByName: actor.createdByName }
-                    : {}),
-                })),
-              );
-              for (const pid of row.participantIds) {
-                processedParticipantIds.add(pid);
-                if (
-                  programme.maxParticipantsPerTeam &&
-                  programme.maxParticipantsPerTeam > 0
-                ) {
-                  const key = `${gid}_${teamNumber}`;
-                  const currentCount = participantsPerTeam.get(key) || 0;
-                  if (currentCount >= programme.maxParticipantsPerTeam) {
-                    throw new AppError(
-                      `Max team size reached for Team ${teamNumber}`,
-                    );
-                  }
-                  participantsPerTeam.set(key, currentCount + 1);
-                }
+          const existingMembers =
+            memberSetByAssignment.get(assignmentId) ?? new Set<string>();
+          for (const pid of memberPids) {
+            if (processedParticipantIds.has(pid)) {
+              throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
+            }
+            processedParticipantIds.add(pid);
+            if (existingMembers.has(pid)) continue;
+
+            if (
+              prog.maxParticipantsPerTeam &&
+              prog.maxParticipantsPerTeam > 0
+            ) {
+              const key = `${gid}_${teamNumber}`;
+              const currentCount = participantsPerTeam.get(key) || 0;
+              if (currentCount >= prog.maxParticipantsPerTeam) {
+                throw new AppError(
+                  `Max team size reached for Team ${teamNumber}`,
+                );
               }
+              participantsPerTeam.set(key, currentCount + 1);
             }
 
-            touchedTeams.set(`${programmeId}:${gid}:${teamNumber}`, {
-              groupId: gid,
-              teamNumber,
-              assignmentId: created.id,
+            await tx.insert(programmeAssignmentMember).values({
+              id: randomUUID(),
+              assignmentId,
+              participantId: pid,
+              festivalId,
+              assignedAt: serverNowIso(),
+              createdAt: serverNowIso(),
+              updatedAt: serverNowIso(),
+              ...(actor?.createdByEmail
+                ? { createdByEmail: actor.createdByEmail }
+                : {}),
+              ...(actor?.createdByName
+                ? { createdByName: actor.createdByName }
+                : {}),
             });
           }
+
+          touchedTeams.set(`${programmeId}:${gid}:${teamNumber}`, {
+            groupId: gid,
+            teamNumber,
+            assignmentId,
+          });
+        }
+
+        if (isGroupProgramme) {
+          for (const row of groupRows) {
+            await insertGroupAssignment(
+              row.groupId,
+              row.teamNumber,
+              row.participantIds,
+            );
+          }
+
+          // Bucket legacy-shape rows by (participant.groupId, teamNumber) and
+          // funnel them through the same insertion path as new-shape rows so the
+          // GROUP-shape invariant (no participantId on programme_assignment) is
+          // preserved regardless of caller shape.
+          const legacyBuckets = new Map<
+            string,
+            { groupId: string; teamNumber: number; memberPids: string[] }
+          >();
+          for (const row of legacyRows) {
+            const participant = participantMap.get(row.participantId);
+            if (!participant) {
+              throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INVALID_PARTICIPANT);
+            }
+            if (!participant.groupId) {
+              throw new AppError(
+                "GROUP programme assignment requires participant.groupId.",
+              );
+            }
+            const teamNumber = row.teamNumber ?? 1;
+            const key = `${participant.groupId}:${teamNumber}`;
+            let bucket = legacyBuckets.get(key);
+            if (!bucket) {
+              bucket = {
+                groupId: participant.groupId,
+                teamNumber,
+                memberPids: [],
+              };
+              legacyBuckets.set(key, bucket);
+            }
+            bucket.memberPids.push(row.participantId);
+          }
+          for (const bucket of legacyBuckets.values()) {
+            await insertGroupAssignment(
+              bucket.groupId,
+              bucket.teamNumber,
+              bucket.memberPids,
+            );
+          }
         } else {
-          for (const row of progAssignments as BulkAssignmentRow[]) {
-            const { participantId } = row;
+          for (const row of legacyRows) {
+            assertAssignmentShape(prog.type, {
+              participantId: row.participantId,
+            });
+            const participant = participantMap.get(row.participantId);
+            if (!participant) continue;
+            const gid = participant.groupId ?? null;
+
             if (
-              existingRaw.some((e) => e.participantId === participantId) ||
-              processedParticipantIds.has(participantId)
+              processedParticipantIds.has(row.participantId) ||
+              existingRaw.some((e) => e.participantId === row.participantId)
             ) {
               throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
             }
-            processedParticipantIds.add(participantId);
+            processedParticipantIds.add(row.participantId);
 
-            const participant = participantMap.get(participantId);
-            const gid = participant?.groupId ?? null;
-
-            if (gid && programme.maxParticipantsPerGroup) {
+            if (gid && prog.maxParticipantsPerGroup) {
               const currentCount = participantsPerGroup.get(gid) || 0;
-              if (currentCount >= programme.maxParticipantsPerGroup) {
-                throw new AppError(
-                  `Group limit reached for ${programme.name}`,
-                );
+              if (currentCount >= prog.maxParticipantsPerGroup) {
+                throw new AppError(`Group limit reached for ${prog.name}`);
               }
               participantsPerGroup.set(gid, currentCount + 1);
             }
 
-            const created = (
-              await tx
-                .insert(programmeAssignment)
-                .values({
-                  id: randomUUID(),
-                  festivalId,
-                  programmeId,
-                  participantId,
-                  teamNumber: 1,
-                  assignedAt: serverNowIso(),
-                  updatedAt: serverNowIso(),
-                  ...(actor?.createdByEmail
-                    ? { createdByEmail: actor.createdByEmail }
-                    : {}),
-                  ...(actor?.createdByName
-                    ? { createdByName: actor.createdByName }
-                    : {}),
-                })
-                .returning()
-            )[0];
+            const [created] = await tx
+              .insert(programmeAssignment)
+              .values({
+                id: randomUUID(),
+                festivalId,
+                programmeId,
+                participantId: row.participantId,
+                teamNumber: row.teamNumber ?? 1,
+                assignedAt: serverNowIso(),
+                updatedAt: serverNowIso(),
+                ...(actor?.createdByEmail
+                  ? { createdByEmail: actor.createdByEmail }
+                  : {}),
+                ...(actor?.createdByName
+                  ? { createdByName: actor.createdByName }
+                  : {}),
+              })
+              .returning();
             finalResults.push(created);
           }
+        }
+
+        if (!isGroupProgramme && legacyRows.length > 0) {
+          await insertGroupAssignment;
         }
 
         if (isGroupProgramme && teamLeadsRequired) {

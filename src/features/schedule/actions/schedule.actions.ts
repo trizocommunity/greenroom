@@ -8,9 +8,12 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
+  programme as programmeTable,
   scheduleEntry as scheduleEntryTable,
   user as userTable,
 } from "@/core/database/schema";
+import { AppError } from "@/core/errors/errors";
+import { assertProgrammePreReporting } from "@/features/programmes/services/programme-status.service";
 import { parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
 import type { Tier } from "@/core/types/app-enums";
@@ -381,6 +384,10 @@ export async function createScheduleEntry(
   if (data.type === "PROGRAMME") {
     if (!data.programmeId)
       return { success: false, error: "Please select a programme." };
+    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, data.programmeId) });
+    if (p) {
+      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+    }
   } else {
     if (!data.title)
       return { success: false, error: "Please enter a session title." };
@@ -503,6 +510,19 @@ export async function updateScheduleEntry(
   });
   if (!existing) return { success: false, error: "Schedule entry not found" };
 
+  if (existing.type === "PROGRAMME" && existing.programmeId) {
+    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, existing.programmeId) });
+    if (p) {
+      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+    }
+  }
+  if (data.programmeId && data.programmeId !== existing.programmeId) {
+    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, data.programmeId) });
+    if (p) {
+      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+    }
+  }
+
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
@@ -622,6 +642,13 @@ export async function deleteScheduleEntry(
   });
   if (!entry) return { success: false, error: "Schedule entry not found" };
 
+  if (entry.type === "PROGRAMME" && entry.programmeId) {
+    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, entry.programmeId) });
+    if (p) {
+      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+    }
+  }
+
   const stageGuard = await assertCanWriteOnStage(festivalId, entry.stageId);
   if (!stageGuard.ok) return { success: false, error: stageGuard.error };
 
@@ -674,6 +701,18 @@ export async function clearScheduleEntries(
   let entriesToDelete = await db.query.scheduleEntry.findMany({
     where: and(...conditions),
     columns: { id: true, startTime: true, type: true, programmeId: true },
+    with: { programme: { columns: { status: true } } },
+  });
+
+  entriesToDelete = entriesToDelete.filter((e) => {
+    if (e.type === "PROGRAMME" && e.programme?.status) {
+      try {
+        assertProgrammePreReporting(e.programme.status);
+      } catch {
+        return false;
+      }
+    }
+    return true;
   });
 
   if (filters?.dateKey) {
@@ -731,9 +770,20 @@ export async function reorderScheduleEntries(
       inArray(scheduleEntryTable.id, entryIds),
       eq(scheduleEntryTable.festivalId, festivalId),
     ),
-    columns: { id: true, startTime: true, endTime: true, stageId: true },
+    columns: { id: true, startTime: true, endTime: true, stageId: true, type: true, programmeId: true },
+    with: { programme: { columns: { status: true } } },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
+
+  for (const entry of oldOrder) {
+    if (entry.type === "PROGRAMME" && entry.programme?.status) {
+      try {
+        assertProgrammePreReporting(entry.programme.status);
+      } catch (e) {
+        return { success: false, error: (e as AppError).message };
+      }
+    }
+  }
 
   if (oldOrder.length !== entryIds.length)
     return {
@@ -859,6 +909,20 @@ export async function swapScheduleSlots(
     return { success: false, error: "One or both entries not found." };
   if (entryA.type !== "PROGRAMME" || entryB.type !== "PROGRAMME")
     return { success: false, error: "Can only swap programme entries." };
+
+  if (entryA.programmeId) {
+    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, entryA.programmeId) });
+    if (p) {
+      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+    }
+  }
+
+  if (entryB.programmeId) {
+    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, entryB.programmeId) });
+    if (p) {
+      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+    }
+  }
 
   const stageGuardA = await assertCanWriteOnStage(festivalId, entryA.stageId);
   if (!stageGuardA.ok) return { success: false, error: stageGuardA.error };

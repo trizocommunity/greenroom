@@ -1,5 +1,6 @@
 import { and, count, desc, eq, inArray, max, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
+import { AppError } from "@/core/errors/errors";
 import {
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
@@ -18,15 +19,16 @@ import {
 } from "@/features/plan-features/services/tier";
 
 export type ProgrammeStatus =
-  | "READY"
-  | "RESET"
+  | "DRAFT"
+  | "CANCELLED"
   | "ASSIGNED"
   | "SCHEDULED"
   | "REPORTING"
-  | "STARTED"
-  | "ENDED"
-  | "JUDGED"
-  | "PUBLISHED";
+  | "PENDING_JUDGMENT"
+  | "JUDGING"
+  | "PENDING_PUBLICATION"
+  | "PUBLISHED"
+  | "ANNOUNCED";
 export type Tier = "BASIC" | "STANDARD" | "PRO";
 
 /**
@@ -38,14 +40,15 @@ export function getEventWorksMinimumStatus(tier: Tier): ProgrammeStatus {
 
 function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
   return tier === "BASIC"
-    ? new Set<ProgrammeStatus>(["ASSIGNED", "JUDGED", "PUBLISHED"])
+    ? new Set<ProgrammeStatus>(["ASSIGNED", "PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"])
     : new Set<ProgrammeStatus>([
         "SCHEDULED",
         "REPORTING",
-        "STARTED",
-        "ENDED",
-        "JUDGED",
+        "PENDING_JUDGMENT",
+        "JUDGING",
+        "PENDING_PUBLICATION",
         "PUBLISHED",
+        "ANNOUNCED"
       ]);
 }
 
@@ -75,7 +78,7 @@ export function filterProgrammesForEventWorks<
   return programmes.filter((p) => {
     if (isProgrammeInEventWorks(p.status, resolvedTier)) return true;
     // BASIC: programmes with any assignment belong in Marks / Event Works even if
-    // status is still READY (e.g. legacy rows or status not recomputed yet).
+    // status is still DRAFT (e.g. legacy rows or status not recomputed yet).
     if (
       resolvedTier === "BASIC" &&
       Array.isArray(p.assignments) &&
@@ -131,7 +134,7 @@ function computePreWorksStatus(input: PreWorksStatusInput): ProgrammeStatus {
   if (input.hasAssignments && input.isFullyAssignedAcrossAllGroups) {
     return "ASSIGNED";
   }
-  return "READY";
+  return "DRAFT";
 }
 
 /**
@@ -154,7 +157,7 @@ export async function updateProgrammeStatus(
     },
   });
 
-  if (!programme) return "READY";
+  if (!programme) return "DRAFT";
 
   const latestClosedReportingSession = reportingSessionId
     ? await db.query.programmeReportingSession.findFirst({
@@ -241,16 +244,16 @@ export async function updateProgrammeStatus(
       reportedPublished = publishedCount[0].c;
     }
 
-    let status: ProgrammeStatus = "STARTED";
+    let status: ProgrammeStatus = "PENDING_JUDGMENT";
     if (reportedTotal > 0 && reportedPublished === reportedTotal) {
       status = "PUBLISHED";
     } else if (reportedTotal > 0 && reportedScored === reportedTotal) {
-      status = "ENDED";
+      status = "PENDING_PUBLICATION";
     }
 
     let finalResultNumber = programme.resultNumber;
     if (
-      ["ENDED", "JUDGED", "PUBLISHED"].includes(status) &&
+      ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(status) &&
       finalResultNumber === null
     ) {
       const nextNumRes = await db
@@ -338,7 +341,7 @@ export async function updateProgrammeStatus(
     if (allResultsPublished) {
       status = "PUBLISHED";
     } else if (allAssignmentsHaveResult) {
-      status = "JUDGED";
+      status = "PENDING_PUBLICATION";
     } else {
       status = computePreWorksStatus({
         hasAssignments,
@@ -365,9 +368,9 @@ export async function updateProgrammeStatus(
       status = "REPORTING";
     } else if (
       activeReportingSession?.status === "RESET" &&
-      programme.status === "RESET"
+      programme.status === "CANCELLED"
     ) {
-      status = "RESET";
+      status = "CANCELLED";
     } else {
       status = computePreWorksStatus({
         hasAssignments,
@@ -380,7 +383,7 @@ export async function updateProgrammeStatus(
 
   let finalResultNumber = programme.resultNumber;
   if (
-    ["ENDED", "JUDGED", "PUBLISHED"].includes(status) &&
+    ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(status) &&
     finalResultNumber === null
   ) {
     const nextNumRes = await db
@@ -423,4 +426,26 @@ export async function setProgrammePublished(
       updatedAt: serverNowIso(),
     })
     .where(eq(programmeTable.id, programmeId));
+}
+
+export function assertProgrammePreReporting(status: ProgrammeStatus) {
+  if (
+    [
+      "REPORTING",
+      "PENDING_JUDGMENT",
+      "JUDGING",
+      "PENDING_PUBLICATION",
+      "PUBLISHED",
+      "ANNOUNCED",
+      "CANCELLED",
+    ].includes(status)
+  ) {
+    throw new AppError("Programme is locked for modification because reporting or judging has already started.");
+  }
+}
+
+export function assertProgrammePrePublishing(status: ProgrammeStatus) {
+  if (["PUBLISHED", "ANNOUNCED"].includes(status)) {
+    throw new AppError("Programme results are already published.");
+  }
 }

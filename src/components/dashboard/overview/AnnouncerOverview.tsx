@@ -44,7 +44,7 @@ export async function AnnouncerOverview({
       .where(
         and(
           eq(programmeTable.festivalId, festival.id),
-          inArray(programmeTable.status, ["JUDGED", "ENDED"]),
+          inArray(programmeTable.status, ["PENDING_PUBLICATION"]),
         ),
       )
       .then((rows) => rows[0]?.value ?? 0),

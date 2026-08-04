@@ -520,7 +520,9 @@ export function ProgrammeReportingClient({
             ).map(([, members]) => {
               const lead = members[0];
               const firstParticipantId =
-                members.find((m) => m.participantId)?.participantId ?? null;
+                members.find((m) => m.participantId)?.participantId ??
+                members.find((m) => m.teamParticipantIds?.length)?.teamParticipantIds?.[0] ??
+                null;
               return {
                 label:
                   lead?.teamNumber && lead.teamNumber > 0
@@ -563,7 +565,9 @@ export function ProgrammeReportingClient({
                 .map((m) => reportedByAssignmentId.get(m.id))
                 .find(Boolean);
               const firstParticipantId =
-                members.find((m) => m.participantId)?.participantId ?? null;
+                members.find((m) => m.participantId)?.participantId ??
+                members.find((m) => m.teamParticipantIds?.length)?.teamParticipantIds?.[0] ??
+                null;
               const code = firstParticipantId
                 ? (codeByParticipantId.get(firstParticipantId) ?? "—")
                 : "—";
@@ -776,9 +780,14 @@ export function ProgrammeReportingClient({
       ([teamKey, members]) => {
         const lead = members[0]!;
         const teamNumber = lead.teamNumber ?? 0;
-        const teamParticipantIds = members
-          .map((m) => m.participantId)
-          .filter((id): id is string => Boolean(id));
+        const teamParticipantIds = Array.from(
+          new Set([
+            ...(lead.teamParticipantIds ?? []),
+            ...members
+              .map((m) => m.participantId)
+              .filter((id): id is string => Boolean(id)),
+          ]),
+        );
         return {
           key: teamKey,
           mode: "team",

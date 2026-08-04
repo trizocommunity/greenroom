@@ -23,6 +23,17 @@ import { toast } from "sonner";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { useCancelJudgement } from "@/api/client/server-actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
@@ -222,6 +233,9 @@ export function JudgementWizardClient({
   const [isPending, startTransition] = useTransition();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  
+  const cancelJudgementMutation = useCancelJudgement();
+  const [cancelProgrammeId, setCancelProgrammeId] = useState<string | null>(null);
 
   const [reportedParticipantsView, setReportedParticipantsView] = useState<{
     programmeName: string;
@@ -703,6 +717,15 @@ export function JudgementWizardClient({
                               </Button>
                             );
                           })()}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+                            onClick={() => setCancelProgrammeId(p.id)}
+                          >
+                            Cancel
+                          </Button>
                         </div>
                       </>
                     ) : (
@@ -1439,6 +1462,50 @@ export function JudgementWizardClient({
           </div>
         </DrawerContent>
       </Drawer>
+      
+      <AlertDialog
+        open={!!cancelProgrammeId}
+        onOpenChange={(open) => {
+          if (!open) setCancelProgrammeId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel judgement?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will abort the active judgement round and lock out all judges instantly. Any partial scores that have not been submitted will be lost. The programme will return to 'Pending Judgment' status.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelJudgementMutation.isPending}>
+              Keep active
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cancelJudgementMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (cancelProgrammeId) {
+                  cancelJudgementMutation.mutate(
+                    {
+                      festivalId,
+                      programmeId: cancelProgrammeId,
+                    },
+                    {
+                      onSuccess: () => {
+                        toast.success("Judgement cancelled");
+                        setCancelProgrammeId(null);
+                      },
+                    }
+                  );
+                }
+              }}
+            >
+              {cancelJudgementMutation.isPending ? "Cancelling..." : "Yes, cancel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

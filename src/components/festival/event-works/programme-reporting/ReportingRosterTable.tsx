@@ -156,8 +156,8 @@ export function ReportingRosterTable({
               )}
             >
               {isInProgress ? (
-                <button
-                  type="button"
+                <div
+                  role="button"
                   tabIndex={0}
                   onClick={() => !isMarking && onMark(row, !row.isReported)}
                   onKeyDown={(e) => {
@@ -197,7 +197,7 @@ export function ReportingRosterTable({
                       {subtitle}
                     </span>
                   </span>
-                </button>
+                </div>
               ) : (
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   <div className="shrink-0">

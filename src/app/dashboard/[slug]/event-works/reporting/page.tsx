@@ -54,6 +54,7 @@ export default async function ProgrammeReportingPage({
       with: {
         participant: { columns: { name: true, chestNumber: true } },
         group: { columns: { name: true, id: true } },
+        members: { columns: { participantId: true } },
       },
       columns: {
         id: true,
@@ -113,6 +114,9 @@ export default async function ProgrammeReportingPage({
     groupId: row.groupId ?? (row as any).group?.id ?? null,
     groupName: (row as any).group?.name ?? null,
     teamNumber: row.teamNumber ?? null,
+    teamParticipantIds: ((row as any).members ?? []).map(
+      (m: any) => m.participantId as string,
+    ),
   }));
 
   return (

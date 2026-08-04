@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -208,6 +208,7 @@ export function AssignmentsClient({
   const { data: assignments = [], isLoading: isAssignmentsLoading } =
     useAssignments(festivalId);
   const deleteAssignment = useDeleteAssignment();
+  const queryClient = useQueryClient();
   const { data: programmes = [] } = useProgrammes(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
   const { data: groups = [] } = useGroups(festivalId);
@@ -773,6 +774,7 @@ export function AssignmentsClient({
               deleteTarget.row.groupId,
               deleteTarget.row.teamNumber,
             );
+            await queryClient.invalidateQueries({ queryKey: ["assignments"] });
             setDeleteTarget(null);
           }
         }}
@@ -934,7 +936,7 @@ export function AssignmentsClient({
                     <ProgrammeActivityTimeline
                       entries={programmeDetail?.auditTimeline ?? []}
                       isLoading={programmeDetailLoading}
-                      className="p-3"
+                      className="p-3 max-h-48 overflow-y-auto scrollbar-none"
                     />
                   </div>
                 ) : null}
@@ -1170,9 +1172,14 @@ export function AssignmentsClient({
                         return (
                           <div key={`${row.groupId}:${row.teamNumber}`}>
                             <div className="mb-2 flex items-center justify-between gap-2">
-                              <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                {row.groupName} — Team {row.teamNumber}
-                              </h3>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-semibold text-heading">
+                                  {canUseTeamLead && lead ? `${lead.participantName} & Team` : "Team"}
+                                </h3>
+                                <span className="text-[11px] text-muted-foreground border-l border-border pl-2">
+                                  {row.groupName} · Team {row.teamNumber}
+                                </span>
+                              </div>
                               {!isReadOnlyMode ? (
                                 <Button
                                   variant="ghost"
@@ -1188,25 +1195,15 @@ export function AssignmentsClient({
                               ) : null}
                             </div>
 
-                            {canUseTeamLead && lead ? (
-                              <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <Crown className="h-3 w-3 text-primary" />
-                                Team lead:{" "}
-                                <span className="font-medium text-heading">
-                                  {lead.participantName}
-                                </span>
-                              </p>
-                            ) : null}
-
                             <ul className="divide-y divide-border border-y border-border">
-                              {row.assignments.map((a: any) => {
+                              {row.assignments.map((a: any, index: number) => {
                                 const isLead =
                                   canUseTeamLead &&
                                   lead?.participantId ===
                                     (a.participant?.id ?? a.participantId);
                                 return (
                                   <li
-                                    key={a.id}
+                                    key={`${a.id}-${index}`}
                                     className="flex items-center gap-3 py-2.5"
                                   >
                                     <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">

@@ -362,9 +362,9 @@ export function AssignProgrammesClient({
     const isFullyAssignedAcrossAllGroups =
       assignmentCount >= expectedTotal && expectedTotal > 0;
 
-    // Only override between READY <-> ASSIGNED; other statuses come from backend logic.
-    if (programme.status === "READY" || programme.status === "ASSIGNED") {
-      return isFullyAssignedAcrossAllGroups ? "ASSIGNED" : "READY";
+    // Only override between DRAFT <-> ASSIGNED; other statuses come from backend logic.
+    if (programme.status === "DRAFT" || programme.status === "ASSIGNED") {
+      return isFullyAssignedAcrossAllGroups ? "ASSIGNED" : "DRAFT";
     }
 
     return programme.status;

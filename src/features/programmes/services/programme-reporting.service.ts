@@ -155,7 +155,7 @@ export const ProgrammeReportingService = {
     const session = await db.query.programmeReportingSession.findFirst({
       where: eq(prsTable.id, reportingSessionId),
       with: {
-        programme: { columns: { type: true, name: true } },
+        programme: { columns: { type: true, name: true, status: true } },
       },
     });
     if (!session) throw new Error("Reporting session not found");
@@ -163,6 +163,13 @@ export const ProgrammeReportingService = {
       throw new Error(
         "Only closed reporting sessions can be reopened destructively.",
       );
+    }
+
+    if (
+      session.programme?.status &&
+      !["DRAFT", "REPORTING", "PENDING_JUDGMENT"].includes(session.programme.status)
+    ) {
+      throw new Error("Cannot restart report because judging or a further stage has already started.");
     }
 
     const nowStr = serverNowIso();
@@ -194,7 +201,7 @@ export const ProgrammeReportingService = {
       await tx
         .update(programmeTable)
         .set({
-          status: opts?.keepProgrammeInResetStatus ? "RESET" : "SCHEDULED",
+          status: opts?.keepProgrammeInResetStatus ? "CANCELLED" : "SCHEDULED",
           publishedAt: null,
           updatedAt: nowStr,
         })
@@ -478,11 +485,18 @@ export const ProgrammeReportingService = {
     const session = await db.query.programmeReportingSession.findFirst({
       where: eq(prsTable.id, reportingSessionId),
       with: {
-        programme: { columns: { type: true } },
+        programme: { columns: { type: true, status: true } },
       },
     });
     if (!session) throw new Error("Reporting session not found");
     if (session.isLocked) throw new Error("Reporting is locked");
+
+    if (
+      session.programme?.status &&
+      !["DRAFT", "REPORTING", "PENDING_JUDGMENT"].includes(session.programme.status)
+    ) {
+      throw new Error("Cannot reset report because judging or a further stage has already started.");
+    }
 
     const now = serverNowIso();
 
@@ -513,7 +527,7 @@ export const ProgrammeReportingService = {
       await tx
         .update(programmeTable)
         .set({
-          status: "RESET",
+          status: "CANCELLED",
           updatedAt: now,
         })
         .where(eq(programmeTable.id, session.programmeId));
@@ -529,7 +543,7 @@ export const ProgrammeReportingService = {
       context: {
         title: "Programme reset",
         body: `Programme has been reset. All reporting data cleared. Status: RESET`,
-        payload: { programmeId: session.programmeId, status: "RESET" },
+        payload: { programmeId: session.programmeId, status: "CANCELLED" },
       },
       channels: ["IN_APP"],
     });
@@ -791,11 +805,32 @@ export const ProgrammeReportingService = {
     if (assignments.length !== assignmentIds.length) {
       throw new Error("One or more assignments not found");
     }
-    for (const assignment of assignments) {
-      await assertAssignmentCategoryCompatibility({
-        programmeId: session.programmeId,
-        participantId: assignment.participantId,
-      });
+
+    const isGroupProgramme = session.programme.type === "GROUP";
+
+    if (isGroupProgramme) {
+      for (const assignment of assignments) {
+        const members = await db
+          .select({
+            id: assignmentMemberTable.id,
+            participantId: assignmentMemberTable.participantId,
+          })
+          .from(assignmentMemberTable)
+          .where(eq(assignmentMemberTable.assignmentId, assignment.id));
+        for (const m of members) {
+          await assertAssignmentCategoryCompatibility({
+            programmeId: session.programmeId,
+            participantId: m.participantId,
+          });
+        }
+      }
+    } else {
+      for (const assignment of assignments) {
+        await assertAssignmentCategoryCompatibility({
+          programmeId: session.programmeId,
+          participantId: assignment.participantId,
+        });
+      }
     }
 
     const now = serverNowIso();
@@ -803,28 +838,63 @@ export const ProgrammeReportingService = {
     await db.transaction(async (tx) => {
       for (const assignment of assignments) {
         if (isReported) {
-          await tx
-            .insert(reportedParticipantTable)
-            .values({
-              id: randomUUID(),
-              reportingSessionId,
-              assignmentId: assignment.id,
-              participantId: assignment.participantId,
-              groupId: assignment.groupId,
-              teamNumber: assignment.teamNumber,
-              reportedBy: actorName,
-              reportedAt: now,
-            } as any)
-            .onConflictDoUpdate({
-              target: [
-                reportedParticipantTable.reportingSessionId,
-                reportedParticipantTable.assignmentId,
-              ],
-              set: {
-                reportedAt: now,
+          if (isGroupProgramme) {
+            const members = await tx
+              .select({
+                id: assignmentMemberTable.id,
+                participantId: assignmentMemberTable.participantId,
+              })
+              .from(assignmentMemberTable)
+              .where(eq(assignmentMemberTable.assignmentId, assignment.id));
+            for (const m of members) {
+              await tx
+                .insert(reportedParticipantTable)
+                .values({
+                  id: randomUUID(),
+                  reportingSessionId,
+                  assignmentId: assignment.id,
+                  participantId: m.participantId,
+                  groupId: assignment.groupId,
+                  teamNumber: assignment.teamNumber,
+                  assignmentMemberId: m.id,
+                  reportedBy: actorName,
+                  reportedAt: now,
+                } as any)
+                .onConflictDoUpdate({
+                  target: [
+                    reportedParticipantTable.reportingSessionId,
+                    reportedParticipantTable.assignmentId,
+                  ],
+                  set: {
+                    reportedAt: now,
+                    reportedBy: actorName,
+                  },
+                });
+            }
+          } else {
+            await tx
+              .insert(reportedParticipantTable)
+              .values({
+                id: randomUUID(),
+                reportingSessionId,
+                assignmentId: assignment.id,
+                participantId: assignment.participantId,
+                groupId: assignment.groupId,
+                teamNumber: assignment.teamNumber,
                 reportedBy: actorName,
-              },
-            });
+                reportedAt: now,
+              } as any)
+              .onConflictDoUpdate({
+                target: [
+                  reportedParticipantTable.reportingSessionId,
+                  reportedParticipantTable.assignmentId,
+                ],
+                set: {
+                  reportedAt: now,
+                  reportedBy: actorName,
+                },
+              });
+          }
         } else {
           await tx
             .delete(reportedParticipantTable)
@@ -841,27 +911,56 @@ export const ProgrammeReportingService = {
       }
     });
 
-    const participantIds = assignments
-      .map((a) => a.participantId)
-      .filter((id): id is string => id !== null);
-
-    if (participantIds.length > 0) {
-      await NotificationService.dispatch({
-        eventType: "REPORTING_PARTICIPANT_MARKED",
-        festivalId: session.festivalId,
-        targets: { participantIds },
-        context: {
-          title: "Reporting attendance updated",
-          body: isReported
-            ? "You have been marked as reported by stage manager."
-            : "Your reporting mark was removed by stage manager.",
-          payload: {
-            reportingSessionId,
-            isReported,
+    if (isGroupProgramme) {
+      const allMemberIds = new Set<string>();
+      for (const assignment of assignments) {
+        const members = await db
+          .select({ participantId: assignmentMemberTable.participantId })
+          .from(assignmentMemberTable)
+          .where(eq(assignmentMemberTable.assignmentId, assignment.id));
+        for (const m of members) allMemberIds.add(m.participantId);
+      }
+      if (allMemberIds.size > 0) {
+        await NotificationService.dispatch({
+          eventType: "REPORTING_PARTICIPANT_MARKED",
+          festivalId: session.festivalId,
+          targets: { participantIds: Array.from(allMemberIds) },
+          context: {
+            title: "Reporting attendance updated",
+            body: isReported
+              ? "Your team has been marked as reported by stage manager."
+              : "Your reporting mark was removed by stage manager.",
+            payload: {
+              reportingSessionId,
+              isReported,
+            },
           },
-        },
-        channels: ["IN_APP"],
-      });
+          channels: ["IN_APP"],
+        });
+      }
+    } else {
+      const participantIds = assignments
+        .map((a) => a.participantId)
+        .filter((id): id is string => id !== null);
+
+      if (participantIds.length > 0) {
+        await NotificationService.dispatch({
+          eventType: "REPORTING_PARTICIPANT_MARKED",
+          festivalId: session.festivalId,
+          targets: { participantIds },
+          context: {
+            title: "Reporting attendance updated",
+            body: isReported
+              ? "You have been marked as reported by stage manager."
+              : "Your reporting mark was removed by stage manager.",
+            payload: {
+              reportingSessionId,
+              isReported,
+            },
+          },
+          channels: ["IN_APP"],
+        });
+      }
     }
   },
 
@@ -948,7 +1047,7 @@ export const ProgrammeReportingService = {
       await tx
         .update(programmeTable)
         .set({
-          status: "STARTED",
+          status: "PENDING_JUDGMENT",
           updatedAt: nowStr,
         })
         .where(eq(programmeTable.id, session.programmeId));
@@ -986,11 +1085,11 @@ export const ProgrammeReportingService = {
       },
       context: {
         title: "Programme status updated",
-        body: "Programme is ready for judgement (Started).",
+        body: "Programme is ready for judgement (Pending Judgment).",
         payload: {
           reportingSessionId,
           programmeId: session.programmeId,
-          status: "STARTED",
+          status: "PENDING_JUDGMENT",
         },
       },
       channels: ["IN_APP"],

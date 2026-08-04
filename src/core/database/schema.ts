@@ -98,16 +98,16 @@ export const programmeReportingStatus = pgEnum("ProgrammeReportingStatus", [
   "CLOSED",
 ]);
 export const programmeStatus = pgEnum("ProgrammeStatus", [
-  "READY",
+  "DRAFT",
   "ASSIGNED",
   "SCHEDULED",
   "REPORTING",
-  "STARTED",
-  "ENDED",
-  "JUDGED",
+  "PENDING_JUDGMENT",
+  "JUDGING",
+  "PENDING_PUBLICATION",
   "PUBLISHED",
   "ANNOUNCED",
-  "RESET",
+  "CANCELLED",
 ]);
 export const publicDisplayMode = pgEnum("PublicDisplayMode", [
   "programme_results",
@@ -473,7 +473,7 @@ export const programme = pgTable(
     maxParticipantsPerGroup: integer().default(1).notNull(),
     maxTeamsPerGroup: integer().default(1).notNull(),
     maxParticipantsPerTeam: integer().default(1).notNull(),
-    status: programmeStatus().default("READY").notNull(),
+    status: programmeStatus().default("DRAFT").notNull(),
     publishedAt: tzTimestamp(),
     createdByEmail: text("created_by_email"),
     createdByName: text("created_by_name"),

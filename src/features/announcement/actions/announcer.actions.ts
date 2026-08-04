@@ -9,14 +9,12 @@ import {
   programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
+import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
 import { assertAnnouncerAccess } from "@/features/announcement/actions/announcement-access";
-import {
-  computeStandings,
-  type TeamStandingRow,
-} from "@/features/announcement/services/announcer.service";
+import { computeStandings } from "@/features/announcement/services/announcer.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
 
@@ -55,10 +53,15 @@ export async function setProgrammeResultNumber(
         eq(programmeTable.id, programmeId),
         eq(programmeTable.festivalId, festivalId),
       ),
-      columns: { id: true, name: true, resultNumber: true },
+      columns: { id: true, name: true, resultNumber: true, status: true },
     });
-    if (!programme)
-      return { success: false, error: "Programme not found" };
+    if (!programme) return { success: false, error: "Programme not found" };
+
+    try {
+      assertProgrammePrePublishing(programme.status);
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
 
     const existing = await db.query.programme.findFirst({
       where: and(
@@ -136,8 +139,7 @@ export async function announceResult(
         status: true,
       },
     });
-    if (!programme)
-      return { success: false, error: "Programme not found" };
+    if (!programme) return { success: false, error: "Programme not found" };
 
     if (programme.resultNumber == null) {
       return {
@@ -178,9 +180,7 @@ export async function announceResult(
       targetType: "RESULT",
       targetId: programmeId,
       metadata: { festivalId, programmeId },
-    }).catch((err) =>
-      console.error("[AuditLog] ANNOUNCE_RESULTS failed", err),
-    );
+    }).catch((err) => console.error("[AuditLog] ANNOUNCE_RESULTS failed", err));
 
     return { success: true, data: undefined };
   } catch (error) {
@@ -194,8 +194,7 @@ export async function unpublishResult(
 ): Promise<ActionResponse<void>> {
   try {
     const session = await getSession();
-    if (!session?.userId)
-      return { success: false, error: "Unauthorized" };
+    if (!session?.userId) return { success: false, error: "Unauthorized" };
 
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
@@ -207,8 +206,7 @@ export async function unpublishResult(
       ),
       columns: { id: true, status: true },
     });
-    if (!programme)
-      return { success: false, error: "Programme not found" };
+    if (!programme) return { success: false, error: "Programme not found" };
 
     if (programme.status !== "PUBLISHED") {
       return {
@@ -226,7 +224,7 @@ export async function unpublishResult(
     await db
       .update(programmeTable)
       .set({
-        status: "JUDGED",
+        status: "PENDING_PUBLICATION",
         publishedAt: null,
         updatedAt: now,
       })
@@ -256,19 +254,27 @@ export async function swapResultNumbers(
           eq(programmeTable.id, programmeIdA),
           eq(programmeTable.festivalId, festivalId),
         ),
-        columns: { id: true, resultNumber: true },
+        columns: { id: true, resultNumber: true, status: true },
       }),
       db.query.programme.findFirst({
         where: and(
           eq(programmeTable.id, programmeIdB),
           eq(programmeTable.festivalId, festivalId),
         ),
-        columns: { id: true, resultNumber: true },
+        columns: { id: true, resultNumber: true, status: true },
       }),
     ]);
 
     if (!progA || !progB)
       return { success: false, error: "Programme not found" };
+
+    try {
+      assertProgrammePrePublishing(progA.status);
+      assertProgrammePrePublishing(progB.status);
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+
     if (progA.resultNumber == null || progB.resultNumber == null)
       return {
         success: false,
@@ -318,8 +324,7 @@ export async function publishStandings(
       .update(festivalTable)
       .set({
         teamStandings: standings,
-        standingsPublishedAtResultNumber:
-          highestResult?.resultNumber ?? null,
+        standingsPublishedAtResultNumber: highestResult?.resultNumber ?? null,
         standingsPublishedAt: now,
         updatedAt: now,
       })

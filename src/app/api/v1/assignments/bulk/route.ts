@@ -19,20 +19,11 @@ const handler = createHandler({
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
 
-    if (parsed.data.assignments.some((a) => !a.participantId)) {
-      return badRequest(
-        "INVALID_INPUT",
-        "Each bulk assignment requires a participantId.",
-      );
-    }
-
     const result = await bulkCreateAssignmentAction(
       festivalId,
-      parsed.data.assignments as {
-        programmeId: string;
-        participantId: string;
-        teamNumber?: number;
-      }[],
+      parsed.data.assignments as Parameters<
+        typeof bulkCreateAssignmentAction
+      >[1],
       parsed.data.teamLeadsByTeam,
     );
     return ok({ successCount: result.length, errors: [] });

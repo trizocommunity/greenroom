@@ -307,7 +307,7 @@ export async function getDashboardOverviewData(festivalId: string) {
       .select({ c: count() })
       .from(programmes)
       .where(
-        and(eq(programmes.festivalId, festivalId), eq(programmes.status, "STARTED")),
+        and(eq(programmes.festivalId, festivalId), eq(programmes.status, "PENDING_JUDGMENT")),
       ),
     db
       .select({ c: count() })

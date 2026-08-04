@@ -54,7 +54,7 @@ export async function getAnnouncerQueue(
   const programmes = await db.query.programme.findMany({
     where: and(
       eq(programmeTable.festivalId, festivalId),
-      inArray(programmeTable.status, ["JUDGED", "ENDED"]),
+      inArray(programmeTable.status, ["PENDING_PUBLICATION"]),
     ),
     with: { category: { columns: { name: true } } },
     orderBy: [asc(programmeTable.resultNumber)],

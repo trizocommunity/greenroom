@@ -16,6 +16,7 @@ import {
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
+import type { BulkAssignmentInput } from "@/features/assignments/services/assignment.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { resolveDeadlineWindow } from "@/features/festivals/services/deadline-window";
@@ -248,11 +249,7 @@ export async function createAssignmentAction(
 
 export async function bulkCreateAssignmentAction(
   festivalId: string,
-  assignments: {
-    programmeId: string;
-    participantId: string;
-    teamNumber?: number;
-  }[],
+  assignments: BulkAssignmentInput[],
   teamLeadsByTeam?: Record<string, string>,
 ) {
   const actorContext = await resolveAssignmentActorContext(festivalId, {
@@ -275,24 +272,33 @@ export async function bulkCreateAssignmentAction(
   if (assignments.length === 0) return [];
 
   if (actorContext.type === "teamLeader") {
-    const participantIds = Array.from(
-      new Set(assignments.map((a) => a.participantId)),
-    );
-    const participants = await db.query.participant.findMany({
-      where: and(
-        eq(participantTable.festivalId, festivalId),
-        inArray(participantTable.id, participantIds),
-      ),
-      columns: { id: true, festivalId: true, groupId: true },
-    });
-    if (
-      participants.length !== participantIds.length ||
-      participants.some(
-        (s) =>
-          s.festivalId !== festivalId || s.groupId !== actorContext.groupId,
-      )
-    ) {
-      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+    const memberIds = new Set<string>();
+    for (const a of assignments) {
+      if ("participantId" in a && a.participantId) {
+        memberIds.add(a.participantId);
+      }
+      if ("participantIds" in a && Array.isArray(a.participantIds)) {
+        for (const pid of a.participantIds) memberIds.add(pid);
+      }
+    }
+    const participantIds = Array.from(memberIds);
+    if (participantIds.length > 0) {
+      const participants = await db.query.participant.findMany({
+        where: and(
+          eq(participantTable.festivalId, festivalId),
+          inArray(participantTable.id, participantIds),
+        ),
+        columns: { id: true, festivalId: true, groupId: true },
+      });
+      if (
+        participants.length !== participantIds.length ||
+        participants.some(
+          (s) =>
+            s.festivalId !== festivalId || s.groupId !== actorContext.groupId,
+        )
+      ) {
+        throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+      }
     }
   }
 

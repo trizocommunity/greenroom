@@ -51,7 +51,7 @@ import {
   requireProgrammeType,
 } from "@/features/programmes/utils/assert-programme-type";
 import { assertStageManagerAccessForStage } from "@/features/programmes/actions/reporting-access";
-import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { updateProgrammeStatus, assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 import { calculatePosition } from "@/features/results/services/results-calculator";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
@@ -167,7 +167,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
         eq(programmeTable.festivalId, festivalId),
         programmeScope,
         or(
-          eq(programmeTable.status, "STARTED"),
+          eq(programmeTable.status, "PENDING_JUDGMENT"),
           and(
             eq(programmeTable.status, "REPORTING"),
             exists(
@@ -192,7 +192,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       where: and(
         eq(programmeTable.festivalId, festivalId),
         programmeScope,
-        inArray(programmeTable.status, ["JUDGED", "ENDED"]),
+        inArray(programmeTable.status, ["PENDING_PUBLICATION", "JUDGING"]),
       ),
       columns: { id: true, name: true, status: true, type: true },
       with: { category: { columns: { name: true } } },
@@ -874,6 +874,12 @@ async function insertLiveJudgementConfig(input: {
           ),
         );
 
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, input.programmeId),
+    columns: { status: true },
+  });
+  if (programmeRow) assertProgrammePrePublishing(programmeRow.status);
+
   await db.transaction(async (tx) => {
     if (input.previousReportingSessionStageId !== input.stageId) {
       await tx
@@ -933,6 +939,13 @@ export async function startJudgementAction(input: {
   if (!input.judgeIds.length) {
     throw new AppError("Please select at least one judge.");
   }
+
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, input.programmeId),
+    columns: { status: true },
+  });
+  if (!programmeRow) throw new AppError(ERROR_MESSAGES.PROGRAMME_NOT_FOUND);
+  assertProgrammePrePublishing(programmeRow.status);
 
   const latestClosedReportingSession =
     await db.query.programmeReportingSession.findFirst({
@@ -1111,6 +1124,71 @@ export async function restartJudgementAction(input: {
   }
 
   return { configId };
+}
+
+export async function cancelJudgementAction(input: {
+  festivalId: string;
+  programmeId: string;
+}) {
+  const session = await getSession();
+  if (!session) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const liveConfig = await db.query.judgementConfig.findFirst({
+    where: and(
+      eq(judgementConfigTable.programmeId, input.programmeId),
+      eq(judgementConfigTable.status, "LIVE"),
+    ),
+    columns: { id: true, reportingSessionId: true },
+  });
+
+  if (!liveConfig) {
+    throw new AppError("No active judgement round found to cancel.");
+  }
+
+  const reportingSession = await db.query.programmeReportingSession.findFirst({
+    where: eq(reportingSessionTable.id, liveConfig.reportingSessionId),
+    columns: { stageId: true },
+  });
+
+  const { stageId } = await resolveStageIdForJudgement(
+    input.festivalId,
+    reportingSession?.stageId ?? null,
+  );
+
+  await assertStageManagerAccessForStage(input.festivalId, stageId);
+
+  await db
+    .update(judgementConfigTable)
+    .set({
+      status: "CANCELLED",
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(judgementConfigTable.id, liveConfig.id));
+
+  await db
+    .update(programmeTable)
+    .set({
+      status: "PENDING_JUDGMENT",
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(programmeTable.id, input.programmeId));
+
+  await createAuditLog({
+    action: "CANCEL_JUDGEMENT",
+    targetType: "PROGRAMME",
+    targetId: input.programmeId,
+    metadata: { configId: liveConfig.id },
+  }).catch((err) => console.error("[AuditLog] CANCEL_JUDGEMENT failed", err));
+
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.id, input.festivalId),
+    columns: { slug: true },
+  });
+  if (festival) {
+    revalidatePath(`/dashboard/${festival.slug}/event-works/judgement`);
+  }
+
+  return { success: true };
 }
 
 /**
@@ -1319,7 +1397,7 @@ export async function getStagePortalBoardAction(day?: string) {
       })
       .map((s) => {
         const p = s.programme!;
-        const judged = ["ENDED", "JUDGED", "PUBLISHED", "ANNOUNCED"].includes(
+        const judged = ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(
           p.status,
         );
         const portalStatus: StagePortalPortalStatus = liveProgrammeIds.has(p.id)
@@ -1360,7 +1438,7 @@ export async function getStagePortalBoardAction(day?: string) {
       })
       .map((e) => {
         const p = e.programme!;
-        const judged = ["ENDED", "JUDGED", "PUBLISHED", "ANNOUNCED"].includes(
+        const judged = ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(
           p.status,
         );
         const portalStatus: StagePortalPortalStatus = liveProgrammeIds.has(p.id)
@@ -1623,6 +1701,12 @@ export async function markCodeLetterAbsenceAction(input: {
     throw new AppError("Code letter not found for this programme.");
   }
 
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, config.programmeId),
+    columns: { status: true },
+  });
+  if (programmeRow) assertProgrammePrePublishing(programmeRow.status);
+
   const now = serverNowIso();
   await db.transaction(async (tx) => {
     await tx
@@ -1682,6 +1766,12 @@ export async function submitJudgeScoresAction(
   options?: { deactivateLink?: boolean },
 ) {
   const config = await assertStagePortalAccessForConfig(input.configId);
+
+  const programmeRow = await db.query.programme.findFirst({
+    where: eq(programmeTable.id, config.programmeId),
+    columns: { status: true },
+  });
+  if (programmeRow) assertProgrammePrePublishing(programmeRow.status);
 
   const judgeMembership = await db.query.judgementConfigJudge.findFirst({
     where: and(

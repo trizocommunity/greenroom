@@ -81,16 +81,16 @@ export const ProgrammeType = {
 export type ProgrammeType = (typeof ProgrammeType)[keyof typeof ProgrammeType];
 
 export const ProgrammeStatus = {
-  READY: "READY",
+  DRAFT: "DRAFT",
   ASSIGNED: "ASSIGNED",
   SCHEDULED: "SCHEDULED",
   REPORTING: "REPORTING",
-  STARTED: "STARTED",
-  ENDED: "ENDED",
-  JUDGED: "JUDGED",
+  PENDING_JUDGMENT: "PENDING_JUDGMENT",
+  JUDGING: "JUDGING",
+  PENDING_PUBLICATION: "PENDING_PUBLICATION",
   PUBLISHED: "PUBLISHED",
   ANNOUNCED: "ANNOUNCED",
-  RESET: "RESET",
+  CANCELLED: "CANCELLED",
 } as const;
 export type ProgrammeStatus =
   (typeof ProgrammeStatus)[keyof typeof ProgrammeStatus];
