@@ -117,7 +117,7 @@ export function EditorSidePanel({
   onCollapsePanel,
 }: {
   editor: PosterEditorState;
-  variant?: "docked" | "drawer";
+  variant?: "docked" | "drawer" | "floating";
   onCollapsePanel?: () => void;
 }) {
   const bgInputRef = useRef<HTMLInputElement>(null);
