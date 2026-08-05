@@ -2,16 +2,19 @@ import "server-only";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
+  type category as categoryTable,
   participant as participantTable,
-  programme as programmeTable,
   programmeAssignment,
   programmeAssignmentMember,
+  programme as programmeTable,
   programmeTeamLead,
 } from "@/core/database/schema";
 
 export type EnrolledProgramme = {
   programmeId: string;
-  programme: typeof programmeTable.$inferSelect;
+  programme: typeof programmeTable.$inferSelect & {
+    category: typeof categoryTable.$inferSelect | null;
+  };
   assignmentId: string;
   memberId: string | null;
   groupId: string | null;
@@ -99,6 +102,7 @@ export const ProgrammeMembershipService = {
         inArray(programmeTable.id, programmeIds),
         eq(programmeTable.festivalId, festivalId),
       ),
+      with: { category: true },
     });
 
     const leadRows = await db
@@ -119,28 +123,32 @@ export const ProgrammeMembershipService = {
       leadRows.map((l) => leadKey(l.programmeId, l.groupId, l.teamNumber)),
     );
 
-    return programmes.map((programme) => {
-      const indiv = individualRows.find((r) => r.programmeId === programme.id);
-      const grp = groupRows.find((r) => r.programmeId === programme.id);
-      const groupId = indiv?.groupId ?? grp?.groupId ?? null;
-      const teamNumber = indiv?.teamNumber ?? grp?.teamNumber ?? null;
-      const source = indiv ?? grp;
-      if (!source) return null;
-      const isTeamLeader =
-        groupId !== null && teamNumber !== null
-          ? leadSet.has(leadKey(programme.id, groupId, teamNumber))
-          : false;
-      return {
-        programmeId: programme.id,
-        programme,
-        assignmentId: source.assignmentId,
-        memberId: grp?.memberId ?? null,
-        groupId,
-        teamNumber,
-        isTeamLeader,
-        categoryId: programme.categoryId,
-      } satisfies EnrolledProgramme;
-    }).filter((row): row is EnrolledProgramme => row !== null);
+    return programmes
+      .map((programme) => {
+        const indiv = individualRows.find(
+          (r) => r.programmeId === programme.id,
+        );
+        const grp = groupRows.find((r) => r.programmeId === programme.id);
+        const groupId = indiv?.groupId ?? grp?.groupId ?? null;
+        const teamNumber = indiv?.teamNumber ?? grp?.teamNumber ?? null;
+        const source = indiv ?? grp;
+        if (!source) return null;
+        const isTeamLeader =
+          groupId !== null && teamNumber !== null
+            ? leadSet.has(leadKey(programme.id, groupId, teamNumber))
+            : false;
+        return {
+          programmeId: programme.id,
+          programme,
+          assignmentId: source.assignmentId,
+          memberId: grp?.memberId ?? null,
+          groupId,
+          teamNumber,
+          isTeamLeader,
+          categoryId: programme.categoryId,
+        } satisfies EnrolledProgramme;
+      })
+      .filter((row): row is EnrolledProgramme => row !== null);
   },
 
   /**
@@ -208,7 +216,10 @@ export const ProgrammeMembershipService = {
           .innerJoin(
             programmeAssignment,
             and(
-              eq(programmeAssignment.programmeId, programmeTeamLead.programmeId),
+              eq(
+                programmeAssignment.programmeId,
+                programmeTeamLead.programmeId,
+              ),
               eq(programmeAssignment.groupId, programmeTeamLead.groupId),
               eq(programmeAssignment.teamNumber, programmeTeamLead.teamNumber),
             ),
@@ -221,8 +232,9 @@ export const ProgrammeMembershipService = {
     );
 
     const mappedIndividual: EnrolledParticipant[] = individualRows
-      .filter((r): r is typeof r & { participantId: string } =>
-        r.participantId !== null,
+      .filter(
+        (r): r is typeof r & { participantId: string } =>
+          r.participantId !== null,
       )
       .map((r) => ({
         participantId: r.participantId,
@@ -249,6 +261,6 @@ export const ProgrammeMembershipService = {
 };
 
 export {
-  isIndividualAssignment,
   isGroupAssignment,
+  isIndividualAssignment,
 } from "@/features/assignments/utils/assert-assignment-shape";
