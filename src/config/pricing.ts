@@ -244,65 +244,65 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       programmes: true,
       assignments: true,
 
-      // Event-Works Access — stage management and scheduling unlocked
+      // Event-Works Access — everything unlocked
       chestNumbers: true,
       results: true,
       stageManagement: true,
       schedule: true,
 
-      // Team & Collaboration — unlimited members
+      // Team & Collaboration — unlimited members with full RBAC
       members: true,
-      roleBasedAccess: false, // granular RBAC still a PRO feature
+      roleBasedAccess: true,
 
-      // Import/Export — bulk upload unlocked
+      // Import/Export — everything unlocked
       participantImport: true,
       participantBulkUpload: true,
       programmeBulkUpload: true,
       pdfExport: true,
       excelExport: true,
 
-      // Communication — email notifications added
+      // Communication — all channels
       emailNotifications: true,
       whatsappSupport: true,
-      smsNotifications: false,
-      bulkNotifications: false,
+      smsNotifications: true,
+      bulkNotifications: true,
 
-      // Reporting & Analytics
-      advancedAnalytics: false,
-      customReports: false,
+      // Reporting & Analytics — advanced unlocked
+      advancedAnalytics: true,
+      customReports: true,
 
       templates: true,
 
       exports: true,
 
-      // Certificates & QR — QR and auto-certs unlocked
+      // Certificates & QR — fully unlocked with templates + bulk generation
       qrCodes: true,
       autoCertificates: true,
-      customCertificateTemplates: false,
-      bulkCertificateGeneration: false,
+      customCertificateTemplates: true,
+      bulkCertificateGeneration: true,
 
-      // Landing Page & Content — full landing + media & news
+      // Landing Page & Content — builder + media & news
       publicLandingPage: true,
       fullLandingPage: true,
-      landingPageBuilder: false,
+      landingPageBuilder: true,
       media: true,
       news: true,
 
-      // Branding — custom URL and colors
+      // Branding — white-label + custom domain
       customUrl: true,
-      customDomain: false,
+      customDomain: true,
       logoUpload: true,
       customColors: true,
-      whiteLabel: false,
+      whiteLabel: true,
 
-      // Advanced Features
-      apiAccess: false,
-      webhooks: false,
+      // Advanced Features — API, webhooks, live results
+      apiAccess: true,
+      webhooks: true,
       liveScoreboard: true,
-      liveResults: false,
-      multiFestivalManagement: false,
-      programmeTeamLead: false,
-      programmeAuditDrawer: false,
+      liveResults: true,
+      multiFestivalManagement: true,
+      programmeTeamLead: true,
+      programmeAuditDrawer: true,
 
       // Settings
       festivalSettings: true,
@@ -310,9 +310,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       programmeAssignmentDeadline: true,
       participantCreationDeadline: true,
 
-      // Support — email support with faster response
-      supportLevel: "email",
-      supportResponseTime: 12,
+      // Support — priority support
+      supportLevel: "priority",
+      supportResponseTime: 4,
 
       // Post-expiry
       postExpiryAccess: "delete",

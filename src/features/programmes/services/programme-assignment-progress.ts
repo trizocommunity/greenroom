@@ -21,7 +21,7 @@ export function getExpectedAssignmentsTotal(params: {
     return groupCount * (maxParticipantsPerGroup ?? 1);
   }
 
-  return groupCount * (maxTeamsPerGroup ?? 1) * (maxParticipantsPerTeam ?? 1);
+  return groupCount * (maxTeamsPerGroup ?? 1);
 }
 
 export function getAssignmentProgressLabel(params: {

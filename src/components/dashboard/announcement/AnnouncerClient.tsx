@@ -14,7 +14,6 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -24,7 +23,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { announceResult } from "@/features/announcement/actions/announcer.actions";
-import type { AnnouncerQueueProgramme } from "@/features/announcement/services/announcer.service";
+import type {
+  AnnouncerQueueProgramme,
+  PublishedResultProgramme,
+} from "@/features/announcement/services/announcer.service";
 import { toast } from "@/lib/toast";
 
 interface AnnouncerClientProps {
@@ -32,13 +34,13 @@ interface AnnouncerClientProps {
   festivalSlug: string;
   queue: AnnouncerQueueProgramme[];
   nextResultNumber: number;
+  publishedResults: PublishedResultProgramme[];
 }
 
 export function AnnouncerClient({
   festivalId,
-  festivalSlug,
   queue,
-  nextResultNumber,
+  publishedResults,
 }: AnnouncerClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -75,7 +77,10 @@ export function AnnouncerClient({
     });
   }
 
-  if (sorted.length === 0) {
+  const hasQueue = sorted.length > 0;
+  const hasPublished = publishedResults && publishedResults.length > 0;
+
+  if (!hasQueue && !hasPublished) {
     return (
       <Card>
         <CardContent className="py-12 text-center text-muted-foreground">
@@ -91,114 +96,224 @@ export function AnnouncerClient({
 
   return (
     <>
-      {/* List view */}
-      <div className="hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-20">#</TableHead>
-              <TableHead>Programme</TableHead>
-              <TableHead className="w-24">Status</TableHead>
-              <TableHead className="w-24">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell>
-                  <span className="font-mono text-sm font-bold">
+      {/* List view for Queue */}
+      {hasQueue && (
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-20">#</TableHead>
+                <TableHead>Programme</TableHead>
+                <TableHead className="w-24">Status</TableHead>
+                <TableHead className="w-24">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sorted.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell>
+                    <span className="font-mono text-sm font-bold">
+                      {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <span className="font-medium">{p.name}</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-muted-foreground text-xs">
+                          {p.categoryName}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] h-4 px-1.5 font-normal"
+                        >
+                          {p.type === "GROUP" ? "Group" : "Individual"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] h-4 px-1.5 font-normal"
+                        >
+                          {p.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                    >
+                      Ready
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setActiveProgramme(p as AnnouncerQueueProgramme)
+                      }
+                    >
+                      Open
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Mobile card list for Queue */}
+      {hasQueue && (
+        <div className="md:hidden space-y-3">
+          {sorted.map((p) => (
+            <Card
+              key={p.id}
+              className="cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => setActiveProgramme(p as AnnouncerQueueProgramme)}
+            >
+              <CardContent className="py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-sm font-bold min-w-[2rem]">
                     {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
                   </span>
-                </TableCell>
-                <TableCell>
                   <div>
-                    <span className="font-medium">{p.name}</span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-muted-foreground text-xs">
+                    <p className="font-medium text-sm">{p.name}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className="text-xs text-muted-foreground">
                         {p.categoryName}
-                      </span>
+                      </p>
                       <Badge
                         variant="outline"
-                        className="text-[10px] h-4 px-1.5 font-normal"
+                        className="text-[9px] h-3.5 px-1 font-normal"
                       >
                         {p.type === "GROUP" ? "Group" : "Individual"}
                       </Badge>
                       <Badge
                         variant="outline"
-                        className="text-[10px] h-4 px-1.5 font-normal"
+                        className="text-[9px] h-3.5 px-1 font-normal"
                       >
                         {p.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
                       </Badge>
                     </div>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant="secondary"
-                    className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                  >
-                    Ready
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setActiveProgramme(p)}
-                  >
-                    Open
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                >
+                  Ready
+                </Badge>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {/* Mobile card list */}
-      <div className="md:hidden space-y-3">
-        {sorted.map((p) => (
-          <Card
-            key={p.id}
-            className="cursor-pointer hover:bg-accent/50 transition-colors"
-            onClick={() => setActiveProgramme(p)}
-          >
-            <CardContent className="py-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-sm font-bold min-w-[2rem]">
-                  {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
-                </span>
-                <div>
-                  <p className="font-medium text-sm">{p.name}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="text-xs text-muted-foreground">
-                      {p.categoryName}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] h-3.5 px-1 font-normal"
-                    >
-                      {p.type === "GROUP" ? "Group" : "Individual"}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] h-3.5 px-1 font-normal"
-                    >
-                      {p.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
+      {/* Published Results Section */}
+      {hasPublished && (
+        <div className="mt-8 space-y-4">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Announced Results
+          </h2>
+
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-20">#</TableHead>
+                  <TableHead>Programme</TableHead>
+                  <TableHead className="w-24">Status</TableHead>
+                  <TableHead className="w-40 text-right">
+                    Announced By
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {publishedResults.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <span className="font-mono text-sm font-bold text-muted-foreground">
+                        {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <span className="font-medium text-muted-foreground">
+                          {p.name}
+                        </span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-muted-foreground text-xs opacity-80">
+                            {p.categoryName}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] h-4 px-1.5 font-normal opacity-70"
+                          >
+                            {p.type === "GROUP" ? "Group" : "Individual"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground opacity-80"
+                      >
+                        Announced
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {p.publishedByName ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="md:hidden space-y-3">
+            {publishedResults.map((p) => (
+              <Card key={p.id} className="opacity-75">
+                <CardContent className="py-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-sm font-bold min-w-[2rem] text-muted-foreground">
+                        {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
+                      </span>
+                      <div>
+                        <p className="font-medium text-sm text-muted-foreground">
+                          {p.name}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-xs text-muted-foreground opacity-80">
+                            {p.categoryName}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] h-3.5 px-1 font-normal opacity-70"
+                          >
+                            {p.type === "GROUP" ? "Group" : "Individual"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-muted-foreground">
+                      Announced
                     </Badge>
                   </div>
-                </div>
-              </div>
-              <Badge
-                variant="secondary"
-                className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-              >
-                Ready
-              </Badge>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  {p.publishedByName && (
+                    <div className="text-right text-xs text-muted-foreground pr-2">
+                      by {p.publishedByName}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Announcer drawer */}
       <Drawer
@@ -243,6 +358,7 @@ export function AnnouncerClient({
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-12">SI</TableHead>
+                          <TableHead className="w-20">Code</TableHead>
                           <TableHead>Participant</TableHead>
                           <TableHead>Group</TableHead>
                           <TableHead className="w-16">Grade</TableHead>
@@ -261,6 +377,9 @@ export function AnnouncerClient({
                             <TableRow key={r.id}>
                               <TableCell className="text-muted-foreground">
                                 {idx + 1}
+                              </TableCell>
+                              <TableCell className="font-mono">
+                                {r.codeLetter ?? "—"}
                               </TableCell>
                               <TableCell className="font-medium">
                                 {r.participantName ?? "—"}

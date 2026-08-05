@@ -79,10 +79,10 @@ const CURATED_TAG_REQUIREMENTS: Record<CuratedFeatureTag, TagRequirement> = {
     requires: ["results", "chestNumbers"],
   },
   "programme.teamLead": {
-    allowedTiers: ["PRO"],
+    allowedTiers: ["PRO", "STANDARD"],
   },
   "programme.auditDrawer": {
-    allowedTiers: ["PRO"],
+    allowedTiers: ["PRO", "STANDARD"],
   },
 };
 

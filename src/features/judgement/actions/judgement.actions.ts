@@ -579,7 +579,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
           },
           with: {
             programmeCodeLetterRecipients: {
-              columns: { participantId: true },
+              columns: { participantId: true, assignmentMemberId: true },
             },
           },
         })
@@ -592,6 +592,15 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
       ? await db.query.programmeAssignment.findMany({
           where: inArray(assignmentTable.programmeId, programmeIds),
           columns: { id: true, participantId: true, programmeId: true },
+        })
+      : [];
+
+  const assignmentIds = allAssignments.map((a) => a.id);
+  const allAssignmentMembers =
+    assignmentIds.length > 0
+      ? await db.query.programmeAssignmentMember.findMany({
+          where: inArray(assignmentMemberTable.assignmentId, assignmentIds),
+          columns: { id: true, assignmentId: true },
         })
       : [];
 
@@ -613,17 +622,26 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
     { grade: string | null; awardPoints: number }
   >();
   for (const cl of allCodeLetters) {
-    const participantId = cl.programmeCodeLetterRecipients[0]?.participantId;
-    if (participantId) {
-      const assignment = allAssignments.find(
-        (a) => a.participantId === participantId,
-      );
-      if (assignment) {
-        const result = allResults.find((r) => r.assignmentId === assignment.id);
+    const recipient = cl.programmeCodeLetterRecipients[0];
+    if (recipient) {
+      let assignmentId: string | undefined;
+      if (recipient.assignmentMemberId) {
+        assignmentId = allAssignmentMembers.find(
+          (m) => m.id === recipient.assignmentMemberId,
+        )?.assignmentId;
+      }
+      if (!assignmentId && recipient.participantId) {
+        assignmentId = allAssignments.find(
+          (a) => a.participantId === recipient.participantId,
+        )?.id;
+      }
+      
+      if (assignmentId) {
+        const result = allResults.find((r) => r.assignmentId === assignmentId);
         if (result) {
           resultByCodeLetterId.set(cl.id, {
             grade: result.grade,
-            awardPoints: result.awardPoints,
+            awardPoints: result.awardPoints ?? 0,
           });
         }
       }
@@ -1970,6 +1988,17 @@ export async function previewJudgeSubmissionSummaryAction(input: {
     awardPoints: number;
   }> = [];
 
+  const tempRows: Array<{
+    codeLetterId: string;
+    code: string;
+    points: number;
+    grade: string | null;
+    awardPoints: number;
+    positionPoints1st: number;
+    positionPoints2nd: number;
+    positionPoints3rd: number;
+  }> = [];
+
   for (const codeLetter of activeCodeLetters) {
     const scoredValues: number[] = [];
     for (const judgeId of assignedJudgeIds) {
@@ -2025,12 +2054,33 @@ export async function previewJudgeSubmissionSummaryAction(input: {
       points,
     });
 
-    rows.push({
+    tempRows.push({
       codeLetterId: codeLetter.id,
       code: codeLetter.code,
       points,
       grade: policyResolved.grade,
       awardPoints: policyResolved.awardPoints,
+      positionPoints1st: policyResolved.positionPoints1st,
+      positionPoints2nd: policyResolved.positionPoints2nd,
+      positionPoints3rd: policyResolved.positionPoints3rd,
+    });
+  }
+
+  const averages = tempRows.map((r) => r.points);
+
+  for (const r of tempRows) {
+    let finalAwardPoints = r.awardPoints;
+    const position = calculatePosition(r.points, averages);
+    if (position === 1) finalAwardPoints += r.positionPoints1st;
+    else if (position === 2) finalAwardPoints += r.positionPoints2nd;
+    else if (position === 3) finalAwardPoints += r.positionPoints3rd;
+
+    rows.push({
+      codeLetterId: r.codeLetterId,
+      code: r.code,
+      points: r.points,
+      grade: r.grade,
+      awardPoints: finalAwardPoints,
     });
   }
 

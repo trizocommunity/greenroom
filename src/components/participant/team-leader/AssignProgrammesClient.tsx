@@ -1684,7 +1684,7 @@ export function AssignProgrammesClient({
                           <ul className="divide-y divide-border border-y border-border">
                             {teamAssignments.map((a: any) => (
                               <AssignedParticipantRow
-                                key={a.id}
+                                key={`${a.id}-${a.participant?.id}`}
                                 assignment={a}
                                 isTeamLead={
                                   existingTeamLeads[
@@ -1693,7 +1693,6 @@ export function AssignProgrammesClient({
                                 }
                                 readOnly={runtimeIsReadOnly}
                                 pending={deleteAssignment.isPending}
-                                onRemove={onRemoveAssignment}
                               />
                             ))}
                           </ul>
@@ -1742,7 +1741,7 @@ function AssignedParticipantRow({
   isTeamLead?: boolean;
   readOnly: boolean;
   pending: boolean;
-  onRemove: (assignmentId: string, label: string) => void;
+  onRemove?: (assignmentId: string, label: string) => void;
 }) {
   const name = assignment?.participant?.name ?? "Participant";
 
@@ -1772,7 +1771,7 @@ function AssignedParticipantRow({
         )}
       </div>
 
-      {!readOnly && (
+      {!readOnly && onRemove && (
         <Button
           type="button"
           variant="ghost"

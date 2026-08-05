@@ -146,7 +146,7 @@ describe("Better Auth 2FA schema (ISSUE-41 PR 4)", () => {
         .update(twoFactorTable)
         .set({
           failedVerificationCount: 11,
-          lockedUntil: new Date(Date.now() + 15 * 60 * 1000),
+          lockedUntil: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
         })
         .where(eq(twoFactorTable.id, testId));
 

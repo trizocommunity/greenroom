@@ -39,11 +39,13 @@ export default function Navbar({ user: initialUser }: NavbarProps) {
 
   React.useEffect(() => {
     if (initialUser != null) {
-      setUser(initialUser);
+      setUser((prev) => (prev?.id === initialUser.id ? prev : initialUser));
       return;
     }
     if (currentUser) {
-      setUser({ id: currentUser.id });
+      setUser((prev) =>
+        prev?.id === currentUser.id ? prev : { id: currentUser.id },
+      );
     }
   }, [initialUser, currentUser]);
 

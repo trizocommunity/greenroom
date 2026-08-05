@@ -224,8 +224,14 @@ export default async function AllProgrammesPage({
           where: and(
             eq(assignmentTable.festivalId, festival.id),
             inArray(assignmentTable.programmeId, individualProgrammeIds),
-            eq(participantTable.groupId, participant.groupId),
             isNotNull(assignmentTable.participantId),
+            inArray(
+              assignmentTable.participantId,
+              db
+                .select({ id: participantTable.id })
+                .from(participantTable)
+                .where(eq(participantTable.groupId, participant.groupId))
+            )
           ),
           with: {
             participant: {

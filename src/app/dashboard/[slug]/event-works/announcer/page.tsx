@@ -5,6 +5,7 @@ import type { Tier } from "@/core/types/app-enums";
 import {
   getAnnouncerQueue,
   getNextResultNumber,
+  getPublishedResults,
 } from "@/features/announcement/services/announcer.service";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
@@ -40,9 +41,10 @@ export default async function AnnouncerPage({
   );
   if (!canUse) notFound();
 
-  const [queue, nextNumber] = await Promise.all([
+  const [queue, nextNumber, publishedResults] = await Promise.all([
     getAnnouncerQueue(festival.id),
     getNextResultNumber(festival.id),
+    getPublishedResults(festival.id),
   ]);
 
   return (
@@ -60,6 +62,7 @@ export default async function AnnouncerPage({
         festivalSlug={slug}
         queue={queue}
         nextResultNumber={nextNumber}
+        publishedResults={publishedResults}
       />
     </div>
   );

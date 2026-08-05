@@ -512,6 +512,7 @@ export function ResultsConsoleClient({
                     <TableHeader className="bg-muted/30">
                       <TableRow>
                         <TableHead className="w-12">SI</TableHead>
+                        <TableHead className="w-16">Code</TableHead>
                         <TableHead>Participant</TableHead>
                         <TableHead>Group</TableHead>
                         <TableHead className="w-16">Grade</TableHead>
@@ -535,6 +536,9 @@ export function ResultsConsoleClient({
                           >
                             <TableCell className="text-muted-foreground">
                               {idx + 1}
+                            </TableCell>
+                            <TableCell className="font-mono">
+                              {r.codeLetter ?? "—"}
                             </TableCell>
                             <TableCell className="font-medium">
                               {r.participantName ?? "—"}

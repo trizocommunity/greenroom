@@ -78,6 +78,7 @@ export async function getAnnouncerQueue(
       assignmentId: programmeAssignment.id,
       individualParticipantName: participantTable.name,
       individualChestNumber: participantTable.chestNumber,
+      participantId: programmeAssignment.participantId,
     })
     .from(resultTable)
     .innerJoin(
@@ -149,16 +150,39 @@ export async function getAnnouncerQueue(
     columns: { programmeId: true, code: true },
     with: {
       programmeCodeLetterRecipients: {
-        columns: { participantId: true },
+        columns: { participantId: true, assignmentMemberId: true },
       },
     },
   });
 
-  const participantCodeMap = new Map<string, string>();
+  const assignmentIds = results.map((r) => r.assignmentId);
+  const assignmentMembers =
+    assignmentIds.length > 0
+      ? await db.query.programmeAssignmentMember.findMany({
+          where: inArray(programmeAssignmentMember.assignmentId, assignmentIds),
+          columns: { id: true, assignmentId: true },
+        })
+      : [];
+
+  const assignmentCodeMap = new Map<string, string>();
   for (const cl of codeLetters) {
-    for (const r of cl.programmeCodeLetterRecipients ?? []) {
-      if (r.participantId) {
-        participantCodeMap.set(`${cl.programmeId}:${r.participantId}`, cl.code);
+    const recipient = cl.programmeCodeLetterRecipients[0];
+    if (recipient) {
+      let assignmentId: string | undefined;
+      if (recipient.assignmentMemberId) {
+        assignmentId = assignmentMembers.find(
+          (m) => m.id === recipient.assignmentMemberId,
+        )?.assignmentId;
+      }
+      if (!assignmentId && recipient.participantId) {
+        assignmentId = results.find(
+          (r) =>
+            r.programmeId === cl.programmeId &&
+            r.participantId === recipient.participantId,
+        )?.assignmentId;
+      }
+      if (assignmentId) {
+        assignmentCodeMap.set(assignmentId, cl.code);
       }
     }
   }
@@ -218,7 +242,7 @@ export async function getAnnouncerQueue(
             chestNumber: display?.chestNumber ?? null,
             groupName: r.groupName,
             teamNumber: r.teamNumber,
-            codeLetter: null as string | null,
+            codeLetter: assignmentCodeMap.get(r.assignmentId) ?? null,
             awardPoints: r.awardPoints ?? 0,
           };
         }),
@@ -282,6 +306,7 @@ export type PublishedResultProgramme = {
     chestNumber: string | null;
     groupName: string | null;
     teamNumber: number | null;
+    codeLetter: string | null;
     awardPoints: number;
   }[];
 };
@@ -422,6 +447,7 @@ export async function getPublishedResults(
           chestNumber: display?.chestNumber ?? null,
           groupName: r.groupName,
           teamNumber: r.teamNumber,
+          codeLetter: null,
           awardPoints: r.awardPoints ?? 0,
         };
       }),
