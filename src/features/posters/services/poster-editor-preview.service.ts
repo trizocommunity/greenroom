@@ -13,7 +13,6 @@ import {
 import { parseInstant } from "@/core/datetime";
 import { serverNow } from "@/core/datetime/server";
 import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
-import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import {
   buildCandidateCardBindings,
   buildCertificateBindings,
@@ -29,6 +28,7 @@ import {
   type EditorPreviewBindingsPayload,
 } from "@/features/posters/services/poster-editor-preview-placeholders";
 import type { PosterTemplateType } from "@/features/posters/types/poster-template.types";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 
 export type { EditorPreviewBindingsPayload };
 
@@ -101,11 +101,10 @@ async function categoryNameFromFirstProgramme(
   participantId: string,
   festivalId: string,
 ): Promise<string | null> {
-  const enrolled =
-    await ProgrammeMembershipService.getProgrammesForParticipant(
-      participantId,
-      festivalId,
-    );
+  const enrolled = await ProgrammeMembershipService.getProgrammesForParticipant(
+    participantId,
+    festivalId,
+  );
   enrolled.sort((a, b) => a.programme.name.localeCompare(b.programme.name));
   const firstProgramme = enrolled[0];
   if (!firstProgramme) return null;

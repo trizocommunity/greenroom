@@ -1,10 +1,10 @@
 import { and, asc, count, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  category as categoryTable,
-  participant as participantTable,
   programmeAssignmentMember as assignmentMemberTable,
   programmeAssignment as assignmentTable,
+  category as categoryTable,
+  participant as participantTable,
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
   result as resultTable,
@@ -249,9 +249,8 @@ export async function getPublicTopResults(
 
   const out: PublicResult[] = [];
   const winnerAssignmentIds = winners.map((w) => w.assignmentId);
-  const displayByAssignment = await loadTeamDisplayByAssignment(
-    winnerAssignmentIds,
-  );
+  const displayByAssignment =
+    await loadTeamDisplayByAssignment(winnerAssignmentIds);
   for (const rows of byProgramme.values()) {
     const programme = rows[0].programme;
     const mapped = toProgrammeResults(
@@ -309,9 +308,7 @@ function toProgrammeResults(
       const display = assignment
         ? displayByAssignment.get(assignment.id)
         : undefined;
-      winner = display?.name
-        ? `${display.name} and team`
-        : "Team";
+      winner = display?.name ? `${display.name} and team` : "Team";
       chestNo = display?.chestNumber ?? null;
     } else {
       winner = assignment?.participant?.name || "Unknown";
@@ -348,9 +345,7 @@ function toProgrammeResults(
 
 async function loadTeamDisplayByAssignment(
   assignmentIds: string[],
-): Promise<
-  Map<string, { name: string | null; chestNumber: string | null }>
-> {
+): Promise<Map<string, { name: string | null; chestNumber: string | null }>> {
   const map = new Map<
     string,
     { name: string | null; chestNumber: string | null }
@@ -395,7 +390,9 @@ async function loadTeamDisplayByAssignment(
   }
 
   const leadPids = Array.from(new Set(leadRows.map((l) => l.participantId)));
-  const memberPids = Array.from(new Set(memberRows.map((m) => m.participantId)));
+  const memberPids = Array.from(
+    new Set(memberRows.map((m) => m.participantId)),
+  );
   const pids = Array.from(new Set([...leadPids, ...memberPids]));
 
   const participants = await db

@@ -367,7 +367,10 @@ export async function upsertScoringPolicyActionData(input: {
         positionPoints3rd: Math.round(input.positionPoints3rd),
         gradeRules: normalizedGradeRules,
         createdByName:
-          actorUser?.displayName || actorUser?.fullName || actorUser?.email || null,
+          actorUser?.displayName ||
+          actorUser?.fullName ||
+          actorUser?.email ||
+          null,
         createdByEmail: actorUser?.email || null,
         createdAt: now,
         updatedAt: now,

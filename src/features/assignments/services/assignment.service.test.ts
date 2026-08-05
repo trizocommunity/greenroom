@@ -44,7 +44,10 @@ function installProgramme(programme: any) {
 beforeEach(() => {
   vi.clearAllMocks();
   txMock.programmeById = new Map<string, any>();
-  txMock.assignmentInsertCalls = [] as Array<{ values: unknown; result: unknown }>;
+  txMock.assignmentInsertCalls = [] as Array<{
+    values: unknown;
+    result: unknown;
+  }>;
   txMock.memberInsertCalls = [] as Array<{ values: unknown }>;
 
   txMock.programmeFindFirst = vi.fn(async ({ where }: any) => {
@@ -92,8 +95,10 @@ beforeEach(() => {
 
   txMock.select = () => chainReturning([]);
   txMock.insert = (table: { _tableName?: string }) => {
-    if (table?._tableName === "programme_assignment") return txMock.assignmentInsert(table);
-    if (table?._tableName === "programme_assignment_member") return txMock.memberInsert(table);
+    if (table?._tableName === "programme_assignment")
+      return txMock.assignmentInsert(table);
+    if (table?._tableName === "programme_assignment_member")
+      return txMock.memberInsert(table);
     return chainReturning([]);
   };
   txMock.delete = () => chainReturning([]);
@@ -134,12 +139,15 @@ vi.mock("@/features/plan-features/services/tier", () => ({
   isProTier: (...args: unknown[]) => mockIsProTier(...args),
 }));
 
-vi.mock("@/features/programme-team-leads/services/programme-team-lead.service", () => ({
-  ProgrammeTeamLeadService: {
-    appointTeamLead: (...args: unknown[]) =>
-      mockProgrammeTeamLeadAppoint(...args),
-  },
-}));
+vi.mock(
+  "@/features/programme-team-leads/services/programme-team-lead.service",
+  () => ({
+    ProgrammeTeamLeadService: {
+      appointTeamLead: (...args: unknown[]) =>
+        mockProgrammeTeamLeadAppoint(...args),
+    },
+  }),
+);
 
 vi.mock("@/features/programmes/services/programme-status.service", () => ({
   updateProgrammeStatus: (...args: unknown[]) =>
@@ -147,10 +155,13 @@ vi.mock("@/features/programmes/services/programme-status.service", () => ({
   assertProgrammePreReporting: vi.fn(),
 }));
 
-vi.mock("@/features/festivals/services/festival-lifecycle-policy.service", () => ({
-  assertFestivalMutationAllowed: (...args: unknown[]) =>
-    mockAssertFestivalMutationAllowed(...args),
-}));
+vi.mock(
+  "@/features/festivals/services/festival-lifecycle-policy.service",
+  () => ({
+    assertFestivalMutationAllowed: (...args: unknown[]) =>
+      mockAssertFestivalMutationAllowed(...args),
+  }),
+);
 
 vi.mock("@/core/auth/assert-festival-access", () => ({
   assertFestivalAccess: vi.fn(),
@@ -209,7 +220,6 @@ function setParticipants(p: any[]) {
   txMock.participantFindMany.mockResolvedValue(p);
 }
 
-
 describe("AssignmentService.bulkCreate dispatch (XOR shapes)", () => {
   it("INDIVIDUAL programme + legacy rows writes one assignment per row with participantId", async () => {
     setProgramme(PROGRAMME_INDIVIDUAL);
@@ -243,7 +253,9 @@ describe("AssignmentService.bulkCreate dispatch (XOR shapes)", () => {
           participantIds: ["p-1"],
         },
       ]),
-    ).rejects.toThrow(/INDIVIDUAL programme assignments must reference a participant/);
+    ).rejects.toThrow(
+      /INDIVIDUAL programme assignments must reference a participant/,
+    );
   });
 
   it("GROUP programme + new-shape row creates one assignment + member rows", async () => {
@@ -336,7 +348,9 @@ describe("AssignmentService.bulkCreate dispatch (XOR shapes)", () => {
       AssignmentService.bulkCreate(FESTIVAL_ID, [
         { programmeId: PROGRAMME_GROUP.id, participantId: "p-1" },
       ]),
-    ).rejects.toThrow(/GROUP programme assignment requires participant\.groupId/);
+    ).rejects.toThrow(
+      /GROUP programme assignment requires participant\.groupId/,
+    );
   });
 
   it("Mixed batch (INDIVIDUAL + GROUP programmes in one call) dispatches each correctly", async () => {
@@ -344,16 +358,14 @@ describe("AssignmentService.bulkCreate dispatch (XOR shapes)", () => {
       [PROGRAMME_INDIVIDUAL.id, PROGRAMME_INDIVIDUAL],
       [PROGRAMME_GROUP.id, PROGRAMME_GROUP],
     ]);
-    txMock.programmeFindFirst.mockImplementation(
-      async (args: any) => {
-        // Use util.inspect to safely stringify Drizzle AST objects
-        const str = require("util").inspect(args?.where || {}, { depth: 5 });
-        if (str.includes(PROGRAMME_GROUP.id)) {
-          return PROGRAMME_GROUP;
-        }
-        return PROGRAMME_INDIVIDUAL;
-      },
-    );
+    txMock.programmeFindFirst.mockImplementation(async (args: any) => {
+      // Use util.inspect to safely stringify Drizzle AST objects
+      const str = require("util").inspect(args?.where || {}, { depth: 5 });
+      if (str.includes(PROGRAMME_GROUP.id)) {
+        return PROGRAMME_GROUP;
+      }
+      return PROGRAMME_INDIVIDUAL;
+    });
     txMock.query.programme.findFirst = txMock.programmeFindFirst;
     setParticipants([
       makeParticipant("p-1"),

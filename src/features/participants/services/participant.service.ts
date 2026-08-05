@@ -83,17 +83,20 @@ export const ParticipantService = {
     await UsageCounterService.incrementUsage(festivalId, "participants", 1, tx);
 
     // 4. Create (no profileSlug yet — set after we have id)
-    const created = await createParticipant({
-      festivalId,
-      groupId: data.groupId,
-      categoryId: data.categoryId,
-      name: normalizedName,
-      gender: data.gender ?? "MALE",
-      email: data.email || undefined,
-      phone: data.phone,
-      dateOfBirth: data.dateOfBirth,
-      standard: data.standard,
-    }, tx);
+    const created = await createParticipant(
+      {
+        festivalId,
+        groupId: data.groupId,
+        categoryId: data.categoryId,
+        name: normalizedName,
+        gender: data.gender ?? "MALE",
+        email: data.email || undefined,
+        phone: data.phone,
+        dateOfBirth: data.dateOfBirth,
+        standard: data.standard,
+      },
+      tx,
+    );
 
     // 5. Set unique profileSlug for public URL /{festivalSlug}/{profileSlug}
     let profileSlug = generateProfileSlug(

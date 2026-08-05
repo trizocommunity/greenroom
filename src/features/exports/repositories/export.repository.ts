@@ -48,7 +48,10 @@ export async function createExport(
       config: input.config,
       createdBy: input.createdBy,
       createdByName:
-        actorUser?.displayName || actorUser?.fullName || actorUser?.email || null,
+        actorUser?.displayName ||
+        actorUser?.fullName ||
+        actorUser?.email ||
+        null,
       createdByEmail: actorUser?.email || null,
       queuedAt: queuedAtIso,
       expiresAt,

@@ -4,8 +4,8 @@ import { and, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
   programmeNotification as notificationTable,
   participant as participantTable,
   programmeReportingSession as prsTable,

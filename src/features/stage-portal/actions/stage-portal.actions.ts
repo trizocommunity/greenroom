@@ -100,7 +100,7 @@ export async function getStagePortalLoginAction(input: {
   try {
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
-  } catch(e) {}
+  } catch (e) {}
   return { success: true as const };
 }
 
@@ -109,6 +109,6 @@ export async function logoutStagePortalAction() {
   try {
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
-  } catch(e) {}
+  } catch (e) {}
   return { success: true as const };
 }

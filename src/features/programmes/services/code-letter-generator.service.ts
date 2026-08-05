@@ -177,7 +177,10 @@ export const CodeLetterGeneratorService = {
       }
 
       // 2. Group by team
-      type TeamBucket = { participantIds: Set<string>; teamAssignmentId: string | null };
+      type TeamBucket = {
+        participantIds: Set<string>;
+        teamAssignmentId: string | null;
+      };
       const byTeam = new Map<string, TeamBucket>();
 
       for (const row of reportedParticipants) {
@@ -190,7 +193,10 @@ export const CodeLetterGeneratorService = {
             : `legacy:${row.participantId}`;
         let bucket = byTeam.get(teamKey);
         if (!bucket) {
-          bucket = { participantIds: new Set<string>(), teamAssignmentId: null };
+          bucket = {
+            participantIds: new Set<string>(),
+            teamAssignmentId: null,
+          };
           byTeam.set(teamKey, bucket);
         }
         if (row.participantId) bucket.participantIds.add(row.participantId);

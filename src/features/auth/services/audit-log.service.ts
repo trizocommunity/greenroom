@@ -4,7 +4,12 @@ import { db } from "@/core/database/client";
 import { auditLog, user as users } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 
-type AuditAction =
+/**
+ * Audit log actions. Exported so other modules (e.g. Better Auth
+ * `after` hooks in `src/core/auth/better-auth/auth.ts`) can pass typed
+ * values into `createAuditLog`.
+ */
+export type AuditAction =
   | "DELETE_FESTIVAL"
   | "UPDATE_USER"
   | "DELETE_FESTIVAL_ADMIN"
@@ -39,7 +44,14 @@ type AuditAction =
   | "PUBLISH_RESULTS"
   | "ANNOUNCE_RESULTS"
   | "EXPIRE_FESTIVAL"
-  | "REPLACE_FESTIVAL_LIFECYCLE";
+  | "REPLACE_FESTIVAL_LIFECYCLE"
+  | "SIGN_IN_MAGIC_LINK"
+  | "SIGN_IN_GOOGLE"
+  | "LINK_GOOGLE_ACCOUNT"
+  | "ENABLE_2FA"
+  | "DISABLE_2FA"
+  | "VERIFY_2FA"
+  | "REGENERATE_BACKUP_CODES";
 
 type TargetType =
   | "FESTIVAL"

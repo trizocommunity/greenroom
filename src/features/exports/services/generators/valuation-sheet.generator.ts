@@ -65,10 +65,7 @@ export async function generateValuationSheet(
     const enrolled =
       await ProgrammeMembershipService.getParticipantsForProgramme(programmeId);
     for (const row of enrolled) {
-      if (
-        config.gender !== "ALL" &&
-        row.participant.gender !== config.gender
-      )
+      if (config.gender !== "ALL" && row.participant.gender !== config.gender)
         continue;
       enrolledRows.push({
         programmeId,

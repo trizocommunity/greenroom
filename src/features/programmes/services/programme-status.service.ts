@@ -1,6 +1,5 @@
 import { and, count, desc, eq, inArray, max, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { AppError } from "@/core/errors/errors";
 import {
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
@@ -13,6 +12,7 @@ import {
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+import { AppError } from "@/core/errors/errors";
 import {
   getResolvedTier,
   isBasicTier,
@@ -40,7 +40,12 @@ export function getEventWorksMinimumStatus(tier: Tier): ProgrammeStatus {
 
 function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
   return tier === "BASIC"
-    ? new Set<ProgrammeStatus>(["ASSIGNED", "PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"])
+    ? new Set<ProgrammeStatus>([
+        "ASSIGNED",
+        "PENDING_PUBLICATION",
+        "PUBLISHED",
+        "ANNOUNCED",
+      ])
     : new Set<ProgrammeStatus>([
         "SCHEDULED",
         "REPORTING",
@@ -48,17 +53,14 @@ function getAllowedEventWorksStatuses(tier: Tier): Set<ProgrammeStatus> {
         "JUDGING",
         "PENDING_PUBLICATION",
         "PUBLISHED",
-        "ANNOUNCED"
+        "ANNOUNCED",
       ]);
 }
 
 /**
  * Returns true if the given programme status is allowed in Event Works for the tier.
  */
-export function isProgrammeInEventWorks(
-  status: string,
-  tier: Tier,
-): boolean {
+export function isProgrammeInEventWorks(status: string, tier: Tier): boolean {
   return getAllowedEventWorksStatuses(tier).has(status as ProgrammeStatus);
 }
 
@@ -440,7 +442,9 @@ export function assertProgrammePreReporting(status: ProgrammeStatus) {
       "CANCELLED",
     ].includes(status)
   ) {
-    throw new AppError("Programme is locked for modification because reporting or judging has already started.");
+    throw new AppError(
+      "Programme is locked for modification because reporting or judging has already started.",
+    );
   }
 }
 

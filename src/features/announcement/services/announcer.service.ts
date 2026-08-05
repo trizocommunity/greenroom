@@ -84,7 +84,10 @@ export async function getAnnouncerQueue(
       programmeAssignment,
       eq(resultTable.assignmentId, programmeAssignment.id),
     )
-    .leftJoin(participantTable, eq(programmeAssignment.participantId, participantTable.id))
+    .leftJoin(
+      participantTable,
+      eq(programmeAssignment.participantId, participantTable.id),
+    )
     .leftJoin(
       groupTable,
       or(
@@ -100,7 +103,9 @@ export async function getAnnouncerQueue(
   const groupTeamKeys = new Set<string>();
   for (const r of results) {
     if (r.groupName != null) {
-      groupTeamKeys.add(`${r.programmeId}:${r.groupName}:${r.teamNumber ?? "-"}`);
+      groupTeamKeys.add(
+        `${r.programmeId}:${r.groupName}:${r.teamNumber ?? "-"}`,
+      );
     }
   }
 
@@ -111,7 +116,10 @@ export async function getAnnouncerQueue(
     results.map((r) => r.assignmentId),
   );
 
-  const displayByAssignment = new Map<string, { name: string | null; chestNumber: string | null; isTeamLeader: boolean }>();
+  const displayByAssignment = new Map<
+    string,
+    { name: string | null; chestNumber: string | null; isTeamLeader: boolean }
+  >();
   for (const r of results) {
     const lead = leadByAssignment.get(r.assignmentId);
     if (lead) {
@@ -150,10 +158,7 @@ export async function getAnnouncerQueue(
   for (const cl of codeLetters) {
     for (const r of cl.programmeCodeLetterRecipients ?? []) {
       if (r.participantId) {
-        participantCodeMap.set(
-          `${cl.programmeId}:${r.participantId}`,
-          cl.code,
-        );
+        participantCodeMap.set(`${cl.programmeId}:${r.participantId}`, cl.code);
       }
     }
   }
@@ -175,12 +180,11 @@ export async function getAnnouncerQueue(
 
       let finalResults = progResults;
       if (p.type === "GROUP") {
-        const teamMap = new Map<string, typeof progResults[0]>();
+        const teamMap = new Map<string, (typeof progResults)[0]>();
         for (const r of progResults) {
           const key = `${r.groupName ?? ""}:${r.teamNumber ?? ""}`;
           const display = displayByAssignment.get(r.assignmentId);
-          const prefer =
-            !teamMap.has(key) || (display?.isTeamLeader ?? false);
+          const prefer = !teamMap.has(key) || (display?.isTeamLeader ?? false);
           if (prefer) {
             teamMap.set(key, r);
           }
@@ -203,7 +207,7 @@ export async function getAnnouncerQueue(
               ? display?.name
                 ? `${display.name} and team`
                 : "Team"
-              : display?.name ?? null;
+              : (display?.name ?? null);
           return {
             id: r.id,
             position: r.position,
@@ -224,9 +228,7 @@ export async function getAnnouncerQueue(
 
 async function loadTeamLeadsForAssignments(
   assignmentIds: string[],
-): Promise<
-  Map<string, { name: string | null; chestNumber: string | null }>
-> {
+): Promise<Map<string, { name: string | null; chestNumber: string | null }>> {
   const map = new Map<
     string,
     { name: string | null; chestNumber: string | null }
@@ -318,7 +320,10 @@ export async function getPublishedResults(
       programmeAssignment,
       eq(resultTable.assignmentId, programmeAssignment.id),
     )
-    .leftJoin(participantTable, eq(programmeAssignment.participantId, participantTable.id))
+    .leftJoin(
+      participantTable,
+      eq(programmeAssignment.participantId, participantTable.id),
+    )
     .leftJoin(
       groupTable,
       or(
@@ -382,12 +387,11 @@ export async function getPublishedResults(
 
     let finalResults = progResults;
     if (p.type === "GROUP") {
-      const teamMap = new Map<string, typeof progResults[0]>();
+      const teamMap = new Map<string, (typeof progResults)[0]>();
       for (const r of progResults) {
         const key = `${r.groupName ?? ""}:${r.teamNumber ?? ""}`;
         const display = displayByAssignment.get(r.assignmentId);
-        const prefer =
-          !teamMap.has(key) || (display?.isTeamLeader ?? false);
+        const prefer = !teamMap.has(key) || (display?.isTeamLeader ?? false);
         if (prefer) teamMap.set(key, r);
       }
       finalResults = Array.from(teamMap.values());
@@ -408,7 +412,7 @@ export async function getPublishedResults(
             ? display?.name
               ? `${display.name} and team`
               : "Team"
-            : display?.name ?? null;
+            : (display?.name ?? null);
         return {
           id: r.id,
           position: r.position,
@@ -457,11 +461,11 @@ export async function computeStandings(
         programmeAssignment,
         eq(resultTable.assignmentId, programmeAssignment.id),
       )
-      .innerJoin(
-        programmeTable,
-        eq(resultTable.programmeId, programmeTable.id),
+      .innerJoin(programmeTable, eq(resultTable.programmeId, programmeTable.id))
+      .leftJoin(
+        participantTable,
+        eq(programmeAssignment.participantId, participantTable.id),
       )
-      .leftJoin(participantTable, eq(programmeAssignment.participantId, participantTable.id))
       .leftJoin(
         groupTable,
         or(
@@ -514,9 +518,7 @@ export async function computeStandings(
     }));
 }
 
-export async function getNextResultNumber(
-  festivalId: string,
-): Promise<number> {
+export async function getNextResultNumber(festivalId: string): Promise<number> {
   const result = await db
     .select({ maxNum: sql<number>`MAX(${programmeTable.resultNumber})` })
     .from(programmeTable)
@@ -555,9 +557,7 @@ export async function getStandingsContext(festivalId: string) {
 
 async function loadFirstMemberDisplay(
   assignmentIds: string[],
-): Promise<
-  Map<string, { name: string | null; chestNumber: string | null }>
-> {
+): Promise<Map<string, { name: string | null; chestNumber: string | null }>> {
   const map = new Map<
     string,
     { name: string | null; chestNumber: string | null }
@@ -601,8 +601,8 @@ export async function getProgrammeStatusCounts(festivalId: string) {
     .where(
       and(
         eq(programmeTable.festivalId, festivalId),
-        sql`${programmeTable.status} != 'CANCELLED'`
-      )
+        sql`${programmeTable.status} != 'CANCELLED'`,
+      ),
     )
     .groupBy(programmeTable.status);
 

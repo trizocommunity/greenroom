@@ -5,12 +5,12 @@ import {
   category as categories,
   festival as festivals,
   group as groups,
+  judge as judges,
   participant as participants,
   programmeAssignment,
   programme as programmes,
   result as results,
   stage as stages,
-  judge as judges,
 } from "@/core/database/schema";
 import { isAfter, parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
@@ -307,13 +307,19 @@ export async function getDashboardOverviewData(festivalId: string) {
       .select({ c: count() })
       .from(programmes)
       .where(
-        and(eq(programmes.festivalId, festivalId), eq(programmes.status, "PENDING_JUDGMENT")),
+        and(
+          eq(programmes.festivalId, festivalId),
+          eq(programmes.status, "PENDING_JUDGMENT"),
+        ),
       ),
     db
       .select({ c: count() })
       .from(programmes)
       .where(
-        and(eq(programmes.festivalId, festivalId), eq(programmes.status, "PUBLISHED")),
+        and(
+          eq(programmes.festivalId, festivalId),
+          eq(programmes.status, "PUBLISHED"),
+        ),
       ),
     db
       .select({

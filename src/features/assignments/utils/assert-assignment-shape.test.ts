@@ -39,14 +39,18 @@ describe("assertAssignmentShape", () => {
           groupId: "g1",
         }),
       );
-      expect(msg).toBe(ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT);
+      expect(msg).toBe(
+        ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT,
+      );
     });
 
     it("throws when participantId is missing", () => {
       const msg = caughtMessage(() =>
         assertAssignmentShape("INDIVIDUAL", { groupId: null }),
       );
-      expect(msg).toBe(ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT);
+      expect(msg).toBe(
+        ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT,
+      );
     });
   });
 

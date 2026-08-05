@@ -129,7 +129,9 @@ vi.mock("@/features/schedule/utils/festival-schedule-days", () => ({
 }));
 
 vi.mock("@/features/stages/services/judge-stage-assignment.service", () => ({
-  JudgeStageAssignmentService: { listForFestival: vi.fn().mockResolvedValue([]) },
+  JudgeStageAssignmentService: {
+    listForFestival: vi.fn().mockResolvedValue([]),
+  },
 }));
 
 vi.mock("@/features/stages/services/stage-assignment.service", () => ({

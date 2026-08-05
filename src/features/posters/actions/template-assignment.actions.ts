@@ -15,8 +15,8 @@ import {
   getFestivalContext,
 } from "@/features/festivals/services/festival-context.service";
 import { canManageTemplates } from "@/features/posters/auth/poster-access";
-import * as AssignmentRepo from "@/features/posters/repositories/template-assignment.repository";
 import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
+import * as AssignmentRepo from "@/features/posters/repositories/template-assignment.repository";
 import type {
   AssignmentKind,
   TemplateAssignment,
@@ -80,7 +80,10 @@ export async function upsertResultRangeAction(
       input.templateCode,
     );
     if (!template || template.status !== "PUBLISHED") {
-      return { success: false, error: "Only published templates can be assigned" };
+      return {
+        success: false,
+        error: "Only published templates can be assigned",
+      };
     }
 
     const id = input.id ?? randomUUID();
@@ -91,7 +94,10 @@ export async function upsertResultRangeAction(
       input.id,
     );
     if (overlapping) {
-      return { success: false, error: "Result number range overlaps with an existing assignment" };
+      return {
+        success: false,
+        error: "Result number range overlaps with an existing assignment",
+      };
     }
 
     await AssignmentRepo.upsertAssignment({
@@ -127,7 +133,10 @@ export async function upsertCertificateTypeAction(
       input.templateCode,
     );
     if (!template || template.status !== "PUBLISHED") {
-      return { success: false, error: "Only published templates can be assigned" };
+      return {
+        success: false,
+        error: "Only published templates can be assigned",
+      };
     }
 
     const existing = await AssignmentRepo.listByKind(
@@ -170,7 +179,10 @@ export async function upsertSingleAssignmentAction(
       input.templateCode,
     );
     if (!template || template.status !== "PUBLISHED") {
-      return { success: false, error: "Only published templates can be assigned" };
+      return {
+        success: false,
+        error: "Only published templates can be assigned",
+      };
     }
 
     const existing = await AssignmentRepo.listByKind(

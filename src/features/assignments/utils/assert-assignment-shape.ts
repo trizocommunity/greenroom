@@ -1,5 +1,5 @@
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { ProgrammeType } from "@/core/types/app-enums";
+import type { ProgrammeType } from "@/core/types/app-enums";
 
 export interface AssignmentShape {
   participantId?: string | null;
@@ -13,10 +13,14 @@ export function assertAssignmentShape(
 ): void {
   if (programmeType === "INDIVIDUAL") {
     if (row.groupId) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT);
+      throw new AppError(
+        ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT,
+      );
     }
     if (!row.participantId) {
-      throw new AppError(ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT);
+      throw new AppError(
+        ERROR_MESSAGES.ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT,
+      );
     }
     return;
   }

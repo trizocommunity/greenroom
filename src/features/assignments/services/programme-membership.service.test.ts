@@ -44,7 +44,9 @@ vi.mock("@/core/database/client", () => ({
   db: {
     select: () => chain(),
     query: {
-      programme: { findMany: (...args: unknown[]) => state.programmeFindMany(...args) },
+      programme: {
+        findMany: (...args: unknown[]) => state.programmeFindMany(...args),
+      },
     },
   },
 }));
@@ -54,7 +56,9 @@ import { ProgrammeMembershipService } from "./programme-membership.service";
 const FESTIVAL_ID = "fest-1";
 const PARTICIPANT_ID = "p-1";
 
-function makeProgramme(overrides: Partial<{ id: string; categoryId: string }> = {}) {
+function makeProgramme(
+  overrides: Partial<{ id: string; categoryId: string }> = {},
+) {
   return {
     id: overrides.id ?? "prog-1",
     festivalId: FESTIVAL_ID,
@@ -319,9 +323,8 @@ describe("ProgrammeMembershipService.getParticipantsForProgramme", () => {
       [],
       [],
     ];
-    const result = await ProgrammeMembershipService.getParticipantsForProgramme(
-      "prog-1",
-    );
+    const result =
+      await ProgrammeMembershipService.getParticipantsForProgramme("prog-1");
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       participantId: "p-1",
@@ -350,9 +353,8 @@ describe("ProgrammeMembershipService.getParticipantsForProgramme", () => {
       ],
       [],
     ];
-    const result = await ProgrammeMembershipService.getParticipantsForProgramme(
-      "prog-1",
-    );
+    const result =
+      await ProgrammeMembershipService.getParticipantsForProgramme("prog-1");
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       participantId: "p-1",
@@ -385,9 +387,8 @@ describe("ProgrammeMembershipService.getParticipantsForProgramme", () => {
         },
       ],
     ];
-    const result = await ProgrammeMembershipService.getParticipantsForProgramme(
-      "prog-1",
-    );
+    const result =
+      await ProgrammeMembershipService.getParticipantsForProgramme("prog-1");
     expect(result[0].isTeamLeader).toBe(true);
   });
 
@@ -416,17 +417,15 @@ describe("ProgrammeMembershipService.getParticipantsForProgramme", () => {
       ],
       [],
     ];
-    const result = await ProgrammeMembershipService.getParticipantsForProgramme(
-      "prog-1",
-    );
+    const result =
+      await ProgrammeMembershipService.getParticipantsForProgramme("prog-1");
     expect(result.map((r) => r.participantId).sort()).toEqual(["p-1", "p-2"]);
   });
 
   it("returns empty when no participants are enrolled", async () => {
     state.selectResults = [[], [], []];
-    const result = await ProgrammeMembershipService.getParticipantsForProgramme(
-      "prog-1",
-    );
+    const result =
+      await ProgrammeMembershipService.getParticipantsForProgramme("prog-1");
     expect(result).toEqual([]);
   });
 });

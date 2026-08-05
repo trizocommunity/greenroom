@@ -9,7 +9,6 @@ import {
   programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
-import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
@@ -17,6 +16,7 @@ import { assertAnnouncerAccess } from "@/features/announcement/actions/announcem
 import { computeStandings } from "@/features/announcement/services/announcer.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
+import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 
 function revalidateAnnouncerPaths(slug: string) {
   revalidatePath(`/dashboard/${slug}`);

@@ -167,15 +167,17 @@ export async function bulkCreateProgrammesAction(
 
   try {
     const result = await ProgrammeService.bulkCreate(festivalId, formatted);
-    
+
     const festival = await db.query.festival.findFirst({
       where: eq(festivalTable.id, festivalId),
-      columns: { slug: true }
+      columns: { slug: true },
     });
     if (festival) {
       try {
         const { revalidatePath } = await import("next/cache");
-        revalidatePath(`/dashboard/${festival.slug}/pre-event-works/programmes`);
+        revalidatePath(
+          `/dashboard/${festival.slug}/pre-event-works/programmes`,
+        );
       } catch (err) {}
     }
 

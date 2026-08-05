@@ -16,8 +16,8 @@ import {
 } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import type { BulkAssignmentInput } from "@/features/assignments/services/assignment.service";
+import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { resolveDeadlineWindow } from "@/features/festivals/services/deadline-window";

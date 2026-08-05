@@ -29,8 +29,8 @@ export function buildResultPosterBindings(
     resultNo:
       input.resultNumber != null
         ? String(input.resultNumber)
-        : (input.programmeResultCode?.trim() ||
-          String(input.winners[0]?.position ?? "")),
+        : input.programmeResultCode?.trim() ||
+          String(input.winners[0]?.position ?? ""),
   };
 
   const sorted = [...input.winners].sort((a, b) => a.position - b.position);

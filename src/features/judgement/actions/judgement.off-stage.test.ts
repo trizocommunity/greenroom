@@ -30,7 +30,8 @@ vi.mock("@/core/auth/session", () => ({
 }));
 
 vi.mock("@/core/auth/assert-festival-access", () => ({
-  assertFestivalAccess: (...args: unknown[]) => mockAssertFestivalAccess(...args),
+  assertFestivalAccess: (...args: unknown[]) =>
+    mockAssertFestivalAccess(...args),
 }));
 
 vi.mock("@/core/database/client", () => {
@@ -56,16 +57,28 @@ vi.mock("@/core/database/client", () => {
     insert: vi.fn(chain),
     update: vi.fn(chain),
     select: vi.fn(() => ({ from: vi.fn(chain) })),
+    // insertLiveJudgementConfig looks up the actor (displayName / email)
+    // to write `createdByName` + `createdByEmail` on the new config row.
+    // Return null so the code falls back to the actorName it already
+    // computed from the stage-manager assertion.
+    query: {
+      user: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    },
   };
   return {
     db: {
       select: vi.fn(() => ({ from: vi.fn(chain) })),
       update: vi.fn(() => chain()),
       insert: vi.fn(() => chain()),
-      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx)),
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn(tx),
+      ),
       query: {
         programmeReportingSession: {
-          findFirst: (...args: unknown[]) => mockReportingSessionFindFirst(...args),
+          findFirst: (...args: unknown[]) =>
+            mockReportingSessionFindFirst(...args),
         },
         programme: {
           findFirst: (...args: unknown[]) => mockProgrammeFindFirst(...args),

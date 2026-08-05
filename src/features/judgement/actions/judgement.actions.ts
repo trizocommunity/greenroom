@@ -12,8 +12,8 @@ import {
   inArray,
   notInArray,
   or,
-  sql,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
@@ -21,8 +21,8 @@ import { getSession } from "@/core/auth/session";
 import { getStagePortalSessionFromCookie } from "@/core/auth/stage-portal-session";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
   programmeCodeLetter as codeLetterTable,
   festival as festivalTable,
   judgementConfigJudge as judgementConfigJudgeTable,
@@ -47,12 +47,12 @@ import {
 } from "@/features/judgement/services/scoring-policy.service";
 import { listFestivalJudgesWithAssignments } from "@/features/judges/repositories/judge.repository";
 import { getStageIdForReportingSession } from "@/features/programmes/actions/programme-reporting.actions";
-import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import { assertStageManagerAccessForStage } from "@/features/programmes/actions/reporting-access";
 import {
-  updateProgrammeStatus,
   assertProgrammePrePublishing,
+  updateProgrammeStatus,
 } from "@/features/programmes/services/programme-status.service";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import { calculatePosition } from "@/features/results/services/results-calculator";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
@@ -911,7 +911,10 @@ async function insertLiveJudgementConfig(input: {
       startedAt: now,
       startedBy: input.startedBy,
       createdByName:
-        actorUser?.displayName || actorUser?.fullName || actorUser?.email || null,
+        actorUser?.displayName ||
+        actorUser?.fullName ||
+        actorUser?.email ||
+        null,
       createdByEmail: actorUser?.email || null,
       createdAt: now,
       updatedAt: now,
@@ -2123,12 +2126,12 @@ export async function saveScoringPolicyAction(input: {
 export async function forceCompleteJudgementAction(configId: string) {
   const session = await getSession();
   if (!session) throw new AppError("Unauthorized", "UNAUTHORIZED");
-  
+
   const config = await db.query.judgementConfig.findFirst({
     where: eq(judgementConfigTable.id, configId),
   });
   if (!config) throw new AppError("Judgement config not found.");
-  
+
   await assertFestivalAccess(session, config.festivalId, {
     requireWritable: true,
   });
@@ -2138,7 +2141,7 @@ export async function forceCompleteJudgementAction(configId: string) {
   }
 
   const now = serverNowIso();
-  
+
   await db
     .update(judgementConfigTable)
     .set({

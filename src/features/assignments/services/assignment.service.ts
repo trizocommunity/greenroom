@@ -17,14 +17,16 @@ import {
   findAssignmentsByProgramme,
 } from "@/features/assignments/repositories/assignment.repository";
 import { assertAssignmentShape } from "@/features/assignments/utils/assert-assignment-shape";
-import { assertProgrammePreReporting } from "@/features/programmes/services/programme-status.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantById } from "@/features/participants/repositories/participant.repository";
 import { isProTier } from "@/features/plan-features/services/tier";
 import type { TeamLeadAppointerRole } from "@/features/programme-team-leads/services/programme-team-lead.service";
 import { ProgrammeTeamLeadService } from "@/features/programme-team-leads/services/programme-team-lead.service";
 import { findProgrammeById } from "@/features/programmes/repositories/programme.repository";
-import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import {
+  assertProgrammePreReporting,
+  updateProgrammeStatus,
+} from "@/features/programmes/services/programme-status.service";
 
 type BulkAssignmentRow = {
   programmeId: string;

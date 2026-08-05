@@ -160,8 +160,8 @@ async function loadKeepTablesForFestival(
           null) as "INDIVIDUAL" | "GROUP" | null;
         return t ? [a.id, t] : null;
       })
-      .filter((entry): entry is [string, "INDIVIDUAL" | "GROUP"] =>
-        entry !== null,
+      .filter(
+        (entry): entry is [string, "INDIVIDUAL" | "GROUP"] => entry !== null,
       ),
   );
 
@@ -172,8 +172,16 @@ async function loadKeepTablesForFestival(
       assignedAt: programmeAssignmentMember.assignedAt,
     })
     .from(programmeAssignmentMember)
-    .where(inArray(programmeAssignmentMember.assignmentId, assignmentsData.map((a) => a.id)));
-  const memberByAssignment = new Map<string, Array<{ participantId: string; assignedAt: string | Date }>>();
+    .where(
+      inArray(
+        programmeAssignmentMember.assignmentId,
+        assignmentsData.map((a) => a.id),
+      ),
+    );
+  const memberByAssignment = new Map<
+    string,
+    Array<{ participantId: string; assignedAt: string | Date }>
+  >();
   for (const m of memberRows) {
     const list = memberByAssignment.get(m.assignmentId) ?? [];
     list.push({ participantId: m.participantId, assignedAt: m.assignedAt });

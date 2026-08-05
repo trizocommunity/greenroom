@@ -1,11 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
+  participant as participantTable,
   programme as programmeTable,
   programmeTeamLead,
-  participant as participantTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { AppError } from "@/core/errors/errors";

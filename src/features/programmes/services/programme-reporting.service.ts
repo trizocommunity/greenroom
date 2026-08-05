@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { and, asc, count, desc, eq, exists, inArray, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
   category as categoryTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
@@ -167,9 +167,13 @@ export const ProgrammeReportingService = {
 
     if (
       session.programme?.status &&
-      !["DRAFT", "REPORTING", "PENDING_JUDGMENT"].includes(session.programme.status)
+      !["DRAFT", "REPORTING", "PENDING_JUDGMENT"].includes(
+        session.programme.status,
+      )
     ) {
-      throw new Error("Cannot restart report because judging or a further stage has already started.");
+      throw new Error(
+        "Cannot restart report because judging or a further stage has already started.",
+      );
     }
 
     const nowStr = serverNowIso();
@@ -493,9 +497,13 @@ export const ProgrammeReportingService = {
 
     if (
       session.programme?.status &&
-      !["DRAFT", "REPORTING", "PENDING_JUDGMENT"].includes(session.programme.status)
+      !["DRAFT", "REPORTING", "PENDING_JUDGMENT"].includes(
+        session.programme.status,
+      )
     ) {
-      throw new Error("Cannot reset report because judging or a further stage has already started.");
+      throw new Error(
+        "Cannot reset report because judging or a further stage has already started.",
+      );
     }
 
     const now = serverNowIso();
@@ -611,10 +619,7 @@ export const ProgrammeReportingService = {
     const now = serverNowIso();
 
     if (isReported) {
-      if (
-        session.programme.type === "GROUP" &&
-        assignment.groupId
-      ) {
+      if (session.programme.type === "GROUP" && assignment.groupId) {
         const existingTeamReport =
           await db.query.programmeReportedParticipant.findFirst({
             where: and(
@@ -746,10 +751,7 @@ export const ProgrammeReportingService = {
       const notifyIds: string[] = [];
       if (assignment.participantId) {
         notifyIds.push(assignment.participantId);
-      } else if (
-        session.programme.type === "GROUP" &&
-        assignment.groupId
-      ) {
+      } else if (session.programme.type === "GROUP" && assignment.groupId) {
         const members = await db.query.programmeAssignmentMember.findMany({
           where: eq(assignmentMemberTable.assignmentId, assignmentId),
           columns: { participantId: true },

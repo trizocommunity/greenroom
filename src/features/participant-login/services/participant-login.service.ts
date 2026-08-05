@@ -7,10 +7,7 @@ import {
 } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
 import { participantOtp, participantSession } from "@/core/database/schema";
-import {
-  dateKeyLocal,
-  wallClockToInstant,
-} from "@/core/datetime";
+import { dateKeyLocal, wallClockToInstant } from "@/core/datetime";
 import { fromNow, MS, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { sendEmail } from "@/core/integrations/email/index";
@@ -178,9 +175,7 @@ export const ParticipantLoginService = {
     });
 
     if ("error" in sendResult || "kindDisabled" in sendResult) {
-      await db
-        .delete(participantOtp)
-        .where(eq(participantOtp.id, otpId));
+      await db.delete(participantOtp).where(eq(participantOtp.id, otpId));
       throw new AppError(ERROR_MESSAGES.EMAIL_SEND_FAILED);
     }
 

@@ -1,11 +1,11 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  category,
-  programmeCodeLetter as codeLetterTable,
   programmeAssignmentMember as assignmentMemberTable,
-  programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeAssignment as assignmentTable,
+  category,
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeCodeLetter as codeLetterTable,
   festival as festivals,
   programme as programmeTable,
   programmeReportingSession as reportingSessionTable,
@@ -125,7 +125,9 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
   return programmes;
 }
 
-async function loadMemberAssignmentId(memberId: string): Promise<string | null> {
+async function loadMemberAssignmentId(
+  memberId: string,
+): Promise<string | null> {
   const row = await db.query.programmeAssignmentMember.findFirst({
     where: eq(assignmentMemberTable.id, memberId),
     columns: { assignmentId: true },

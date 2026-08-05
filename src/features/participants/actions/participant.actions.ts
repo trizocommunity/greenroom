@@ -184,17 +184,26 @@ export async function bulkCreateParticipantsAction(
   for (const participant of participants) {
     try {
       await db.transaction(async (tx) => {
-        const newParticipant = await ParticipantService.create(festivalId, {
-          name: participant.name,
-          groupId: participant.groupId,
-          categoryId: participant.categoryId,
-          email: participant.email,
-          phone: participant.phone,
-          gender: (participant.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
-          dateOfBirth: participant.dateOfBirth || "2000-01-01",
-          standard: participant.standard,
-        }, tx);
-        await assignChestNumberForNewParticipant(festivalId, newParticipant.id, tx);
+        const newParticipant = await ParticipantService.create(
+          festivalId,
+          {
+            name: participant.name,
+            groupId: participant.groupId,
+            categoryId: participant.categoryId,
+            email: participant.email,
+            phone: participant.phone,
+            gender:
+              (participant.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
+            dateOfBirth: participant.dateOfBirth || "2000-01-01",
+            standard: participant.standard,
+          },
+          tx,
+        );
+        await assignChestNumberForNewParticipant(
+          festivalId,
+          newParticipant.id,
+          tx,
+        );
       });
       successCount++;
     } catch (error: unknown) {
