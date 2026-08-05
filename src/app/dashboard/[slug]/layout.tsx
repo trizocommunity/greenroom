@@ -241,7 +241,7 @@ export default async function FestivalDashboardLayout({
                 </div>
               </header>
 
-              <main className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-8 relative">
+              <main className="flex flex-1 bg-card/50 flex-col gap-4 md:gap-6 p-4 md:p-8 relative">
                 <Suspense fallback={null}>
                   <DashboardCelebration />
                 </Suspense>

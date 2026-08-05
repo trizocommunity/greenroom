@@ -2,7 +2,7 @@
 
 ## Status
 - **Created**: 2026-07-27
-- **Status**: Approved
+- **Status**: Partial (2026-08-05 audit) — Phases 1–2 on `develop`; 3–5 on parallel branch not yet merged; 6–9 still TODO
 - **Priority**: High
 - **Complexity**: Medium-High
 - **Target tier**: PRO (graceful degradation on STANDARD and BASIC)

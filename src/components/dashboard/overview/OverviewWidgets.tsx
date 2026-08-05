@@ -175,7 +175,7 @@ export default async function OverviewWidgets({
   ];
 
   const categoryChartData = overviewData.participantsByCategory
-    .filter(d => d.type !== 'GENERAL')
+    .filter((d) => d.type !== "GENERAL")
     .map((d, i) => ({
       name: d.name,
       count: d.count,

@@ -2,7 +2,7 @@
 
 ## Status
 - **Created**: 2026-08-01
-- **Status**: Draft
+- **Status**: Partial (2026-08-05 audit) — §1 Festival Lifecycle shipped (commit `147d4b3`); §2 Exports foundation mostly done (ExportsClient + 5/7 generators); §3 Templates partial
 - **Priority**: High
 - **Complexity**: High
 - **Blocks**: any future retention / pruning work; any STANDARD/PRO read-only-window feature; further export types beyond Badge + Certificate
