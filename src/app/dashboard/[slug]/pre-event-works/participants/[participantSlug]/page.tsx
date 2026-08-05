@@ -65,7 +65,7 @@ async function ParticipantProfileContent({
         ...participant,
         createdAt: parseInstant(participant.createdAt) ?? new Date(NaN),
         updatedAt: parseInstant(participant.updatedAt) ?? new Date(NaN),
-        assignments: participant.assignments ?? [],
+        assignedProgrammes: participant.assignedProgrammes ?? [],
       }}
       festivalId={festival.id}
       festivalSlug={festival.slug}

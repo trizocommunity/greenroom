@@ -163,7 +163,7 @@ export default async function ParticipantMainPage({
   >();
   const assignmentIdByProgrammeId = new Map<string, string>();
 
-  for (const a of participant.assignments ?? []) {
+  for (const a of participant.assignedProgrammes ?? []) {
     const p = a.programme;
     const pid = a.programmeId ?? p?.id;
     if (!pid || !p?.status) continue;
@@ -171,12 +171,12 @@ export default async function ParticipantMainPage({
       programmeById.set(pid, {
         programmeId: pid,
         name: p.name,
-        categoryName: (p as any).category?.name ?? null,
+        categoryName: p.category?.name ?? null,
         status: p.status as ProgrammeStatus,
         programmeType: p.type,
       });
     }
-    assignmentIdByProgrammeId.set(pid, a.id);
+    assignmentIdByProgrammeId.set(pid, a.assignmentId);
   }
 
   const assignedProgrammes = Array.from(programmeById.values()).sort(

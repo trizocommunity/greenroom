@@ -2,6 +2,7 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { participant as participants } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 
 export async function createParticipant(
   data: Omit<typeof participants.$inferInsert, "id" | "updatedAt"> & {
@@ -52,7 +53,7 @@ export async function findParticipantByFestivalAndProfileSlug(
   festivalId: string,
   profileSlug: string,
 ) {
-  return db.query.participant.findFirst({
+  const base = await db.query.participant.findFirst({
     where: and(
       eq(participants.festivalId, festivalId),
       eq(participants.profileSlug, profileSlug),
@@ -67,6 +68,13 @@ export async function findParticipantByFestivalAndProfileSlug(
       },
     },
   });
+  if (!base) return null;
+  const assignedProgrammes =
+    await ProgrammeMembershipService.getProgrammesForParticipant(
+      base.id,
+      base.festivalId,
+    );
+  return { ...base, assignedProgrammes };
 }
 
 export async function findParticipantsByFestival(

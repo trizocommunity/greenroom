@@ -82,7 +82,7 @@ export default async function ParticipantLayout({
     effectiveFeatures: undefined,
   } as any;
 
-  const statuses: ProgrammeStatus[] = (participant.assignments ?? [])
+  const statuses: ProgrammeStatus[] = (participant.assignedProgrammes ?? [])
     .map((a: any) => a.programme?.status)
     .filter(Boolean);
 
