@@ -1,6 +1,6 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
 import { useQuery } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -646,7 +646,7 @@ export function ProgrammeDialog({
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="STAGE">On Stage</SelectItem>
-                            <SelectItem value="OFF_STAGE">Off Stage</SelectItem>
+                            <SelectItem value="NON_STAGE">Off Stage</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
