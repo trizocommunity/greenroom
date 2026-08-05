@@ -35,5 +35,4 @@ describe("creator-columns Integration", () => {
       expect(newStage.createdByName).toBe(fixture.owner.displayName);
       expect(newStage.createdByEmail).toBe(fixture.owner.email);
     }));
-
 });

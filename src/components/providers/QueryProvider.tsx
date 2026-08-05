@@ -9,6 +9,7 @@ import {
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useState } from "react";
 import { toast } from "@/lib/toast";
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return "Something went wrong. Please try again.";

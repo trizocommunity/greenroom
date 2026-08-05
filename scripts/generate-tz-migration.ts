@@ -10,8 +10,8 @@
  */
 
 import "dotenv/config";
-import { Client } from "pg";
 import { writeFileSync } from "node:fs";
+import { Client } from "pg";
 
 interface ColumnInfo {
   table_name: string;
@@ -92,8 +92,8 @@ async function main() {
   // 3. Re-affirm the DEFAULT CURRENT_TIMESTAMP where it was set, because
   //    changing the column type drops the default in some PG versions.
   for (const [tableName, columns] of byTable) {
-    const defaulted = columns.filter(
-      (c) => c.column_default?.toLowerCase().includes("current_timestamp"),
+    const defaulted = columns.filter((c) =>
+      c.column_default?.toLowerCase().includes("current_timestamp"),
     );
     if (defaulted.length === 0) continue;
     lines.push(
@@ -103,8 +103,7 @@ async function main() {
           (c) =>
             `  ALTER COLUMN ${quoteIdent(c.column_name)} SET DEFAULT CURRENT_TIMESTAMP`,
         )
-        .join(",\n") +
-        `;`,
+        .join(",\n") + `;`,
       ``,
     );
   }
@@ -142,7 +141,9 @@ async function main() {
   const sql = lines.join("\n");
   const outPath = "drizzle/0027_convert_to_timestamptz_and_add_timezones.sql";
   writeFileSync(outPath, sql, "utf8");
-  console.log(`Wrote ${outPath} (${rows.length} columns across ${byTable.size} tables).`);
+  console.log(
+    `Wrote ${outPath} (${rows.length} columns across ${byTable.size} tables).`,
+  );
 
   await client.end();
 }

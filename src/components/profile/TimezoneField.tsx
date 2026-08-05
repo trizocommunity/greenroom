@@ -3,11 +3,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "@/lib/toast";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useProfile, useUpdateProfile } from "@/api/client/profile";
 import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/lib/toast";
 
 interface TimezoneFieldProps {
   initialTimezone?: string | null;

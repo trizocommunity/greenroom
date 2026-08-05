@@ -4,7 +4,6 @@ import axios from "axios";
 import { Loader2, Pencil } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toast } from "@/lib/toast";
 import { useUpdateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-picker";
@@ -24,6 +23,7 @@ import { getFestivalDurationDays } from "@/config/pricing";
 import { toDateOrNull } from "@/core/datetime";
 import { MS } from "@/core/datetime/constants";
 import { slugify } from "@/core/utils/slug";
+import { toast } from "@/lib/toast";
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 

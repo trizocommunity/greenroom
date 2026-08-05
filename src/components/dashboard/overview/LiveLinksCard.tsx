@@ -1,7 +1,6 @@
 "use client";
 
 import { Copy, ExternalLink, Gavel, Globe, UserRound } from "lucide-react";
-import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "@/lib/toast";
 
 type LinkRow = {
   key: string;

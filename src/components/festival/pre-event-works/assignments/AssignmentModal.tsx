@@ -15,7 +15,6 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "@/lib/toast";
 import { useBulkCreateAssignments } from "@/api/client/assignments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/core/utils/cn";
 import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
+import { toast } from "@/lib/toast";
 
 interface AssignmentModalProps {
   festivalId: string;

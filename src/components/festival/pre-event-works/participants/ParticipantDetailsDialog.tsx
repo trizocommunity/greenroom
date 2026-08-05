@@ -46,7 +46,8 @@ export function ParticipantDetailsDialog({
 
   const participantAssignments = assignments.filter(
     (a: any) =>
-      a.participant?.id === participant.id || a.participantId === participant.id,
+      a.participant?.id === participant.id ||
+      a.participantId === participant.id,
   );
 
   const isControlled = controlledOpen !== undefined;

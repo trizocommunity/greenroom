@@ -61,7 +61,9 @@ export async function createProgrammes(
   for (const cat of categories) {
     const templates = PROGRAMMES_BY_CATEGORY[cat.name];
     if (!templates?.length) {
-      throw new Error(`No programme seed data configured for category ${cat.name}`);
+      throw new Error(
+        `No programme seed data configured for category ${cat.name}`,
+      );
     }
 
     for (const tmpl of templates) {

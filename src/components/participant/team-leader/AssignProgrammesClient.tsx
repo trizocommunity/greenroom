@@ -13,7 +13,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "@/lib/toast";
 import {
   useAssignments,
   useBulkCreateAssignments,
@@ -48,6 +47,7 @@ import type {
 import { cn } from "@/core/utils/cn";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
+import { toast } from "@/lib/toast";
 
 type ProgrammeForAssignment = {
   id: string;

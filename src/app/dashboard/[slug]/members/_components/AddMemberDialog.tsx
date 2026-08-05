@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "@/lib/toast";
 import { useStages } from "@/api/client/stages";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
@@ -37,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useCreateInvitation } from "@/features/invitation/hooks/use-invitations";
+import { toast } from "@/lib/toast";
 import { type InviteMemberFormValues, InviteMemberSchema } from "./types";
 
 interface AddMemberDialogProps {

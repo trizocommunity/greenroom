@@ -32,6 +32,12 @@ export type EmailKind =
       expiresInMinutes?: number;
     }
   | {
+      kind: "two_factor_otp";
+      otp: string;
+      email: string;
+      expiresInMinutes?: number;
+    }
+  | {
       kind: "festival_expiring_soon";
       festivalName: string;
       daysRemaining: number;
@@ -59,6 +65,7 @@ export const EMAIL_KINDS = [
   "magic_link",
   "festival_invitation",
   "team_leader_otp",
+  "two_factor_otp",
   "festival_expiring_soon",
 ] as const;
 
@@ -85,6 +92,11 @@ export const EMAIL_KIND_META: Record<
     label: "Team-leader OTP",
     description:
       "One-time code sent to a team leader signing in to the stage portal.",
+  },
+  two_factor_otp: {
+    label: "Two-factor verification code",
+    description:
+      "One-time code sent to a user with 2FA enabled after they pass the first sign-in factor.",
   },
   festival_expiring_soon: {
     label: "Festival expiring soon",

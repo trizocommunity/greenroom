@@ -3,7 +3,6 @@
 import { Loader2, Power } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -14,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { toast } from "@/lib/toast";
 
 type Item = {
   kind: string;

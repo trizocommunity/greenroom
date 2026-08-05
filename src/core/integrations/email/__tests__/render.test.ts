@@ -25,9 +25,7 @@ describe("renderEmail — magic_link", () => {
     expect(result.html).toContain("Copy link");
     expect(result.html).toContain("Share via email");
     // mailto: subject + URL pre-filled, encoded
-    expect(result.html).toContain(
-      "mailto:?subject=Greenroom%20sign-in%20link",
-    );
+    expect(result.html).toContain("mailto:?subject=Greenroom%20sign-in%20link");
     expect(result.html).toContain(encodeURIComponent("login/verify/abc123"));
     // Full URL appears as selectable text inside the styled block (not just href)
     expect(result.html).toContain("https://");
@@ -143,5 +141,30 @@ describe("renderEmail — festival_expiring_soon", () => {
     });
     expect(result.subject).toBe("[Greenroom] X expires in 1 day");
     expect(result.html).toContain("1 day"); // singular, not "1 days"
+  });
+});
+
+describe("renderEmail — two_factor_otp", () => {
+  it("renders dark theme with OTP code prominent + email address", async () => {
+    const result = await renderEmail({
+      kind: "two_factor_otp",
+      otp: "847201",
+      email: "alice@example.com",
+    });
+    expect(result.subject).toBe("[Greenroom] Your sign-in verification code");
+    expect(result.html).toContain("847201");
+    expect(result.html).toContain("alice@example.com");
+    expect(result.html).toContain("rgb(11,14,20)"); // dark canvas
+    expect(result.text).toContain("847201");
+  });
+
+  it("respects expiresInMinutes override", async () => {
+    const result = await renderEmail({
+      kind: "two_factor_otp",
+      otp: "123456",
+      email: "alice@example.com",
+      expiresInMinutes: 10,
+    });
+    expect(result.html).toContain("10 minutes");
   });
 });

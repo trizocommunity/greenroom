@@ -6,7 +6,6 @@ import { programme as programmeTable } from "@/core/database/schema";
 // We'll assume the action is exported from `@/features/programmes/actions/programme.actions` or similar.
 import { bulkCreateProgrammesAction } from "@/features/programmes/actions/programme.actions";
 import { buildFestivalWithBothShapes } from "./fixtures/festival";
-import { getDb } from "./setup";
 import { withTransaction } from "./with-transaction";
 
 describe("bulkCreateProgrammesAction Integration", () => {
@@ -131,5 +130,4 @@ describe("bulkCreateProgrammesAction Integration", () => {
         .from(programmeTable)
         .where(eq(programmeTable.festivalId, fixture.festival.id));
     }));
-
 });

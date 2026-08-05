@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toast } from "@/lib/toast";
 import { useRequestAccess, useVerifyParticipantOtp } from "@/api/client";
 import { ErrorScopeProvider, InlineError } from "@/components/errors";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import {
   readParticipantSessionMeta,
   writeParticipantSessionMeta,
 } from "@/lib/participant-session-storage";
+import { toast } from "@/lib/toast";
 
 export function ParticipantLoginClient({
   festivalSlug,

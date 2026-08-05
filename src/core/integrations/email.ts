@@ -25,10 +25,11 @@ import { sendEmail } from "./email/index";
 export async function sendMagicLinkEmail(
   to: string,
   token: string,
+  expiresInMinutes?: number,
 ): Promise<void> {
   await sendEmail({
     to,
-    kind: { kind: "magic_link", token },
+    kind: { kind: "magic_link", token, expiresInMinutes },
   });
 }
 

@@ -23,7 +23,7 @@ export default async function SettingsPage({
   params: Promise<{ slug: string }>;
 }) {
   const session = await getSession();
-  if (!session?.userId) redirect("/auth/login");
+  if (!session?.userId) redirect("/login");
 
   const { slug } = await params;
   const festival = await findFestivalBySlug(slug);

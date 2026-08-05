@@ -18,14 +18,14 @@
  *   (run with DATABASE_URL pointing at a restored production copy first)
  */
 
-import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   programmeAssignment,
   programmeAssignmentMember,
-  programme as programmeTable,
   programmeReportedParticipant,
+  programme as programmeTable,
   result,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
@@ -54,10 +54,7 @@ async function main() {
     const groupRows = rows.filter((r) => r.groupId != null);
     if (groupRows.length === 0) continue;
 
-    const teams = new Map<
-      string,
-      AssignmentRow[]
-    >();
+    const teams = new Map<string, AssignmentRow[]>();
     for (const r of groupRows) {
       const key = `${r.groupId}:${r.teamNumber ?? 1}`;
       const arr = teams.get(key) ?? [];
@@ -75,13 +72,9 @@ async function main() {
           participantId: programmeAssignmentMember.participantId,
         })
         .from(programmeAssignmentMember)
-        .where(
-          eq(programmeAssignmentMember.assignmentId, survivor.id),
-        );
+        .where(eq(programmeAssignmentMember.assignmentId, survivor.id));
 
-      const seenPids = new Set(
-        existingMembers.map((m) => m.participantId),
-      );
+      const seenPids = new Set(existingMembers.map((m) => m.participantId));
       for (const r of members) {
         if (r.participantId && !seenPids.has(r.participantId)) {
           await db.insert(programmeAssignmentMember).values({

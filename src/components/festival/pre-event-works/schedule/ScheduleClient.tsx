@@ -14,27 +14,21 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "@/lib/toast";
 import {
   useCreateScheduleItem,
   useDeleteScheduleItem,
   useUpdateScheduleItem,
 } from "@/api/client/schedule";
-import { ScheduleCalendarView, type CalendarGroupBy } from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
+import {
+  type CalendarGroupBy,
+  ScheduleCalendarView,
+} from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +37,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -64,20 +66,21 @@ import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type ConflictParts,
-  type EnrichedScheduleEntry,
-  type SchedulableProgramme,
   checkScheduleConflict,
   clearScheduleEntries,
+  type EnrichedScheduleEntry,
   getScheduleEntriesEnriched,
+  type SchedulableProgramme,
 } from "@/features/schedule/actions/schedule.actions";
-import {
-  localWallClockToDate,
-  parseStoredScheduleInstant,
-} from "@/features/schedule/utils/schedule-datetime";
 import {
   calculateProgrammeDuration,
   getEndTimeFromDuration,
 } from "@/features/schedule/utils/programme-duration";
+import {
+  localWallClockToDate,
+  parseStoredScheduleInstant,
+} from "@/features/schedule/utils/schedule-datetime";
+import { toast } from "@/lib/toast";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -171,15 +174,16 @@ export function ScheduleClient({
   }, [festivalId]);
 
   // Grouped by day
-  const groupedByDay = entries.reduce<
-    Record<string, EnrichedScheduleEntry[]>
-  >((acc, entry) => {
-    const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
-    if (!key) return acc;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(entry);
-    return acc;
-  }, {});
+  const groupedByDay = entries.reduce<Record<string, EnrichedScheduleEntry[]>>(
+    (acc, entry) => {
+      const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
+      if (!key) return acc;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(entry);
+      return acc;
+    },
+    {},
+  );
 
   const sortedDays = Object.keys(groupedByDay).sort();
   const effectiveActiveDay =
@@ -415,7 +419,6 @@ export function ScheduleClient({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-
             {viewMode === "calendar" && (
               <Popover>
                 <PopoverTrigger asChild>
@@ -475,21 +478,25 @@ export function ScheduleClient({
                     </div>
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t">
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Start Time</Label>
-                        <Input 
-                          type="time" 
-                          value={timelineStart} 
-                          onChange={(e) => setTimelineStart(e.target.value)} 
-                          className="h-8 text-xs" 
+                        <Label className="text-xs text-muted-foreground">
+                          Start Time
+                        </Label>
+                        <Input
+                          type="time"
+                          value={timelineStart}
+                          onChange={(e) => setTimelineStart(e.target.value)}
+                          className="h-8 text-xs"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">End Time</Label>
-                        <Input 
-                          type="time" 
-                          value={timelineEnd} 
-                          onChange={(e) => setTimelineEnd(e.target.value)} 
-                          className="h-8 text-xs" 
+                        <Label className="text-xs text-muted-foreground">
+                          End Time
+                        </Label>
+                        <Input
+                          type="time"
+                          value={timelineEnd}
+                          onChange={(e) => setTimelineEnd(e.target.value)}
+                          className="h-8 text-xs"
                         />
                       </div>
                     </div>
@@ -515,38 +522,40 @@ export function ScheduleClient({
       </div>
 
       {/* Day tabs for calendar view (date grouping only) */}
-      {viewMode === "calendar" && groupBy === "date" && sortedDays.length > 0 && (
-        <div
-          className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto gap-2 border-b border-border pb-3"
-          role="tablist"
-        >
-          {sortedDays.map((dayKey, index) => {
-            const dayCount = groupedByDay[dayKey].length;
-            const isActive = effectiveActiveDay === dayKey;
-            return (
-              <button
-                key={dayKey}
-                ref={(node) => {
-                  dayTabRefs.current[dayKey] = node;
-                }}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActiveDayKey(dayKey)}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 snap-center",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                Day {index + 1}
-                <span className="ml-2 opacity-80">({dayCount})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {viewMode === "calendar" &&
+        groupBy === "date" &&
+        sortedDays.length > 0 && (
+          <div
+            className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto gap-2 border-b border-border pb-3"
+            role="tablist"
+          >
+            {sortedDays.map((dayKey, index) => {
+              const dayCount = groupedByDay[dayKey].length;
+              const isActive = effectiveActiveDay === dayKey;
+              return (
+                <button
+                  key={dayKey}
+                  ref={(node) => {
+                    dayTabRefs.current[dayKey] = node;
+                  }}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveDayKey(dayKey)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 snap-center",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  Day {index + 1}
+                  <span className="ml-2 opacity-80">({dayCount})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
       {/* Empty state */}
       {entries.length === 0 ? (
@@ -846,13 +855,7 @@ function AddEntryDialog({
     if (!Number.isNaN(endDate.getTime())) {
       setEndTimeStr(format(endDate, "HH:mm"));
     }
-  }, [
-    autoEndTime,
-    entryType,
-    selectedProgramme,
-    dateStr,
-    startTimeStr,
-  ]);
+  }, [autoEndTime, entryType, selectedProgramme, dateStr, startTimeStr]);
 
   // Conflict check
   useEffect(() => {
@@ -1049,8 +1052,10 @@ function AddEntryDialog({
                         const dur = calculateProgrammeDuration({
                           type: selectedProgramme.type,
                           durationMode: selectedProgramme.durationMode,
-                          timePerUnitMinutes: selectedProgramme.timePerUnitMinutes,
-                          parallelDurationMinutes: selectedProgramme.parallelDurationMinutes,
+                          timePerUnitMinutes:
+                            selectedProgramme.timePerUnitMinutes,
+                          parallelDurationMinutes:
+                            selectedProgramme.parallelDurationMinutes,
                           unitCount:
                             selectedProgramme.type === "GROUP"
                               ? selectedProgramme.teamCount

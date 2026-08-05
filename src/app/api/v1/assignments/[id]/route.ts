@@ -31,7 +31,7 @@ export const PUT = async (
     try {
       const { revalidatePath } = await import("next/cache");
       revalidatePath("/", "layout");
-    } catch(e) {}
+    } catch (e) {}
     return ok(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

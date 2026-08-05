@@ -5,7 +5,6 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "@/lib/toast";
 import { z } from "zod";
 import { useUpdateProfile } from "@/api/client/profile";
 import { Button } from "@/components/ui/button";
@@ -33,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "@/lib/toast";
 
 const updateProfileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),

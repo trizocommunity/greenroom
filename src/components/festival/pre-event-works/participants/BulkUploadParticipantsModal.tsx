@@ -1,16 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { queryKeys } from "@/api/client/_query-keys";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/api/client/_query-keys";
 import { useValidateParticipants } from "@/api/client/participants";
-import { bulkCreateParticipantsAction } from "@/features/participants/actions/participant.actions";
 import {
   BulkUploadFlow,
   type ParsedItem,
@@ -33,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { bulkCreateParticipantsAction } from "@/features/participants/actions/participant.actions";
 
 // --- Types & Schema ---
 
@@ -336,7 +336,7 @@ export function BulkUploadParticipantsModal({
 
     const result = await bulkCreateParticipantsAction(
       festivalId,
-      participantsToCreate
+      participantsToCreate,
     );
 
     qc.invalidateQueries({ queryKey: queryKeys.participants.all(festivalId) });

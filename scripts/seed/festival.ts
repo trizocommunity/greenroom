@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
+import { TIER_CONFIG } from "../../src/config/pricing";
 import { generateId } from "../../src/core/database/ids";
 import * as schema from "../../src/core/database/schema";
-import { TIER_CONFIG } from "../../src/config/pricing";
 import {
   expiresAtFromCreatedAt,
   FESTIVAL,
@@ -79,7 +79,8 @@ export async function createFestival(
     updatedAt: createdAt,
   });
 
-  const offsetNote = dayOffset > 0 ? ` (shifted back ${dayOffset}d via SEED_DAY_OFFSET)` : "";
+  const offsetNote =
+    dayOffset > 0 ? ` (shifted back ${dayOffset}d via SEED_DAY_OFFSET)` : "";
   console.log(
     `👑 Created Pro Tier Festival — createdAt=${createdAt}, expiresAt=${expiresAt}${offsetNote}`,
   );

@@ -3,7 +3,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Settings2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +33,7 @@ import {
   saveChestNumberSettings,
   updateAllChestNumbers,
 } from "@/features/participants/actions/chest-number.actions";
+import { toast } from "@/lib/toast";
 
 type CategoryItem = { id: string; name: string };
 

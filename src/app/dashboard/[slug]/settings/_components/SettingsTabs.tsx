@@ -147,7 +147,6 @@ export function SettingsTabs({
           />
         )}
 
-
         {currentTab === "festival-live" && canManageFestivalLive && (
           <FestivalLiveClient
             festivalId={festival.id}

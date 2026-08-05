@@ -229,7 +229,8 @@ export function EditorTemplatesPanel({
                 {meta.emoji} {meta.title}
               </span>
               <span className="text-[10px] font-normal text-muted-foreground">
-                {groupedDb[meta.type].length} server, {grouped[meta.type].length} local
+                {groupedDb[meta.type].length} server,{" "}
+                {grouped[meta.type].length} local
               </span>
             </TabsTrigger>
           ))}
@@ -282,7 +283,9 @@ export function EditorTemplatesPanel({
                     item={item}
                     isActive={searchParams.get("code") === item.code}
                     onLoad={() => {
-                      const newParams = new URLSearchParams(searchParams.toString());
+                      const newParams = new URLSearchParams(
+                        searchParams.toString(),
+                      );
                       newParams.set("code", item.code);
                       router.push(`${pathname}?${newParams.toString()}`);
                       if (window.innerWidth < 1024) {
@@ -307,7 +310,8 @@ export function EditorTemplatesPanel({
                   />
                 ))}
 
-                {groupedDb[meta.type].length === 0 && grouped[meta.type].length === 0 ? (
+                {groupedDb[meta.type].length === 0 &&
+                grouped[meta.type].length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
                     <FileImage className="mx-auto h-8 w-8 text-muted-foreground/50" />
                     <p className="mt-2 text-sm font-medium">

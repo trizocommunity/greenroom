@@ -10,9 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import { useRemoveMember } from "@/api/client/members";
-import { updateMemberRolesAction } from "@/features/members/actions/member.actions";
 import {
   useAssignStageManager,
   useStageAssignments,
@@ -30,6 +28,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate, parseInstant } from "@/core/datetime";
+import { updateMemberRolesAction } from "@/features/members/actions/member.actions";
+import { toast } from "@/lib/toast";
 import { MemberDetailsDialog } from "./MemberDetailsDialog";
 import type { Member } from "./types";
 
@@ -111,7 +111,11 @@ export function MemberCard({
   const handleSaveRoles = async (roles: string[]) => {
     setIsSaving(true);
     try {
-      const result = await updateMemberRolesAction(festivalId, member.id, roles);
+      const result = await updateMemberRolesAction(
+        festivalId,
+        member.id,
+        roles,
+      );
       if (!result.success) {
         toast.error((result as any).error?.message || "Failed to update roles");
         return;

@@ -10,6 +10,7 @@ export const verboseHealthCheckResponse = z.object({
   status: z.string(),
   timestamp: z.string(),
   checks: z.record(
+    z.string(),
     z.object({
       status: z.string(),
       latency: z.number().optional(),

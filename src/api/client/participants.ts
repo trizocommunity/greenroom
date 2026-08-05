@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/lib/toast";
 import type {
   BulkCreateParticipantInput,
   CreateParticipantInput,
@@ -12,6 +11,7 @@ import type {
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { STALE_TIME } from "@/lib/query-utils";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "./_query-keys";
 
 export function useParticipants(festivalId: string) {
@@ -167,10 +167,9 @@ export function useValidateParticipants() {
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<
         ApiResponse<ValidateParticipantsResponse>
-      >(
-        `/participants/validate?festivalId=${encodeURIComponent(festivalId)}`,
-        { data },
-      );
+      >(`/participants/validate?festivalId=${encodeURIComponent(festivalId)}`, {
+        data,
+      });
       return handleApiResponse(response.data);
     },
   });

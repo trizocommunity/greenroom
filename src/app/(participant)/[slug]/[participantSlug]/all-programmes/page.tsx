@@ -1,15 +1,25 @@
-import { and, asc, desc, eq, inArray, isNotNull, not, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  not,
+  or,
+  sql,
+} from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { APP_CONTAINER, AppPageHeader } from "@/components/app/AppSection";
 import { AllProgrammesClient } from "@/components/participant/team-leader/AllProgrammesClient";
 import { requireParticipantAuth } from "@/core/auth/participant-guard";
 import { db } from "@/core/database/client";
 import {
-  participant as participantTable,
   programmeAssignment as assignmentTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
   group as groupTable,
+  participant as participantTable,
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
   programmeReportedParticipant as reportedParticipantTable,
@@ -381,7 +391,9 @@ export default async function AllProgrammesPage({
               for (const m of a.members ?? []) {
                 if (!m?.participant) continue;
                 if (
-                  teamBucket.members.some((mm: any) => mm.id === m.participant.id)
+                  teamBucket.members.some(
+                    (mm: any) => mm.id === m.participant.id,
+                  )
                 )
                   continue;
                 teamBucket.members.push({

@@ -3,12 +3,12 @@
 ## Status
 
 - **Created**: 2026-08-05
-- **Status**: In Progress — PR 1 + PR 2 + PR 3 complete, PR 4 pending
+- **Status**: In Progress — PR 1 + PR 2 + PR 3 + PR 4 complete; passkeys + orgs deferred to a follow-up issue
 - **Priority**: High
 - **Complexity**: High
 - **Target**: Production
-- **Phasing**: 4 PRs
-- **Blocks**: 2FA / passkeys / organizations (per roadmap)
+- **Phasing**: 4 PRs (2FA shipped; passkeys + organizations deferred)
+- **Blocks**: Passkeys / organizations (per roadmap — see Follow-ups)
 
 ## Summary
 
@@ -490,7 +490,7 @@ GOOGLE_CLIENT_SECRET=
 | 1 | Foundation (Better Auth install, schema, catch-all) | **Done** | 2026-08-05 |
 | 2 | UI switch + Google OAuth ships | **Done** | 2026-08-05 |
 | 3 | Session swap (high risk) | **Done** | 2026-08-05 |
-| 4 | 2FA / passkeys / organizations | Pending | — |
+| 4 | 2FA (TOTP + email OTP, backup codes, account lockout) | **Done** | 2026-08-05 |
 
 ### PR 1 — what shipped (2026-08-05)
 
@@ -640,6 +640,116 @@ What PR 3 does NOT change:
   they keep working because the adapter preserves the shape. A future
   PR can migrate them to Better Auth's native
   `{ user: { id, globalRole, ... } }` shape one feature at a time.
+
+---
+
+### PR 4 — what shipped (2026-08-05)
+
+Scope: **2FA only.** Passkeys and organizations were confirmed on the
+roadmap but deferred (see Follow-ups). The 2FA plugin lands TOTP
+(authenticator apps) plus email OTP as a fallback, 10 backup codes,
+and account lockout per NIST SP 800-63B §5.2.2.
+
+Code:
+- `src/core/auth/better-auth/auth.ts` — adds the `twoFactor()` plugin:
+  `issuer: "Greenroom"`, 6-digit TOTP with 30s period, email OTP with
+  5-minute validity (sent via our existing Resend sender through the
+  `sendOTP` hook — Better Auth's default just writes to the
+  `verification` table without notifying the user), 10 backup codes of
+  length 10, `allowPasswordless: true` so magic-link / Google-only users
+  can manage 2FA without a password step, and `accountLockout` (10
+  attempts, 15-minute lockout). The after-hook now writes audit entries
+  for `ENABLE_2FA` / `DISABLE_2FA` / `REGENERATE_BACKUP_CODES` /
+  `VERIFY_2FA` (covers `verify-totp`, `verify-otp`, and
+  `verify-backup-code` paths).
+- `src/core/auth/better-auth/client.ts` — adds `twoFactorClient({ twoFactorPage: "/auth/2fa" })` so the client knows to bounce 2FA-flagged sessions to the challenge page.
+- `src/app/(auth)/2fa/page.tsx` — challenge page (TOTP / OTP / backup-code tabs), driven by `TwoFactorChallengeForm`.
+- `src/components/auth/TwoFactorChallengeForm.tsx` — the form the challenge page renders.
+- `src/components/auth/TwoFactorSetup.tsx` — profile-page enable / disable / regenerate-backup-codes UI.
+- `src/components/profile/tabs/SettingsTab.tsx` — adds a "Security" section with `<TwoFactorSetup />`.
+- `src/features/auth/hooks/use-auth.ts` — exposes `twoFactorEnabled` on `CurrentUser` so the UI can decide whether to render the Security section.
+- `src/features/auth/services/audit-log.service.ts` — `AuditAction` union gains `ENABLE_2FA`, `DISABLE_2FA`, `VERIFY_2FA`, `REGENERATE_BACKUP_CODES`.
+
+Schema:
+- `drizzle/0044_better_auth_2fa.sql` — adds the `twoFactorEnabled`
+  boolean column on `user` (default `false`, not null) and the
+  `twoFactor` table (`id`, `secret`, `backupCodes`, `userId` FK,
+  `verified`, `failedVerificationCount`, `lockedUntil`). Indexed on
+  `secret` (Better Auth looks up rows by secret during TOTP verify)
+  and `userId` (per-user lookup on enable / disable).
+- `src/core/database/schema.ts` — Drizzle definitions for the new
+  column and the new table; `auth.ts` registers `twoFactorTable`
+  with the drizzle adapter so Better Auth reads/writes it correctly.
+
+Email:
+- `src/core/integrations/email/kinds/two-factor-otp.tsx` — new email
+  template (`TwoFactorOTPEmail` + `twoFactorOTPSubject`).
+- `src/core/integrations/email/types.ts` — `EmailKind` union gains the
+  `two_factor_otp` variant; `EMAIL_KINDS` and `EMAIL_KIND_META` get
+  the matching entry so the super-admin email-settings page renders a
+  toggle for it.
+- `src/core/integrations/email/render.tsx` — handles the new kind
+  (default 5-minute expiry, dark theme).
+
+Tests:
+- `src/core/auth/better-auth/auth.test.ts` — surface test asserts the
+  `twoFactor` endpoints exist (`enableTwoFactor`, `disableTwoFactor`,
+  `verifyTotp`, etc.).
+- `src/core/auth/better-auth/client.test.ts` — surface test asserts
+  the client exposes `twoFactor`.
+- `src/core/integrations/email/__tests__/render.test.ts` —
+  `two_factor_otp` round-trip (subject, html, text).
+- `src/core/integrations/email/__tests__/send.test.ts` — updated
+  fixtures for the new kind.
+- `src/test/integration/better-auth-2fa.test.ts` — new integration
+  test against real Postgres (testcontainers). Verifies the schema
+  contract: `twoFactor` table round-trips a row with a non-trivial
+  secret and 10 backup codes, the `accountLockout` columns
+  (`failedVerificationCount`, `lockedUntil`) work, and
+  `disableTwoFactor` cleans up. Uses `asResponse: false` plus the
+  `GREENROOM_SILENT_AUTH` env to suppress the email send during the
+  `signInMagicLink` bootstrap.
+- `src/test/integration/setup.ts` — sets `BETTER_AUTH_URL` at module
+  load so the cached `ctx.baseURL` resolves. This also unblocks the
+  pre-existing magic-link integration test, which now needs only a
+  one-line fix (drop `callbackURL` from `magicLinkVerify` to dodge
+  the `ctx.redirect(...)` throw — included in this PR; see Decision
+  log below).
+
+Doc:
+- `src/core/auth/README.md` — §1 (User / admin) gains a 2FA paragraph
+  describing the flow and pointing at the setup / challenge pages.
+
+What PR 4 does NOT include (deferred):
+- **Passkeys** — confirmed on the roadmap; Better Auth's `passkey()`
+  plugin will land in a follow-up PR. No schema or config changes
+  here.
+- **Organizations** — confirmed on the roadmap; Better Auth's
+  `organization()` plugin will land in a follow-up PR, with a
+  decision on mapping against the existing `festivalMember` table
+  deferred to that PR's design.
+- **End-to-end 2FA integration test (enable → TOTP → disable)**
+  — would need to capture the `Set-Cookie` from `magicLinkVerify`
+  (via `asResponse: true` + a `getSetCookie()`-aware extractor) and
+  generate a real TOTP code from the `totpURI` secret Better Auth
+  returns. Out of scope here; the schema round-trip plus the
+  Better Auth surface tests cover the contract, and the UI flow is
+  exercised manually.
+- **Decision: magic-link redirect throw** — Better Auth's
+  `magicLinkVerify` with `callbackURL` throws `ctx.redirect(...)`.
+  The pre-existing PR 1 magic-link integration test was already
+  broken by this (verified via `git stash`); fixed in this PR by
+  dropping `callbackURL` from the verify call (matches the pattern
+  used in the new 2FA test).
+
+Follow-ups (separate issue to file):
+- Passkeys (Better Auth `passkey()` plugin + UI in `/profile`).
+- Organizations (Better Auth `organization()` plugin + decision on
+  `festivalMember` mapping).
+- End-to-end 2FA integration test (session cookie + TOTP code).
+- Drizzle migration journal: `_journal.json` is missing entries for
+  `0042`, `0043`, and `0044` (pre-existing — first observed after
+  PR 1's foundation migration; orthogonal to PR 4).
 
 ---
 

@@ -24,14 +24,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DashboardCharts } from "./DashboardCharts";
-
 import type { festival as festivalSchema } from "@/core/database/schema";
 import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
 import type { FeaturePath } from "@/features/plan-features/services/features";
 import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
 import { getEffectivePlanFeatureMatrix } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
+import { DashboardCharts } from "./DashboardCharts";
 
 interface OverviewWidgetsProps {
   festival: typeof festivalSchema.$inferSelect;

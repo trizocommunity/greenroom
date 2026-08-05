@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "@/lib/toast";
 import * as z from "zod";
 import { useMembers } from "@/api/client/members";
 import { useAssignStageManager } from "@/api/client/stage-assignments";
@@ -30,6 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/lib/toast";
 
 const StageSchema = z.object({
   name: z.string().min(1, "Stage name is required"),

@@ -2,7 +2,6 @@
 
 import { Loader2, Lock, Pencil } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -16,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateFestivalSettingsAction } from "@/features/festivals/actions/festival-crud.actions";
+import { toast } from "@/lib/toast";
 
 interface ChestNumberSettings {
   autoGenerate?: boolean;

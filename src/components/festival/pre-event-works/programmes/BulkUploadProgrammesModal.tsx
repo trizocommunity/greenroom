@@ -12,6 +12,10 @@ import {
   BulkUploadFlow,
   type ParsedItem,
 } from "@/components/common/bulk-upload/BulkUploadFlow";
+import {
+  type ParsedProgrammeData,
+  parseProgrammeRow,
+} from "@/components/festival/pre-event-works/programmes/programme-row-parser";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -33,10 +37,6 @@ import {
   bulkCreateProgrammesAction,
   validateProgrammesAction,
 } from "@/features/programmes/actions/programme.actions";
-import {
-  parseProgrammeRow,
-  type ParsedProgrammeData,
-} from "@/components/festival/pre-event-works/programmes/programme-row-parser";
 
 // --- Types & Schema ---
 
@@ -327,7 +327,10 @@ export function BulkUploadProgrammesModal({
 
   const { data: categories = [], isLoading } = useCategories(festivalId);
 
-  const parseRow = (row: unknown[], index: number): ParsedItem<ParsedProgrammeData> =>
+  const parseRow = (
+    row: unknown[],
+    index: number,
+  ): ParsedItem<ParsedProgrammeData> =>
     parseProgrammeRow(row, index, categories);
 
   const validateRows = async (

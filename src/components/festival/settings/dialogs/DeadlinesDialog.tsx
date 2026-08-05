@@ -2,7 +2,6 @@
 
 import { Loader2, Pencil } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   DateRangePicker,
@@ -20,6 +19,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { parseInstant, toDateOrNull } from "@/core/datetime";
 import { updateFestivalSettingsAction } from "@/features/festivals/actions/festival-crud.actions";
+import { toast } from "@/lib/toast";
 
 interface DeadlinesDialogProps {
   festival: {

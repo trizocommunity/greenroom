@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Cake, Loader2, Tag, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "@/lib/toast";
 import * as z from "zod";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
@@ -42,6 +41,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/core/utils/cn";
 import { validateParticipantsAction } from "@/features/participants/actions/participant.actions";
+import { toast } from "@/lib/toast";
 
 const ParticipantSchema = z.object({
   name: z.string().min(1, "Name is required"),

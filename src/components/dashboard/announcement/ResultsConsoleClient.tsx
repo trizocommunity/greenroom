@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +24,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -40,14 +47,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/core/utils/cn";
 import {
   publishStandings,
@@ -58,6 +57,7 @@ import type {
   PublishedResultProgramme,
   TeamStandingRow,
 } from "@/features/announcement/services/announcer.service";
+import { toast } from "@/lib/toast";
 
 interface ResultsConsoleClientProps {
   festivalId: string;
@@ -79,7 +79,8 @@ const STATUS_PILLS = [
     label: "Pending",
     key: "PENDING_JUDGMENT",
     dot: "bg-slate-400",
-    active: "bg-slate-500/10 text-slate-600 dark:text-slate-400 ring-slate-500/20",
+    active:
+      "bg-slate-500/10 text-slate-600 dark:text-slate-400 ring-slate-500/20",
   },
   {
     label: "In Progress",
@@ -91,7 +92,8 @@ const STATUS_PILLS = [
     label: "Submitted",
     key: "PENDING_PUBLICATION",
     dot: "bg-amber-500",
-    active: "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20",
+    active:
+      "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20",
   },
 ] as const;
 
@@ -164,7 +166,7 @@ export function ResultsConsoleClient({
     return sorted.filter(
       (p) =>
         p.name.toLowerCase().includes(lower) ||
-        (p.categoryName ?? "").toLowerCase().includes(lower)
+        (p.categoryName ?? "").toLowerCase().includes(lower),
     );
   }, [sorted, searchQuery]);
 
@@ -177,8 +179,7 @@ export function ResultsConsoleClient({
       ? published.filter(
           (p) =>
             p.resultNumber != null &&
-            p.resultNumber >
-              standingsContext.standingsPublishedAtResultNumber!,
+            p.resultNumber > standingsContext.standingsPublishedAtResultNumber!,
         ).length
       : null;
 
@@ -290,12 +291,14 @@ export function ResultsConsoleClient({
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            {newResultsSinceStandings != null && newResultsSinceStandings > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/25">
-                <Sparkles className="h-3 w-3" />
-                {newResultsSinceStandings} new result{newResultsSinceStandings > 1 ? "s" : ""}
-              </span>
-            )}
+            {newResultsSinceStandings != null &&
+              newResultsSinceStandings > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/25">
+                  <Sparkles className="h-3 w-3" />
+                  {newResultsSinceStandings} new result
+                  {newResultsSinceStandings > 1 ? "s" : ""}
+                </span>
+              )}
           </div>
 
           {filteredSorted.length === 0 ? (
@@ -312,10 +315,18 @@ export function ResultsConsoleClient({
               <Table>
                 <TableHeader className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/5">
                   <TableRow>
-                    <TableHead className="w-16 font-semibold text-foreground">#</TableHead>
-                    <TableHead className="font-semibold text-foreground">Competition</TableHead>
-                    <TableHead className="w-28 font-semibold text-foreground">Status</TableHead>
-                    <TableHead className="w-16 text-right font-semibold text-foreground">Actions</TableHead>
+                    <TableHead className="w-16 font-semibold text-foreground">
+                      #
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground">
+                      Competition
+                    </TableHead>
+                    <TableHead className="w-28 font-semibold text-foreground">
+                      Status
+                    </TableHead>
+                    <TableHead className="w-16 text-right font-semibold text-foreground">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -346,12 +357,18 @@ export function ResultsConsoleClient({
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground"
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setActiveProgramme(p)}>
+                            <DropdownMenuItem
+                              onClick={() => setActiveProgramme(p)}
+                            >
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
@@ -377,7 +394,10 @@ export function ResultsConsoleClient({
 
         {/* Section 2 — Leaderboard Sidebar */}
         <div className="lg:col-span-2">
-          <div className="border-0 ring-1 ring-emerald-500/20 rounded-xl bg-card overflow-hidden flex flex-col shadow-lg shadow-emerald-500/5" style={{ maxHeight: "calc(100vh - 200px)" }}>
+          <div
+            className="border-0 ring-1 ring-emerald-500/20 rounded-xl bg-card overflow-hidden flex flex-col shadow-lg shadow-emerald-500/5"
+            style={{ maxHeight: "calc(100vh - 200px)" }}
+          >
             <div className="p-3 border-b border-emerald-500/10 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 to-teal-500/5">
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-sm">
@@ -393,9 +413,7 @@ export function ResultsConsoleClient({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="published">
-                      Published Results
-                    </SelectItem>
+                    <SelectItem value="published">Published Results</SelectItem>
                     <SelectItem value="all">All Results</SelectItem>
                   </SelectContent>
                 </Select>
@@ -413,7 +431,9 @@ export function ResultsConsoleClient({
                     <TableRow>
                       <TableHead className="w-24 pl-4">Place</TableHead>
                       <TableHead>Group</TableHead>
-                      <TableHead className="w-24 text-right pr-4">Points</TableHead>
+                      <TableHead className="w-24 text-right pr-4">
+                        Points
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -504,8 +524,7 @@ export function ResultsConsoleClient({
                     <TableBody>
                       {activeProgramme.results
                         .sort(
-                          (a, b) =>
-                            (a.position ?? 999) - (b.position ?? 999),
+                          (a, b) => (a.position ?? 999) - (b.position ?? 999),
                         )
                         .map((r, idx) => (
                           <TableRow
@@ -564,7 +583,11 @@ export function ResultsConsoleClient({
                     </SelectTrigger>
                     <SelectContent>
                       {published
-                        .filter((p) => p.id !== activeProgramme.id && p.resultNumber != null)
+                        .filter(
+                          (p) =>
+                            p.id !== activeProgramme.id &&
+                            p.resultNumber != null,
+                        )
                         .map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             #{p.resultNumber} — {p.name}

@@ -16,7 +16,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "@/lib/toast";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useCreateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,7 @@ import {
   type CreateFestivalInput,
   createFestivalSchema,
 } from "@/features/festivals/schemas/festival.schema";
+import { toast } from "@/lib/toast";
 
 type FormData = Omit<CreateFestivalInput, "startDate" | "endDate"> & {
   startDate?: string | Date;

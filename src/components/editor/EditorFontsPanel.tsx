@@ -2,17 +2,17 @@
 
 import { Check, Search, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
+import { toast } from "@/lib/toast";
 import {
+  buildGoogleFontsCssUrl,
   documentFontsFromElements,
   type EditorFontEntry,
   FONT_CATEGORY_LABELS,
   type FontCategory,
   filterFonts,
-  buildGoogleFontsCssUrl,
 } from "./editor-font-catalog";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
@@ -37,26 +37,29 @@ function FontRow({
   onSelect: () => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
-  
+
   useEffect(() => {
     if (!font.googleFamily) return;
     const el = ref.current;
     if (!el) return;
-    
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        const id = `greenroom-editor-font-${font.id}`;
-        if (!document.getElementById(id)) {
-           const link = document.createElement("link");
-           link.id = id;
-           link.rel = "stylesheet";
-           link.href = buildGoogleFontsCssUrl([font]);
-           document.head.appendChild(link);
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          const id = `greenroom-editor-font-${font.id}`;
+          if (!document.getElementById(id)) {
+            const link = document.createElement("link");
+            link.id = id;
+            link.rel = "stylesheet";
+            link.href = buildGoogleFontsCssUrl([font]);
+            document.head.appendChild(link);
+          }
+          observer.disconnect();
         }
-        observer.disconnect();
-      }
-    }, { rootMargin: '200px' });
-    
+      },
+      { rootMargin: "200px" },
+    );
+
     observer.observe(el);
     return () => observer.disconnect();
   }, [font.googleFamily, font.id]);

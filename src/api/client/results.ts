@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/lib/toast";
 import type {
   PublishResultInput,
   Result,
@@ -8,6 +7,7 @@ import type {
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { STALE_TIME } from "@/lib/query-utils";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "./_query-keys";
 
 export function useResults(festivalId: string, programmeId?: string) {

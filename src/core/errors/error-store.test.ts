@@ -31,7 +31,10 @@ describe("errorStore", () => {
   });
 
   it("humanizes raw errors on push", () => {
-    errorStore.push({ scope: "test", err: new Error("totally raw backend thing") });
+    errorStore.push({
+      scope: "test",
+      err: new Error("totally raw backend thing"),
+    });
     expect(errorStore.getSnapshot()[0]?.message).toBe(
       "An unexpected error occurred. Please try again.",
     );

@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { toast } from "@/lib/toast";
 import { useCloudinaryUpload } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/core/utils/cn";
 import { updateFestivalBrandingAction } from "@/features/festivals/actions/festival-crud.actions";
+import { toast } from "@/lib/toast";
 
 interface VisualIdentityDialogProps {
   festival: {

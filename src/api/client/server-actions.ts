@@ -1,6 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useInlineErrorMutation } from "./useInlineErrorMutation";
-import { toast } from "@/lib/toast";
 import {
   deleteTeamAssignmentAction,
   getProgrammeTeamMembersAction,
@@ -10,16 +8,16 @@ import {
   updateFestivalSettingsAction,
 } from "@/features/festivals/actions/festival-crud.actions";
 import {
+  cancelJudgementAction,
+  forceCompleteJudgementAction,
   getStagePortalBoardAction,
   getStagePortalScorePayloadAction,
   markCodeLetterAbsenceAction,
   previewJudgeSubmissionSummaryAction,
   restartJudgementAction,
-  cancelJudgementAction,
   startJudgementAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
-  forceCompleteJudgementAction,
 } from "@/features/judgement/actions/judgement.actions";
 import { exportParticipantsQrPdfAction } from "@/features/participants/actions/qr.actions";
 import {
@@ -64,7 +62,9 @@ import {
   resetStagePortalCredentialAction,
 } from "@/features/stage-portal/actions/stage-portal-credential.actions";
 import { provisionOffStageAction } from "@/features/stages/actions/off-stage.actions";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "./_query-keys";
+import { useInlineErrorMutation } from "./useInlineErrorMutation";
 
 export function useStagePortalLogin() {
   return useInlineErrorMutation({
@@ -292,8 +292,7 @@ export function useProvisionOffStage() {
     Error,
     { festivalId: string }
   >({
-    mutationFn: async ({ festivalId }) =>
-      provisionOffStageAction(festivalId),
+    mutationFn: async ({ festivalId }) => provisionOffStageAction(festivalId),
     onError: (error) => {
       toast.error(error.message);
     },

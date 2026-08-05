@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
 import {
@@ -68,6 +67,7 @@ import { formatDate, isAfter, parseInstant } from "@/core/datetime";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import { toast } from "@/lib/toast";
 import { AssignTeamLeadersModal } from "./AssignTeamLeadersModal";
 import { BulkUploadParticipantsModal } from "./BulkUploadParticipantsModal";
 import { ParticipantDetailsDialog } from "./ParticipantDetailsDialog";

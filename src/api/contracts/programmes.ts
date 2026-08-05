@@ -59,4 +59,6 @@ export const bulkCreateProgrammesInput = z.object({
 export type Programme = z.infer<typeof programmeSchema>;
 export type CreateProgrammeInput = z.infer<typeof createProgrammeInput>;
 export type UpdateProgrammeInput = z.infer<typeof updateProgrammeInput>;
-export type BulkCreateProgrammesInput = z.infer<typeof bulkCreateProgrammesInput>;
+export type BulkCreateProgrammesInput = z.infer<
+  typeof bulkCreateProgrammesInput
+>;

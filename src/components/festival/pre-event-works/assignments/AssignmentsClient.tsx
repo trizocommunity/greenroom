@@ -3,7 +3,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "@/lib/toast";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
@@ -48,6 +47,7 @@ import {
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
+import { toast } from "@/lib/toast";
 import { AssignmentModal } from "./AssignmentModal";
 
 type IndividualAssignmentRow = {
@@ -1174,7 +1174,9 @@ export function AssignmentsClient({
                             <div className="mb-2 flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-semibold text-heading">
-                                  {canUseTeamLead && lead ? `${lead.participantName} & Team` : "Team"}
+                                  {canUseTeamLead && lead
+                                    ? `${lead.participantName} & Team`
+                                    : "Team"}
                                 </h3>
                                 <span className="text-[11px] text-muted-foreground border-l border-border pl-2">
                                   {row.groupName} · Team {row.teamNumber}

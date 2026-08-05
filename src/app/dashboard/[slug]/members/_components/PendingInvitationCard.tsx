@@ -10,7 +10,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,6 +25,7 @@ import {
   useCancelInvitation,
   useResendInvitation,
 } from "@/features/invitation/hooks/use-invitations";
+import { toast } from "@/lib/toast";
 import type { PendingInvitation } from "./types";
 
 interface PendingInvitationCardProps {

@@ -1,16 +1,14 @@
 "use client";
 
 import type Konva from "konva";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import { ParticipantQrDialogButton } from "@/components/participant/ParticipantQrDialogButton";
 import { Button } from "@/components/ui/button";
-import type { BadgePayload } from "@/features/posters/actions/badge.actions";
-
-import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
+import type { BadgePayload } from "@/features/posters/actions/badge.actions";
 
 export function ParticipantBadgeOrQr({
   badge,
@@ -50,13 +48,19 @@ export function ParticipantBadgeOrQr({
                 <TabsTrigger value="qr">QR</TabsTrigger>
               </TabsList>
             </div>
-            
+
             <div className="relative w-full aspect-[4/3] sm:aspect-[1.5/1] md:aspect-[16/10] bg-black/5">
-              <TabsContent value="badge" className="absolute inset-0 m-0 outline-none flex items-center justify-center p-4 sm:p-6">
+              <TabsContent
+                value="badge"
+                className="absolute inset-0 m-0 outline-none flex items-center justify-center p-4 sm:p-6"
+              >
                 <BadgeCard badge={badge} />
               </TabsContent>
-              
-              <TabsContent value="qr" className="absolute inset-0 m-0 outline-none flex items-center justify-center p-8 sm:p-12">
+
+              <TabsContent
+                value="qr"
+                className="absolute inset-0 m-0 outline-none flex items-center justify-center p-8 sm:p-12"
+              >
                 <div className="rounded-lg border bg-white p-6 shadow-sm">
                   <QrCodeDisplay url={qrContent} size={280} />
                 </div>
@@ -76,7 +80,7 @@ function BadgeCard({ badge }: { badge: BadgePayload }) {
 
   useEffect(() => {
     if (!containerRef.current) return;
-    
+
     const updateScale = (width: number, height: number) => {
       const s = Math.min(width / badge.doc.width, height / badge.doc.height, 1);
       setScale(s);
@@ -94,7 +98,10 @@ function BadgeCard({ badge }: { badge: BadgePayload }) {
   }, [badge.doc.width, badge.doc.height]);
 
   return (
-    <div ref={containerRef} className="flex h-full w-full items-center justify-center">
+    <div
+      ref={containerRef}
+      className="flex h-full w-full items-center justify-center"
+    >
       <PosterExportCanvas
         doc={badge.doc}
         bindings={badge.bindings}

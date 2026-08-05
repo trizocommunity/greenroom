@@ -19,14 +19,22 @@ import {
   useState,
   useTransition,
 } from "react";
-import { toast } from "@/lib/toast";
 import { queryKeys } from "@/api/client/_query-keys";
-import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
-import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
   useCancelJudgement,
   useForceCompleteJudgement,
 } from "@/api/client/server-actions";
+import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
+import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
+import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,15 +45,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
-import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,6 +81,7 @@ import {
   startJudgementAction,
 } from "@/features/judgement/actions/judgement.actions";
 import { createJudgeAction } from "@/features/judges/actions/judge.actions";
+import { toast } from "@/lib/toast";
 
 type Judge = { id: string; name: string; description?: string | null };
 type Programme = {
@@ -237,12 +237,14 @@ export function JudgementWizardClient({
   const [isPending, startTransition] = useTransition();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  
+
   const { mutate: cancelJudgement, isPending: isCancelling } =
     useCancelJudgement();
   const { mutate: completeJudgement, isPending: isCompleting } =
     useForceCompleteJudgement();
-  const [cancelProgrammeId, setCancelProgrammeId] = useState<string | null>(null);
+  const [cancelProgrammeId, setCancelProgrammeId] = useState<string | null>(
+    null,
+  );
 
   const [reportedParticipantsView, setReportedParticipantsView] = useState<{
     programmeName: string;
@@ -354,7 +356,7 @@ export function JudgementWizardClient({
           .toUpperCase()
           .includes("PUBLISHED");
         if (aPublished !== bPublished) return aPublished ? 1 : -1;
-        
+
         // Sort by completion time (updatedAt) descending (newest first)
         const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
         const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
@@ -662,10 +664,7 @@ export function JudgementWizardClient({
                         {p.name}
                       </CardTitle>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <Badge
-                          variant="secondary"
-                          className="text-[11px]"
-                        >
+                        <Badge variant="secondary" className="text-[11px]">
                           {p.status}
                         </Badge>
                         {isUnscheduled && (
@@ -681,7 +680,9 @@ export function JudgementWizardClient({
                     <p className="text-xs text-muted-foreground">
                       {p.programmeType === "GROUP" ? "Group" : "Individual"}
                       {p.programmeCategory ? ` · ${p.programmeCategory}` : ""}
-                      {p.reportingDetails?.stageName ? ` · Stage ${p.reportingDetails.stageName}` : ""}
+                      {p.reportingDetails?.stageName
+                        ? ` · Stage ${p.reportingDetails.stageName}`
+                        : ""}
                     </p>
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col gap-2.5 p-4 pt-0 sm:gap-3 sm:p-5 sm:pt-0">
@@ -711,10 +712,19 @@ export function JudgementWizardClient({
                           </div>
                           {judgedByProgrammeId.get(p.id) && (
                             <div className="flex flex-col border-t border-primary/10 pt-1.5 mt-0.5">
-                              <span className="font-semibold">{judgedByProgrammeId.get(p.id)!.completionSummary}</span>
-                              {judgedByProgrammeId.get(p.id)!.pendingJudgeNames.length > 0 && (
+                              <span className="font-semibold">
+                                {
+                                  judgedByProgrammeId.get(p.id)!
+                                    .completionSummary
+                                }
+                              </span>
+                              {judgedByProgrammeId.get(p.id)!.pendingJudgeNames
+                                .length > 0 && (
                                 <span className="text-primary/70 line-clamp-1 mt-0.5">
-                                  Pending: {judgedByProgrammeId.get(p.id)!.pendingJudgeNames.join(", ")}
+                                  Pending:{" "}
+                                  {judgedByProgrammeId
+                                    .get(p.id)!
+                                    .pendingJudgeNames.join(", ")}
                                 </span>
                               )}
                             </div>
@@ -1502,7 +1512,7 @@ export function JudgementWizardClient({
           </div>
         </DrawerContent>
       </Drawer>
-      
+
       <AlertDialog
         open={!!cancelProgrammeId}
         onOpenChange={(open) => {
@@ -1513,7 +1523,9 @@ export function JudgementWizardClient({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel judgement?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will abort the active judgement round and lock out all judges instantly. Any partial scores that have not been submitted will be lost. The programme will return to 'Pending Judgment' status.
+              This will abort the active judgement round and lock out all judges
+              instantly. Any partial scores that have not been submitted will be
+              lost. The programme will return to 'Pending Judgment' status.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1536,7 +1548,7 @@ export function JudgementWizardClient({
                         toast.success("Judgement cancelled");
                         setCancelProgrammeId(null);
                       },
-                    }
+                    },
                   );
                 }
               }}

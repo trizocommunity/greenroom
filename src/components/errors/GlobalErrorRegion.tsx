@@ -2,7 +2,10 @@
 
 import { AlertCircle, X } from "lucide-react";
 import { errorStore } from "@/core/errors/error-store";
-import { useErrorDispatcher, useGlobalErrors } from "@/core/errors/use-error-store";
+import {
+  useErrorDispatcher,
+  useGlobalErrors,
+} from "@/core/errors/use-error-store";
 import { cn } from "@/core/utils/cn";
 
 export function GlobalErrorRegion({ className }: { className?: string }) {

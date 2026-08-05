@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
-import { toast } from "@/lib/toast";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { toast } from "@/lib/toast";
 
 export function useLogout() {
   return useMutation<void, Error, void>({

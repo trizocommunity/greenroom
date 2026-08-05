@@ -3,7 +3,6 @@
 import type Konva from "konva";
 import { Download, Share2, Shuffle } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { toast } from "@/lib/toast";
 import {
   exportStagePng,
   PosterExportCanvas,
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import type { ResultPosterExportPayload } from "@/features/posters/actions/poster-export.actions";
 import { buildResultPosterBindings } from "@/features/posters/services/poster-bindings.service";
+import { toast } from "@/lib/toast";
 
 export function ResultPosterActions({
   payload,

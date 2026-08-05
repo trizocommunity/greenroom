@@ -328,7 +328,8 @@ export function ParticipantProfileView({
                 <TableBody>
                   {assignments.map((assignment) => {
                     const isGroup = assignment.programme?.type === "GROUP";
-                    const isLoading = loadingTeamFor === assignment.assignmentId;
+                    const isLoading =
+                      loadingTeamFor === assignment.assignmentId;
                     return (
                       <TableRow
                         key={assignment.assignmentId}

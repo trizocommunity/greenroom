@@ -14,7 +14,9 @@ describe("createCronHandler", () => {
     vi.unstubAllEnvs();
   });
 
-  const buildHandler = (inner = vi.fn().mockResolvedValue(new Response("ok"))) => {
+  const buildHandler = (
+    inner = vi.fn().mockResolvedValue(new Response("ok")),
+  ) => {
     const wrapped = createCronHandler({
       GET: async () => inner(),
     });

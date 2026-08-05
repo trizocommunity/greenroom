@@ -281,6 +281,11 @@ export const user = pgTable(
     name: text().default("").notNull(),
     image: text(),
     emailVerified: boolean().default(false).notNull(),
+    // PR 4 of ISSUE-41: tracks whether this user has 2FA enabled. The
+    // 2FA plugin manages this column automatically; we expose it here
+    // only so Drizzle knows about the column. Better Auth reads/writes
+    // it via `additionalFields` in `core/auth/better-auth/auth.ts`.
+    twoFactorEnabled: boolean().default(false).notNull(),
     globalRole: globalRole().default("USER").notNull(),
     fullName: text(),
     displayName: text(),
@@ -355,10 +360,7 @@ export const account = pgTable(
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
   (table) => [
-    index("account_userId_idx").using(
-      "btree",
-      table.userId.asc().nullsLast(),
-    ),
+    index("account_userId_idx").using("btree", table.userId.asc().nullsLast()),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
@@ -387,6 +389,42 @@ export const verification = pgTable(
       "btree",
       table.identifier.asc().nullsLast(),
     ),
+  ],
+);
+
+// ─── 2d. Better Auth: twoFactor ──────────────────────────────────────────────
+// One row per user that has 2FA enabled. The `secret` column is the
+// TOTP seed; `backupCodes` is a JSON array (or encrypted blob) of
+// single-use recovery codes. `failedVerificationCount` and
+// `lockedUntil` drive Better Auth's account-level lockout
+// (NIST SP 800-63B §5.2.2). PR 4 of ISSUE-41.
+export const twoFactor = pgTable(
+  "twoFactor",
+  {
+    id: text().primaryKey().notNull(),
+    secret: text().notNull(),
+    backupCodes: text().notNull(),
+    userId: text().notNull(),
+    verified: boolean().default(true).notNull(),
+    failedVerificationCount: integer().default(0),
+    lockedUntil: tzTimestamp(),
+  },
+  (table) => [
+    index("twoFactor_secret_idx").using(
+      "btree",
+      table.secret.asc().nullsLast(),
+    ),
+    index("twoFactor_userId_idx").using(
+      "btree",
+      table.userId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: "twoFactor_userId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
   ],
 );
 
@@ -595,7 +633,11 @@ export const programme = pgTable(
       table.status.asc().nullsLast(),
     ),
     uniqueIndex("programme_festivalId_resultNumber_key")
-      .using("btree", table.festivalId.asc().nullsLast(), table.resultNumber.asc().nullsLast())
+      .using(
+        "btree",
+        table.festivalId.asc().nullsLast(),
+        table.resultNumber.asc().nullsLast(),
+      )
       .where(sql`${table.resultNumber} IS NOT NULL`),
     foreignKey({
       columns: [table.festivalId],
@@ -1207,12 +1249,13 @@ export const programmeAssignmentMember = pgTable(
     createdByName: text(),
   },
   (table) => [
-    uniqueIndex("programme_assignment_member_assignmentId_participantId_key")
-      .using(
-        "btree",
-        table.assignmentId.asc().nullsLast(),
-        table.participantId.asc().nullsLast(),
-      ),
+    uniqueIndex(
+      "programme_assignment_member_assignmentId_participantId_key",
+    ).using(
+      "btree",
+      table.assignmentId.asc().nullsLast(),
+      table.participantId.asc().nullsLast(),
+    ),
     index("programme_assignment_member_assignmentId_idx").using(
       "btree",
       table.assignmentId.asc().nullsLast(),

@@ -3,7 +3,6 @@
 import { CheckCircle2, Hash, Loader2, Megaphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { announceResult } from "@/features/announcement/actions/announcer.actions";
 import type { AnnouncerQueueProgramme } from "@/features/announcement/services/announcer.service";
+import { toast } from "@/lib/toast";
 
 interface AnnouncerClientProps {
   festivalId: string;
@@ -117,10 +117,16 @@ export function AnnouncerClient({
                       <span className="text-muted-foreground text-xs">
                         {p.categoryName}
                       </span>
-                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] h-4 px-1.5 font-normal"
+                      >
                         {p.type === "GROUP" ? "Group" : "Individual"}
                       </Badge>
-                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] h-4 px-1.5 font-normal"
+                      >
                         {p.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
                       </Badge>
                     </div>
@@ -168,10 +174,16 @@ export function AnnouncerClient({
                     <p className="text-xs text-muted-foreground">
                       {p.categoryName}
                     </p>
-                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 font-normal">
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] h-3.5 px-1 font-normal"
+                    >
                       {p.type === "GROUP" ? "Group" : "Individual"}
                     </Badge>
-                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 font-normal">
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] h-3.5 px-1 font-normal"
+                    >
                       {p.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
                     </Badge>
                   </div>
@@ -211,10 +223,14 @@ export function AnnouncerClient({
                       {activeProgramme.categoryName}
                     </DrawerDescription>
                     <Badge variant="outline" className="text-[10px]">
-                      {activeProgramme.type === "GROUP" ? "Group" : "Individual"}
+                      {activeProgramme.type === "GROUP"
+                        ? "Group"
+                        : "Individual"}
                     </Badge>
                     <Badge variant="outline" className="text-[10px]">
-                      {activeProgramme.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
+                      {activeProgramme.stageType === "NON_STAGE"
+                        ? "Offstage"
+                        : "Stage"}
                     </Badge>
                   </div>
                 </DrawerHeader>

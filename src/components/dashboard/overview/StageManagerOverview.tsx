@@ -52,37 +52,36 @@ export async function StageManagerOverview({
 
   const basePath = `/dashboard/${festivalSlug}`;
 
-  const [reportingStartedCount, judgementStartedCount] =
-    assignedStageIds.length
-      ? await Promise.all([
-          db
-            .select({ value: count() })
-            .from(prsTable)
-            .where(
-              and(
-                eq(prsTable.festivalId, festival.id),
-                inArray(prsTable.stageId, assignedStageIds),
-                eq(prsTable.status, "IN_PROGRESS"),
-              ),
-            )
-            .then((rows) => rows[0]?.value ?? 0),
-          db
-            .select({ value: count() })
-            .from(judgementConfigTable)
-            .innerJoin(
-              prsTable,
-              eq(judgementConfigTable.reportingSessionId, prsTable.id),
-            )
-            .where(
-              and(
-                eq(judgementConfigTable.festivalId, festival.id),
-                eq(judgementConfigTable.status, "ACTIVE"),
-                inArray(prsTable.stageId, assignedStageIds),
-              ),
-            )
-            .then((rows) => rows[0]?.value ?? 0),
-        ])
-      : [0, 0];
+  const [reportingStartedCount, judgementStartedCount] = assignedStageIds.length
+    ? await Promise.all([
+        db
+          .select({ value: count() })
+          .from(prsTable)
+          .where(
+            and(
+              eq(prsTable.festivalId, festival.id),
+              inArray(prsTable.stageId, assignedStageIds),
+              eq(prsTable.status, "IN_PROGRESS"),
+            ),
+          )
+          .then((rows) => rows[0]?.value ?? 0),
+        db
+          .select({ value: count() })
+          .from(judgementConfigTable)
+          .innerJoin(
+            prsTable,
+            eq(judgementConfigTable.reportingSessionId, prsTable.id),
+          )
+          .where(
+            and(
+              eq(judgementConfigTable.festivalId, festival.id),
+              eq(judgementConfigTable.status, "ACTIVE"),
+              inArray(prsTable.stageId, assignedStageIds),
+            ),
+          )
+          .then((rows) => rows[0]?.value ?? 0),
+      ])
+    : [0, 0];
 
   if (assignedStages.length === 0) {
     return (

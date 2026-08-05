@@ -15,9 +15,7 @@ export default function FestivalPublicNotFound() {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute left-1/2 top-1/3 h-[22rem] w-[30rem] -translate-x-1/2 rounded-full bg-primary/6 blur-[120px]"
-        />
+        <div className="absolute left-1/2 top-1/3 h-[22rem] w-[30rem] -translate-x-1/2 rounded-full bg-primary/6 blur-[120px]" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-5 text-center">

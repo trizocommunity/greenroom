@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "@/lib/toast";
 import { useCloudinaryUpload } from "@/api/client";
 import {
   useCreateNews,
@@ -48,6 +47,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDate, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { toast } from "@/lib/toast";
 
 type NewsPost = {
   id: string;

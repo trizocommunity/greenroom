@@ -41,28 +41,37 @@ const proxiedToast = Object.assign(
     opts?: SonnerExternalToast,
   ): string | number {
     if (isReactNodeLike(message)) {
-      return (sonner as unknown as (m: unknown, o?: SonnerExternalToast) => string | number)(
-        message,
-        opts,
-      );
+      return (
+        sonner as unknown as (
+          m: unknown,
+          o?: SonnerExternalToast,
+        ) => string | number
+      )(message, opts);
     }
     if (typeof message === "string") {
-      return (sonner as unknown as (m: string, o?: SonnerExternalToast) => string | number)(
-        message,
-        opts,
-      );
+      return (
+        sonner as unknown as (
+          m: string,
+          o?: SonnerExternalToast,
+        ) => string | number
+      )(message, opts);
     }
-    return (sonner as unknown as (m: string, o?: SonnerExternalToast) => string | number)(
-      humanize(message),
-      opts,
-    );
+    return (
+      sonner as unknown as (
+        m: string,
+        o?: SonnerExternalToast,
+      ) => string | number
+    )(humanize(message), opts);
   },
   {
     error: humanizedError,
     success: (m: unknown, o?: SonnerExternalToast) =>
       isReactNodeLike(m)
         ? sonnerSuccess(m as never, o as never)
-        : sonnerSuccess(typeof m === "string" ? m : String(m ?? ""), o as never),
+        : sonnerSuccess(
+            typeof m === "string" ? m : String(m ?? ""),
+            o as never,
+          ),
     info: (m: unknown, o?: SonnerExternalToast) =>
       isReactNodeLike(m)
         ? sonnerInfo(m as never, o as never)

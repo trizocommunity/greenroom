@@ -40,8 +40,11 @@ const dualAuthHandler = createHandler({
     if (user) {
       await assertFestivalAccess(user, festivalId);
       const result = await AssignmentService.delete(assignmentId, festivalId);
-      try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
-    return ok(result);
+      try {
+        const { revalidatePath } = await import("next/cache");
+        revalidatePath("/", "layout");
+      } catch (e) {}
+      return ok(result);
     }
 
     const result = await deleteAssignmentAction(festivalId, assignmentId);
@@ -76,7 +79,10 @@ const adminOnlyHandler = createProtectedHandler({
     } else {
       return badRequest("INVALID_INPUT", "participantId or groupId required");
     }
-    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok(result);
   },
 });

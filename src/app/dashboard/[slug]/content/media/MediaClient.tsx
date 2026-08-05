@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "@/lib/toast";
 import { useCloudinaryUpload } from "@/api/client";
 import {
   useCreateMediaItem,
@@ -44,6 +43,7 @@ import {
   extractYouTubeId,
   getYouTubeThumbnail,
 } from "@/features/media/utils/youtube";
+import { toast } from "@/lib/toast";
 
 type ImageRecord = { id: string; url: string; order: number };
 type VideoRecord = { id: string; url: string; order: number };

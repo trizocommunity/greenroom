@@ -431,5 +431,7 @@ export function dateOfBirthFor(index: number): string {
  */
 export function expiresAtFromCreatedAt(createdAtIso: string): string {
   const days = TIER_CONFIG.PRO.festivalDurationDays;
-  return new Date(new Date(createdAtIso).getTime() + days * MS_DAY).toISOString();
+  return new Date(
+    new Date(createdAtIso).getTime() + days * MS_DAY,
+  ).toISOString();
 }

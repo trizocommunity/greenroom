@@ -2,10 +2,10 @@
 
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "@/lib/toast";
 import { useParticipantLogout } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { clearParticipantSessionMeta } from "@/lib/participant-session-storage";
+import { toast } from "@/lib/toast";
 
 export function ParticipantLogoutButton({
   festivalSlug,

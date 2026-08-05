@@ -10,6 +10,10 @@ import {
   TeamLeaderOtpEmail,
   teamLeaderOtpSubject,
 } from "./kinds/team-leader-otp";
+import {
+  TwoFactorOTPEmail,
+  twoFactorOTPSubject,
+} from "./kinds/two-factor-otp";
 import type { EmailKind, EmailTheme } from "./types";
 
 /**
@@ -25,6 +29,7 @@ export type RenderedEmail = {
 const DEFAULT_MAGIC_LINK_EXPIRY_MINUTES = 30;
 const DEFAULT_INVITATION_EXPIRY_HOURS = 48;
 const DEFAULT_OTP_EXPIRY_MINUTES = 10;
+const DEFAULT_TWO_FACTOR_OTP_EXPIRY_MINUTES = 5;
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -50,6 +55,7 @@ export function resolveTheme(
       return "light";
     case "magic_link":
     case "team_leader_otp":
+    case "two_factor_otp":
     case "festival_expiring_soon":
       return "dark";
     default: {
@@ -111,6 +117,20 @@ export async function renderEmail(
         />
       );
       subject = teamLeaderOtpSubject(kind.festivalName);
+      break;
+    }
+    case "two_factor_otp": {
+      element = (
+        <TwoFactorOTPEmail
+          otp={kind.otp}
+          email={kind.email}
+          expiresInMinutes={
+            kind.expiresInMinutes ?? DEFAULT_TWO_FACTOR_OTP_EXPIRY_MINUTES
+          }
+          theme={effectiveTheme}
+        />
+      );
+      subject = twoFactorOTPSubject();
       break;
     }
     case "festival_expiring_soon": {

@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import party from "party-js";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "@/lib/toast";
 import { v4 as uuidv4 } from "uuid";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
+import { toast } from "@/lib/toast";
 
 // --- Types ---
 
@@ -64,7 +64,13 @@ export interface BulkUploadFlowProps<T> {
   validateRows?: (items: ParsedItem<T>[]) => Promise<ParsedItem<T>[]>; // Optional batch validation
   onCommit: (
     validItems: T[],
-  ) => Promise<{ success: boolean; count?: number; successCount?: number; error?: string; errors?: any[] }>;
+  ) => Promise<{
+    success: boolean;
+    count?: number;
+    successCount?: number;
+    error?: string;
+    errors?: any[];
+  }>;
 
   // UI Rendering
   columns: {
@@ -301,14 +307,14 @@ export function BulkUploadFlow<T>({
           {(step === "INSTRUCTIONS" || step === "UPLOAD") && (
             <div className="flex flex-col items-center justify-center p-6 sm:p-12 h-full animate-in fade-in duration-500 bg-background overflow-y-auto">
               <div className="w-full max-w-4xl text-center space-y-12 my-auto">
-                
                 <div className="space-y-4">
                   <div className="mx-auto w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-4 shadow-sm">
                     <CloudUpload className="h-8 w-8" />
                   </div>
                   <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
                   <p className="text-muted-foreground text-base max-w-md mx-auto">
-                    {description || "Upload your spreadsheet to easily import multiple records at once."}
+                    {description ||
+                      "Upload your spreadsheet to easily import multiple records at once."}
                     <br />
                     Supported formats: .xlsx, .csv
                   </p>
@@ -325,8 +331,12 @@ export function BulkUploadFlow<T>({
                       <Download className="h-8 w-8" />
                     </div>
                     <div className="space-y-1">
-                      <div className="text-xs font-bold uppercase tracking-wider text-primary">Step 1</div>
-                      <h3 className="font-semibold text-lg">Download Template</h3>
+                      <div className="text-xs font-bold uppercase tracking-wider text-primary">
+                        Step 1
+                      </div>
+                      <h3 className="font-semibold text-lg">
+                        Download Template
+                      </h3>
                     </div>
                     <p className="text-sm text-muted-foreground max-w-[200px] whitespace-normal">
                       Get the template spreadsheet. Do not remove the headers.
@@ -336,13 +346,15 @@ export function BulkUploadFlow<T>({
                   {/* Step 2 Module */}
                   <button
                     type="button"
-                    onClick={() => !isProcessing && fileInputRef.current?.click()}
+                    onClick={() =>
+                      !isProcessing && fileInputRef.current?.click()
+                    }
                     disabled={isProcessing}
                     className={cn(
                       "group relative flex flex-col items-center text-center space-y-4 p-10 rounded-3xl border border-dashed border-primary/20 bg-muted/20 transition-all duration-300 shadow-sm w-full",
-                      isProcessing 
+                      isProcessing
                         ? "opacity-70 cursor-not-allowed"
-                        : "hover:border-primary/50 hover:bg-primary/5 cursor-pointer hover:shadow-md"
+                        : "hover:border-primary/50 hover:bg-primary/5 cursor-pointer hover:shadow-md",
                     )}
                   >
                     <div className="w-16 h-16 bg-background text-primary rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-sm">
@@ -353,15 +365,27 @@ export function BulkUploadFlow<T>({
                       )}
                     </div>
                     <div className="space-y-1">
-                      <div className="text-xs font-bold uppercase tracking-wider text-primary">Step 2</div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-primary">
+                        Step 2
+                      </div>
                       <h3 className="font-semibold text-lg">Upload File</h3>
                     </div>
                     <p className="text-sm text-muted-foreground whitespace-normal">
                       Upload your filled spreadsheet.
                     </p>
                     <div className="flex gap-2 justify-center mt-2">
-                      <Badge variant="outline" className="text-[10px] uppercase font-bold bg-background text-primary">.XLSX</Badge>
-                      <Badge variant="outline" className="text-[10px] uppercase font-bold bg-background text-primary">.CSV</Badge>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-bold bg-background text-primary"
+                      >
+                        .XLSX
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-bold bg-background text-primary"
+                      >
+                        .CSV
+                      </Badge>
                     </div>
                   </button>
                   <input
@@ -372,7 +396,6 @@ export function BulkUploadFlow<T>({
                     onChange={handleFileUpload}
                   />
                 </div>
-
               </div>
             </div>
           )}
@@ -400,7 +423,8 @@ export function BulkUploadFlow<T>({
                       variant="outline"
                       className="px-3 py-1.5 text-sm gap-2 border-amber-500/20 bg-amber-500/10 text-amber-600"
                     >
-                      <AlertCircle className="h-4 w-4" /> {warningCount} Warnings
+                      <AlertCircle className="h-4 w-4" /> {warningCount}{" "}
+                      Warnings
                     </Badge>
                   )}
                 </div>
@@ -468,34 +492,34 @@ export function BulkUploadFlow<T>({
                                 </TableCell>
                               ))}
 
-                               <TableCell className="w-[150px]">
-                                 <div className="flex flex-col gap-1.5">
-                                   {row.isValid && (
-                                     <div className="text-xs text-emerald-500 font-medium flex items-center gap-1.5 bg-emerald-500/10 w-fit px-2 py-1 rounded-full border border-emerald-500/20">
-                                       <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />{" "}
-                                       Ready
-                                     </div>
-                                   )}
-                                   {row.errors.map((err, i) => (
-                                     <span
-                                       key={`error-${i}`}
-                                       className="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none text-red-600 bg-red-500/10 border-red-500/30"
-                                     >
-                                       <AlertCircle className="h-3 w-3 shrink-0 text-red-600" />{" "}
-                                       {err}
-                                     </span>
-                                   ))}
-                                   {row.warnings?.map((warning, i) => (
-                                     <span
-                                       key={`warning-${i}`}
-                                       className="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none text-amber-600 bg-amber-500/10 border-amber-500/30"
-                                     >
-                                       <AlertCircle className="h-3 w-3 shrink-0 text-amber-600" />{" "}
-                                       {warning}
-                                     </span>
-                                   ))}
-                                 </div>
-                               </TableCell>
+                              <TableCell className="w-[150px]">
+                                <div className="flex flex-col gap-1.5">
+                                  {row.isValid && (
+                                    <div className="text-xs text-emerald-500 font-medium flex items-center gap-1.5 bg-emerald-500/10 w-fit px-2 py-1 rounded-full border border-emerald-500/20">
+                                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />{" "}
+                                      Ready
+                                    </div>
+                                  )}
+                                  {row.errors.map((err, i) => (
+                                    <span
+                                      key={`error-${i}`}
+                                      className="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none text-red-600 bg-red-500/10 border-red-500/30"
+                                    >
+                                      <AlertCircle className="h-3 w-3 shrink-0 text-red-600" />{" "}
+                                      {err}
+                                    </span>
+                                  ))}
+                                  {row.warnings?.map((warning, i) => (
+                                    <span
+                                      key={`warning-${i}`}
+                                      className="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none text-amber-600 bg-amber-500/10 border-amber-500/30"
+                                    >
+                                      <AlertCircle className="h-3 w-3 shrink-0 text-amber-600" />{" "}
+                                      {warning}
+                                    </span>
+                                  ))}
+                                </div>
+                              </TableCell>
                               <TableCell className="text-right w-[120px]">
                                 <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                   <Button
@@ -592,9 +616,7 @@ export function BulkUploadFlow<T>({
                 )}
                 <Button
                   onClick={handleCommit}
-                  disabled={
-                    errorCount > 0 || validCount === 0 || isProcessing
-                  }
+                  disabled={errorCount > 0 || validCount === 0 || isProcessing}
                   className="pl-6 pr-8 h-10 text-base shadow-lg hover:shadow-xl transition-all"
                 >
                   {isProcessing ? (
@@ -663,7 +685,8 @@ function CompletionStep({
         </h3>
         <p className="text-muted-foreground text-lg">
           Successfully imported{" "}
-          <span className="text-foreground font-semibold">{success}</span> items.
+          <span className="text-foreground font-semibold">{success}</span>{" "}
+          items.
           {failed > 0 && (
             <span className="block text-red-600 text-sm mt-2 font-medium">
               {failed} items were skipped or failed.
@@ -673,7 +696,9 @@ function CompletionStep({
 
         {errors && errors.length > 0 && (
           <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-lg text-left shadow-sm">
-            <h4 className="text-sm font-semibold text-red-800 mb-2">Failed Rows Summary</h4>
+            <h4 className="text-sm font-semibold text-red-800 mb-2">
+              Failed Rows Summary
+            </h4>
             <div className="max-h-32 overflow-y-auto text-xs text-red-700 space-y-1">
               {errors.slice(0, 10).map((err, i) => (
                 <div key={i}>
@@ -681,7 +706,9 @@ function CompletionStep({
                 </div>
               ))}
               {errors.length > 10 && (
-                <div className="font-semibold mt-1">...and {errors.length - 10} more.</div>
+                <div className="font-semibold mt-1">
+                  ...and {errors.length - 10} more.
+                </div>
               )}
             </div>
             <Button

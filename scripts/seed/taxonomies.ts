@@ -21,7 +21,9 @@ export async function createCategories(
   db: DB,
   festivalId: string,
 ): Promise<CreatedCategory[]> {
-  console.log("📁 Creating Y Zone, C Zone, B Zone, H Zone, High School, General...");
+  console.log(
+    "📁 Creating Y Zone, C Zone, B Zone, H Zone, High School, General...",
+  );
   const out: CreatedCategory[] = [];
   for (const cat of CATEGORIES) {
     const id = generateId();

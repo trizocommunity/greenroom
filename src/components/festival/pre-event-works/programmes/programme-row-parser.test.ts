@@ -124,11 +124,7 @@ describe("parseProgrammeRow", () => {
   });
 
   it("never silently defaults type to INDIVIDUAL", () => {
-    const item = parseProgrammeRow(
-      ["X", "Music", "", "STAGE"],
-      4,
-      CATEGORIES,
-    );
+    const item = parseProgrammeRow(["X", "Music", "", "STAGE"], 4, CATEGORIES);
     expect(item.data.type).toBe("");
     expect(item.errors.some((e) => e.includes("Type"))).toBe(true);
   });

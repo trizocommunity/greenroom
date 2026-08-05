@@ -1,8 +1,8 @@
 "use client";
 
 import { Link } from "lucide-react";
-import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/lib/toast";
 
 interface CopyProfileLinkButtonProps {
   profileUrl: string;

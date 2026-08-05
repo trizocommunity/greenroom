@@ -3,7 +3,7 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
-import { magicLink } from "better-auth/plugins";
+import { magicLink, twoFactor } from "better-auth/plugins";
 import { google } from "better-auth/social-providers";
 import { nextCookies } from "better-auth/next-js";
 import { randomUUID } from "node:crypto";
@@ -11,6 +11,7 @@ import { db } from "@/core/database/client";
 import {
   account,
   session,
+  twoFactor as twoFactorTable,
   user,
   userLoginEvent,
   verification,
@@ -47,6 +48,7 @@ export const auth = betterAuth({
       session,
       account,
       verification,
+      twoFactor: twoFactorTable,
     },
   }),
 
@@ -158,6 +160,54 @@ export const auth = betterAuth({
         );
       },
     }),
+    // Two-factor (PR 4 of ISSUE-41). TOTP (authenticator apps) plus
+    // email OTP as a fallback (sent through our existing Resend
+    // sender). Backup codes default to 10, length 10, and are stored
+    // encrypted. The `twoFactorCookie` window gives the user ten
+    // minutes to complete the challenge after the first factor
+    // succeeds. `allowPasswordless: true` lets users who signed in
+    // via magic-link / Google (no password) still manage 2FA without
+    // a password step — see Better Auth docs.
+    twoFactor({
+      issuer: "Greenroom",
+      totpOptions: {
+        digits: 6,
+        period: 30,
+      },
+      otpOptions: {
+        period: 5, // 5-minute OTP validity
+        digits: 6,
+        // Send the OTP via Resend. Better Auth's default would write
+        // the OTP to the verification table without notifying the
+        // user — we want an email.
+        async sendOTP({ otp, user: u }) {
+          if (process.env.GREENROOM_SILENT_AUTH === "1") return;
+          const { sendEmail } = await import(
+            "@/core/integrations/email/send"
+          );
+          await sendEmail({
+            to: u.email,
+            kind: { kind: "two_factor_otp", otp, email: u.email },
+          });
+        },
+      },
+      backupCodeOptions: {
+        amount: 10,
+        length: 10,
+      },
+      // Users without a password (magic-link or Google-only) can
+      // still set up 2FA — Better Auth skips the password step in
+      // that case.
+      allowPasswordless: true,
+      // Account-level lockout (NIST SP 800-63B §5.2.2). Caps
+      // consecutive failed verifications at 10 across challenges and
+      // factors. Locked accounts get a 15-minute cool-off.
+      accountLockout: {
+        enabled: true,
+        maxFailedAttempts: 10,
+        durationSeconds: 15 * 60,
+      },
+    }),
     // Google OAuth (PR 2 ships this). The client_id / client_secret come
     // from Google Cloud Console — see ISSUE-41 §"Google Cloud Console
     // setup". The `accessType: "offline"` requests refresh tokens so a
@@ -195,7 +245,29 @@ export const auth = betterAuth({
       const isAnySignIn =
         isMagicLinkVerify || isMagicLinkSignIn || isGoogleSignIn;
 
-      if (!isAnySignIn) return;
+      // PR 4: 2FA management endpoints. The `/two-factor/enable` and
+      // `/two-factor/disable` paths set `newSession` (Better Auth
+      // refreshes the session after toggling 2FA), so we read the
+      // user from there. Backup-code regeneration uses the existing
+      // session — `newSession` is also populated.
+      const isTwoFactorEnable = path === "/two-factor/enable";
+      const isTwoFactorDisable = path === "/two-factor/disable";
+      const isBackupCodeRegen =
+        path === "/two-factor/generate-backup-codes";
+      const isTwoFactorVerify =
+        path === "/two-factor/verify-totp" ||
+        path === "/two-factor/verify-otp" ||
+        path === "/two-factor/verify-backup-code";
+
+      if (
+        !isAnySignIn &&
+        !isTwoFactorEnable &&
+        !isTwoFactorDisable &&
+        !isBackupCodeRegen &&
+        !isTwoFactorVerify
+      ) {
+        return;
+      }
       if (!newSession?.user?.id) return;
 
       const userId = newSession.user.id;
@@ -206,21 +278,23 @@ export const auth = betterAuth({
       const userAgent =
         ctx.request?.headers.get("user-agent") ?? null;
 
-      try {
-        await db.insert(userLoginEvent).values({
-          id: randomUUID(),
-          userId,
-          ip,
-          userAgent,
-        });
-      } catch (err) {
-        // Never block sign-in on analytics.
-        console.error("[auth] failed to record user_login_event", err);
+      // Sign-in analytics + audit-log entries only apply to the
+      // sign-in flows. 2FA management doesn't change the
+      // last-login-at field.
+      if (isAnySignIn) {
+        try {
+          await db.insert(userLoginEvent).values({
+            id: randomUUID(),
+            userId,
+            ip,
+            userAgent,
+          });
+        } catch (err) {
+          // Never block sign-in on analytics.
+          console.error("[auth] failed to record user_login_event", err);
+        }
       }
 
-      // Magic-link sign-in can fire on the "send" endpoint too
-      // (pre-verify); skip audit then, and skip duplicates from the
-      // verify step that already covers it.
       try {
         if (isGoogleSignIn) {
           await createAuditLog({
@@ -267,6 +341,46 @@ export const auth = betterAuth({
               }
             }
           }
+        }
+
+        if (isTwoFactorEnable) {
+          await createAuditLog({
+            action: "ENABLE_2FA",
+            targetType: "USER",
+            targetId: userId,
+            actor: { actorId: userId, actorRole },
+            metadata: { ip, userAgent },
+          });
+        }
+
+        if (isTwoFactorDisable) {
+          await createAuditLog({
+            action: "DISABLE_2FA",
+            targetType: "USER",
+            targetId: userId,
+            actor: { actorId: userId, actorRole },
+            metadata: { ip, userAgent },
+          });
+        }
+
+        if (isBackupCodeRegen) {
+          await createAuditLog({
+            action: "REGENERATE_BACKUP_CODES",
+            targetType: "USER",
+            targetId: userId,
+            actor: { actorId: userId, actorRole },
+            metadata: { ip, userAgent },
+          });
+        }
+
+        if (isTwoFactorVerify) {
+          await createAuditLog({
+            action: "VERIFY_2FA",
+            targetType: "USER",
+            targetId: userId,
+            actor: { actorId: userId, actorRole },
+            metadata: { ip, userAgent, method: path },
+          });
         }
       } catch (err) {
         // Audit failure must never break sign-in.

@@ -125,7 +125,10 @@ const handler = createProtectedHandler({
         id: randomUUID(),
         festivalId,
         createdByName:
-          actorUser?.displayName || actorUser?.fullName || actorUser?.email || null,
+          actorUser?.displayName ||
+          actorUser?.fullName ||
+          actorUser?.email ||
+          null,
         createdByEmail: actorUser?.email || null,
         updatedBy: null,
         updatedAt: now,

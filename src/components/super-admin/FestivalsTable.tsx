@@ -4,7 +4,6 @@ import { MoreHorizontal, Settings, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import {
   type Festival,
   useDeleteFestival,
@@ -31,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
+import { toast } from "@/lib/toast";
 
 export function FestivalsTable() {
   const { data: festivals = [], isLoading, isError, error } = useFestivals();

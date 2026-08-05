@@ -21,7 +21,10 @@ describe("humanizeError", () => {
 
   it("maps known AppError codes via ERROR_MESSAGES", () => {
     const out = humanizeError(
-      new AppError(ERROR_MESSAGES.PARTICIPANT_INVALID_DOB, "PARTICIPANT_INVALID_DOB"),
+      new AppError(
+        ERROR_MESSAGES.PARTICIPANT_INVALID_DOB,
+        "PARTICIPANT_INVALID_DOB",
+      ),
     );
     expect(out.message).toBe(ERROR_MESSAGES.PARTICIPANT_INVALID_DOB);
   });
@@ -35,12 +38,13 @@ describe("humanizeError", () => {
     expect(humanizeError(new Error("Failed to fetch")).message).toMatch(
       /couldn't reach the server/i,
     );
-    expect(humanizeError(new Error("NetworkError when attempting to fetch resource")).message).toMatch(
-      /couldn't reach the server/i,
-    );
-    expect(humanizeError(new Error("timeout of 10000ms exceeded")).message).toMatch(
-      /couldn't reach the server/i,
-    );
+    expect(
+      humanizeError(new Error("NetworkError when attempting to fetch resource"))
+        .message,
+    ).toMatch(/couldn't reach the server/i);
+    expect(
+      humanizeError(new Error("timeout of 10000ms exceeded")).message,
+    ).toMatch(/couldn't reach the server/i);
   });
 
   it("maps HTTP 401/403/404/429/500", () => {
@@ -49,7 +53,9 @@ describe("humanizeError", () => {
     expect(humanizeError({ status: 404 }).message).toMatch(/couldn't find/i);
     expect(humanizeError({ status: 429 }).message).toMatch(/too many/i);
     expect(humanizeError({ status: 500 }).message).toMatch(/unexpected error/i);
-    expect(humanizeError({ status: 502 }).message).toMatch(/temporarily unavailable/i);
+    expect(humanizeError({ status: 502 }).message).toMatch(
+      /temporarily unavailable/i,
+    );
     expect(humanizeError({ status: 504 }).message).toMatch(/taking too long/i);
   });
 
@@ -60,7 +66,9 @@ describe("humanizeError", () => {
   });
 
   it("falls back for 4xx/5xx without a specific message", () => {
-    expect(humanizeError({ status: 418 }).message).toBe(ERROR_MESSAGES.VALIDATION);
+    expect(humanizeError({ status: 418 }).message).toBe(
+      ERROR_MESSAGES.VALIDATION,
+    );
     expect(humanizeError({ status: 599 }).message).toBe(HTTP_FALLBACK_500());
   });
 
@@ -78,13 +86,13 @@ describe("humanizeError", () => {
       match: "weird backend thing",
       toMessage: () => "All good, try again.",
     });
-    expect(humanizeError(new Error("encountered weird backend thing")).message).toBe(
-      "All good, try again.",
-    );
+    expect(
+      humanizeError(new Error("encountered weird backend thing")).message,
+    ).toBe("All good, try again.");
     unregister();
-    expect(humanizeError(new Error("encountered weird backend thing")).message).toBe(
-      ERROR_MESSAGES.DEFAULT,
-    );
+    expect(
+      humanizeError(new Error("encountered weird backend thing")).message,
+    ).toBe(ERROR_MESSAGES.DEFAULT);
   });
 
   it("treats registered rule returning null as a defer", () => {

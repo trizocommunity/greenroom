@@ -16,6 +16,17 @@ cookie set/get/delete shape identical across all three.
 **Principals:** A row in the `user` table with a `globalRole`
 (`"USER"` or `"SUPER_ADMIN"`) stored as a Better Auth `additionalField`.
 
+**2FA:** the `twoFactor` plugin is enabled in `auth.ts` — TOTP (authenticator
+apps, 6 digits / 30s) plus email OTP as a fallback, 10 backup codes of
+length 10, and account lockout (10 failed attempts → 15-minute cool-off,
+NIST SP 800-63B §5.2.2). Passwordless users (magic-link or Google-only)
+can still enable 2FA. After enabling, the first sign-in factor that
+succeeds lands the user on `/auth/2fa` for the second factor; the
+challenge page handles TOTP / OTP / backup-code tabs. Setup, disable, and
+backup-code regeneration live in `/profile` (Settings tab → Security
+section). See `src/app/(auth)/2fa/page.tsx` and
+`src/components/auth/TwoFactorSetup.tsx`.
+
 **Public API:**
 
 - `getSession(): Promise<SessionPayload | null>` — the adapter every

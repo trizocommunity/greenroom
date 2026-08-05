@@ -46,8 +46,11 @@ export const PUT = async (
     .where(eq(scheduleEntry.id, id))
     .returning();
 
-  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
-    return ok(updated);
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
+  return ok(updated);
 };
 
 export const DELETE = async (
@@ -72,6 +75,9 @@ export const DELETE = async (
   }
 
   await db.delete(scheduleEntry).where(eq(scheduleEntry.id, entryId));
-  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
-    return ok({ success: true });
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
+  return ok({ success: true });
 };

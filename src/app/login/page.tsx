@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { MagicLinkRequestForm } from "@/components/auth/MagicLinkRequestForm";
-import { getCurrentUser } from "@/core/auth/current-user";
+import { BetterAuthMagicLinkRequestForm } from "@/components/auth/BetterAuthMagicLinkRequestForm";
+import { auth } from "@/core/auth/better-auth/auth";
 import { getPostAuthRoute } from "@/core/auth/routing";
-import { getSession } from "@/core/auth/session";
 
 export const metadata: Metadata = {
   title: "Sign In | Greenroom",
@@ -12,18 +12,27 @@ export const metadata: Metadata = {
 };
 
 export default async function MagicLinkPage() {
-  const session = await getSession();
+  // PR 2: Better Auth owns the sign-in flow. Read the session server-side
+  // so a logged-in user gets redirected to the right landing page before
+  // the client renders the form.
+  const headerList = await headers();
+  const betterSession = await auth.api.getSession({
+    headers: headerList,
+  });
 
-  if (session?.userId) {
-    const user = await getCurrentUser();
-    if (user) {
-      redirect(
-        getPostAuthRoute({
-          role: user.globalRole as "USER" | "SUPER_ADMIN",
-          requiresOnboarding: !user.fullName,
-        }),
-      );
-    }
+  if (betterSession?.user?.id) {
+    const role =
+      (betterSession.user as { globalRole?: "USER" | "SUPER_ADMIN" })
+        .globalRole ?? "USER";
+    const requiresOnboarding = !(
+      betterSession.user as { fullName?: string | null }
+    ).fullName;
+    redirect(
+      getPostAuthRoute({
+        role,
+        requiresOnboarding,
+      }),
+    );
   }
 
   return (
@@ -32,7 +41,7 @@ export default async function MagicLinkPage() {
       description="Enter your email to receive a secure sign-in link."
       variant="centered"
     >
-      <MagicLinkRequestForm />
+      <BetterAuthMagicLinkRequestForm />
     </AuthLayout>
   );
 }

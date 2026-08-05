@@ -4,7 +4,6 @@ import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { toast } from "@/lib/toast";
 import { useInitiatePayment, useVerifyPayment } from "@/api/client";
 import {
   AlertDialog,
@@ -28,6 +27,7 @@ import {
 import { PRICING_TIERS } from "@/config/pricing";
 import { loadRazorpay } from "@/core/integrations/razorpay";
 import type { Tier } from "@/core/types/app-enums";
+import { toast } from "@/lib/toast";
 
 /**
  * Tier selection + payment page used by the Relaunch flow (SPEC §1.11).

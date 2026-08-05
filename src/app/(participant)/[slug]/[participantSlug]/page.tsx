@@ -24,11 +24,11 @@ import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsIn
 import { getFestivalDurationDays } from "@/config/pricing";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
-import { MS } from "@/core/datetime/server";
 import {
   participant as participantTable,
   programmeReportingSession as sessionTable,
 } from "@/core/database/schema";
+import { MS } from "@/core/datetime/server";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
@@ -219,8 +219,6 @@ export default async function ParticipantMainPage({
     ["IN_PROGRESS", "CLOSED"].includes(s.status),
   );
 
-
-
   const liveSessions = ongoingSessions.filter(
     (s) => s.status === "IN_PROGRESS" && !isSessionTimedOut(s),
   );
@@ -234,7 +232,7 @@ export default async function ParticipantMainPage({
     categoryName: category?.name ?? "",
     qrPayload: getQrCodeContent(participant as any),
   });
-  const badge = badgeResult.success ? badgeResult.data ?? null : null;
+  const badge = badgeResult.success ? (badgeResult.data ?? null) : null;
 
   return (
     <div className={`${APP_CONTAINER} space-y-10 py-8 md:py-10`}>

@@ -1,7 +1,7 @@
-export { InlineError } from "./InlineError";
-export type { InlineErrorProps } from "./InlineError";
-export { GlobalErrorRegion } from "./GlobalErrorRegion";
 export {
   ErrorScopeProvider,
   useErrorScopeContext,
 } from "./ErrorScopeProvider";
+export { GlobalErrorRegion } from "./GlobalErrorRegion";
+export type { InlineErrorProps } from "./InlineError";
+export { InlineError } from "./InlineError";

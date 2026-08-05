@@ -1,8 +1,6 @@
 import { getDb } from "./setup";
 
-export async function withTransaction(
-  fn: (tx: any) => Promise<void>,
-) {
+export async function withTransaction(fn: (tx: any) => Promise<void>) {
   await getDb()
     .transaction(async (tx) => {
       try {
@@ -10,7 +8,7 @@ export async function withTransaction(
       } finally {
         // throw inside the callback to roll back
         // biome-ignore lint/correctness/noUnsafeFinally: intentional rollback
-      throw new Error("__rollback__");
+        throw new Error("__rollback__");
       }
     })
     .catch((e) => {

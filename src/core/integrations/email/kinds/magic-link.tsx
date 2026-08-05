@@ -6,8 +6,6 @@ import { BrandedLayout } from "../components/Layout";
 import { EmailWordmark } from "../components/Wordmark";
 import type { EmailTheme } from "../tokens";
 
-const SUBJECT = "[Greenroom] Your sign-in link";
-
 export interface MagicLinkProps {
   url: string;
   expiresInMinutes?: number;
@@ -37,10 +35,7 @@ export function MagicLinkEmail({
         .
       </Text>
       <EmailButton href={url}>Sign In</EmailButton>
-      <EmailCopyableLink
-        url={url}
-        shareSubject="Greenroom sign-in link"
-      />
+      <EmailCopyableLink url={url} shareSubject="Greenroom sign-in link" />
       <EmailFooter note="If you didn't request this, you can safely ignore this email." />
     </BrandedLayout>
   );

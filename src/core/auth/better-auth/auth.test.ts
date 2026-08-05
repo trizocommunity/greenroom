@@ -10,6 +10,7 @@ vi.mock("@/core/database/client", () => ({
 
 vi.mock("@/core/integrations/email", () => ({
   sendMagicLinkEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmail: vi.fn().mockResolvedValue({ id: "test-email-id" }),
 }));
 
 vi.mock("@/core/database/schema", () => ({
@@ -17,14 +18,16 @@ vi.mock("@/core/database/schema", () => ({
   session: { tableName: "session" },
   account: { tableName: "account" },
   verification: { tableName: "verification" },
+  twoFactor: { tableName: "twoFactor" },
   userLoginEvent: { tableName: "user_login_event" },
 }));
 
-describe("better-auth config (ISSUE-41 PR 1)", () => {
+describe("better-auth config (ISSUE-41 PR 1 + PR 2 + PR 4)", () => {
   // Better Auth's `betterAuth({...})` constructor introspects adapters
-  // and wires plugin state, which takes ~3-4s on a cold import. The
-  // default 5s test timeout is too tight — see the `vitest.config.ts`
-  // for the project-wide setting.
+  // and wires plugin state, which takes ~3-4s on a cold import. PR 4
+  // adds the `twoFactor` plugin (TOTP, OTP, backup codes, account
+  // lockout) which adds another couple of seconds on a cold import.
+  // 30s leaves headroom for parallel-runner contention.
   it(
     "instantiates without throwing and exposes the Better Auth API surface",
     async () => {
@@ -41,8 +44,17 @@ describe("better-auth config (ISSUE-41 PR 1)", () => {
       expect(typeof auth.api.getSession).toBe("function");
       expect(typeof auth.api.signOut).toBe("function");
       expect(typeof auth.api.revokeSession).toBe("function");
+
+      // PR 4 — 2FA plugin surface.
+      expect(typeof auth.api.enableTwoFactor).toBe("function");
+      expect(typeof auth.api.disableTwoFactor).toBe("function");
+      expect(typeof auth.api.verifyTOTP).toBe("function");
+      expect(typeof auth.api.verifyTwoFactorOTP).toBe("function");
+      expect(typeof auth.api.verifyBackupCode).toBe("function");
+      expect(typeof auth.api.sendTwoFactorOTP).toBe("function");
+      expect(typeof auth.api.generateBackupCodes).toBe("function");
     },
-    15_000,
+    30_000,
   );
 
   // PR 2 (Google OAuth + auto-link) is verified end-to-end by the

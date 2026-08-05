@@ -10,6 +10,7 @@ import {
   DataRow,
 } from "@/components/app/AppSection";
 import { TimezoneField } from "@/components/profile/TimezoneField";
+import { TwoFactorSetup } from "@/components/auth/TwoFactorSetup";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -143,6 +144,14 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
             <TimezoneField initialTimezone={user.timezone} />
           </div>
         </div>
+      </section>
+
+      <section className="border-t border-border pt-8">
+        <AppSectionHeading
+          title="Security"
+          description="Protect your account with a second factor."
+        />
+        <TwoFactorSetup />
       </section>
 
       {user.accountType === "INSTITUTIONAL" && institution && (

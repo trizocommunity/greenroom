@@ -79,10 +79,14 @@ describe("Better Auth magic-link (ISSUE-41 PR 1)", () => {
       const tokenValue = JSON.parse(ours.value) as { email: string };
       expect(tokenValue.email).toBe(TEST_EMAIL);
 
-      // 2. Verify with the token.
+      // 2. Verify with the token. We deliberately omit `callbackURL`
+      // — when present, Better Auth's `magicLinkVerify` throws a
+      // `ctx.redirect(...)` (302 to the callback) instead of returning
+      // JSON, which is awkward to assert against. The schema side
+      // effects below are what we're really verifying.
       const token = ours.identifier;
       const verifyResult = await auth.api.magicLinkVerify({
-        query: { token, callbackURL: "/profile" },
+        query: { token },
         headers: new Headers({ origin: TEST_ORIGIN }),
         asResponse: false,
       });

@@ -166,13 +166,9 @@
         "category_festivalId_fkey": {
           "name": "category_festivalId_fkey",
           "tableFrom": "category",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -234,13 +230,9 @@
         "expired_festival_manual_book_festivalId_fkey": {
           "name": "expired_festival_manual_book_festivalId_fkey",
           "tableFrom": "expired_festival_manual_book",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -338,13 +330,9 @@
         "expired_festival_result_festivalId_fkey": {
           "name": "expired_festival_result_festivalId_fkey",
           "tableFrom": "expired_festival_result",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -723,26 +711,18 @@
         "festival_ownerId_fkey": {
           "name": "festival_ownerId_fkey",
           "tableFrom": "festival",
-          "columnsFrom": [
-            "ownerId"
-          ],
+          "columnsFrom": ["ownerId"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "restrict"
         },
         "festival_institutionId_fkey": {
           "name": "festival_institutionId_fkey",
           "tableFrom": "festival",
-          "columnsFrom": [
-            "institutionId"
-          ],
+          "columnsFrom": ["institutionId"],
           "tableTo": "institution",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         }
@@ -832,13 +812,9 @@
         "festival_category_preference_userId_fkey": {
           "name": "festival_category_preference_userId_fkey",
           "tableFrom": "festival_category_preference",
-          "columnsFrom": [
-            "userId"
-          ],
+          "columnsFrom": ["userId"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -898,13 +874,9 @@
         "festival_media_image_festivalId_fkey": {
           "name": "festival_media_image_festivalId_fkey",
           "tableFrom": "festival_media_image",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -973,13 +945,9 @@
         "festival_lifecycle_event_festivalId_fkey": {
           "name": "festival_lifecycle_event_festivalId_fkey",
           "tableFrom": "festival_lifecycle_event",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -1075,26 +1043,18 @@
         "festival_member_festivalId_fkey": {
           "name": "festival_member_festivalId_fkey",
           "tableFrom": "festival_member",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "festival_member_userId_fkey": {
           "name": "festival_member_userId_fkey",
           "tableFrom": "festival_member",
-          "columnsFrom": [
-            "userId"
-          ],
+          "columnsFrom": ["userId"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -1171,13 +1131,9 @@
         "festival_news_festivalId_fkey": {
           "name": "festival_news_festivalId_fkey",
           "tableFrom": "festival_news",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -1318,13 +1274,9 @@
         "festival_poster_template_festivalId_fkey": {
           "name": "festival_poster_template_festivalId_fkey",
           "tableFrom": "festival_poster_template",
-          "columnsFrom": [
-            "festival_id"
-          ],
+          "columnsFrom": ["festival_id"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -1487,39 +1439,27 @@
         "festival_scoring_award_rule_festivalId_fkey": {
           "name": "festival_scoring_award_rule_festivalId_fkey",
           "tableFrom": "festival_scoring_award_rule",
-          "columnsFrom": [
-            "festival_id"
-          ],
+          "columnsFrom": ["festival_id"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "festival_scoring_award_rule_scoringPolicyId_fkey": {
           "name": "festival_scoring_award_rule_scoringPolicyId_fkey",
           "tableFrom": "festival_scoring_award_rule",
-          "columnsFrom": [
-            "scoring_policy_id"
-          ],
+          "columnsFrom": ["scoring_policy_id"],
           "tableTo": "festival_scoring_policy",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "festival_scoring_award_rule_categoryId_fkey": {
           "name": "festival_scoring_award_rule_categoryId_fkey",
           "tableFrom": "festival_scoring_award_rule",
-          "columnsFrom": [
-            "category_id"
-          ],
+          "columnsFrom": ["category_id"],
           "tableTo": "category",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         }
@@ -1622,13 +1562,9 @@
         "festival_scoring_policy_festivalId_fkey": {
           "name": "festival_scoring_policy_festivalId_fkey",
           "tableFrom": "festival_scoring_policy",
-          "columnsFrom": [
-            "festival_id"
-          ],
+          "columnsFrom": ["festival_id"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -1738,13 +1674,9 @@
         "group_festivalId_fkey": {
           "name": "group_festivalId_fkey",
           "tableFrom": "group",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -1905,13 +1837,9 @@
         "judge_festivalId_fkey": {
           "name": "judge_festivalId_fkey",
           "tableFrom": "judge",
-          "columnsFrom": [
-            "festival_id"
-          ],
+          "columnsFrom": ["festival_id"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -2000,39 +1928,27 @@
         "judge_stage_assignment_festivalId_fkey": {
           "name": "judge_stage_assignment_festivalId_fkey",
           "tableFrom": "judge_stage_assignment",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "judge_stage_assignment_stageId_fkey": {
           "name": "judge_stage_assignment_stageId_fkey",
           "tableFrom": "judge_stage_assignment",
-          "columnsFrom": [
-            "stageId"
-          ],
+          "columnsFrom": ["stageId"],
           "tableTo": "stage",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "judge_stage_assignment_judgeId_fkey": {
           "name": "judge_stage_assignment_judgeId_fkey",
           "tableFrom": "judge_stage_assignment",
-          "columnsFrom": [
-            "judgeId"
-          ],
+          "columnsFrom": ["judgeId"],
           "tableTo": "judge",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -2148,39 +2064,27 @@
         "judgement_config_festivalId_fkey": {
           "name": "judgement_config_festivalId_fkey",
           "tableFrom": "judgement_config",
-          "columnsFrom": [
-            "festival_id"
-          ],
+          "columnsFrom": ["festival_id"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "judgement_config_programmeId_fkey": {
           "name": "judgement_config_programmeId_fkey",
           "tableFrom": "judgement_config",
-          "columnsFrom": [
-            "programme_id"
-          ],
+          "columnsFrom": ["programme_id"],
           "tableTo": "programme",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "judgement_config_reportingSessionId_fkey": {
           "name": "judgement_config_reportingSessionId_fkey",
           "tableFrom": "judgement_config",
-          "columnsFrom": [
-            "reporting_session_id"
-          ],
+          "columnsFrom": ["reporting_session_id"],
           "tableTo": "programme_reporting_session",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -2248,26 +2152,18 @@
         "judgement_config_judge_configId_fkey": {
           "name": "judgement_config_judge_configId_fkey",
           "tableFrom": "judgement_config_judge",
-          "columnsFrom": [
-            "config_id"
-          ],
+          "columnsFrom": ["config_id"],
           "tableTo": "judgement_config",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "judgement_config_judge_judgeId_fkey": {
           "name": "judgement_config_judge_judgeId_fkey",
           "tableFrom": "judgement_config_judge",
-          "columnsFrom": [
-            "judge_id"
-          ],
+          "columnsFrom": ["judge_id"],
           "tableTo": "judge",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -2416,13 +2312,9 @@
         "judgement_link_configId_fkey": {
           "name": "judgement_link_configId_fkey",
           "tableFrom": "judgement_link",
-          "columnsFrom": [
-            "config_id"
-          ],
+          "columnsFrom": ["config_id"],
           "tableTo": "judgement_config",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -2521,52 +2413,36 @@
         "judgement_score_configId_fkey": {
           "name": "judgement_score_configId_fkey",
           "tableFrom": "judgement_score",
-          "columnsFrom": [
-            "config_id"
-          ],
+          "columnsFrom": ["config_id"],
           "tableTo": "judgement_config",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "judgement_score_linkId_fkey": {
           "name": "judgement_score_linkId_fkey",
           "tableFrom": "judgement_score",
-          "columnsFrom": [
-            "link_id"
-          ],
+          "columnsFrom": ["link_id"],
           "tableTo": "judgement_link",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "judgement_score_judgeId_fkey": {
           "name": "judgement_score_judgeId_fkey",
           "tableFrom": "judgement_score",
-          "columnsFrom": [
-            "judge_id"
-          ],
+          "columnsFrom": ["judge_id"],
           "tableTo": "judge",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "judgement_score_codeLetterId_fkey": {
           "name": "judgement_score_codeLetterId_fkey",
           "tableFrom": "judgement_score",
-          "columnsFrom": [
-            "code_letter_id"
-          ],
+          "columnsFrom": ["code_letter_id"],
           "tableTo": "programme_code_letter",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -2641,9 +2517,7 @@
       "uniqueConstraints": {
         "magic_link_token_token_unique": {
           "name": "magic_link_token_token_unique",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "nullsNotDistinct": false
         }
       },
@@ -2749,13 +2623,9 @@
         "participant_otp_participantId_fkey": {
           "name": "participant_otp_participantId_fkey",
           "tableFrom": "participant_otp",
-          "columnsFrom": [
-            "participantId"
-          ],
+          "columnsFrom": ["participantId"],
           "tableTo": "participant",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -2911,26 +2781,18 @@
         "participant_session_participantId_fkey": {
           "name": "participant_session_participantId_fkey",
           "tableFrom": "participant_session",
-          "columnsFrom": [
-            "participantId"
-          ],
+          "columnsFrom": ["participantId"],
           "tableTo": "participant",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "participant_session_festivalId_fkey": {
           "name": "participant_session_festivalId_fkey",
           "tableFrom": "participant_session",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -3150,26 +3012,18 @@
         "payment_userId_fkey": {
           "name": "payment_userId_fkey",
           "tableFrom": "payment",
-          "columnsFrom": [
-            "userId"
-          ],
+          "columnsFrom": ["userId"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "restrict"
         },
         "payment_festivalId_fkey": {
           "name": "payment_festivalId_fkey",
           "tableFrom": "payment",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         }
@@ -3284,26 +3138,18 @@
         "pending_invitation_festivalId_fkey": {
           "name": "pending_invitation_festivalId_fkey",
           "tableFrom": "pending_invitation",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "pending_invitation_invitedBy_fkey": {
           "name": "pending_invitation_invitedBy_fkey",
           "tableFrom": "pending_invitation",
-          "columnsFrom": [
-            "invitedBy"
-          ],
+          "columnsFrom": ["invitedBy"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "restrict"
         }
@@ -3486,26 +3332,18 @@
         "programme_festivalId_fkey": {
           "name": "programme_festivalId_fkey",
           "tableFrom": "programme",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_categoryId_fkey": {
           "name": "programme_categoryId_fkey",
           "tableFrom": "programme",
-          "columnsFrom": [
-            "categoryId"
-          ],
+          "columnsFrom": ["categoryId"],
           "tableTo": "category",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -3646,65 +3484,45 @@
         "programme_assignment_programmeId_fkey": {
           "name": "programme_assignment_programmeId_fkey",
           "tableFrom": "programme_assignment",
-          "columnsFrom": [
-            "programmeId"
-          ],
+          "columnsFrom": ["programmeId"],
           "tableTo": "programme",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_assignment_festivalId_fkey": {
           "name": "programme_assignment_festivalId_fkey",
           "tableFrom": "programme_assignment",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_assignment_groupId_fkey": {
           "name": "programme_assignment_groupId_fkey",
           "tableFrom": "programme_assignment",
-          "columnsFrom": [
-            "groupId"
-          ],
+          "columnsFrom": ["groupId"],
           "tableTo": "group",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         },
         "programme_assignment_participantId_fkey": {
           "name": "programme_assignment_participantId_fkey",
           "tableFrom": "programme_assignment",
-          "columnsFrom": [
-            "participantId"
-          ],
+          "columnsFrom": ["participantId"],
           "tableTo": "participant",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_assignment_categoryId_fkey": {
           "name": "programme_assignment_categoryId_fkey",
           "tableFrom": "programme_assignment",
-          "columnsFrom": [
-            "categoryId"
-          ],
+          "columnsFrom": ["categoryId"],
           "tableTo": "category",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         }
@@ -3826,39 +3644,27 @@
         "programme_code_letter_festivalId_fkey": {
           "name": "programme_code_letter_festivalId_fkey",
           "tableFrom": "programme_code_letter",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_code_letter_reportingSessionId_fkey": {
           "name": "programme_code_letter_reportingSessionId_fkey",
           "tableFrom": "programme_code_letter",
-          "columnsFrom": [
-            "reportingSessionId"
-          ],
+          "columnsFrom": ["reportingSessionId"],
           "tableTo": "programme_reporting_session",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_code_letter_programmeId_fkey": {
           "name": "programme_code_letter_programmeId_fkey",
           "tableFrom": "programme_code_letter",
-          "columnsFrom": [
-            "programmeId"
-          ],
+          "columnsFrom": ["programmeId"],
           "tableTo": "programme",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -3941,26 +3747,18 @@
         "programme_code_letter_recipient_codeLetterId_fkey": {
           "name": "programme_code_letter_recipient_codeLetterId_fkey",
           "tableFrom": "programme_code_letter_recipient",
-          "columnsFrom": [
-            "codeLetterId"
-          ],
+          "columnsFrom": ["codeLetterId"],
           "tableTo": "programme_code_letter",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_code_letter_recipient_participantId_fkey": {
           "name": "programme_code_letter_recipient_participantId_fkey",
           "tableFrom": "programme_code_letter_recipient",
-          "columnsFrom": [
-            "participantId"
-          ],
+          "columnsFrom": ["participantId"],
           "tableTo": "participant",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -4178,39 +3976,27 @@
         "programme_judge_session_festival_id_fkey": {
           "name": "programme_judge_session_festival_id_fkey",
           "tableFrom": "programme_judge_session",
-          "columnsFrom": [
-            "festival_id"
-          ],
+          "columnsFrom": ["festival_id"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_judge_session_programme_id_fkey": {
           "name": "programme_judge_session_programme_id_fkey",
           "tableFrom": "programme_judge_session",
-          "columnsFrom": [
-            "programme_id"
-          ],
+          "columnsFrom": ["programme_id"],
           "tableTo": "programme",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_judge_session_reporting_session_id_fkey": {
           "name": "programme_judge_session_reporting_session_id_fkey",
           "tableFrom": "programme_judge_session",
-          "columnsFrom": [
-            "reporting_session_id"
-          ],
+          "columnsFrom": ["reporting_session_id"],
           "tableTo": "programme_reporting_session",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -4406,39 +4192,27 @@
         "programme_notification_festivalId_fkey": {
           "name": "programme_notification_festivalId_fkey",
           "tableFrom": "programme_notification",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_notification_recipientUserId_fkey": {
           "name": "programme_notification_recipientUserId_fkey",
           "tableFrom": "programme_notification",
-          "columnsFrom": [
-            "recipientUserId"
-          ],
+          "columnsFrom": ["recipientUserId"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_notification_recipientParticipantId_fkey": {
           "name": "programme_notification_recipientParticipantId_fkey",
           "tableFrom": "programme_notification",
-          "columnsFrom": [
-            "recipientParticipantId"
-          ],
+          "columnsFrom": ["recipientParticipantId"],
           "tableTo": "participant",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -4560,52 +4334,36 @@
         "programme_reported_participant_reportingSessionId_fkey": {
           "name": "programme_reported_participant_reportingSessionId_fkey",
           "tableFrom": "programme_reported_participant",
-          "columnsFrom": [
-            "reportingSessionId"
-          ],
+          "columnsFrom": ["reportingSessionId"],
           "tableTo": "programme_reporting_session",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_reported_participant_assignmentId_fkey": {
           "name": "programme_reported_participant_assignmentId_fkey",
           "tableFrom": "programme_reported_participant",
-          "columnsFrom": [
-            "assignmentId"
-          ],
+          "columnsFrom": ["assignmentId"],
           "tableTo": "programme_assignment",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_reported_participant_participantId_fkey": {
           "name": "programme_reported_participant_participantId_fkey",
           "tableFrom": "programme_reported_participant",
-          "columnsFrom": [
-            "participantId"
-          ],
+          "columnsFrom": ["participantId"],
           "tableTo": "participant",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         },
         "programme_reported_participant_groupId_fkey": {
           "name": "programme_reported_participant_groupId_fkey",
           "tableFrom": "programme_reported_participant",
-          "columnsFrom": [
-            "groupId"
-          ],
+          "columnsFrom": ["groupId"],
           "tableTo": "group",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         }
@@ -4774,52 +4532,36 @@
         "programme_reporting_session_festivalId_fkey": {
           "name": "programme_reporting_session_festivalId_fkey",
           "tableFrom": "programme_reporting_session",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_reporting_session_scheduleEntryId_fkey": {
           "name": "programme_reporting_session_scheduleEntryId_fkey",
           "tableFrom": "programme_reporting_session",
-          "columnsFrom": [
-            "scheduleEntryId"
-          ],
+          "columnsFrom": ["scheduleEntryId"],
           "tableTo": "schedule_entry",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_reporting_session_programmeId_fkey": {
           "name": "programme_reporting_session_programmeId_fkey",
           "tableFrom": "programme_reporting_session",
-          "columnsFrom": [
-            "programmeId"
-          ],
+          "columnsFrom": ["programmeId"],
           "tableTo": "programme",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_reporting_session_stageId_fkey": {
           "name": "programme_reporting_session_stageId_fkey",
           "tableFrom": "programme_reporting_session",
-          "columnsFrom": [
-            "stageId"
-          ],
+          "columnsFrom": ["stageId"],
           "tableTo": "stage",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         }
@@ -4976,39 +4718,27 @@
         "programme_team_lead_programmeId_fkey": {
           "name": "programme_team_lead_programmeId_fkey",
           "tableFrom": "programme_team_lead",
-          "columnsFrom": [
-            "programmeId"
-          ],
+          "columnsFrom": ["programmeId"],
           "tableTo": "programme",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_team_lead_groupId_fkey": {
           "name": "programme_team_lead_groupId_fkey",
           "tableFrom": "programme_team_lead",
-          "columnsFrom": [
-            "groupId"
-          ],
+          "columnsFrom": ["groupId"],
           "tableTo": "group",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "programme_team_lead_participantId_fkey": {
           "name": "programme_team_lead_participantId_fkey",
           "tableFrom": "programme_team_lead",
-          "columnsFrom": [
-            "participantId"
-          ],
+          "columnsFrom": ["participantId"],
           "tableTo": "participant",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -5247,39 +4977,27 @@
         "result_festivalId_fkey": {
           "name": "result_festivalId_fkey",
           "tableFrom": "result",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "result_programmeId_fkey": {
           "name": "result_programmeId_fkey",
           "tableFrom": "result",
-          "columnsFrom": [
-            "programmeId"
-          ],
+          "columnsFrom": ["programmeId"],
           "tableTo": "programme",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "result_assignmentId_fkey": {
           "name": "result_assignmentId_fkey",
           "tableFrom": "result",
-          "columnsFrom": [
-            "assignmentId"
-          ],
+          "columnsFrom": ["assignmentId"],
           "tableTo": "programme_assignment",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -5459,39 +5177,27 @@
         "schedule_entry_festivalId_fkey": {
           "name": "schedule_entry_festivalId_fkey",
           "tableFrom": "schedule_entry",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "schedule_entry_programmeId_fkey": {
           "name": "schedule_entry_programmeId_fkey",
           "tableFrom": "schedule_entry",
-          "columnsFrom": [
-            "programmeId"
-          ],
+          "columnsFrom": ["programmeId"],
           "tableTo": "programme",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "schedule_entry_stageId_fkey": {
           "name": "schedule_entry_stageId_fkey",
           "tableFrom": "schedule_entry",
-          "columnsFrom": [
-            "stageId"
-          ],
+          "columnsFrom": ["stageId"],
           "tableTo": "stage",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         }
@@ -5593,13 +5299,9 @@
         "stage_festivalId_fkey": {
           "name": "stage_festivalId_fkey",
           "tableFrom": "stage",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -5688,39 +5390,27 @@
         "stage_manager_assignment_festivalId_fkey": {
           "name": "stage_manager_assignment_festivalId_fkey",
           "tableFrom": "stage_manager_assignment",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "stage_manager_assignment_stageId_fkey": {
           "name": "stage_manager_assignment_stageId_fkey",
           "tableFrom": "stage_manager_assignment",
-          "columnsFrom": [
-            "stageId"
-          ],
+          "columnsFrom": ["stageId"],
           "tableTo": "stage",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "stage_manager_assignment_memberId_fkey": {
           "name": "stage_manager_assignment_memberId_fkey",
           "tableFrom": "stage_manager_assignment",
-          "columnsFrom": [
-            "memberId"
-          ],
+          "columnsFrom": ["memberId"],
           "tableTo": "festival_member",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -5936,39 +5626,27 @@
         "participant_festivalId_fkey": {
           "name": "participant_festivalId_fkey",
           "tableFrom": "participant",
-          "columnsFrom": [
-            "festivalId"
-          ],
+          "columnsFrom": ["festivalId"],
           "tableTo": "festival",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "participant_groupId_fkey": {
           "name": "participant_groupId_fkey",
           "tableFrom": "participant",
-          "columnsFrom": [
-            "groupId"
-          ],
+          "columnsFrom": ["groupId"],
           "tableTo": "group",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         },
         "participant_categoryId_fkey": {
           "name": "participant_categoryId_fkey",
           "tableFrom": "participant",
-          "columnsFrom": [
-            "categoryId"
-          ],
+          "columnsFrom": ["categoryId"],
           "tableTo": "category",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -6132,13 +5810,9 @@
         "user_institutionId_fkey": {
           "name": "user_institutionId_fkey",
           "tableFrom": "user",
-          "columnsFrom": [
-            "institutionId"
-          ],
+          "columnsFrom": ["institutionId"],
           "tableTo": "institution",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "set null"
         }
@@ -6212,13 +5886,9 @@
         "user_login_event_userId_fkey": {
           "name": "user_login_event_userId_fkey",
           "tableFrom": "user_login_event",
-          "columnsFrom": [
-            "userId"
-          ],
+          "columnsFrom": ["userId"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -6284,13 +5954,9 @@
         "user_purchase_summary_userId_fkey": {
           "name": "user_purchase_summary_userId_fkey",
           "tableFrom": "user_purchase_summary",
-          "columnsFrom": [
-            "userId"
-          ],
+          "columnsFrom": ["userId"],
           "tableTo": "user",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "cascade",
           "onDelete": "cascade"
         }
@@ -6306,82 +5972,47 @@
     "public.AccountType": {
       "name": "AccountType",
       "schema": "public",
-      "values": [
-        "PERSONAL",
-        "INSTITUTIONAL"
-      ]
+      "values": ["PERSONAL", "INSTITUTIONAL"]
     },
     "public.CategoryType": {
       "name": "CategoryType",
       "schema": "public",
-      "values": [
-        "SINGLE",
-        "GENERAL"
-      ]
+      "values": ["SINGLE", "GENERAL"]
     },
     "public.FestivalLifecycleEventType": {
       "name": "FestivalLifecycleEventType",
       "schema": "public",
-      "values": [
-        "CREATED",
-        "ACTIVATED",
-        "EXPIRED"
-      ]
+      "values": ["CREATED", "ACTIVATED", "EXPIRED"]
     },
     "public.FestivalRole": {
       "name": "FestivalRole",
       "schema": "public",
-      "values": [
-        "ADMIN",
-        "ANNOUNCER",
-        "STAGE_MANAGER",
-        "MEDIA"
-      ]
+      "values": ["ADMIN", "ANNOUNCER", "STAGE_MANAGER", "MEDIA"]
     },
     "public.FestivalStatus": {
       "name": "FestivalStatus",
       "schema": "public",
-      "values": [
-        "READY",
-        "ONGOING",
-        "PAST",
-        "EXPIRED"
-      ]
+      "values": ["READY", "ONGOING", "PAST", "EXPIRED"]
     },
     "public.FestivalType": {
       "name": "FestivalType",
       "schema": "public",
-      "values": [
-        "INSTITUTIONAL",
-        "INDEPENDENT"
-      ]
+      "values": ["INSTITUTIONAL", "INDEPENDENT"]
     },
     "public.Gender": {
       "name": "Gender",
       "schema": "public",
-      "values": [
-        "MALE",
-        "FEMALE",
-        "OTHER"
-      ]
+      "values": ["MALE", "FEMALE", "OTHER"]
     },
     "public.GlobalRole": {
       "name": "GlobalRole",
       "schema": "public",
-      "values": [
-        "USER",
-        "SUPER_ADMIN"
-      ]
+      "values": ["USER", "SUPER_ADMIN"]
     },
     "public.GroupType": {
       "name": "GroupType",
       "schema": "public",
-      "values": [
-        "SCHOOL",
-        "COLLEGE",
-        "MADRASA",
-        "OPEN"
-      ]
+      "values": ["SCHOOL", "COLLEGE", "MADRASA", "OPEN"]
     },
     "public.InstitutionType": {
       "name": "InstitutionType",
@@ -6400,35 +6031,22 @@
     "public.PaymentPurpose": {
       "name": "PaymentPurpose",
       "schema": "public",
-      "values": [
-        "FESTIVAL_CREATION"
-      ]
+      "values": ["FESTIVAL_CREATION"]
     },
     "public.PaymentStatus": {
       "name": "PaymentStatus",
       "schema": "public",
-      "values": [
-        "PENDING",
-        "PAID",
-        "FAILED"
-      ]
+      "values": ["PENDING", "PAID", "FAILED"]
     },
     "public.PosterTemplateStatus": {
       "name": "PosterTemplateStatus",
       "schema": "public",
-      "values": [
-        "DRAFT",
-        "PUBLISHED"
-      ]
+      "values": ["DRAFT", "PUBLISHED"]
     },
     "public.PosterTemplateType": {
       "name": "PosterTemplateType",
       "schema": "public",
-      "values": [
-        "RESULT",
-        "TEAM_POINTS",
-        "CANDIDATE_CARD"
-      ]
+      "values": ["RESULT", "TEAM_POINTS", "CANDIDATE_CARD"]
     },
     "public.ProgrammeNotificationEventType": {
       "name": "ProgrammeNotificationEventType",
@@ -6445,12 +6063,7 @@
     "public.ProgrammeReportingStatus": {
       "name": "ProgrammeReportingStatus",
       "schema": "public",
-      "values": [
-        "NOT_STARTED",
-        "IN_PROGRESS",
-        "RESET",
-        "CLOSED"
-      ]
+      "values": ["NOT_STARTED", "IN_PROGRESS", "RESET", "CLOSED"]
     },
     "public.ProgrammeStatus": {
       "name": "ProgrammeStatus",
@@ -6471,69 +6084,42 @@
     "public.ProgrammeTeamLeadAppointedByRole": {
       "name": "ProgrammeTeamLeadAppointedByRole",
       "schema": "public",
-      "values": [
-        "ADMIN",
-        "TEAM_LEADER"
-      ]
+      "values": ["ADMIN", "TEAM_LEADER"]
     },
     "public.ProgrammeType": {
       "name": "ProgrammeType",
       "schema": "public",
-      "values": [
-        "INDIVIDUAL",
-        "GROUP"
-      ]
+      "values": ["INDIVIDUAL", "GROUP"]
     },
     "public.PublicDisplayMode": {
       "name": "PublicDisplayMode",
       "schema": "public",
-      "values": [
-        "programme_results",
-        "team_standings"
-      ]
+      "values": ["programme_results", "team_standings"]
     },
     "public.ScheduleEntryType": {
       "name": "ScheduleEntryType",
       "schema": "public",
-      "values": [
-        "PROGRAMME",
-        "SESSION"
-      ]
+      "values": ["PROGRAMME", "SESSION"]
     },
     "public.ScoringSystem": {
       "name": "ScoringSystem",
       "schema": "public",
-      "values": [
-        "POSITION_BASED",
-        "SCORE_BASED"
-      ]
+      "values": ["POSITION_BASED", "SCORE_BASED"]
     },
     "public.SessionType": {
       "name": "SessionType",
       "schema": "public",
-      "values": [
-        "GENERAL",
-        "CEREMONY",
-        "TALK",
-        "CONCERT"
-      ]
+      "values": ["GENERAL", "CEREMONY", "TALK", "CONCERT"]
     },
     "public.StageType": {
       "name": "StageType",
       "schema": "public",
-      "values": [
-        "STAGE",
-        "NON_STAGE"
-      ]
+      "values": ["STAGE", "NON_STAGE"]
     },
     "public.Tier": {
       "name": "Tier",
       "schema": "public",
-      "values": [
-        "BASIC",
-        "STANDARD",
-        "PRO"
-      ]
+      "values": ["BASIC", "STANDARD", "PRO"]
     }
   },
   "schemas": {},

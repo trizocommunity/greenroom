@@ -14,9 +14,12 @@ import {
   Text,
   Transformer,
 } from "react-konva";
-import { PosterElementRenderer } from "./PosterElementRenderer";
 import { EditorCanvasGuides } from "./EditorCanvasGuides";
 import { EditorTransformHud } from "./EditorTransformHud";
+import {
+  buildGoogleFontsCssUrl,
+  documentFontsFromElements,
+} from "./editor-font-catalog";
 import { konvaShadowProps } from "./editor-konva-props";
 import {
   idsInMarquee,
@@ -35,7 +38,13 @@ import {
 import { EDITOR_COLORS } from "./editor-theme";
 import { patchFromTransform, rectFromKonvaNode } from "./editor-transform-sync";
 import { estimateTextWidth, getEditableText } from "./editor-utils";
+import {
+  CanvasInlineTextEditor,
+  type InlineTextEditorLayout,
+  measureInlineTextEditorLayout,
+} from "./inline-text-editor";
 import { applyEditorTransformerStyle } from "./konva-transformer-config";
+import { PosterElementRenderer } from "./PosterElementRenderer";
 import type { EditorElement } from "./poster-editor-types";
 import {
   type ElementHoverHandlers,
@@ -45,8 +54,6 @@ import type {
   PosterEditorState,
   SelectionBounds,
 } from "./use-poster-editor-state";
-import { documentFontsFromElements, buildGoogleFontsCssUrl } from "./editor-font-catalog";
-import { measureInlineTextEditorLayout, CanvasInlineTextEditor, type InlineTextEditorLayout } from "./inline-text-editor";
 
 interface PosterEditorCanvasProps {
   editor: PosterEditorState;
@@ -90,8 +97,6 @@ function BackgroundImage({
   if (!image) return null;
   return <KonvaImage image={image} x={0} y={0} width={width} height={height} />;
 }
-
-
 
 function renderBackground(
   doc: NonNullable<PosterEditorState["doc"]>,
@@ -154,8 +159,6 @@ export function PosterEditorCanvas({
 }: PosterEditorCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageContainerRef = useRef<HTMLDivElement>(null);
-  
-
 
   // Disable browser context menu
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -171,7 +174,8 @@ export function PosterEditorCanvas({
   const skipClearClickRef = useRef(false);
 
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
-  const [editingLayout, setEditingLayout] = useState<InlineTextEditorLayout | null>(null);
+  const [editingLayout, setEditingLayout] =
+    useState<InlineTextEditorLayout | null>(null);
 
   const {
     doc,
@@ -194,7 +198,9 @@ export function PosterEditorCanvas({
   // Eagerly load fonts used in the current document so they render correctly on canvas
   useEffect(() => {
     if (!doc?.elements) return;
-    const fonts = documentFontsFromElements(doc.elements).filter(f => f.googleFamily);
+    const fonts = documentFontsFromElements(doc.elements).filter(
+      (f) => f.googleFamily,
+    );
     for (const font of fonts) {
       const id = `greenroom-editor-font-${font.id}`;
       if (!document.getElementById(id)) {
@@ -764,22 +770,37 @@ export function PosterEditorCanvas({
                       handleElementSelect(el, e)
                   : undefined;
                 const hoverHandlers = makeHoverHandlers(el);
-                const onDblClick = interactive && el.type === "text" && hostRef.current && stageRef.current
-                  ? () => {
-                      const host = hostRef.current;
-                      if (!host || !stageRef.current) return;
-                      const tw = el.width ?? estimateTextWidth(getEditableText(el), el.fontSize ?? 24);
-                      const layout = measureInlineTextEditorLayout(el, stageRef.current, host, scale, tw);
-                      if (layout) {
-                        setEditingTextId(el.id);
-                        setEditingLayout(layout);
-                        // Hide transformer while editing
-                        if (transformerRef.current) {
-                           transformerRef.current.nodes([]);
+                const onDblClick =
+                  interactive &&
+                  el.type === "text" &&
+                  hostRef.current &&
+                  stageRef.current
+                    ? () => {
+                        const host = hostRef.current;
+                        if (!host || !stageRef.current) return;
+                        const tw =
+                          el.width ??
+                          estimateTextWidth(
+                            getEditableText(el),
+                            el.fontSize ?? 24,
+                          );
+                        const layout = measureInlineTextEditorLayout(
+                          el,
+                          stageRef.current,
+                          host,
+                          scale,
+                          tw,
+                        );
+                        if (layout) {
+                          setEditingTextId(el.id);
+                          setEditingLayout(layout);
+                          // Hide transformer while editing
+                          if (transformerRef.current) {
+                            transformerRef.current.nodes([]);
+                          }
                         }
                       }
-                    }
-                  : undefined;
+                    : undefined;
 
                 return (
                   <PosterElementRenderer
@@ -840,40 +861,42 @@ export function PosterEditorCanvas({
             )}
           </Layer>
         </Stage>
-        {editingTextId && editingLayout && (() => {
-           const el = doc.elements.find(e => e.id === editingTextId);
-           if (!el || el.type !== "text") return null;
-           return (
-             <CanvasInlineTextEditor
-               element={el}
-               value={getEditableText(el)}
-               layout={editingLayout}
-               onCommit={(text) => {
-                 updateElement(el.id, { text });
-                 setEditingTextId(null);
-                 setEditingLayout(null);
-                 // Restore transformer
-                 setTimeout(() => {
-                   if (transformerRef.current && stageRef.current) {
-                     const node = stageRef.current.findOne(`#${el.id}`);
-                     if (node) transformerRef.current.nodes([node]);
-                   }
-                 }, 0);
-               }}
-               onCancel={() => {
-                 setEditingTextId(null);
-                 setEditingLayout(null);
-                 // Restore transformer
-                 setTimeout(() => {
-                   if (transformerRef.current && stageRef.current) {
-                     const node = stageRef.current.findOne(`#${el.id}`);
-                     if (node) transformerRef.current.nodes([node]);
-                   }
-                 }, 0);
-               }}
-             />
-           );
-        })()}
+        {editingTextId &&
+          editingLayout &&
+          (() => {
+            const el = doc.elements.find((e) => e.id === editingTextId);
+            if (!el || el.type !== "text") return null;
+            return (
+              <CanvasInlineTextEditor
+                element={el}
+                value={getEditableText(el)}
+                layout={editingLayout}
+                onCommit={(text) => {
+                  updateElement(el.id, { text });
+                  setEditingTextId(null);
+                  setEditingLayout(null);
+                  // Restore transformer
+                  setTimeout(() => {
+                    if (transformerRef.current && stageRef.current) {
+                      const node = stageRef.current.findOne(`#${el.id}`);
+                      if (node) transformerRef.current.nodes([node]);
+                    }
+                  }, 0);
+                }}
+                onCancel={() => {
+                  setEditingTextId(null);
+                  setEditingLayout(null);
+                  // Restore transformer
+                  setTimeout(() => {
+                    if (transformerRef.current && stageRef.current) {
+                      const node = stageRef.current.findOne(`#${el.id}`);
+                      if (node) transformerRef.current.nodes([node]);
+                    }
+                  }, 0);
+                }}
+              />
+            );
+          })()}
       </div>
     </div>
   );

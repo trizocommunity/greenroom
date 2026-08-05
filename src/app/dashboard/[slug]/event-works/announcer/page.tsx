@@ -10,7 +10,6 @@ import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festiv
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 
-
 export default async function AnnouncerPage({
   params,
 }: {

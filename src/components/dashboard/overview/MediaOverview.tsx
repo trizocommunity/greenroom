@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/card";
 import { db } from "@/core/database/client";
 import {
-  festival as festivalTable,
   festivalPosterTemplate,
+  festival as festivalTable,
 } from "@/core/database/schema";
 
 interface MediaOverviewProps {

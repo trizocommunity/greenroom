@@ -21,7 +21,8 @@ const walkDir = (dir: string, fileList: string[] = []): string[] => {
 };
 
 // 2. Identify mutate indicators
-const mutateRegex = /(db\.insert|db\.update|db\.delete|\.mutate|Service\.create|Service\.update|Service\.delete|Service\.bulkCreate)/;
+const mutateRegex =
+  /(db\.insert|db\.update|db\.delete|\.mutate|Service\.create|Service\.update|Service\.delete|Service\.bulkCreate)/;
 const revalidateRegex = /revalidatePath\(/;
 
 console.log("🔍 Scanning for write-path revalidation...");
@@ -31,7 +32,7 @@ let warnings = 0;
 
 for (const file of files) {
   const content = fs.readFileSync(file, "utf8");
-  
+
   // If file contains mutations
   if (mutateRegex.test(content)) {
     // But does not contain revalidatePath
@@ -45,5 +46,7 @@ for (const file of files) {
 
 console.log(`\n✅ Scan complete. Found ${warnings} warnings.`);
 if (warnings > 0) {
-  console.log("Please review the warnings and ensure revalidatePath is called after successful mutations where appropriate.");
+  console.log(
+    "Please review the warnings and ensure revalidatePath is called after successful mutations where appropriate.",
+  );
 }

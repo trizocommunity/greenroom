@@ -1,7 +1,7 @@
 import "server-only";
 
-import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { bulkCreateParticipantInput } from "@/api/contracts/participants";
+import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { ParticipantService } from "@/features/participants/services/participant.service";
 
@@ -38,7 +38,10 @@ const handler = createProtectedHandler({
         });
         created.push(c);
       } catch (e) {
-        errors.push({ name: p.name, error: e instanceof Error ? e.message : String(e) });
+        errors.push({
+          name: p.name,
+          error: e instanceof Error ? e.message : String(e),
+        });
       }
     }
 
@@ -52,7 +55,9 @@ const handler = createProtectedHandler({
     if (festival) {
       try {
         const { revalidatePath } = await import("next/cache");
-        revalidatePath(`/dashboard/${festival.slug}/pre-event-works/participants`);
+        revalidatePath(
+          `/dashboard/${festival.slug}/pre-event-works/participants`,
+        );
       } catch (error) {
         console.error("[revalidatePath] participants page", error);
       }

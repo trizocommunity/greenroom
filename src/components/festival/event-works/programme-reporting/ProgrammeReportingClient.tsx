@@ -14,7 +14,6 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import party from "party-js";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { toast } from "@/lib/toast";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import {
@@ -80,6 +79,7 @@ import {
 } from "@/features/programmes/actions/programme-reporting.actions";
 import { getCodeForParticipantFromLetters } from "@/features/programmes/services/programme-reporting-code";
 import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
+import { toast } from "@/lib/toast";
 import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
 import { QrScanner } from "./QrScanner";
 import { ReportingBoardList } from "./ReportingBoardList";
@@ -522,7 +522,8 @@ export function ProgrammeReportingClient({
               const lead = members[0];
               const firstParticipantId =
                 members.find((m) => m.participantId)?.participantId ??
-                members.find((m) => m.teamParticipantIds?.length)?.teamParticipantIds?.[0] ??
+                members.find((m) => m.teamParticipantIds?.length)
+                  ?.teamParticipantIds?.[0] ??
                 null;
               return {
                 label:
@@ -567,7 +568,8 @@ export function ProgrammeReportingClient({
                 .find(Boolean);
               const firstParticipantId =
                 members.find((m) => m.participantId)?.participantId ??
-                members.find((m) => m.teamParticipantIds?.length)?.teamParticipantIds?.[0] ??
+                members.find((m) => m.teamParticipantIds?.length)
+                  ?.teamParticipantIds?.[0] ??
                 null;
               const code = firstParticipantId
                 ? (codeByParticipantId.get(firstParticipantId) ?? "—")
@@ -581,13 +583,16 @@ export function ProgrammeReportingClient({
 
               return {
                 key: teamKey,
-                label: lead?.teamLeadName ? `${lead.teamLeadName} & ${teamLabel}` : teamLabel,
+                label: lead?.teamLeadName
+                  ? `${lead.teamLeadName} & ${teamLabel}`
+                  : teamLabel,
                 chestOrTeam: teamLabel,
                 group: lead?.groupName ?? "—",
                 reportedAt: firstReported?.reportedAt ?? null,
                 spunAt,
                 code,
-                membersCount: lead?.teamParticipantIds?.length || members.length,
+                membersCount:
+                  lead?.teamParticipantIds?.length || members.length,
               };
             })
           : programmeAssignments.map((row) => {
@@ -807,7 +812,9 @@ export function ProgrammeReportingClient({
           isReported: members.some((m) => m.isReported),
           teamLeadName:
             (teamLeadsForProgramme as any)?.[lead.groupId ?? ""]?.[teamNumber]
-              ?.participantName ?? lead.teamLeadName ?? null,
+              ?.participantName ??
+            lead.teamLeadName ??
+            null,
         };
       },
     );

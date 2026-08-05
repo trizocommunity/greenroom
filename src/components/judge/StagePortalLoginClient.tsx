@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import { useStagePortalLogin } from "@/api/client/server-actions";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ErrorScopeProvider, InlineError } from "@/components/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "@/lib/toast";
 
 export function StagePortalLoginClient({
   festivalSlug,

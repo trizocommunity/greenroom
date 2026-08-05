@@ -93,8 +93,11 @@ export const PUT = async (
     }
   }
 
-  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
-    return ok(updated);
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
+  return ok(updated);
 };
 
 export const DELETE = async (
@@ -119,6 +122,9 @@ export const DELETE = async (
   }
 
   await db.delete(judgeTable).where(eq(judgeTable.id, judgeId));
-  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
-    return ok({ success: true });
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
+  return ok({ success: true });
 };

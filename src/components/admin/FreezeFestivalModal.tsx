@@ -2,7 +2,6 @@
 
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +14,7 @@ import {
   ResponsiveDialogTitle,
 } from "@/components/ui/responsive-dialog";
 import { freezeFestivalAdmin } from "@/features/admin/actions/admin.actions";
+import { toast } from "@/lib/toast";
 
 interface FreezeFestivalModalProps {
   festivalId: string;
