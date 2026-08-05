@@ -1,7 +1,7 @@
 # DEV vs PROD Workflow
 
 End-to-end runbook for the two environments Greenroom actually ships to: a
-local machine and `trizo-greenroom.vercel.app` (Vercel + Neon Postgres).
+local machine and `greenroomm.vercel.app` (Vercel + Neon Postgres).
 
 > Architecture is documented in detail in `issues/done/neon-database-adoption.md`.
 > This doc is the operating manual — what to run, in what order, against what.

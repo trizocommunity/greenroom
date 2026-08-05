@@ -31,14 +31,16 @@ const DEFAULT_INVITATION_EXPIRY_HOURS = 48;
 const DEFAULT_OTP_EXPIRY_MINUTES = 10;
 const DEFAULT_TWO_FACTOR_OTP_EXPIRY_MINUTES = 5;
 
-const BASE_URL =
+const BASE_URL = (
   process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.NODE_ENV === "production"
     ? "https://greenroomm.vercel.app"
-    : "http://localhost:3000");
+    : "http://localhost:3000")
+).replace(/\/+$/, "");
 
-function magicLinkUrl(token: string) {
-  return `${BASE_URL}/login/verify/${token}`;
+function magicLinkUrl(token: string, callbackURL: string) {
+  const params = new URLSearchParams({ token, callbackURL });
+  return `${BASE_URL}/api/auth/magic-link/verify?${params.toString()}`;
 }
 
 function inviteUrl(token: string) {
@@ -82,7 +84,7 @@ export async function renderEmail(
     case "magic_link": {
       element = (
         <MagicLinkEmail
-          url={magicLinkUrl(kind.token)}
+          url={magicLinkUrl(kind.token, kind.callbackURL ?? "/profile")}
           expiresInMinutes={
             kind.expiresInMinutes ?? DEFAULT_MAGIC_LINK_EXPIRY_MINUTES
           }

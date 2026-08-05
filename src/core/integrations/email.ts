@@ -26,10 +26,11 @@ export async function sendMagicLinkEmail(
   to: string,
   token: string,
   expiresInMinutes?: number,
+  callbackURL?: string,
 ): Promise<void> {
   await sendEmail({
     to,
-    kind: { kind: "magic_link", token, expiresInMinutes },
+    kind: { kind: "magic_link", token, expiresInMinutes, callbackURL },
   });
 }
 

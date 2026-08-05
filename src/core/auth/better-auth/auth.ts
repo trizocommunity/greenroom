@@ -4,7 +4,6 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
 import { magicLink, twoFactor } from "better-auth/plugins";
-import { google } from "better-auth/social-providers";
 import { nextCookies } from "better-auth/next-js";
 import { randomUUID } from "node:crypto";
 import { db } from "@/core/database/client";
@@ -51,6 +50,25 @@ export const auth = betterAuth({
       twoFactor: twoFactorTable,
     },
   }),
+
+  // Google OAuth (PR 2 ships this). Social providers are NOT plugins —
+  // they live on the top-level `socialProviders` option so Better Auth
+  // can register them with the sign-in/social handler. Putting `google`
+  // in `plugins` is silently ignored and surfaces as a 404 with
+  // "Provider not found" on the client. The `client_id` / `client_secret`
+  // come from Google Cloud Console — see ISSUE-41 §"Google Cloud Console
+  // setup". `accessType: "offline"` requests refresh tokens so a
+  // returning Google user keeps a usable session. Empty strings still
+  // register the provider — Better Auth will only error on actual
+  // sign-in attempts, so a missing client secret doesn't crash the
+  // login page.
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      accessType: "offline",
+    },
+  },
 
   // Magic link + Google are our only sign-in methods. Password sign-in
   // is intentionally disabled.
@@ -148,15 +166,23 @@ export const auth = betterAuth({
         // for that single call to suppress the send.
         if (process.env.GREENROOM_SILENT_AUTH === "1") return;
 
-        // The `token` query param is what the current magic-link flow
-        // forwards — extract it so the existing email sender (which
-        // takes a raw token) keeps working unchanged. The `url` Better
-        // Auth builds already embeds the token.
-        const tokenParam = new URL(url).searchParams.get("token") ?? "";
+        // Better Auth builds the verification URL as
+        //   `${baseURL}/api/auth/magic-link/verify?token=<token>&callbackURL=<url>`
+        // and hands it to us via the `url` field. We rebuild the URL
+        // from the bare token so the email renderer stays decoupled
+        // from Better Auth's path conventions, but we need to forward
+        // the `callbackURL` so the user lands where the client asked
+        // (the form sets `callbackURL: "/profile"`). Default to `/profile`
+        // to match the default in `BetterAuthMagicLinkRequestForm`.
+        const parsed = new URL(url);
+        const tokenParam = parsed.searchParams.get("token") ?? "";
+        const callbackURL =
+          parsed.searchParams.get("callbackURL") ?? "/profile";
         await sendMagicLinkEmail(
           email,
           tokenParam,
           MAGIC_LINK_EXPIRY_SECONDS / 60,
+          callbackURL,
         );
       },
     }),
@@ -207,18 +233,6 @@ export const auth = betterAuth({
         maxFailedAttempts: 10,
         durationSeconds: 15 * 60,
       },
-    }),
-    // Google OAuth (PR 2 ships this). The client_id / client_secret come
-    // from Google Cloud Console — see ISSUE-41 §"Google Cloud Console
-    // setup". The `accessType: "offline"` requests refresh tokens so a
-    // returning Google user keeps a usable session. Empty strings still
-    // register the provider — Better Auth will only error on actual
-    // sign-in attempts, so a missing client secret doesn't crash the
-    // login page.
-    google({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-      accessType: "offline",
     }),
     // Must be last per Better Auth docs — wires `Set-Cookie` headers
     // through Next's `cookies()` so server actions and RSCs see the

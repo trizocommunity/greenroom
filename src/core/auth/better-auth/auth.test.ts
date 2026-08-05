@@ -57,12 +57,11 @@ describe("better-auth config (ISSUE-41 PR 1 + PR 2 + PR 4)", () => {
     30_000,
   );
 
-  // PR 2 (Google OAuth + auto-link) is verified end-to-end by the
-  // integration test suite. Unit-testing `socialProviders` requires a
-  // non-mocked schema and real GOOGLE_CLIENT_ID env, which the unit
-  // runner doesn't have — the assertion belongs in
-  // `src/test/integration/better-auth-google.test.ts` (TODO).
-  it.skip(
+  // PR 2 (Google OAuth + auto-link). Regression guard: putting `google`
+  // in `plugins` is silently ignored by Better Auth, and the request to
+  // `/api/auth/sign-in/social` then fails with "Provider not found". The
+  // provider must live on the top-level `socialProviders` option.
+  it(
     "registers Google as a social provider with auto-link trusted providers",
     async () => {
       const { auth } = await import("@/core/auth/better-auth/auth");

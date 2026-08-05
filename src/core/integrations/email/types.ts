@@ -17,7 +17,12 @@ export type EmailContext = {
 };
 
 export type EmailKind =
-  | { kind: "magic_link"; token: string; expiresInMinutes?: number }
+  | {
+      kind: "magic_link";
+      token: string;
+      expiresInMinutes?: number;
+      callbackURL?: string;
+    }
   | {
       kind: "festival_invitation";
       token: string;

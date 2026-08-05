@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderEmail } from "../render";
 
 describe("renderEmail — magic_link", () => {
@@ -11,8 +11,35 @@ describe("renderEmail — magic_link", () => {
     expect(result.html).toContain("Sign in to Greenroom");
     expect(result.html).toContain("rgb(11,14,20)"); // dark canvas
     expect(result.html).toContain("rgb(239,68,68)"); // dark brand
-    expect(result.html).toMatch(/login\/verify\/abc123/);
-    expect(result.text).toContain("login/verify/abc123");
+    // Should point at Better Auth's catch-all verify endpoint, not the
+    // deleted `/login/verify/[token]` page. Default callbackURL is
+    // `/profile` (matches BetterAuthMagicLinkRequestForm). HTML output
+    // HTML-encodes the `&` between query params, so look for `&amp;`.
+    expect(result.html).toMatch(
+      /api\/auth\/magic-link\/verify\?token=abc123&amp;callbackURL=%2Fprofile/,
+    );
+    expect(result.text).toContain(
+      "api/auth/magic-link/verify?token=abc123&callbackURL=%2Fprofile",
+    );
+  });
+
+  it("never emits a double slash even when NEXT_PUBLIC_APP_URL ends with /", async () => {
+    const previous = process.env.NEXT_PUBLIC_APP_URL;
+    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomm.vercel.app/";
+    vi.resetModules();
+    try {
+      const { renderEmail: renderFresh } = await import("../render");
+      const result = await renderFresh({ kind: "magic_link", token: "abc123" });
+      expect(result.html).not.toMatch(/\/\/api\/auth\/magic-link\/verify/);
+      expect(result.text).not.toMatch(/\/\/api\/auth\/magic-link\/verify/);
+      expect(result.html).toContain(
+        "https://greenroomm.vercel.app/api/auth/magic-link/verify?token=abc123&amp;callbackURL=%2Fprofile",
+      );
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+      else process.env.NEXT_PUBLIC_APP_URL = previous;
+      vi.resetModules();
+    }
   });
 
   it("renders a copyable URL block + copy button + share-via-email mailto link", async () => {
@@ -24,14 +51,25 @@ describe("renderEmail — magic_link", () => {
     expect(result.html).toContain("Or copy and share this link:");
     expect(result.html).toContain("Copy link");
     expect(result.html).toContain("Share via email");
-    // mailto: subject + URL pre-filled, encoded
+    // mailto: subject + URL pre-filled, encoded (the mailto body is
+    // double-encoded: the `&` in the URL body becomes `%26`).
     expect(result.html).toContain("mailto:?subject=Greenroom%20sign-in%20link");
-    expect(result.html).toContain(encodeURIComponent("login/verify/abc123"));
-    // Full URL appears as selectable text inside the styled block (not just href)
+    expect(result.html).toContain(
+      encodeURIComponent(
+        "api/auth/magic-link/verify?token=abc123&callbackURL=%2Fprofile",
+      ),
+    );
+    // Full URL appears as selectable text inside the styled block (not just href).
+    // HTML output uses `&amp;` in attribute values; the visible rendered text
+    // (output below the button) shows the raw `&`, which is what copy-paste
+    // and the mailto body both use.
     expect(result.html).toContain("https://");
-    expect(result.html).toContain("login/verify/abc123");
-    // Plain-text fallback also carries the URL so copy works in plain-text clients
-    expect(result.text).toContain("login/verify/abc123");
+    expect(result.html).toContain(
+      "api/auth/magic-link/verify?token=abc123&amp;callbackURL=%2Fprofile",
+    );
+    expect(result.text).toContain(
+      "api/auth/magic-link/verify?token=abc123&callbackURL=%2Fprofile",
+    );
   });
 
   it("respects expiresInMinutes override", async () => {
@@ -41,6 +79,20 @@ describe("renderEmail — magic_link", () => {
       expiresInMinutes: 5,
     });
     expect(result.text).toContain("5 minutes");
+  });
+
+  it("forwards a custom callbackURL into the verify URL", async () => {
+    const result = await renderEmail({
+      kind: "magic_link",
+      token: "tok",
+      callbackURL: "/festival/suffa",
+    });
+    expect(result.html).toMatch(
+      /api\/auth\/magic-link\/verify\?token=tok&amp;callbackURL=%2Ffestival%2Fsuffa/,
+    );
+    expect(result.text).toContain(
+      "api/auth/magic-link/verify?token=tok&callbackURL=%2Ffestival%2Fsuffa",
+    );
   });
 
   it("theme override switches to light palette", async () => {
