@@ -1182,43 +1182,36 @@ export function AssignmentModal({
                               ))}
                             </ul>
 
-                            {/* Lead picker sits with the team it belongs to */}
                             {needsLead && (
                               <div className="mt-3 border-t pt-3">
-                                <p className="text-xs font-medium">
+                                <p className="text-xs font-medium mb-2">
                                   {leadId
                                     ? "Team lead"
                                     : "Who leads this team?"}
                                 </p>
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                  {block.items.map((item) => {
-                                    const isLead =
-                                      leadId === item.participantId;
-                                    return (
-                                      <button
-                                        type="button"
-                                        key={item.id}
-                                        onClick={() =>
-                                          setTeamLeadChoice((prev) => ({
-                                            ...prev,
-                                            [block.key]: item.participantId,
-                                          }))
-                                        }
-                                        className={cn(
-                                          "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                                          isLead
-                                            ? "border-primary bg-primary text-primary-foreground"
-                                            : "bg-background hover:border-primary/50 hover:bg-accent",
-                                        )}
-                                      >
-                                        {isLead && (
-                                          <Crown className="h-3 w-3" />
-                                        )}
-                                        {item.participantName}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
+                                <Select
+                                  value={leadId || ""}
+                                  onValueChange={(val) =>
+                                    setTeamLeadChoice((prev) => ({
+                                      ...prev,
+                                      [block.key]: val,
+                                    }))
+                                  }
+                                >
+                                  <SelectTrigger className="w-full sm:w-[250px] bg-background">
+                                    <SelectValue placeholder="Select team lead" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {block.items.map((item) => (
+                                      <SelectItem key={item.id} value={item.participantId}>
+                                        <div className="flex items-center gap-2">
+                                          <Crown className="h-3.5 w-3.5 text-amber-500 opacity-70" />
+                                          {item.participantName}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             )}
                           </div>

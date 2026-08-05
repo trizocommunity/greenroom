@@ -1,6 +1,6 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
 import { ArrowRight, Loader2, Mail } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
