@@ -172,6 +172,7 @@ export const participantRelations = relations(participant, ({ one, many }) => ({
     references: [category.id],
   }),
   assignments: many(programmeAssignment),
+  programmeAssignmentMembers: many(programmeAssignmentMember),
   programmeReportedParticipants: many(programmeReportedParticipant),
   programmeCodeLetterRecipients: many(programmeCodeLetterRecipient),
   programmeNotifications: many(programmeNotification),
