@@ -42,7 +42,8 @@ export async function createStage(festivalId: string, data: StageData) {
     festivalId,
     name: data.name,
     description: data.description,
-    createdBy,
+    createdByName: createdBy,
+    createdByEmail: userRecord?.email || null,
   });
 
   const festivalRecord = await db.query.festival.findFirst({

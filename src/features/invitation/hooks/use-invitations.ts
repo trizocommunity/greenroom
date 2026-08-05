@@ -1,8 +1,7 @@
 import "client-only";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-
+import { toast } from "@/lib/toast";
 import { api } from "@/lib/api-client";
 
 export const useCreateInvitation = () => {

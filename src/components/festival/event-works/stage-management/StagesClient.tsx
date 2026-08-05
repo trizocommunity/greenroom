@@ -19,7 +19,8 @@ interface Stage {
   id: string;
   name: string;
   description: string | null;
-  createdBy: string | null;
+  createdByName: string | null;
+  createdByEmail: string | null;
   isOffStage?: boolean;
 }
 
@@ -374,7 +375,11 @@ export function StagesClient({
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-muted-foreground">Created by:</span>
                     <span className="font-medium text-foreground">
-                      {stage.createdBy || "System"}
+                      {stage.createdByName
+                        ? stage.createdByEmail
+                          ? `${stage.createdByName} (${stage.createdByEmail})`
+                          : stage.createdByName
+                        : "System"}
                     </span>
                   </div>
                 </div>

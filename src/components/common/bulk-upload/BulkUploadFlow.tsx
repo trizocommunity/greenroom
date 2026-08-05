@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import party from "party-js";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { v4 as uuidv4 } from "uuid";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,7 @@ export interface BulkUploadFlowProps<T> {
   templateHeaders: string[];
   templateData: any[][];
   templateName?: string;
+  description?: string;
 
   // Logic
   parseRow: (
@@ -63,7 +64,7 @@ export interface BulkUploadFlowProps<T> {
   validateRows?: (items: ParsedItem<T>[]) => Promise<ParsedItem<T>[]>; // Optional batch validation
   onCommit: (
     validItems: T[],
-  ) => Promise<{ success: boolean; count?: number; error?: string }>;
+  ) => Promise<{ success: boolean; count?: number; successCount?: number; error?: string; errors?: any[] }>;
 
   // UI Rendering
   columns: {
@@ -92,6 +93,7 @@ const STEPS: { id: UploadStep; label: string }[] = [
 export function BulkUploadFlow<T>({
   trigger,
   title,
+  description,
   templateHeaders,
   templateData,
   templateName = "template.xlsx",
@@ -110,6 +112,7 @@ export function BulkUploadFlow<T>({
     success: number;
     failed: number;
     message?: string;
+    errors?: any[];
   }>({ success: 0, failed: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -222,10 +225,12 @@ export function BulkUploadFlow<T>({
     try {
       const result = await onCommit(validItems);
       if (result.success) {
+        const count = result.count ?? result.successCount ?? 0;
         setResultSummary({
-          success: result.count || 0,
-          failed: parsedData.length - (result.count || 0),
+          success: count,
+          failed: parsedData.length - count,
           message: result.error,
+          errors: result.errors,
         });
         setStep("COMPLETION");
       } else {
@@ -301,9 +306,10 @@ export function BulkUploadFlow<T>({
                   <div className="mx-auto w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-4 shadow-sm">
                     <CloudUpload className="h-8 w-8" />
                   </div>
-                  <h2 className="text-3xl font-bold tracking-tight">Bulk Upload Data</h2>
+                  <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
                   <p className="text-muted-foreground text-base max-w-md mx-auto">
-                    Upload your spreadsheet to easily import multiple records at once.
+                    {description || "Upload your spreadsheet to easily import multiple records at once."}
+                    <br />
                     Supported formats: .xlsx, .csv
                   </p>
                 </div>
@@ -524,6 +530,7 @@ export function BulkUploadFlow<T>({
             <CompletionStep
               success={resultSummary.success}
               failed={resultSummary.failed}
+              errors={resultSummary.errors}
               onClose={() => setOpen(false)}
               onReset={resetState}
             />
@@ -609,11 +616,13 @@ export function BulkUploadFlow<T>({
 function CompletionStep({
   success,
   failed,
+  errors,
   onClose,
   onReset,
 }: {
   success: number;
   failed: number;
+  errors?: any[];
   onClose: () => void;
   onReset: () => void;
 }) {
@@ -628,6 +637,14 @@ function CompletionStep({
     });
   }, []);
 
+  const downloadErrorsCsv = () => {
+    if (!errors || errors.length === 0) return;
+    const ws = XLSX.utils.json_to_sheet(errors);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Errors");
+    XLSX.writeFile(wb, "failed_rows.xlsx");
+  };
+
   return (
     <div
       ref={containerRef}
@@ -640,7 +657,7 @@ function CompletionStep({
         </div>
       </div>
 
-      <div className="space-y-1 max-w-md">
+      <div className="space-y-1 max-w-md w-full">
         <h3 className="text-3xl font-bold tracking-tight text-green-500">
           Import Complete!
         </h3>
@@ -653,6 +670,31 @@ function CompletionStep({
             </span>
           )}
         </p>
+
+        {errors && errors.length > 0 && (
+          <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-lg text-left shadow-sm">
+            <h4 className="text-sm font-semibold text-red-800 mb-2">Failed Rows Summary</h4>
+            <div className="max-h-32 overflow-y-auto text-xs text-red-700 space-y-1">
+              {errors.slice(0, 10).map((err, i) => (
+                <div key={i}>
+                  • {err.name || "Unknown row"}: {err.error}
+                </div>
+              ))}
+              {errors.length > 10 && (
+                <div className="font-semibold mt-1">...and {errors.length - 10} more.</div>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4 w-full border-red-200 text-red-700 hover:bg-red-100 hover:text-red-800"
+              onClick={downloadErrorsCsv}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Failed Rows
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center gap-4 mt-8">

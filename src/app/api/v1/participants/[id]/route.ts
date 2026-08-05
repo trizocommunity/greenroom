@@ -28,6 +28,7 @@ export const PUT = async (
 
   try {
     const result = await ParticipantService.update(id, festivalId, parsed.data);
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -54,6 +55,7 @@ export const DELETE = async (
 
   try {
     const result = await ParticipantService.delete(participantId, festivalId);
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

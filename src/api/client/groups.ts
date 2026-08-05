@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type {
   CreateGroupInput,
   Group,
@@ -61,7 +61,7 @@ export function useUpdateGroup() {
       );
       return handleApiResponse(response.data);
     },
-    onSuccess: ({ festivalId }) => {
+    onSuccess: (_data, { festivalId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.groups.all(festivalId) });
     },
     onError: (error) => {

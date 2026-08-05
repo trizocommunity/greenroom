@@ -5,7 +5,8 @@ export const stageSchema = z.object({
   festivalId: z.string(),
   name: z.string(),
   description: z.string().nullable(),
-  createdBy: z.string().nullable(),
+  createdByName: z.string().nullable().optional(),
+  createdByEmail: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

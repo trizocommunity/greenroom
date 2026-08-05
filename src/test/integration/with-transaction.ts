@@ -1,7 +1,7 @@
 import { getDb } from "./setup";
 
 export async function withTransaction(
-  fn: (tx: ReturnType<typeof getDb>) => Promise<void>,
+  fn: (tx: any) => Promise<void>,
 ) {
   await getDb()
     .transaction(async (tx) => {

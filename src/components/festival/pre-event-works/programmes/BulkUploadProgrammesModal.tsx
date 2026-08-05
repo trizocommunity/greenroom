@@ -453,6 +453,7 @@ export function BulkUploadProgrammesModal({
     <BulkUploadFlow<ParsedProgrammeData>
       trigger={trigger}
       title="Bulk Upload Programmes"
+      description="Up to 1000 rows per upload."
       templateName="programmes_template.xlsx"
       templateHeaders={[
         "Programme Name",

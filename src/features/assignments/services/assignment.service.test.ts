@@ -144,6 +144,7 @@ vi.mock("@/features/programme-team-leads/services/programme-team-lead.service", 
 vi.mock("@/features/programmes/services/programme-status.service", () => ({
   updateProgrammeStatus: (...args: unknown[]) =>
     mockUpdateProgrammeStatus(...args),
+  assertProgrammePreReporting: vi.fn(),
 }));
 
 vi.mock("@/features/festivals/services/festival-lifecycle-policy.service", () => ({
@@ -343,20 +344,13 @@ describe("AssignmentService.bulkCreate dispatch (XOR shapes)", () => {
       [PROGRAMME_INDIVIDUAL.id, PROGRAMME_INDIVIDUAL],
       [PROGRAMME_GROUP.id, PROGRAMME_GROUP],
     ]);
-    function extractIdFromWhere(where: any): string | undefined {
-      const chunks = where?.id?.queryChunks;
-      if (Array.isArray(chunks)) {
-        for (const c of chunks) {
-          if (typeof c === "string") return c;
-        }
-      }
-      if (typeof where?.id === "string") return where.id;
-      return undefined;
-    }
     txMock.programmeFindFirst.mockImplementation(
       async (args: any) => {
-        const id = extractIdFromWhere(args?.where);
-        if (id && programmesById.has(id)) return programmesById.get(id);
+        // Use util.inspect to safely stringify Drizzle AST objects
+        const str = require("util").inspect(args?.where || {}, { depth: 5 });
+        if (str.includes(PROGRAMME_GROUP.id)) {
+          return PROGRAMME_GROUP;
+        }
         return PROGRAMME_INDIVIDUAL;
       },
     );

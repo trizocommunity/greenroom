@@ -1,6 +1,7 @@
 "use server";
 
 import { and, count, eq, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { getSession } from "@/core/auth/session";
@@ -210,7 +211,7 @@ export async function createAssignmentAction(
     }
   }
 
-  let created;
+  let created: Awaited<ReturnType<typeof AssignmentService.create>>;
   if (data.participantId) {
     created = await AssignmentService.create(
       festivalId,
@@ -244,6 +245,7 @@ export async function createAssignmentAction(
   }).catch((err) =>
     console.error("[AuditLog] ASSIGN_PARTICIPANTS failed", err),
   );
+  revalidatePath("/", "layout");
   return created;
 }
 
@@ -330,6 +332,7 @@ export async function bulkCreateAssignmentAction(
       ),
     ),
   );
+  revalidatePath("/", "layout");
   return created;
 }
 
@@ -382,6 +385,7 @@ export async function deleteAssignmentAction(
     },
     actor: auditActorForContext(actorContext),
   }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  revalidatePath("/", "layout");
   return deleted;
 }
 
@@ -417,6 +421,7 @@ export async function deleteTeamAssignmentAction(
     metadata: { programmeId, groupId, teamNumber, count: result.count },
     actor: auditActorForContext(actorContext),
   }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  revalidatePath("/", "layout");
   return result;
 }
 

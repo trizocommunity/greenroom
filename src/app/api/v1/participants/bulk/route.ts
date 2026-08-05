@@ -26,19 +26,39 @@ const handler = createProtectedHandler({
     const today = new Date().toISOString().slice(0, 10);
 
     const created = [];
+    const errors: Array<{ name: string; error: string }> = [];
     for (const p of parsed.data.participants) {
-      created.push(
-        await ParticipantService.create(festivalId, {
+      try {
+        const c = await ParticipantService.create(festivalId, {
           name: p.name,
           groupId: p.groupId,
           categoryId: p.categoryId,
           gender: p.gender,
           dateOfBirth: today,
-        }),
-      );
+        });
+        created.push(c);
+      } catch (e) {
+        errors.push({ name: p.name, error: e instanceof Error ? e.message : String(e) });
+      }
     }
 
-    return ok(created);
+    const { db } = await import("@/core/database/client");
+    const { festival: festivalTable } = await import("@/core/database/schema");
+    const { eq } = await import("drizzle-orm");
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      columns: { slug: true },
+    });
+    if (festival) {
+      try {
+        const { revalidatePath } = await import("next/cache");
+        revalidatePath(`/dashboard/${festival.slug}/pre-event-works/participants`);
+      } catch (error) {
+        console.error("[revalidatePath] participants page", error);
+      }
+    }
+
+    return ok({ created, errors });
   },
 });
 

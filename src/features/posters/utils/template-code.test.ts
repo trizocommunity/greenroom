@@ -13,12 +13,12 @@ describe("validateTemplateCode", () => {
 
   it("accepts CARD-* codes", () => {
     expect(validateTemplateCode("CARD-DEFAULT")).toBeNull();
-    expect(validateTemplateCode("card-default")).toBeNull();
+    expect(validateTemplateCode("CARD-A")).toBeNull();
   });
 
-  it("rejects TEAM-* codes (Studio no longer supports team points)", () => {
-    expect(validateTemplateCode("TEAM-MAIN")).not.toBeNull();
-    expect(validateTemplateCode("TEAM-A")).not.toBeNull();
+  it("accepts TEAM-* codes", () => {
+    expect(validateTemplateCode("TEAM-MAIN")).toBeNull();
+    expect(validateTemplateCode("TEAM-A")).toBeNull();
   });
 
   it("rejects empty codes", () => {
@@ -41,8 +41,8 @@ describe("templateTypeFromCode", () => {
     expect(templateTypeFromCode("CARD-DEFAULT")).toBe("CANDIDATE_CARD");
   });
 
-  it("does not map TEAM-* codes (team points deprecated)", () => {
-    expect(templateTypeFromCode("TEAM-MAIN")).toBeNull();
+  it("maps TEAM-* codes to TEAM_POINTS", () => {
+    expect(templateTypeFromCode("TEAM-MAIN")).toBe("TEAM_POINTS");
   });
 });
 

@@ -82,6 +82,7 @@ const handler = createProtectedHandler({
       await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
     }
 
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok({ success: true });
   },
 
@@ -152,6 +153,7 @@ const handler = createProtectedHandler({
       await UsageCounterService.incrementUsage(festivalId, "storage", deltaMb);
     }
 
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok({ success: true });
   },
 
@@ -196,6 +198,7 @@ const handler = createProtectedHandler({
       );
     }
 
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok({ success: true });
   },
 });

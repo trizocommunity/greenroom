@@ -28,6 +28,10 @@ export const PUT = async (
 
   try {
     const result = await AssignmentService.update(id, festivalId, parsed.data);
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch(e) {}
     return ok(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

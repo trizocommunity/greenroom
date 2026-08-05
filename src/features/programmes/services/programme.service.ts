@@ -127,7 +127,16 @@ export const ProgrammeService = {
         maxParticipantsPerTeam: p.maxParticipantsPerTeam || 1,
       }));
 
-      return await db.insert(programmes).values(data).returning();
+      return await db.transaction(async (tx) => {
+        const chunkSize = 100;
+        const results = [];
+        for (let i = 0; i < data.length; i += chunkSize) {
+          const chunk = data.slice(i, i + chunkSize);
+          const inserted = await tx.insert(programmes).values(chunk).returning();
+          results.push(...inserted);
+        }
+        return results;
+      });
     } catch (error) {
       await UsageCounterService.incrementUsage(
         festivalId,

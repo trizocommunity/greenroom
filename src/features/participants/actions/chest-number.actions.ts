@@ -248,18 +248,21 @@ export async function resetChestNumbers(festivalId: string) {
 export async function assignChestNumberForNewParticipant(
   festivalId: string,
   participantId: string,
+  tx?: typeof db,
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  return assignChestNumberForParticipantInternal(festivalId, participantId);
+  return assignChestNumberForParticipantInternal(festivalId, participantId, tx);
 }
 
 export async function assignChestNumberForParticipantInternal(
   festivalId: string,
   participantId: string,
+  tx?: typeof db,
 ) {
-  const participant = await db.query.participant.findFirst({
+  const client = tx ?? db;
+  const participant = await client.query.participant.findFirst({
     where: and(
       eq(participantTable.id, participantId),
       eq(participantTable.festivalId, festivalId),
@@ -268,7 +271,7 @@ export async function assignChestNumberForParticipantInternal(
   });
   if (!participant || participant.category?.type !== "SINGLE") return;
 
-  const festival = await db.query.festival.findFirst({
+  const festival = await client.query.festival.findFirst({
     where: eq(festivalTable.id, festivalId),
     columns: { chestNumberSettings: true },
   });
@@ -296,7 +299,7 @@ export async function assignChestNumberForParticipantInternal(
     prefixStr = p.endsWith("-") ? p : `${p}-`;
   }
 
-  const existingParticipants = await db.query.participant.findMany({
+  const existingParticipants = await client.query.participant.findMany({
     where: and(
       eq(participantTable.festivalId, festivalId),
       isNotNull(participantTable.chestNumber),
@@ -334,9 +337,13 @@ export async function assignChestNumberForParticipantInternal(
   }
   categorySequences[catId] = currentSeq + 1;
 
-  await db.transaction(async (tx) => {
+  const runInTx = tx
+    ? async (cb: (t: typeof db) => Promise<void>) => cb(tx)
+    : async (cb: (t: typeof db) => Promise<void>) => db.transaction(cb);
+
+  await runInTx(async (t) => {
     const now = serverNowIso();
-    await tx
+    await t
       .update(participantTable)
       .set({
         chestNumber,
@@ -349,7 +356,7 @@ export async function assignChestNumberForParticipantInternal(
       })
       .where(eq(participantTable.id, participantId));
 
-    await tx
+    await t
       .update(festivalTable)
       .set({
         chestNumberSettings: {

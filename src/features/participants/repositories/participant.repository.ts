@@ -9,9 +9,11 @@ export async function createParticipant(
     id?: string;
     updatedAt?: string;
   },
+  tx?: typeof db,
 ) {
+  const client = tx ?? db;
   const { randomUUID } = await import("crypto");
-  const result = await db
+  const result = await client
     .insert(participants)
     .values({
       id: data.id ?? randomUUID(),
@@ -33,8 +35,10 @@ export async function deleteParticipant(id: string) {
 export async function updateParticipant(
   id: string,
   data: Partial<typeof participants.$inferInsert>,
+  tx?: typeof db,
 ) {
-  const result = await db
+  const client = tx ?? db;
+  const result = await client
     .update(participants)
     .set(data)
     .where(eq(participants.id, id))

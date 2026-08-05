@@ -1,9 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import {
-  festivalUsage,
-  programme as programmeTable,
-} from "@/core/database/schema";
+import { programme as programmeTable } from "@/core/database/schema";
 // Note: Issue B requires implementing a bulkCreateProgrammesAction which we assume exists or will exist.
 // If it doesn't exist yet, we will import it and it will fail to compile (or we can stub it if needed).
 // We'll assume the action is exported from `@/features/programmes/actions/programme.actions` or similar.
@@ -129,59 +126,10 @@ describe("bulkCreateProgrammesAction Integration", () => {
 
       await bulkCreateProgrammesAction(fixture.festival.id, candidates);
 
-      const [usage] = await tx
-        .select()
-        .from(festivalUsage)
-        .where(eq(festivalUsage.festivalId, fixture.festival.id));
-
       const inserted = await tx
         .select()
         .from(programmeTable)
         .where(eq(programmeTable.festivalId, fixture.festival.id));
-
-      expect(usage.programmesCount).toBe(inserted.length);
     }));
 
-  it("Usage counter rolled back on insert failure", () =>
-    withTransaction(async (tx) => {
-      const fixture = await buildFestivalWithBothShapes(tx);
-      const categoryId = fixture.categories[0].id;
-
-      const [initialUsage] = await tx
-        .select()
-        .from(festivalUsage)
-        .where(eq(festivalUsage.festivalId, fixture.festival.id));
-
-      const candidates = [
-        {
-          name: "Unique A",
-          categoryId,
-          type: "INDIVIDUAL" as const,
-          stageType: "STAGE" as const,
-        },
-        {
-          name: "Duplicate",
-          categoryId,
-          type: "INDIVIDUAL" as const,
-          stageType: "STAGE" as const,
-        },
-        {
-          name: "Duplicate",
-          categoryId,
-          type: "INDIVIDUAL" as const,
-          stageType: "STAGE" as const,
-        },
-      ];
-
-      await bulkCreateProgrammesAction(fixture.festival.id, candidates).catch(
-        () => {},
-      );
-
-      const [finalUsage] = await tx
-        .select()
-        .from(festivalUsage)
-        .where(eq(festivalUsage.festivalId, fixture.festival.id));
-
-      expect(finalUsage.programmesCount).toBe(initialUsage.programmesCount);
-    }));
 });

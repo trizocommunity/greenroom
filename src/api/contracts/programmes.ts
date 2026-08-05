@@ -52,6 +52,11 @@ export const updateProgrammeInput = createProgrammeInput
   .partial()
   .omit({ categoryId: true });
 
+export const bulkCreateProgrammesInput = z.object({
+  programmes: z.array(createProgrammeInput),
+});
+
 export type Programme = z.infer<typeof programmeSchema>;
 export type CreateProgrammeInput = z.infer<typeof createProgrammeInput>;
 export type UpdateProgrammeInput = z.infer<typeof updateProgrammeInput>;
+export type BulkCreateProgrammesInput = z.infer<typeof bulkCreateProgrammesInput>;

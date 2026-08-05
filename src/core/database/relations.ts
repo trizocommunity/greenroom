@@ -241,11 +241,7 @@ export const scheduleEntryRelations = relations(
       references: [stage.id],
     }),
     programmeReportingSessions: many(programmeReportingSession),
-    creatorUser: one(user, {
-      fields: [scheduleEntry.createdBy],
-      references: [user.id],
-      relationName: "scheduleEntryCreator",
-    }),
+
     updaterUser: one(user, {
       fields: [scheduleEntry.updatedBy],
       references: [user.id],

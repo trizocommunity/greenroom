@@ -27,6 +27,7 @@ const handler = createProtectedHandler({
       return badRequest("INVALID_INPUT", parsed.error.message);
     await assertFestivalAccess(user, festivalId);
     const result = await ProgrammeService.create(festivalId, parsed.data);
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok(result);
   },
 });

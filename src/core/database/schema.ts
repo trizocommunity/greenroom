@@ -274,6 +274,13 @@ export const user = pgTable(
   {
     id: text().primaryKey().notNull(),
     email: text().notNull(),
+    // Better Auth core columns. `name` is required by Better Auth so we
+    // backfill `''` in the migration; the existing `fullName` (or email
+    // local-part) is copied into it by the migration SQL. `image` and
+    // `emailVerified` are nullable / default false. See ISSUE-41 PR 1.
+    name: text().default("").notNull(),
+    image: text(),
+    emailVerified: boolean().default(false).notNull(),
     globalRole: globalRole().default("USER").notNull(),
     fullName: text(),
     displayName: text(),
@@ -293,6 +300,93 @@ export const user = pgTable(
     })
       .onUpdate("cascade")
       .onDelete("set null"),
+  ],
+);
+
+// ─── 2a. Better Auth: session ────────────────────────────────────────────────
+// One row per (user, device). Revocable. Replaces the stateless JWT cookie
+// in PR 3 (ISSUE-41).
+export const session = pgTable(
+  "session",
+  {
+    id: text().primaryKey().notNull(),
+    userId: text().notNull(),
+    token: text().notNull(),
+    expiresAt: tzTimestamp().notNull(),
+    ipAddress: text(),
+    userAgent: text(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+  },
+  (table) => [
+    uniqueIndex("session_token_key").using(
+      "btree",
+      table.token.asc().nullsLast(),
+    ),
+    index("session_userId_idx").using("btree", table.userId.asc().nullsLast()),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: "session_userId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── 2b. Better Auth: account ────────────────────────────────────────────────
+// One row per linked identity per user (magic link vs Google vs future
+// providers). Replaces the bespoke `magicLinkToken` table in PR 3.
+export const account = pgTable(
+  "account",
+  {
+    id: text().primaryKey().notNull(),
+    userId: text().notNull(),
+    accountId: text().notNull(),
+    providerId: text().notNull(),
+    accessToken: text(),
+    refreshToken: text(),
+    accessTokenExpiresAt: tzTimestamp(),
+    refreshTokenExpiresAt: tzTimestamp(),
+    scope: text(),
+    idToken: text(),
+    password: text(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+  },
+  (table) => [
+    index("account_userId_idx").using(
+      "btree",
+      table.userId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: "account_userId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── 2c. Better Auth: verification ──────────────────────────────────────────
+// Magic-link OTPs, email verifications, password resets. Replaces
+// `magicLinkToken`.
+export const verification = pgTable(
+  "verification",
+  {
+    id: text().primaryKey().notNull(),
+    identifier: text().notNull(),
+    value: text().notNull(),
+    expiresAt: tzTimestamp().notNull(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+  },
+  (table) => [
+    index("verification_identifier_idx").using(
+      "btree",
+      table.identifier.asc().nullsLast(),
+    ),
   ],
 );
 
@@ -402,6 +496,8 @@ export const category = pgTable(
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     type: categoryType().default("SINGLE").notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
   },
   (table) => [
     uniqueIndex("category_festivalId_name_key").using(
@@ -435,6 +531,8 @@ export const group = pgTable(
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     seriesStart: integer().default(100).notNull(),
     color: text().default("#2563eb").notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
   },
   (table) => [
     uniqueIndex("group_festivalId_name_key").using(
@@ -529,7 +627,8 @@ export const festivalScoringPolicy = pgTable(
     positionPoints2nd: integer("position_points_2nd").default(3).notNull(),
     positionPoints3rd: integer("position_points_3rd").default(1).notNull(),
     gradeRules: jsonb("grade_rules").notNull(),
-    createdBy: text("created_by"),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
     createdAt: tzTimestampNamed("created_at")
       .default(currentTimestampSql())
       .notNull(),
@@ -690,7 +789,8 @@ export const stage = pgTable(
     festivalId: text().notNull(),
     name: text().notNull(),
     description: text(),
-    createdBy: text(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
     isOffStage: boolean("is_off_stage").default(false).notNull(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
@@ -832,7 +932,8 @@ export const scheduleEntry = pgTable(
     startTime: tzTimestamp().notNull(),
     endTime: tzTimestamp(),
     order: integer().default(0).notNull(),
-    createdBy: text(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
     updatedBy: text(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().notNull(),
@@ -1399,6 +1500,8 @@ export const judge = pgTable(
     updatedAt: tzTimestampNamed("updated_at")
       .default(currentTimestampSql())
       .notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
   },
   (table) => [
     index("judge_festivalId_idx").using(
@@ -1429,7 +1532,8 @@ export const judgementConfig = pgTable(
     startedBy: text("started_by"),
     endedAt: tzTimestampNamed("ended_at"),
     endedBy: text("ended_by"),
-    createdBy: text("created_by"),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
     createdAt: tzTimestampNamed("created_at")
       .default(currentTimestampSql())
       .notNull(),
@@ -1601,6 +1705,8 @@ export const festivalNews = pgTable(
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     excerpt: text(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
   },
   (table) => [
     foreignKey({
@@ -2181,6 +2287,8 @@ export const festivalExport = pgTable(
     itemCount: integer(),
     errorMessage: text(),
     createdBy: text().notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
     queuedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     completedAt: tzTimestamp(),
     completedInMs: integer(),

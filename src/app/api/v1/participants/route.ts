@@ -34,6 +34,7 @@ const handler = createProtectedHandler({
       where: (s, { eq }) => eq(s.id, result.id),
       with: { category: true, group: true },
     });
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok(updated);
   },
 });

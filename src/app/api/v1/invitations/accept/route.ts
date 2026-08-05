@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createSession, getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { generateId } from "@/core/database/ids";
@@ -147,6 +148,8 @@ export const POST = async (req: Request) => {
     const acceptedUser = await db.query.user.findFirst({
       where: eq(userTable.id, session.userId),
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({
       success: true,

@@ -3,8 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type * as React from "react";
-import { toast } from "sonner";
-
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/features/auth/hooks/use-auth";
 

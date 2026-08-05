@@ -66,7 +66,7 @@ export async function buildFestivalWithBothShapes(
         name: "Cat Group",
         type: "GROUP",
       },
-    ])
+    ] as any)
     .returning();
 
   // 4. 2 groups

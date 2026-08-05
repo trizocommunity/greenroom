@@ -123,6 +123,7 @@ beforeEach(() => {
   mockAssertFestivalAccess.mockResolvedValue(undefined);
   mockAssertStageManagerAccessForStage.mockResolvedValue("Owner Name");
   mockCreateAuditLog.mockResolvedValue(undefined);
+  mockProgrammeFindFirst.mockResolvedValue({ status: "PENDING_JUDGMENT" });
 });
 
 describe("startJudgementAction — off-stage auto-assign", () => {

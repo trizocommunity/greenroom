@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, lt } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { festivalExport } from "@/core/database/schema";
+import { festivalExport, user as userTable } from "@/core/database/schema";
 import { fromNow, serverNowIso } from "@/core/datetime/server";
 import type {
   ExportFormat,
@@ -29,6 +29,13 @@ export async function createExport(
   const queuedAtIso = serverNowIso();
   const expiresAt = fromNow(RETENTION_MS);
 
+  const actorUser = input.createdBy
+    ? await db.query.user.findFirst({
+        where: eq(userTable.id, input.createdBy),
+        columns: { email: true, displayName: true, fullName: true },
+      })
+    : null;
+
   const [row] = await db
     .insert(festivalExport)
     .values({
@@ -40,6 +47,9 @@ export async function createExport(
       summary: input.summary,
       config: input.config,
       createdBy: input.createdBy,
+      createdByName:
+        actorUser?.displayName || actorUser?.fullName || actorUser?.email || null,
+      createdByEmail: actorUser?.email || null,
       queuedAt: queuedAtIso,
       expiresAt,
     })

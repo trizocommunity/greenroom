@@ -17,6 +17,7 @@ const {
   mockRevalidatePath,
   mockGetAccessibleStageIds,
   mockProgrammeFindMany,
+  mockProgrammeFindFirst,
   mockScheduleEntryFindMany,
   mockScheduleEntryFindFirst,
   mockStageFindFirst,
@@ -47,6 +48,7 @@ const {
     mockRevalidatePath: mkFn(),
     mockGetAccessibleStageIds: mkFn(),
     mockProgrammeFindMany: mkFn(),
+    mockProgrammeFindFirst: mkFn(),
     mockScheduleEntryFindMany: mkFn(),
     mockScheduleEntryFindFirst: mkFn(),
     mockStageFindFirst: mkFn(),
@@ -116,6 +118,7 @@ vi.mock("@/core/database/client", () => ({
     query: {
       programme: {
         findMany: (...args: unknown[]) => mockProgrammeFindMany(...args),
+        findFirst: (...args: unknown[]) => mockProgrammeFindFirst(...args),
       },
       scheduleEntry: {
         findFirst: (...args: unknown[]) => mockScheduleEntryFindFirst(...args),
@@ -151,6 +154,7 @@ vi.mock("@/features/plan-features/services/plan-features.service", () => ({
 vi.mock("@/features/programmes/services/programme-status.service", () => ({
   updateProgrammeStatus: (...args: unknown[]) =>
     mockUpdateProgrammeStatus(...args),
+  assertProgrammePreReporting: vi.fn(),
 }));
 
 vi.mock("@/features/schedule/utils/schedule-orchestration", () => ({
@@ -212,6 +216,7 @@ beforeEach(() => {
   mockGetAccessibleStageIds.mockResolvedValue("all");
 
   mockProgrammeFindMany.mockResolvedValue([]);
+  mockProgrammeFindFirst.mockResolvedValue({ status: "PRE_REPORTING" });
   mockScheduleEntryFindMany.mockResolvedValue([]);
   mockScheduleEntryFindFirst.mockResolvedValue(undefined);
   mockStageFindFirst.mockResolvedValue({ id: "any" });

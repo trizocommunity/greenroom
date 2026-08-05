@@ -4,7 +4,7 @@ import { stageDataInput } from "@/api/contracts/stages";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
-import { stage } from "@/core/database/schema";
+import { stage, user as userTable } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { provisionStagePortalCredential } from "@/features/stage-portal/actions/stage-portal-credential.actions";
 
@@ -35,6 +35,13 @@ const handler = createProtectedHandler({
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
 
+    const actorUser = user?.userId
+      ? await db.query.user.findFirst({
+          where: eq(userTable.id, user.userId),
+          columns: { email: true, displayName: true, fullName: true },
+        })
+      : null;
+
     const now = serverNowIso();
     const [newStage] = await db
       .insert(stage)
@@ -43,7 +50,12 @@ const handler = createProtectedHandler({
         festivalId,
         name: parsed.data.name,
         description: parsed.data.description ?? null,
-        createdBy: user!.userId,
+        createdByName:
+          actorUser?.displayName ||
+          actorUser?.fullName ||
+          actorUser?.email ||
+          null,
+        createdByEmail: actorUser?.email || null,
         createdAt: now,
         updatedAt: now,
       })

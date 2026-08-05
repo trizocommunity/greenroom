@@ -159,7 +159,6 @@ export async function getScheduleEntries(
         with: { category: true },
       },
       stage: true,
-      creatorUser: { columns: { fullName: true, displayName: true } },
       updaterUser: { columns: { fullName: true, displayName: true } },
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
@@ -180,7 +179,6 @@ export async function getScheduleEntriesPublic(
         with: { category: true },
       },
       stage: true,
-      creatorUser: { columns: { fullName: true, displayName: true } },
       updaterUser: { columns: { fullName: true, displayName: true } },
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
@@ -449,8 +447,11 @@ export async function createScheduleEntry(
       conflictParts: conflict,
     };
 
-  const createdBy = session?.userId
-    ? await getDisplayName(session.userId)
+  const actorUser = session?.userId
+    ? await db.query.user.findFirst({
+        where: eq(userTable.id, session.userId),
+        columns: { email: true, displayName: true, fullName: true },
+      })
     : null;
 
   const now = serverNowIso();
@@ -467,7 +468,9 @@ export async function createScheduleEntry(
     startTime: parseInstant(data.startTime)!.toISOString(),
     endTime: parseInstant(data.endTime)?.toISOString() ?? null,
     order: data.order ?? 0,
-    createdBy,
+    createdByName:
+      actorUser?.displayName || actorUser?.fullName || actorUser?.email || null,
+    createdByEmail: actorUser?.email || null,
     updatedBy: null,
     updatedAt: now,
   });
@@ -477,6 +480,7 @@ export async function createScheduleEntry(
   }
 
   revalidateSchedulePaths(festival.slug);
+  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
   return { success: true };
 }
 
@@ -623,6 +627,7 @@ export async function updateScheduleEntry(
   }
 
   revalidateSchedulePaths(festival.slug);
+  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
   return { success: true };
 }
 
@@ -664,6 +669,7 @@ export async function deleteScheduleEntry(
   }
 
   revalidateSchedulePaths(festival.slug);
+  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
   return { success: true };
 }
 
@@ -739,6 +745,7 @@ export async function clearScheduleEntries(
   }
 
   revalidateSchedulePaths(festival.slug);
+  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
   return { success: true, count: entriesToDelete.length };
 }
 
@@ -831,6 +838,7 @@ export async function reorderScheduleEntries(
   });
 
   revalidateSchedulePaths(festival.slug);
+  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
   return { success: true };
 }
 
@@ -957,5 +965,6 @@ export async function swapScheduleSlots(
   });
 
   revalidateSchedulePaths(festival.slug);
+  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
   return { success: true };
 }

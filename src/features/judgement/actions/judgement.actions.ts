@@ -33,6 +33,7 @@ import {
   programmeReportingSession as reportingSessionTable,
   result as resultTable,
   scheduleEntry as scheduleEntryTable,
+  user as userTable,
 } from "@/core/database/schema";
 import { dateKeyLocal, isAfter, isBefore, parseInstant } from "@/core/datetime";
 import { serverNow, serverNowIso } from "@/core/datetime/server";
@@ -892,6 +893,13 @@ async function insertLiveJudgementConfig(input: {
         );
     }
 
+    const actorUser = input.startedBy
+      ? await tx.query.user.findFirst({
+          where: eq(userTable.id, input.startedBy),
+          columns: { email: true, displayName: true, fullName: true },
+        })
+      : null;
+
     await tx.insert(judgementConfigTable).values({
       id: configId,
       festivalId: input.festivalId,
@@ -902,6 +910,9 @@ async function insertLiveJudgementConfig(input: {
       status: "LIVE",
       startedAt: now,
       startedBy: input.startedBy,
+      createdByName:
+        actorUser?.displayName || actorUser?.fullName || actorUser?.email || null,
+      createdByEmail: actorUser?.email || null,
       createdAt: now,
       updatedAt: now,
     } as any);
@@ -2103,6 +2114,8 @@ export async function saveScoringPolicyAction(input: {
     awardRules: input.awardRules,
     updatedBy: session?.userId ?? null,
   });
+
+  revalidatePath("/", "layout");
 
   return { success: true as const };
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
@@ -183,6 +184,8 @@ export async function acceptInvitationAction(token: string): Promise<
     const festivalRecord = await db.query.festival.findFirst({
       where: eq(festival.id, invitation.festivalId),
     });
+
+    revalidatePath("/", "layout");
 
     return {
       success: true,

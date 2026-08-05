@@ -21,7 +21,8 @@ export const GET = async (
   await assertFestivalAccess(session, festivalId);
 
   const result = await ProgrammeService.getDetails(id, festivalId);
-  return ok(result);
+  try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
+    return ok(result);
 };
 
 export const PUT = async (
@@ -46,6 +47,7 @@ export const PUT = async (
 
   try {
     const result = await ProgrammeService.update(id, festivalId, parsed.data);
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -72,6 +74,7 @@ export const DELETE = async (
 
   try {
     const result = await ProgrammeService.delete(programmeId, festivalId);
+    try { const { revalidatePath } = await import("next/cache"); revalidatePath("/", "layout"); } catch(e){}
     return ok(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
