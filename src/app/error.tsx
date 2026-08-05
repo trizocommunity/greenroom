@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { humanizeError } from "@/core/errors/humanize";
 
 export default function GlobalSegmentError({
   error,
@@ -13,6 +14,8 @@ export default function GlobalSegmentError({
   useEffect(() => {
     console.error("[SegmentError]", error);
   }, [error]);
+
+  const friendly = humanizeError(error);
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 text-center text-foreground">
@@ -32,7 +35,7 @@ export default function GlobalSegmentError({
             Unexpected error
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {error.message || "An unexpected error occurred. Please try again."}
+            {friendly.message}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">

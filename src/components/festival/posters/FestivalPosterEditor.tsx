@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { PosterEditorAutosaveConfig } from "@/components/editor/PosterEditorPlayground";
 import type { PosterTemplateType } from "@/components/editor/poster-editor-config";
 import { createPresetDocument } from "@/components/editor/poster-editor-presets";

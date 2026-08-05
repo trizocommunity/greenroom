@@ -19,7 +19,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";

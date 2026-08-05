@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Cake, Loader2, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import * as z from "zod";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Button } from "@/components/ui/button";

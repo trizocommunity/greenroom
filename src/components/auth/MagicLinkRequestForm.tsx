@@ -5,6 +5,7 @@ import { ArrowRight, Loader2, Mail } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { ErrorScopeProvider, InlineError } from "@/components/errors";
 import { useAuthLayout } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,11 +48,7 @@ export function MagicLinkRequestForm() {
 
   const onSubmit = (data: FormData) => {
     setSubmittedEmail(data.email);
-    mutate(data, {
-      onError: () => {
-        setSubmittedEmail(null);
-      },
-    });
+    mutate(data);
   };
 
   if (isCheckYourBox) {
@@ -89,7 +86,9 @@ export function MagicLinkRequestForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5 text-left">
+    <ErrorScopeProvider scope="magic-link">
+      <InlineError className="mb-2" />
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5 text-left">
       <div className="space-y-1.5 text-left">
         <Label
           htmlFor="email"
@@ -163,5 +162,6 @@ export function MagicLinkRequestForm() {
         )}
       </Button>
     </form>
+    </ErrorScopeProvider>
   );
 }

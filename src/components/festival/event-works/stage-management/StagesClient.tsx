@@ -24,7 +24,7 @@ interface Stage {
 }
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useMembers } from "@/api/client/members";
 import {
   useAssignStageManager,

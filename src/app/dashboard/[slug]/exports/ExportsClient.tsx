@@ -2,7 +2,7 @@
 
 import { FileDown, Plus } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useDeleteExport, useExports } from "@/api/client/exports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

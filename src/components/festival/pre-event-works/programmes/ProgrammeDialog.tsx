@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import * as z from "zod";
 import { useCategories } from "@/api/client/categories";
 import {

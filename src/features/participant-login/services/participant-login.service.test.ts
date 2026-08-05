@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppError } from "@/core/errors/errors";
+import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 
 const mockFindFestivalBySlug = vi.fn();
 const mockFindGroupsByFestival = vi.fn();
@@ -9,6 +9,9 @@ const mockOtpFindMany = vi.fn();
 const mockOtpFindFirst = vi.fn();
 const mockInsert = vi.fn();
 const mockUpdate = vi.fn();
+const mockDeleteWhere = vi.fn();
+const mockDelete = vi.fn();
+const mockSendEmail = vi.fn();
 
 vi.mock("@/features/festivals/repositories/festival.repository", () => ({
   findFestivalBySlug: (...args: unknown[]) => mockFindFestivalBySlug(...args),
@@ -32,6 +35,10 @@ vi.mock("@/core/database/client", () => ({
     },
     insert: (...args: unknown[]) => mockInsert(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
+    delete: (...args: unknown[]) => {
+      mockDelete(...args);
+      return { where: mockDeleteWhere };
+    },
   },
 }));
 
@@ -40,6 +47,10 @@ vi.mock("@/core/auth/participant-session", () => ({
   getSessionExpiryDate: () => new Date("2030-01-01T00:00:00.000Z"),
   getTokenHash: (t: string) =>
     crypto.createHash("sha256").update(t).digest("hex"),
+}));
+
+vi.mock("@/core/integrations/email/index", () => ({
+  sendEmail: (...args: unknown[]) => mockSendEmail(...args),
 }));
 
 import { ParticipantLoginService } from "./participant-login.service";
@@ -77,6 +88,9 @@ beforeEach(() => {
   mockOtpFindFirst.mockReset();
   mockInsert.mockReset();
   mockUpdate.mockReset();
+  mockDelete.mockReset();
+  mockDeleteWhere.mockReset();
+  mockSendEmail.mockReset();
 
   mockFindFestivalBySlug.mockResolvedValue(festival);
   mockFindGroupsByFestival.mockResolvedValue([group]);
@@ -87,6 +101,8 @@ beforeEach(() => {
       .fn()
       .mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
   });
+  mockDeleteWhere.mockResolvedValue(undefined);
+  mockSendEmail.mockResolvedValue({ id: "email-id" });
 });
 
 describe("ParticipantLoginService.requestAccess", () => {
@@ -258,6 +274,100 @@ describe("ParticipantLoginService.requestAccess", () => {
       expect(result.participantSlug).toBe(participant.profileSlug);
     }
     expect(mockInsert).toHaveBeenCalled();
+    expect(mockSendEmail).toHaveBeenCalledTimes(1);
+    const sendArgs = mockSendEmail.mock.calls[0]![0] as {
+      to: string;
+      kind: { kind: string; otp: string; festivalName: string };
+    };
+    expect(sendArgs.to).toBe("leader@example.com");
+    expect(sendArgs.kind.kind).toBe("team_leader_otp");
+    expect(sendArgs.kind.festivalName).toBe(festival.name);
+    expect(sendArgs.kind.otp).toMatch(/^\d{6}$/);
+  });
+
+  it("does NOT send email for non-team-leader auth", async () => {
+    const participant = makeParticipant({ isTeamLeader: false });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
+
+    const result = await ParticipantLoginService.requestAccess({
+      festivalSlug: festival.slug,
+      chestNumber: "101",
+      identifierKind: "GROUP",
+      identifierValue: group.id,
+    });
+
+    expect(result.status).toBe("AUTHENTICATED");
+    expect(mockSendEmail).not.toHaveBeenCalled();
+  });
+
+  it("throws EMAIL_SEND_FAILED when email send returns error and rolls back the OTP row", async () => {
+    const participant = makeParticipant({
+      isTeamLeader: true,
+      email: "leader@example.com",
+    });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
+    mockOtpFindMany.mockResolvedValueOnce([]);
+    mockSendEmail.mockResolvedValueOnce({
+      error: { message: "resend down" },
+    });
+
+    await expect(
+      ParticipantLoginService.requestAccess({
+        festivalSlug: festival.slug,
+        chestNumber: "101",
+        identifierKind: "GROUP",
+        identifierValue: group.id,
+      }),
+    ).rejects.toMatchObject({
+      message: ERROR_MESSAGES.EMAIL_SEND_FAILED,
+    });
+    expect(mockInsert).toHaveBeenCalled();
+    expect(mockDelete).toHaveBeenCalled();
+    expect(mockDeleteWhere).toHaveBeenCalled();
+  });
+
+  it("throws EMAIL_SEND_FAILED when email kind is disabled", async () => {
+    const participant = makeParticipant({
+      isTeamLeader: true,
+      email: "leader@example.com",
+    });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
+    mockOtpFindMany.mockResolvedValueOnce([]);
+    mockSendEmail.mockResolvedValueOnce({
+      id: "skipped",
+      kindDisabled: true,
+    });
+
+    await expect(
+      ParticipantLoginService.requestAccess({
+        festivalSlug: festival.slug,
+        chestNumber: "101",
+        identifierKind: "GROUP",
+        identifierValue: group.id,
+      }),
+    ).rejects.toMatchObject({
+      message: ERROR_MESSAGES.EMAIL_SEND_FAILED,
+    });
+    expect(mockDelete).toHaveBeenCalled();
+  });
+
+  it("does NOT send email when rate-limited", async () => {
+    const participant = makeParticipant({
+      isTeamLeader: true,
+      email: "l@e.com",
+    });
+    mockParticipantFindFirst.mockResolvedValueOnce(participant);
+    mockOtpFindMany.mockResolvedValueOnce(new Array(5).fill({ id: "x" }));
+
+    await expect(
+      ParticipantLoginService.requestAccess({
+        festivalSlug: festival.slug,
+        chestNumber: "101",
+        identifierKind: "GROUP",
+        identifierValue: group.id,
+      }),
+    ).rejects.toMatchObject({ message: expect.stringMatching(/too many/i) });
+    expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
   it("rejects team leader without email", async () => {

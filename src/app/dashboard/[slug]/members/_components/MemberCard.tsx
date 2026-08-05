@@ -10,7 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useRemoveMember } from "@/api/client/members";
 import { updateMemberRolesAction } from "@/features/members/actions/member.actions";
 import {

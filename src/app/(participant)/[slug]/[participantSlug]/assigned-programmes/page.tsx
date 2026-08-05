@@ -46,8 +46,6 @@ export default async function AssignedProgrammesPage({
   );
   if (!participant) notFound();
 
-  // if (participant.isTeamLeader) notFound();
-
   const programmeById = new Map<
     string,
     {

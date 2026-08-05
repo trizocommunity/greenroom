@@ -7,8 +7,8 @@ import {
 } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useContext } from "react";
-import { toast } from "sonner";
-
+import { useInlineErrorMutation } from "@/api/client/useInlineErrorMutation";
+import { toast } from "@/lib/toast";
 import { getPostAuthRoute } from "@/core/auth/routing";
 import { api } from "@/lib/api-client";
 
@@ -18,20 +18,12 @@ function useQueryClientSafe() {
 }
 
 export const useSendMagicLink = () => {
-  return useMutation({
+  return useInlineErrorMutation({
     mutationFn: (data: { email: string }) => api.auth.sendMagicLink(data),
     onSuccess: () => {
       toast.success("Check your email for a magic link");
     },
-    onError: (error: any) => {
-      console.error("Magic link error:", error);
-      toast.error(
-        error?.body?.error?.message ||
-          error?.body?.error ||
-          error?.message ||
-          "Failed to send magic link",
-      );
-    },
+    meta: { requireInlineError: true, errorScope: "magic-link" },
   });
 };
 

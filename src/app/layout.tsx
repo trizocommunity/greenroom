@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Instrument_Serif, Outfit } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
+import { GlobalErrorRegion } from "@/components/errors";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { RazorpayInit } from "@/components/razorpay/RazorpayInit";
@@ -52,6 +53,7 @@ export default function RootLayout({
             <RazorpayInit />
             <main className="flex-1">{children}</main>
             <Toaster />
+            <GlobalErrorRegion />
             <Analytics />
             <SpeedInsights />
           </QueryProvider>

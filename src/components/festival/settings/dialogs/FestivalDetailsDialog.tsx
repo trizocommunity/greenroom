@@ -4,7 +4,7 @@ import axios from "axios";
 import { Loader2, Pencil } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useUpdateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-picker";

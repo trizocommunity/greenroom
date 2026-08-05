@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useBulkCreateAssignments } from "@/api/client/assignments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

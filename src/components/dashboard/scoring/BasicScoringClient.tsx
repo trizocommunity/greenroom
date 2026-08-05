@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { ProgrammeResultPosterSection } from "@/components/festival/posters/ProgrammeResultPosterSection";
 import { Badge } from "@/components/ui/badge";

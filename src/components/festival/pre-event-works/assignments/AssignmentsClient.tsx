@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";

@@ -10,9 +10,10 @@ import {
   UserX,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useMarkCodeLetterAbsence } from "@/api/client/server-actions";
 import { StatusPill } from "@/components/app/AppSection";
+import { humanizeError } from "@/core/errors/humanize";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -713,17 +714,6 @@ export function StagePortalScoringClient({
     setRemarksByKey((prev) => ({ ...prev, [`${judgeId}:${codeLetterId}`]: v }));
   };
 
-  const humanizeSubmitError = (message: string) => {
-    const normalized = message.toLowerCase();
-    if (
-      normalized.includes("scoring policy has no matching grade rule") ||
-      normalized.includes("scoring policy has no matching award rule")
-    ) {
-      return "Scores were saved, but result mapping failed because the scoring policy does not cover this case yet. Ask an admin to update the scoring policy and submit again.";
-    }
-    return message;
-  };
-
   const onStartReview = () => {
     setSubmitError(null);
     if (!canSubmit) {
@@ -761,9 +751,8 @@ export function StagePortalScoringClient({
         setSubmissionPhase("review");
       } catch (error: any) {
         setSubmitError(
-          humanizeSubmitError(
-            error?.message ?? "Failed to compute policy summary for review.",
-          ),
+          humanizeError(error).message ||
+            "Failed to compute policy summary for review.",
         );
       }
     });
@@ -815,9 +804,8 @@ export function StagePortalScoringClient({
         }
         setSubmissionPhase("summary");
       } catch (error: any) {
-        const message = humanizeSubmitError(
-          error?.message ?? "Failed to submit scores.",
-        );
+        const message =
+          humanizeError(error).message || "Failed to submit scores.";
         setSubmitError(message);
         toast.error(message);
       }

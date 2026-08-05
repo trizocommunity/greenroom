@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useStages } from "@/api/client/stages";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";

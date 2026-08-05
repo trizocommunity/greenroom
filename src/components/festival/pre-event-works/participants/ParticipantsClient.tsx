@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
 import {

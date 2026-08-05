@@ -115,6 +115,11 @@ export default async function ParticipantMainPage({
   );
   if (!participant) notFound();
 
+  // Team leaders live at /dashboard; this route is participant-only.
+  if (participant.isTeamLeader) {
+    redirect(`/${slug}/${participantSlug}/dashboard`);
+  }
+
   const session = await getParticipantSessionFromCookie();
   const isOwnerSession =
     !!session &&

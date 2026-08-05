@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { v4 as uuid } from "uuid";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 import {

@@ -3,7 +3,7 @@
 import { ExternalLink, Power, Rocket } from "lucide-react";
 import party from "party-js";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { cn } from "@/core/utils/cn";
 import { setPublicSiteEnabledAction } from "@/features/festivals/actions/festival-crud.actions";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";

@@ -8,7 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

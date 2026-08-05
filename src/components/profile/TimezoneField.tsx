@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useProfile, useUpdateProfile } from "@/api/client/profile";
 import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";

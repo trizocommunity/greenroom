@@ -3,7 +3,7 @@
 import { Crown, Loader2, Mail, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useGroups, useUpdateGroup } from "@/api/client/groups";
 import {

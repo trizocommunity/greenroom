@@ -2,7 +2,7 @@
 
 import { Download, Link as LinkIcon, Share2 } from "lucide-react";
 import { useCallback } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { QrCodeDisplay, type QrCodeDisplayProps } from "./QrCodeDisplay";
 

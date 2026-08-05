@@ -3,7 +3,7 @@
 import type Konva from "konva";
 import { Download, Share2, Shuffle } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   exportStagePng,
   PosterExportCanvas,

@@ -14,7 +14,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import party from "party-js";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import {

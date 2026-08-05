@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useInlineErrorMutation } from "./useInlineErrorMutation";
+import { toast } from "@/lib/toast";
 import {
   deleteTeamAssignmentAction,
   getProgrammeTeamMembersAction,
@@ -66,7 +67,7 @@ import { provisionOffStageAction } from "@/features/stages/actions/off-stage.act
 import { queryKeys } from "./_query-keys";
 
 export function useStagePortalLogin() {
-  return useMutation({
+  return useInlineErrorMutation({
     mutationFn: async (input: {
       festivalSlug: string;
       accessCode: string;
@@ -74,9 +75,7 @@ export function useStagePortalLogin() {
     }) => {
       return getStagePortalLoginAction(input);
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    meta: { requireInlineError: true, errorScope: "stage-portal-login" },
   });
 }
 

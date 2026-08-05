@@ -53,6 +53,7 @@ export function ParticipantNavbar({
       { label: "Assign", href: `${linkBase}/assign-programmes` },
       { label: "Participants", href: `${linkBase}/my-participants` },
       { label: "Programmes", href: `${linkBase}/all-programmes` },
+      { label: "My programmes", href: `${linkBase}/assigned-programmes` },
     );
   } else {
     menuItems.push(
