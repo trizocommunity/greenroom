@@ -249,8 +249,7 @@ function PublishScene() {
                 color: "var(--muted-foreground)",
               }}
               animate={{
-                backgroundColor:
-                  "color-mix(in srgb, var(--success) 14%, transparent)",
+                backgroundColor: "var(--success-muted)",
                 color: "var(--success)",
               }}
               transition={{ duration: 0.3, delay: 0.75 + i * 0.45 }}
