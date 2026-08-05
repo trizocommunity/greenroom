@@ -1,7 +1,5 @@
-import { createMagicLinkToken } from "@/core/auth/magic-link";
-import { MS } from "@/core/datetime/server";
+import { headers } from "next/headers";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { sendMagicLinkEmail } from "@/core/integrations/email";
 import {
   createUser,
   findUserByEmail,
@@ -15,8 +13,7 @@ import {
   findMembersByFestival,
   updateMemberRoles,
 } from "@/features/members/repositories/member.repository";
-
-const MAGIC_LINK_EXPIRY_MS = 30 * MS.minute;
+import { auth } from "@/core/auth/better-auth/auth";
 
 export const MemberService = {
   async getMembers(festivalId: string) {
@@ -60,11 +57,19 @@ export const MemberService = {
     });
 
     if (isNewUser) {
-      const token = await createMagicLinkToken(
-        data.email,
-        MAGIC_LINK_EXPIRY_MS,
-      );
-      await sendMagicLinkEmail(data.email, token).catch(() => {});
+      // Send a magic link so the new member can sign in. Better Auth's
+      // `sendMagicLink` hook (`core/auth/better-auth/auth.ts`) sends the
+      // existing `sendMagicLinkEmail` — no email-send code here.
+      const hdrs = await headers();
+      await auth.api
+        .signInMagicLink({
+          body: { email: data.email, callbackURL: "/profile" },
+          headers: hdrs,
+          asResponse: false,
+        })
+        .catch((err) => {
+          console.error("[member.add] signInMagicLink failed", err);
+        });
     }
 
     return member;

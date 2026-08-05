@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { decrypt, type SessionPayload } from "@/core/auth/session";
+import { getSession } from "@/core/auth/session";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { ManualBookService } from "@/features/festivals/services/manual-book.service";
 
@@ -10,17 +9,8 @@ export async function GET(
 ) {
   const { festivalId } = await params;
 
-  const cookieStore = await cookies();
-  const session = cookieStore.get("session")?.value;
-
+  const session = await getSession();
   if (!session) {
-    redirect("/login");
-  }
-
-  let user: SessionPayload | null = null;
-  try {
-    user = await decrypt(session);
-  } catch {
     redirect("/login");
   }
 
@@ -29,8 +19,8 @@ export async function GET(
     notFound();
   }
 
-  const isOwner = festival.ownerId === user!.userId;
-  const isSuperAdmin = user!.role === "SUPER_ADMIN";
+  const isOwner = festival.ownerId === session.userId;
+  const isSuperAdmin = session.role === "SUPER_ADMIN";
 
   if (!isOwner && !isSuperAdmin) {
     redirect("/profile");

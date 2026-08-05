@@ -53,53 +53,6 @@ const noBaseURL = baseURL.replace("/api/v1", "");
 
 export const api = {
   auth: {
-    logout: async () => {
-      const res = await fetch(`${noBaseURL}/api/v1/auth?action=logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      return handleRes(res);
-    },
-    me: async () => {
-      const res = await fetch(`${noBaseURL}/api/v1/auth`, {
-        credentials: "include",
-      });
-      return handleRes(res);
-    },
-    sendMagicLink: async (data: { email: string }) => {
-      const res = await fetch(`${noBaseURL}/api/v1/auth?action=magic-link`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      return handleRes(res);
-    },
-    verifyMagicLink: async (data: { token: string }) => {
-      const res = await fetch(
-        `${noBaseURL}/api/v1/auth?action=verify-magic-link`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data),
-        },
-      );
-      return handleRes(res);
-    },
-    v1Me: async () => {
-      const res = await fetch(`${noBaseURL}/api/v1/auth`, {
-        credentials: "include",
-      });
-      return handleRes(res);
-    },
-    v1Logout: async () => {
-      const res = await fetch(`${noBaseURL}/api/v1/auth?action=logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      return handleRes(res);
-    },
     completePersonalOnboarding: async (data: {
       fullName: string;
       displayName: string;
@@ -124,18 +77,6 @@ export const api = {
       sizeRange?: string | null;
     }) => {
       const res = await fetch(`${noBaseURL}/api/v1/onboarding/institutional`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      return handleRes(res);
-    },
-    completeOnboarding: async (data: {
-      fullName: string;
-      displayName: string;
-    }) => {
-      const res = await fetch(`${noBaseURL}/api/auth/complete-onboarding`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

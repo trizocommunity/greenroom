@@ -1,5 +1,9 @@
 import crypto from "crypto";
-import { cookies } from "next/headers";
+import {
+  createCookieSession,
+  deleteCookieSession,
+  getCookieSession,
+} from "@/core/auth/cookie-session";
 import { db } from "@/core/database/client";
 import { MS, nowPlus, serverNowIso } from "@/core/datetime/server";
 
@@ -21,26 +25,19 @@ export async function setParticipantSessionCookie(
   rawToken: string,
   expiresAt: Date,
 ): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(PARTICIPANT_SESSION_COOKIE, rawToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
+  await createCookieSession(PARTICIPANT_SESSION_COOKIE, rawToken, {
     expires: expiresAt,
   });
 }
 
 export async function clearParticipantSessionCookie(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(PARTICIPANT_SESSION_COOKIE);
+  await deleteCookieSession(PARTICIPANT_SESSION_COOKIE);
 }
 
 export async function getParticipantSessionCookie(): Promise<
   string | undefined
 > {
-  const cookieStore = await cookies();
-  return cookieStore.get(PARTICIPANT_SESSION_COOKIE)?.value;
+  return getCookieSession(PARTICIPANT_SESSION_COOKIE);
 }
 
 export async function getParticipantSessionFromCookie() {

@@ -1,0 +1,80 @@
+# Auth
+
+Greenroom has **three** session systems. Each serves a different
+principal shape and lifetime, and unifying them was considered and
+rejected — the migration to a single auth library would require either
+adding a `user` row for participants (and a way to deactivate it after
+the festival) or extending Better Auth with a "guest" principal type
+that we don't need. The shared cookie lib at the bottom keeps the
+cookie set/get/delete shape identical across all three.
+
+## 1. User / admin (Better Auth)
+
+**Owner:** Better Auth (`src/core/auth/better-auth/auth.ts`).
+**Cookie name:** `better-auth.session_token` (set by Better Auth).
+**Backend:** DB row in the `session` table; revocable.
+**Principals:** A row in the `user` table with a `globalRole`
+(`"USER"` or `"SUPER_ADMIN"`) stored as a Better Auth `additionalField`.
+
+**Public API:**
+
+- `getSession(): Promise<SessionPayload | null>` — the adapter every
+  caller consumes. Reads `auth.api.getSession({ headers })` and maps
+  the result to `{ userId, role, expires }`. Returns `null` when no
+  session exists or the user is deactivated.
+- `createSession(userId, role): Promise<void>` — back-compat shim. Looks
+  up the user's email and calls `signInUserByEmail` so the existing
+  `createSession(dbUser.id, role)` call site in
+  `invitations/accept` still works.
+- `signInUserByEmail(email): Promise<void>` — mint a session for a known
+  email without sending an email. Issues a magic-link verification row
+  (with `sendMagicLink` hook suppressed via
+  `process.env.GREENROOM_SILENT_AUTH`), then consumes it via
+  `magicLinkVerify`.
+- `deleteSession(): Promise<void>` — calls `auth.api.signOut({ headers })`.
+
+The legacy JWT cookie (`session`) and `JWT_SECRET` env are gone.
+
+## 2. Participant (custom)
+
+**Owner:** `src/core/auth/participant-session.ts`.
+**Cookie name:** `participant_session`.
+**Backend:** DB row in `participant_session`, sha256-hashed token. 12-hour
+TTL. Revocable via `revokedAt`.
+**Principal:** A row in the `participant` table (no `user` row).
+
+The principal is a participant within a specific festival — different
+lifetime, different access pattern, different "user" surface than the
+admin path. Pulling this into Better Auth would require either creating
+a transient `user` row per participant (and tying it to the festival
+lifecycle) or adding a "guest" principal type to Better Auth.
+
+## 3. Stage portal (custom)
+
+**Owner:** `src/core/auth/stage-portal-session.ts`.
+**Cookie name:** `stage_portal_session`.
+**Backend:** DB row in `stage_portal_session`, sha256-hashed token.
+24-hour TTL. Revocable.
+**Principal:** A row in `stage_portal_credential` (a username/password
+for an on-stage judge or announcer, scoped to a stage). No `user` row.
+
+Same reasoning as participant auth.
+
+## Shared cookie lib (`src/core/auth/cookie-session.ts`)
+
+Both custom session systems route their cookie set/get/delete calls
+through this lib so the cookie options (`httpOnly`, `secure`, `sameSite`,
+`path`) stay consistent. New principals (e.g. a future "press" portal)
+should follow the same pattern.
+
+```ts
+import {
+  createCookieSession,
+  getCookieSession,
+  deleteCookieSession,
+} from "@/core/auth/cookie-session";
+```
+
+Better Auth doesn't use this lib — its cookies are set by the
+`nextCookies` plugin via `Set-Cookie` and Better Auth's internal cookie
+cache. Mixing the two layers would be confusing.

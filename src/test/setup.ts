@@ -23,7 +23,9 @@ beforeAll(() => {
   Object.assign(process.env, {
     NODE_ENV: "test",
     DATABASE_URL: "postgresql://test:test@localhost:5432/test",
-    JWT_SECRET: "test-secret-key-for-testing-only",
+    BETTER_AUTH_SECRET: "test-secret-key-for-testing-only",
+    BETTER_AUTH_URL: "http://localhost:3000",
+    BETTER_AUTH_TRUSTED_ORIGINS: "http://localhost:3000",
     CRON_SECRET: "test-cron-secret",
     RESEND_API_KEY: "test_resend_key",
   });

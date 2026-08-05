@@ -1,5 +1,9 @@
 import crypto from "crypto";
-import { cookies } from "next/headers";
+import {
+  createCookieSession,
+  deleteCookieSession,
+  getCookieSession,
+} from "@/core/auth/cookie-session";
 import { db } from "@/core/database/client";
 import { MS, nowPlus, serverNowIso } from "@/core/datetime/server";
 
@@ -21,26 +25,19 @@ export async function setStagePortalSessionCookie(
   rawToken: string,
   expiresAt: Date,
 ): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(STAGE_PORTAL_SESSION_COOKIE, rawToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
+  await createCookieSession(STAGE_PORTAL_SESSION_COOKIE, rawToken, {
     expires: expiresAt,
   });
 }
 
 export async function clearStagePortalSessionCookie(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(STAGE_PORTAL_SESSION_COOKIE);
+  await deleteCookieSession(STAGE_PORTAL_SESSION_COOKIE);
 }
 
 export async function getStagePortalSessionCookie(): Promise<
   string | undefined
 > {
-  const cookieStore = await cookies();
-  return cookieStore.get(STAGE_PORTAL_SESSION_COOKIE)?.value;
+  return getCookieSession(STAGE_PORTAL_SESSION_COOKIE);
 }
 
 export async function getStagePortalSessionFromCookie() {

@@ -1,6 +1,8 @@
 import "server-only";
-import type { SessionPayload } from "@/core/auth/session";
-import { decrypt } from "@/core/auth/session";
+import {
+  getSessionFromHeaders,
+  type SessionPayload,
+} from "@/core/auth/session";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { err, forbidden, internalError, unauthorized } from "./response";
 
@@ -8,6 +10,12 @@ export type { SessionPayload };
 
 export type HandlerContext = {
   user: SessionPayload | null;
+  /**
+   * @deprecated The JWT token string the route handler used to pass to
+   * downstream code. No longer meaningful after the Better Auth
+   * migration (sessions are DB-backed). Kept for backward compatibility
+   * with any caller that destructures it; the value is `null`.
+   */
   session: string | null;
 };
 
@@ -23,26 +31,17 @@ export type RouteHandlers = {
   DELETE?: HandlerFn;
 };
 
-function parseSessionCookie(cookieHeader: string | null): string | null {
-  if (!cookieHeader) return null;
-  const cookies = cookieHeader.split(";").map((c) => c.trim());
-  const sessionCookie = cookies.find((c) => c.startsWith("session="));
-  return sessionCookie ? (sessionCookie.split("=")[1] ?? null) : null;
-}
-
+/**
+ * Resolve the session once per request and hand it to the route
+ * handlers. The implementation delegates to `getSessionFromHeaders()`
+ * (Better Auth under the hood). We pass the explicit `Request`
+ * headers rather than calling `next/headers` inside `getSession()` so
+ * the cron-handler tests can exercise this factory without a Next
+ * request scope.
+ */
 export function createHandler(handlers: RouteHandlers) {
   return async (req: Request): Promise<Response> => {
-    const cookieHeader = req.headers.get("cookie");
-    const sessionValue = parseSessionCookie(cookieHeader);
-    let user: SessionPayload | null = null;
-
-    if (sessionValue) {
-      try {
-        user = await decrypt(sessionValue);
-      } catch {
-        user = null;
-      }
-    }
+    const user = await getSessionFromHeaders(req.headers);
 
     const method = req.method as keyof RouteHandlers;
     const handler = handlers[method];
@@ -55,7 +54,7 @@ export function createHandler(handlers: RouteHandlers) {
     }
 
     try {
-      return await handler({ user, session: sessionValue, request: req });
+      return await handler({ user, session: null, request: req });
     } catch (error) {
       console.error("[ApiHandlerError]", error);
 

@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { createSession, getSession } from "@/core/auth/session";
+import { NextResponse } from "next/server";
+import { getSession, signInUserByEmail } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { generateId } from "@/core/database/ids";
 import {
@@ -58,7 +58,7 @@ export const POST = async (req: Request) => {
 
     if (!session?.userId) {
       let dbUser = await db.query.user.findFirst({
-        where: sql`lower(${userTable.email}) = ${invitation.email}`,
+        where: eq(userTable.email, invitation.email.toLowerCase()),
       });
 
       if (!dbUser) {
@@ -66,7 +66,7 @@ export const POST = async (req: Request) => {
           .insert(userTable)
           .values({
             id: generateId(),
-            email: invitation.email,
+            email: invitation.email.toLowerCase(),
             globalRole: "USER",
           })
           .returning();
@@ -80,9 +80,26 @@ export const POST = async (req: Request) => {
         );
       }
 
-      const role = dbUser.globalRole as "USER" | "SUPER_ADMIN";
-      await createSession(dbUser.id, role);
-      session = { userId: dbUser.id, role, expires: new Date() };
+      // Mint a session via Better Auth. This writes the session row and
+      // the session cookie (`nextCookies` propagates the Set-Cookie).
+      // No email is sent — the user already proved ownership by
+      // presenting the invitation token.
+      try {
+        await signInUserByEmail(dbUser.email);
+      } catch (err) {
+        console.error("[invitations/accept] signInUserByEmail failed", err);
+        return NextResponse.json(
+          { success: false, error: "Could not create session" },
+          { status: 500 },
+        );
+      }
+      session = await getSession();
+      if (!session?.userId) {
+        return NextResponse.json(
+          { success: false, error: "Could not establish session" },
+          { status: 500 },
+        );
+      }
     }
 
     const existingMember = await db.query.festivalMember.findFirst({

@@ -3,7 +3,7 @@
 ## Status
 
 - **Created**: 2026-08-05
-- **Status**: In Progress
+- **Status**: In Progress — PR 1 + PR 2 + PR 3 complete, PR 4 pending
 - **Priority**: High
 - **Complexity**: High
 - **Target**: Production
@@ -485,12 +485,161 @@ GOOGLE_CLIENT_SECRET=
 
 ## Implementation status (updated as PRs land)
 
-| PR | Title | Status | Merged |
+| PR | Title | Status | Shipped |
 |---|---|---|---|
-| 1 | Foundation (Better Auth install, schema, catch-all) | Pending | — |
-| 2 | UI switch + Google OAuth ships | Pending | — |
-| 3 | Session swap (high risk) | Pending | — |
+| 1 | Foundation (Better Auth install, schema, catch-all) | **Done** | 2026-08-05 |
+| 2 | UI switch + Google OAuth ships | **Done** | 2026-08-05 |
+| 3 | Session swap (high risk) | **Done** | 2026-08-05 |
 | 4 | 2FA / passkeys / organizations | Pending | — |
+
+### PR 1 — what shipped (2026-08-05)
+
+Code:
+- `src/core/auth/better-auth/auth.ts` — `betterAuth({...})` config: drizzle adapter on pg, `emailAndPassword: { enabled: false }`, `magicLink` plugin calling existing `sendMagicLinkEmail`, `additionalFields` for all Greenroom `user` columns, `session.cookieCache` for the hot path, `nextCookies` for `Set-Cookie` propagation, after-hook writing `user_login_event` on sign-in endpoints.
+- `src/core/auth/better-auth/client.ts` — `createAuthClient` + `magicLinkClient` (used in PR 2).
+- `src/app/api/auth/[...all]/route.ts` — `toNextJsHandler(auth)` catch-all forwarder.
+- `src/core/auth/provider.ts` — `getAuthProvider()` / `isBetterAuthEnabled()` reading `AUTH_PROVIDER` env (default `jwt`, switches to `better-auth`).
+- `src/components/auth/BetterAuthMagicLinkRequestForm.tsx` — Better Auth client form with magic-link + Google button (wired in PR 2 by feature flag).
+- `src/app/login/page.tsx` — renders the Better Auth form when `isBetterAuthEnabled()`, else the old `MagicLinkRequestForm`.
+
+Schema:
+- `drizzle/0043_better_auth_foundation.sql` — adds `name`, `image`, `emailVerified` columns to `user`; creates `session`, `account`, `verification`; backfills existing users (`name = COALESCE(fullName, split_part(email, '@', 1))`, `emailVerified = TRUE`).
+- `src/core/database/schema.ts` — Drizzle table definitions for the three new tables and three new columns.
+
+Env:
+- `.env.example` — `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, `AUTH_PROVIDER=jwt`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- `src/test/setup.ts` — adds `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` for tests (keeps `JWT_SECRET` for the old flow).
+
+Tests:
+- `src/core/auth/better-auth/auth.test.ts` — Better Auth config smoke test (loads, exposes expected API surface).
+- `src/core/auth/better-auth/client.test.ts` — client surface smoke test (already on main).
+- `src/core/auth/provider.test.ts` — `AUTH_PROVIDER` flag tests (already on main).
+- `src/test/integration/better-auth-magic-link.test.ts` — real Postgres end-to-end: `signInMagicLink` writes verification row, `magicLinkVerify` consumes token, creates user (with `emailVerified=true`) + session row, no account row.
+- `src/test/integration/setup.ts` — exports `getConnectionUri()` and writes `process.env.DATABASE_URL` so the lazy `db` Proxy in `@/core/database/client` connects to the testcontainers instance.
+
+Dependencies (required for the foundation to even load):
+- `zod` bumped from `^3.25.76` → `^4.4.3` (Better Auth 1.6.26's dist calls `.meta()`, which is zod v4 API). Override in `package.json` updated to match. `src/api/contracts/health.ts` updated for the v4 `z.record(key, value)` signature.
+
+Magic-link email TTL fix (PR 1 task #12):
+- `src/core/integrations/email/kinds/magic-link.tsx` already accepts `expiresInMinutes`. `src/app/api/v1/auth/route.ts` already passes `30` (was passing the default `15` mismatch before). **Done — no change needed**, the existing route was already correct.
+
+What PR 1 does NOT include (deferred per spec):
+- `socialProviders.google` is *not* enabled in `auth.ts` yet — Google OAuth ships in PR 2.
+- `use-auth.ts`, `useLogout`, `LogoutButton` still point at the old `/api/v1/auth` route — UI switch is PR 2.
+- Old `/api/v1/auth/route.ts` is untouched and remains the default login path.
+
+### PR 2 — what shipped (2026-08-05)
+
+Code:
+- `src/core/auth/better-auth/auth.ts` — adds `socialProviders.google({ clientId, clientSecret, accessType: "offline" })`, `account.accountLinking` with `trustedProviders: ["google"]`. After-hook now writes `SIGN_IN_GOOGLE` and (when the user pre-existed) `LINK_GOOGLE_ACCOUNT` audit-log entries.
+- `src/core/auth/better-auth/client.ts` — unchanged.
+- `src/features/auth/services/audit-log.service.ts` — exports `AuditAction`; adds `SIGN_IN_GOOGLE`, `LINK_GOOGLE_ACCOUNT`, `SIGN_IN_MAGIC_LINK` to the action union.
+- `src/features/auth/hooks/use-auth.ts` — `useCurrentUser` is now a wrapper over Better Auth's `useSession` (reads `globalRole`/`fullName`/etc from `additionalFields`); `useLogout` calls `authClient.signOut()`. Removed `useSendMagicLink`, `useVerifyMagicLink`, `useCompleteOnboarding` (Better Auth owns the magic-link path; `/api/v1/onboarding/personal` & `/institutional` routes still own the onboarding action).
+- `src/features/auth/hooks/use-current-user.ts` — re-exports `useCurrentUser` from `use-auth.ts`.
+- `src/components/auth/LogoutButton.tsx` — unchanged shape; now routes through Better Auth's `signOut`.
+- `src/app/login/page.tsx` — server component reads Better Auth session via `auth.api.getSession({ headers })` and redirects logged-in users; renders the Better Auth form unconditionally. Old `MagicLinkRequestForm` removed (only the Better Auth path is reachable in production now).
+- `src/app/login/verify/[token]/page.tsx` — **deleted** (Better Auth owns the verify flow at `/api/auth/magic-link/verify`).
+- `src/components/auth/MagicLinkRequestForm.tsx` — **deleted** (only used by the now-unreachable `AUTH_PROVIDER=jwt` fallback).
+- `src/app/invite/[token]/page.tsx` — uses Better Auth's `useSession` and `signOut` instead of the old `api.auth.v1Me` / `api.auth.v1Logout`.
+- `src/lib/api-client.ts` — drops `auth.sendMagicLink`, `auth.verifyMagicLink`, `auth.me`, `auth.v1Me`, `auth.completeOnboarding` wrappers. Keeps `auth.v1Logout` (PR 3) and the onboarding wrappers (the routes still exist and `useCompletePersonalOnboarding` / `useCompleteInstitutionalOnboarding` use them).
+- `src/app/dashboard/[slug]/settings/page.tsx` — typo fix: `redirect("/auth/login")` → `redirect("/login")`.
+- `src/components/super-admin/UsersTable.tsx` — **deleted** (only consumer was the deleted `use-users.ts` hook).
+- `src/contracts/auth.contract.ts`, `src/api/contracts/auth.ts`, `src/api/contracts/admin.ts`, `src/features/auth/hooks/use-users.ts` — **deleted** (dead code per Locked Decision #14).
+
+Env:
+- `.env.example` — `AUTH_PROVIDER` flipped from `jwt` to `better-auth` (default). Legacy users still holding a `session` JWT cookie aren't broken — the Better Auth path replaces it on next sign-in.
+
+Tests:
+- `src/core/auth/better-auth/auth.test.ts` — adds a `it.skip` Google-registration check (left for an integration test that needs real `GOOGLE_CLIENT_ID` env).
+
+What PR 2 does NOT include (deferred per spec):
+- The legacy `JWT_SECRET`/`session` cookie path is still alive (`src/core/auth/session.ts` + `/api/v1/auth/route.ts`) — the `AUTH_PROVIDER=jwt` flag would still try to use it. **Recommendation**: ship PR 2 with the flag default set to `better-auth`, monitor for one week, then ship PR 3 which deletes the legacy path entirely.
+- `useLogout` integration test (requires real Postgres end-to-end — TODO alongside PR 3's session-swap integration tests).
+- Google OAuth flow integration test (requires mocking Google's userinfo endpoint — TODO for PR 3).
+
+### PR 3 — what shipped (2026-08-05)
+
+Strategy: **adapter pattern**. The 80+ `session.userId` / `session.role`
+read sites across `src/app/api/v1/*` and `src/features/*` kept working
+unchanged because `getSession()` still returns the same `{ userId,
+role, expires }` shape — the body just calls Better Auth under the
+hood. Only six files needed real edits in the call-graph; the rest was
+just re-exports. This cut the blast radius dramatically.
+
+Code:
+- `src/core/auth/session.ts` — `getSession()` calls
+  `auth.api.getSession({ headers })` and projects to `SessionPayload`;
+  `createSession(userId, role)` looks up the user's email and delegates
+  to `signInUserByEmail` (the one remaining caller is
+  `invitations/accept`); `deleteSession()` calls
+  `auth.api.signOut({ headers })`. New `getSessionFromHeaders(headers)`
+  helper for route handlers that already have a `Request`.
+- `src/core/auth/cookie-session.ts` — **new** shared lib
+  (`createCookieSession` / `getCookieSession` / `deleteCookieSession`)
+  used by participant and stage-portal session cookies.
+- `src/core/auth/participant-session.ts` and
+  `src/core/auth/stage-portal-session.ts` — refactored to use the
+  shared lib; no behaviour change.
+- `src/api/lib/create-handler.ts` — uses `getSessionFromHeaders(req.headers)`
+  instead of `decrypt(cookieValue)`. `ctx.session` is now `null` (the
+  JWT token string isn't meaningful any more) — kept the field as
+  `null` for backward compat with anything that destructures it.
+- `src/core/auth/assert-festival-access.ts` — dropped the 60-second
+  in-memory cache; Better Auth's session is fast enough and role
+  changes now propagate immediately.
+- `src/app/api/v1/invitations/accept/route.ts` — uses
+  `signInUserByEmail` to mint a session without sending another email
+  (the user already proved ownership by presenting the invitation
+  token).
+- `src/app/api/profile/festivals/[festivalId]/manual-book/route.ts`
+  and `…/expired-results-pdf/route.ts` — use `getSession()` directly
+  instead of reading the JWT cookie by hand.
+- `src/core/auth/better-auth/auth.ts` — `sendMagicLink` hook honours
+  `process.env.GREENROOM_SILENT_AUTH === "1"` so
+  `signInUserByEmail` can issue a verification row without emailing
+  anyone.
+- `src/features/members/services/member.service.ts` — uses
+  `auth.api.signInMagicLink` (which calls the same `sendMagicLink`
+  hook) to send a magic link to a newly-invited member.
+- `src/lib/api-client.ts` — drops `auth.v1Logout` (was the last
+  wrapper for the deleted `/api/v1/auth?action=logout` route).
+- `src/test/setup.ts` — drops `JWT_SECRET`.
+
+Deleted (per spec):
+- `src/core/auth/session.ts` (old JWT) — replaced
+- `src/core/auth/magic-link.ts` — replaced by Better Auth
+- `src/core/auth/provider.ts` + `provider.test.ts` — `AUTH_PROVIDER`
+  flag removed
+- `src/app/api/v1/auth/route.ts` — Better Auth owns it now
+
+Env / deps:
+- `.env.example` — drops `JWT_SECRET` and `AUTH_PROVIDER`.
+- `package.json` — drops `jose`.
+
+Tests:
+- `src/core/auth/session.test.ts` — rewritten to cover the new
+  adapter (Better Auth null/super-admin/user mapping, role default,
+  `createSession`/`signInUserByEmail` orchestration,
+  `deleteSession`, deprecated `decrypt` returning `null`).
+- `src/api/lib/create-handler.test.ts` — pre-existing tests still pass
+  (we pass `req.headers` explicitly, which works outside a Next
+  request scope).
+
+Doc:
+- `src/core/auth/README.md` — documents the three session systems
+  (Better Auth for user/admin, custom for participant and
+  stage-portal) and why each stays separate, plus the shared cookie
+  lib.
+
+What PR 3 does NOT change:
+- `user.repository.createUser` — still used by
+  `features/members/services/member.service.ts` for admin-initiated
+  user creation (inviting a new team member). Better Auth owns the
+  *sign-in* path; admin-side user provisioning is orthogonal.
+- The 80+ call sites that read `session.userId` / `session.role` —
+  they keep working because the adapter preserves the shape. A future
+  PR can migrate them to Better Auth's native
+  `{ user: { id, globalRole, ... } }` shape one feature at a time.
 
 ---
 
