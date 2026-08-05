@@ -1981,8 +1981,12 @@ export async function previewJudgeSubmissionSummaryAction(input: {
 
       if (programmeRow.type === "GROUP" && assignmentRow) {
         const teamMembers = await db
-          .select({ id: assignmentTable.id })
-          .from(assignmentTable)
+          .select({ id: assignmentMemberTable.id })
+          .from(assignmentMemberTable)
+          .innerJoin(
+            assignmentTable,
+            eq(assignmentTable.id, assignmentMemberTable.assignmentId),
+          )
           .where(
             and(
               eq(assignmentTable.programmeId, config.programmeId),

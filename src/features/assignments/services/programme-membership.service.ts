@@ -13,7 +13,7 @@ import {
 export type EnrolledProgramme = {
   programmeId: string;
   programme: typeof programmeTable.$inferSelect & {
-    category: typeof categoryTable.$inferSelect | null;
+    category: typeof categoryTable.$inferSelect;
   };
   assignmentId: string;
   memberId: string | null;

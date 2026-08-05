@@ -45,7 +45,8 @@ export function ParticipantDetailsDialog({
   const displayTz = useDisplayTimezone();
 
   const participantAssignments = assignments.filter(
-    (a: any) => a.participantId === participant.id,
+    (a: any) =>
+      a.participant?.id === participant.id || a.participantId === participant.id,
   );
 
   const isControlled = controlledOpen !== undefined;

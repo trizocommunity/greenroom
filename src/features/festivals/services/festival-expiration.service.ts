@@ -42,6 +42,7 @@ import { isAfter, parseInstant } from "@/core/datetime";
 import { MS, nowPlus, serverNow, serverNowIso } from "@/core/datetime/server";
 import { sendEmail } from "@/core/integrations/email/index";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
+import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 import { sendExpiryWarningEmail } from "@/features/notifications/services/expiry-notification.service";
 
 const PRE_ARCHIVAL_DAYS = 7;
@@ -343,22 +344,24 @@ export const FestivalExpirationService = {
             where: (a, { inArray }) => inArray(a.id, assignmentIds),
           })
         : [];
-    const participantIds = Array.from(
-      new Set(
-        assignmentRows
-          .map((a) => a.participantId)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    );
-    const participantRows =
-      participantIds.length > 0
-        ? await db.query.participant.findMany({
-            where: (p, { inArray }) => inArray(p.id, participantIds),
-          })
-        : [];
+    const enrolledByAssignmentId = new Map<string, string>();
+    for (const programmeId of programmeIds) {
+      const enrolled =
+        await ProgrammeMembershipService.getParticipantsForProgramme(programmeId);
+      for (const row of enrolled) {
+        if (enrolledByAssignmentId.has(row.assignmentId)) continue;
+        enrolledByAssignmentId.set(
+          row.assignmentId,
+          row.isTeamLeader
+            ? row.participant.name
+            : (enrolled.find((e) => e.assignmentId === row.assignmentId && e.isTeamLeader)
+                ?.participant.name ?? row.participant.name),
+        );
+      }
+    }
+    const partName = enrolledByAssignmentId;
 
     const progName = new Map(programmeRows.map((p) => [p.id, p.name]));
-    const partName = new Map(participantRows.map((p) => [p.id, p.name]));
 
     const rows = liveRows
       .slice()
@@ -373,10 +376,9 @@ export const FestivalExpirationService = {
       .map((r) => ({
         programmeName: progName.get(r.programmeId) ?? "Unknown",
         participantName:
-          partName.get(
-            assignmentRows.find((a) => a.id === r.assignmentId)
-              ?.participantId ?? "",
-          ) ?? "—",
+          assignmentRows.find((a) => a.id === r.assignmentId)
+            ? (partName.get(r.assignmentId) ?? "—")
+            : "—",
         position: r.position ?? null,
         grade: r.grade ?? null,
         points: r.points ?? null,

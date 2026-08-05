@@ -244,7 +244,7 @@ export async function getSchedulableProgrammesAction(
     .select({
       programmeId: assignmentTable.programmeId,
       count: count(),
-      teamCount: sql<number>`COUNT(DISTINCT ${assignmentTable.teamNumber})`,
+      teamCount: sql<number>`COUNT(DISTINCT (${assignmentTable.groupId}, ${assignmentTable.teamNumber}))`,
     })
     .from(assignmentTable)
     .where(eq(assignmentTable.festivalId, festivalId))

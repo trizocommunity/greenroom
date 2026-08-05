@@ -223,20 +223,24 @@ export const AssignmentService = {
       programme.maxParticipantsPerGroup
     ) {
       const [result] = await db
-        .select({ count: count() })
+        .select({
+          count: sql<number>`(
+            SELECT COUNT(*) FROM ${programmeAssignment} a
+            INNER JOIN ${participantTable} p ON p.id = a.participant_id
+            WHERE a.programme_id = ${programme.id}
+              AND p.group_id = ${participant.groupId}
+          ) + (
+            SELECT COUNT(*) FROM ${programmeAssignmentMember} m
+            INNER JOIN ${participantTable} p ON p.id = m.participant_id
+            INNER JOIN ${programmeAssignment} a ON a.id = m.assignment_id
+            WHERE a.programme_id = ${programme.id}
+              AND p.group_id = ${participant.groupId}
+          )`,
+        })
         .from(programmeAssignment)
-        .innerJoin(
-          participantTable,
-          eq(programmeAssignment.participantId, participantTable.id),
-        )
-        .where(
-          and(
-            eq(programmeAssignment.programmeId, programme.id),
-            eq(participantTable.groupId, participant.groupId),
-          ),
-        );
+        .limit(1);
 
-      if (result.count >= programme.maxParticipantsPerGroup) {
+      if (Number(result.count) >= programme.maxParticipantsPerGroup) {
         throw new AppError(
           `Max participants from group reached (${programme.maxParticipantsPerGroup})`,
         );
@@ -390,13 +394,29 @@ export const AssignmentService = {
       (newProgrammeId !== existing.programmeId ||
         nextParticipantId !== existing.participantId)
     ) {
-      const conflict = await db.query.programmeAssignment.findFirst({
-        where: and(
-          eq(programmeAssignment.programmeId, newProgrammeId),
-          eq(programmeAssignment.participantId, nextParticipantId),
-        ),
-      });
-      if (conflict && conflict.id !== id)
+      const [assignmentConflict, memberConflict] = await Promise.all([
+        db.query.programmeAssignment.findFirst({
+          where: and(
+            eq(programmeAssignment.programmeId, newProgrammeId),
+            eq(programmeAssignment.participantId, nextParticipantId),
+          ),
+        }),
+        db.query.programmeAssignmentMember.findFirst({
+          where: and(
+            eq(programmeAssignmentMember.participantId, nextParticipantId),
+          ),
+          with: {
+            assignment: { columns: { id: true, programmeId: true } },
+          },
+        }),
+      ]);
+      if (assignmentConflict && assignmentConflict.id !== id)
+        throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
+      if (
+        memberConflict?.assignment &&
+        memberConflict.assignment.programmeId === newProgrammeId &&
+        memberConflict.assignment.id !== id
+      )
         throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ALREADY_EXISTS);
     }
 
