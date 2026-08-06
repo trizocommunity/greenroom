@@ -49,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -270,12 +271,13 @@ export function ParticipantsClient({
       />
 
       {teamLeaders.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-4 px-1">
-          {teamLeaders.map((tl) => (
-            <Card
-              key={tl.id}
-              className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-amber-500/30"
-            >
+        <ScrollArea className="w-full">
+          <div className="flex gap-4 pb-4 px-1">
+            {teamLeaders.map((tl) => (
+              <Card
+                key={tl.id}
+                className="w-[280px] shrink-0 group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-amber-500/30"
+              >
               <div className="absolute top-2 right-2 p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -390,7 +392,9 @@ export function ParticipantsClient({
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       )}
 
       <Card className="overflow-hidden">

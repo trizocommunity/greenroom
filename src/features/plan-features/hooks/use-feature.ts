@@ -25,15 +25,18 @@
 
 import { useFestival } from "@/components/festival/FestivalContext";
 import {
+  type BooleanFeaturePath,
   type FeaturePath,
-  FeatureService,
-} from "@/features/plan-features/services/features";
+  getValue,
+  hasSupportLevel,
+  isEnabled,
+} from "@/features/plan-features/services/feature-gate";
 import type { FeatureTag } from "@/features/plan-features/services/features-tags";
 import { getFeatureTagRequirements } from "@/features/plan-features/services/features-tags";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 /**
- * Hook to check if a feature is enabled for the current festival's tier
+ * Hook to check if a feature is enabled for the current festival's tier.
  *
  * @param featurePath - The feature to check
  * @returns True if the feature is enabled, false otherwise
@@ -43,17 +46,11 @@ import { getResolvedTier } from "@/features/plan-features/services/tier";
  * const canExportExcel = useFeature('excelExport');
  * ```
  */
-export function useFeature(featurePath: FeaturePath): boolean {
+export function useFeature(featurePath: BooleanFeaturePath): boolean {
   const festival = useFestival();
   const tier = getResolvedTier(festival?.tier);
 
-  if (
-    festival?.effectiveFeatures &&
-    featurePath in festival.effectiveFeatures
-  ) {
-    return Boolean(festival.effectiveFeatures[featurePath]);
-  }
-  return FeatureService.isFeatureEnabled(tier, featurePath);
+  return isEnabled(tier, featurePath, festival?.effectiveFeatures);
 }
 
 /**
@@ -78,15 +75,7 @@ export function useFeatureTag(tag: FeatureTag): boolean {
   if (requires.length === 0) return true; // Tier-only tag
 
   for (const f of requires) {
-    const overridden =
-      effectiveFeatures && f in effectiveFeatures
-        ? Boolean(effectiveFeatures[f])
-        : undefined;
-
-    const enabled =
-      overridden ?? FeatureService.isFeatureEnabled(tier, f as FeaturePath);
-
-    if (!enabled) return false;
+    if (!isEnabled(tier, f, effectiveFeatures)) return false;
   }
 
   return true;
@@ -106,7 +95,7 @@ export function useFeatureValue<T = any>(featurePath: FeaturePath): T | null {
   const festival = useFestival();
   const tier = getResolvedTier(festival?.tier);
 
-  return FeatureService.getFeatureValue<T>(tier, featurePath);
+  return getValue<T>(tier, featurePath);
 }
 
 /**
@@ -126,7 +115,7 @@ export function useSupportLevel(
   const festival = useFestival();
   const tier = getResolvedTier(festival?.tier);
 
-  return FeatureService.hasSupportLevel(tier, requiredLevel);
+  return hasSupportLevel(tier, requiredLevel);
 }
 
 /**

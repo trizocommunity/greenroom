@@ -7,10 +7,7 @@ import { programmeReportingSession as sessionTable } from "@/core/database/schem
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
@@ -34,10 +31,7 @@ export default async function AssignedProgrammesPage({
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier as any),
-    "publicParticipantProfile",
-  );
+  const canViewProfile = isEnabled(festival.tier, "publicParticipantProfile");
   if (!canViewProfile) notFound();
 
   const participant = await findParticipantByFestivalAndProfileSlug(

@@ -1,8 +1,21 @@
 "use client";
 
-import { CheckCircle2, Loader2, Megaphone, Trophy, Star, Award } from "lucide-react";
+import {
+  Award,
+  CheckCircle2,
+  Loader2,
+  Megaphone,
+  Star,
+  Trophy,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,13 +37,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
-import { announceResult, announceStandings } from "@/features/announcement/actions/announcer.actions";
+import {
+  announceResult,
+  announceStandings,
+} from "@/features/announcement/actions/announcer.actions";
 import type {
   AnnouncerQueueProgramme,
   PublishedResultProgramme,
   TeamStandingRow,
 } from "@/features/announcement/services/announcer.service";
 import { toast } from "@/lib/toast";
+
+function QueueActionButton({
+  children,
+  variant = "default",
+  onClick,
+  disabled,
+}: {
+  children: ReactNode;
+  variant?: "default" | "outline";
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Button
+      size="sm"
+      variant={variant}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "h-8 px-3 text-xs font-medium",
+        variant === "default" &&
+          "bg-violet-600 hover:bg-violet-700 text-white shadow-sm",
+      )}
+    >
+      {children}
+    </Button>
+  );
+}
 
 interface AnnouncerClientProps {
   festivalId: string;
@@ -100,16 +144,17 @@ export function AnnouncerClient({
     });
   }, [queue]);
 
-  function handleAnnounce() {
-    if (!activeProgramme) return;
+  function handleAnnounce(programme?: AnnouncerQueueProgramme) {
+    const target = programme ?? activeProgramme;
+    if (!target) return;
     startTransition(async () => {
-      const res = await announceResult(festivalId, activeProgramme.id);
+      const res = await announceResult(festivalId, target.id);
       if (!res.success) {
         toast.error(res.error);
         return;
       }
       toast.success(
-        `Result #${activeProgramme.resultNumber} announced — "${activeProgramme.name}" is now live.`,
+        `Result #${target.resultNumber} announced — "${target.name}" is now live.`,
       );
       setActiveProgramme(null);
       router.refresh();
@@ -124,9 +169,6 @@ export function AnnouncerClient({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         {/* Left Column (3/4) */}
         <div className="lg:col-span-3 space-y-8">
-          
-          
-
           {!hasQueue && !hasPublished ? (
             <Card className="border-dashed shadow-none">
               <CardContent className="py-12 text-center text-muted-foreground">
@@ -141,7 +183,7 @@ export function AnnouncerClient({
             </Card>
           ) : (
             <>
-              {/* List view for Queue */}
+              {/* Card-based Queue */}
               {hasQueue && (
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
@@ -151,133 +193,115 @@ export function AnnouncerClient({
                     </span>
                     Ready to Announce
                   </h2>
-                  <div className="border-0 ring-1 ring-border rounded-xl bg-card overflow-hidden shadow-sm">
-                    <Table>
-                      <TableHeader className="bg-muted/50">
-                        <TableRow>
-                          <TableHead className="w-20 font-semibold">#</TableHead>
-                          <TableHead className="font-semibold">Programme</TableHead>
-                          <TableHead className="w-24 font-semibold">Status</TableHead>
-                          <TableHead className="w-24 text-right font-semibold">Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sorted.map((p) => (
-                          <TableRow key={p.id} className="hover:bg-violet-500/[0.02]">
-                            <TableCell>
-                              <span className="inline-flex items-center justify-center rounded-lg bg-violet-500/10 px-2 py-1 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
-                                {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
+                  <div className="grid gap-3">
+                    {sorted.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-violet-500/[0.02]"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <span className="inline-flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
+                            {p.resultNumber != null
+                              ? `#${p.resultNumber}`
+                              : "—"}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{p.name}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                              <span className="text-muted-foreground text-xs">
+                                {p.categoryName}
                               </span>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <span className="font-medium">{p.name}</span>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-muted-foreground text-xs">
-                                    {p.categoryName}
-                                  </span>
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] h-4 px-1.5 font-normal"
-                                  >
-                                    {p.type === "GROUP" ? "Group" : "Individual"}
-                                  </Badge>
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] h-4 px-1.5 font-normal"
-                                  >
-                                    {p.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
                               <Badge
-                                variant="secondary"
-                                className="bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/25 border-0 font-medium"
+                                variant="outline"
+                                className="text-[10px] h-5 px-1.5 font-normal"
                               >
-                                Ready
+                                {p.type === "GROUP" ? "Group" : "Individual"}
                               </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
-                                onClick={() =>
-                                  setActiveProgramme(p as AnnouncerQueueProgramme)
-                                }
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] h-5 px-1.5 font-normal"
                               >
-                                Open
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                                {p.stageType === "NON_STAGE"
+                                  ? "Offstage"
+                                  : "Stage"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 sm:justify-end">
+                          <Badge
+                            variant="secondary"
+                            className="bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/25 border-0 font-medium"
+                          >
+                            Ready
+                          </Badge>
+                          <QueueActionButton
+                            variant="outline"
+                            onClick={() => setActiveProgramme(p)}
+                          >
+                            Open
+                          </QueueActionButton>
+                          <QueueActionButton
+                            onClick={() => handleAnnounce(p)}
+                            disabled={isPending || p.resultNumber == null}
+                          >
+                            Announce
+                          </QueueActionButton>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* Published Results Section */}
+              {/* Published Results — compact cards */}
               {hasPublished && (
                 <div className="mt-8 space-y-4 opacity-80 hover:opacity-100 transition-opacity">
                   <h2 className="text-lg font-semibold tracking-tight text-muted-foreground">
                     Announced Results
                   </h2>
-                  <div className="border rounded-xl bg-card/50 overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-muted/30">
-                        <TableRow>
-                          <TableHead className="w-20">#</TableHead>
-                          <TableHead>Programme</TableHead>
-                          <TableHead className="w-24">Status</TableHead>
-                          <TableHead className="w-40 text-right">
-                            Announced By
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {publishedResults.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>
-                              <span className="font-mono text-xs font-bold text-muted-foreground">
-                                {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
+                  <div className="grid gap-2">
+                    {publishedResults.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between gap-4 rounded-lg border bg-card/50 p-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="font-mono text-xs font-bold text-muted-foreground w-10 shrink-0">
+                            {p.resultNumber != null
+                              ? `#${p.resultNumber}`
+                              : "—"}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-muted-foreground truncate">
+                              {p.name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-muted-foreground text-xs opacity-80">
+                                {p.categoryName}
                               </span>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <span className="font-medium text-muted-foreground">
-                                  {p.name}
-                                </span>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-muted-foreground text-xs opacity-80">
-                                    {p.categoryName}
-                                  </span>
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] h-4 px-1.5 font-normal opacity-70"
-                                  >
-                                    {p.type === "GROUP" ? "Group" : "Individual"}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
                               <Badge
                                 variant="outline"
-                                className="text-muted-foreground opacity-80"
+                                className="text-[10px] h-4 px-1.5 font-normal opacity-70"
                               >
-                                Announced
+                                {p.type === "GROUP" ? "Group" : "Individual"}
                               </Badge>
-                            </TableCell>
-                            <TableCell className="text-right text-sm text-muted-foreground">
-                              {p.publishedByName ?? "—"}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <Badge
+                            variant="outline"
+                            className="text-muted-foreground opacity-80 text-[10px]"
+                          >
+                            Announced
+                          </Badge>
+                          <span className="text-xs text-muted-foreground hidden sm:inline">
+                            {p.publishedByName ?? "—"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -299,10 +323,12 @@ export function AnnouncerClient({
               </CardHeader>
               <CardContent className="p-4 space-y-4">
                 <div className="text-sm text-muted-foreground">
-                  Standings updated after Result #{standingsContext.standingsPublishedAtResultNumber} are waiting to be announced.
+                  Standings updated after Result #
+                  {standingsContext.standingsPublishedAtResultNumber} are
+                  waiting to be announced.
                 </div>
-                <Button 
-                  className="w-full bg-violet-600 hover:bg-violet-700 text-white" 
+                <Button
+                  className="w-full bg-violet-600 hover:bg-violet-700 text-white"
                   onClick={() => {
                     startTransition(async () => {
                       const res = await announceStandings(festivalId);
@@ -316,7 +342,11 @@ export function AnnouncerClient({
                   }}
                   disabled={isPending}
                 >
-                  {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Megaphone className="h-4 w-4 mr-2" />}
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Megaphone className="h-4 w-4 mr-2" />
+                  )}
                   Announce Standings
                 </Button>
               </CardContent>
@@ -330,12 +360,15 @@ export function AnnouncerClient({
                 Live Standings
               </h2>
               {standingsContext.standingsAnnouncedAt && (
-                <Badge variant="outline" className="text-[10px] font-normal bg-background">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-normal bg-background"
+                >
                   Updated
                 </Badge>
               )}
             </div>
-            
+
             <ScrollArea className="h-[400px]">
               {standingsContext.publishedStandings.length === 0 ? (
                 <p className="text-sm text-muted-foreground p-6 text-center">
@@ -434,10 +467,11 @@ export function AnnouncerClient({
                             (a, b) => (a.position ?? 999) - (b.position ?? 999),
                           )
                           .map((r, idx) => (
-                            <TableRow 
+                            <TableRow
                               key={r.id}
                               className={cn(
-                                r.position != null && MEDAL_ROWS[r.position - 1],
+                                r.position != null &&
+                                  MEDAL_ROWS[r.position - 1],
                               )}
                             >
                               <TableCell className="text-muted-foreground font-mono">
@@ -457,7 +491,9 @@ export function AnnouncerClient({
                               <TableCell className="text-muted-foreground">
                                 {r.groupName ?? "—"}
                               </TableCell>
-                              <TableCell className="font-medium">{r.grade ?? "—"}</TableCell>
+                              <TableCell className="font-medium">
+                                {r.grade ?? "—"}
+                              </TableCell>
                               <TableCell>
                                 {r.position === 1
                                   ? "🥇 1st"
@@ -484,7 +520,7 @@ export function AnnouncerClient({
                       : "Assign a result number first."}
                   </p>
                   <Button
-                    onClick={handleAnnounce}
+                    onClick={() => handleAnnounce()}
                     size="lg"
                     disabled={isPending || activeProgramme.resultNumber == null}
                     className="relative overflow-hidden font-bold bg-violet-600 hover:bg-violet-700 text-white"

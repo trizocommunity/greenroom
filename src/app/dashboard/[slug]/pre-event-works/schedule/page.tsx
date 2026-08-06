@@ -4,7 +4,8 @@ import { getSession } from "@/core/auth/session";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import {
   getSchedulableProgrammesAction,
   getScheduleEntriesEnriched,
@@ -24,9 +25,11 @@ export default async function SchedulePage({ params }: PageProps) {
     notFound();
   }
 
-  const canManageSchedule = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManageSchedule = isEnabled(
+    festival.tier,
     "schedule",
+    effectiveFeatures,
   );
   if (!canManageSchedule) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=schedule`);

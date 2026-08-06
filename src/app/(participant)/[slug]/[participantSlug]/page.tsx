@@ -33,10 +33,7 @@ import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getBadgePayloadAction } from "@/features/posters/actions/badge.actions";
 import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
@@ -103,10 +100,7 @@ export default async function ParticipantMainPage({
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier as any),
-    "publicParticipantProfile",
-  );
+  const canViewProfile = isEnabled(festival.tier, "publicParticipantProfile");
   if (!canViewProfile) notFound();
 
   const participant = await findParticipantByFestivalAndProfileSlug(

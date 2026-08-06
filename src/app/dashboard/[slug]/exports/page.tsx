@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
+import type { Tier } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { ExportsClient } from "./ExportsClient";
 
 interface PageProps {
@@ -12,7 +14,8 @@ export default async function ExportsPage({ params }: PageProps) {
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const canExport = await getEffectiveFeatureEnabled(festival.tier, "exports");
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canExport = isEnabled(festival.tier, "exports", effectiveFeatures);
   if (!canExport) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=exports`);
   }

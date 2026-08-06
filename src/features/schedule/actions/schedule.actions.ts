@@ -17,7 +17,10 @@ import { serverNowIso } from "@/core/datetime/server";
 import type { AppError } from "@/core/errors/errors";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import {
+  loadFeatureOverrides,
+} from "@/features/plan-features/services/plan-features.service";
 import {
   assertProgrammePreReporting,
   updateProgrammeStatus,
@@ -372,9 +375,11 @@ export async function createScheduleEntry(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(
+    festival.tier,
     "schedule",
+    effectiveFeatures,
   );
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
@@ -551,9 +556,11 @@ export async function updateScheduleEntry(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(
+    festival.tier,
     "schedule",
+    effectiveFeatures,
   );
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
@@ -718,9 +725,11 @@ export async function clearScheduleEntries(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(
+    festival.tier,
     "schedule",
+    effectiveFeatures,
   );
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
@@ -802,9 +811,11 @@ export async function reorderScheduleEntries(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(
+    festival.tier,
     "schedule",
+    effectiveFeatures,
   );
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
@@ -948,9 +959,11 @@ export async function swapScheduleSlots(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(
+    festival.tier,
     "schedule",
+    effectiveFeatures,
   );
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };

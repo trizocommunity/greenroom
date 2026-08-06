@@ -8,14 +8,17 @@ import {
 } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
 import type { Tier } from "@/core/types/app-enums";
-import type { FeaturePath } from "@/features/plan-features/services/features";
+import type {
+  BooleanFeaturePath,
+  FeaturePath,
+} from "@/features/plan-features/services/feature-gate";
 import type { FeatureTag } from "@/features/plan-features/services/features-tags";
 import {
   FEATURE_TAGS,
   getFeatureTagRequirements,
 } from "@/features/plan-features/services/features-tags";
 import {
-  getEffectivePlanFeatureMatrix,
+  loadAllFeatureOverrides,
   setPlanFeatureOverride as setOverride,
 } from "@/features/plan-features/services/plan-features.service";
 
@@ -33,7 +36,7 @@ export async function getPlanFeatureMatrixAction(): Promise<
     if (session.role !== "SUPER_ADMIN")
       throw new AppError(ERROR_MESSAGES.FORBIDDEN);
 
-    const matrix = await getEffectivePlanFeatureMatrix();
+    const matrix = await loadAllFeatureOverrides();
     return { success: true, data: matrix };
   } catch (error) {
     return handleActionError(error);
@@ -42,7 +45,7 @@ export async function getPlanFeatureMatrixAction(): Promise<
 
 export async function setPlanFeatureOverrideAction(
   tier: Tier,
-  feature: FeaturePath,
+  feature: BooleanFeaturePath,
   enabled: boolean,
 ): Promise<ActionResponse<null>> {
   try {

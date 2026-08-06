@@ -26,8 +26,7 @@ import {
 } from "@/features/festivals/schemas/festival.schema";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
-import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
-import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
+import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 import { ensureOffStageStage } from "@/features/stages/services/off-stage.service";
 
 export async function createFestival(input: CreateFestivalInput) {
@@ -436,35 +435,19 @@ export async function updateFestivalBrandingAction(data: {
         ? String(data.logo ?? current.logo)
         : null;
 
-    const urlsToAdd: string[] = [];
-    const urlsToRemove: string[] = [];
-
-    if (previousLogo && previousLogo !== nextLogo)
-      urlsToRemove.push(previousLogo);
-    if (nextLogo && nextLogo !== previousLogo) urlsToAdd.push(nextLogo);
-
-    const [addMb, removeMb] = await Promise.all([
-      StorageUsageService.getUrlsSizeMB(urlsToAdd),
-      StorageUsageService.getUrlsSizeMB(urlsToRemove),
-    ]);
-    const deltaMb = addMb - removeMb;
-
-    await db.transaction(async (tx) => {
-      await tx
-        .update(festivalTable)
-        .set({
-          branding: nextBranding,
-          updatedAt: serverNowIso(),
-        })
-        .where(eq(festivalTable.id, festival.id));
-
-      if (deltaMb !== 0) {
-        await UsageCounterService.incrementUsage(
-          festival.id,
-          "storage",
-          deltaMb,
-        );
-      }
+    await StorageBackedFieldService.mutateSingleUrl({
+      festivalId: festival.id,
+      currentUrl: previousLogo,
+      nextUrl: nextLogo,
+      operation: async (tx) => {
+        await tx
+          .update(festivalTable)
+          .set({
+            branding: nextBranding,
+            updatedAt: serverNowIso(),
+          })
+          .where(eq(festivalTable.id, festival.id));
+      },
     });
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);

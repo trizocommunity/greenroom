@@ -11,7 +11,7 @@ const {
   mockGetSession,
   mockAssertFestivalAccess,
   mockFindFestivalById,
-  mockGetEffectiveFeatureEnabled,
+  mockLoadFeatureOverrides,
   mockUpdateProgrammeStatus,
   mockHandleProgrammeEntryMutation,
   mockRevalidatePath,
@@ -42,7 +42,7 @@ const {
     mockGetSession: mkFn(),
     mockAssertFestivalAccess: mkFn(),
     mockFindFestivalById: mkFn(),
-    mockGetEffectiveFeatureEnabled: mkFn(),
+    mockLoadFeatureOverrides: mkFn(),
     mockUpdateProgrammeStatus: mkFn(),
     mockHandleProgrammeEntryMutation: mkFn(),
     mockRevalidatePath: mkFn(),
@@ -147,8 +147,8 @@ vi.mock("@/features/festivals/repositories/festival.repository", () => ({
 }));
 
 vi.mock("@/features/plan-features/services/plan-features.service", () => ({
-  getEffectiveFeatureEnabled: (...args: unknown[]) =>
-    mockGetEffectiveFeatureEnabled(...args),
+  loadFeatureOverrides: (...args: unknown[]) =>
+    mockLoadFeatureOverrides(...args),
 }));
 
 vi.mock("@/features/programmes/services/programme-status.service", () => ({
@@ -211,7 +211,7 @@ beforeEach(() => {
 
   mockAssertFestivalAccess.mockResolvedValue(undefined);
   mockFindFestivalById.mockResolvedValue(baseFestival);
-  mockGetEffectiveFeatureEnabled.mockResolvedValue(true);
+  mockLoadFeatureOverrides.mockResolvedValue({ schedule: true });
 
   mockGetAccessibleStageIds.mockResolvedValue("all");
 

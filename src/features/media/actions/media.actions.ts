@@ -9,9 +9,10 @@ import { db } from "@/core/database/client";
 import { festivalMediaImage, festivalMediaVideo } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
-import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import type { Tier } from "@/core/types/app-enums";
+import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 
 export async function getMediaImagesAction(festivalId: string) {
   const session = await getSession();
@@ -38,7 +39,8 @@ export async function addMediaImageAction(festivalId: string, url: string) {
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
-  const canManage = await getEffectiveFeatureEnabled(festival.tier, "media");
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "media", effectiveFeatures);
   if (!canManage)
     return { success: false, error: "Media is not available on your plan." };
 
@@ -48,17 +50,19 @@ export async function addMediaImageAction(festivalId: string, url: string) {
     .where(eq(festivalMediaImage.festivalId, festivalId));
   const order = (maxOrder ?? -1) + 1;
 
-  const addedMb = await StorageUsageService.getUrlSizeMB(url);
-  await db.insert(festivalMediaImage).values({
-    id: randomUUID(),
+  await StorageBackedFieldService.mutateUrls({
     festivalId,
-    url,
-    order,
-    updatedAt: serverNowIso(),
+    add: [url],
+    operation: async (tx) => {
+      await tx.insert(festivalMediaImage).values({
+        id: randomUUID(),
+        festivalId,
+        url,
+        order,
+        updatedAt: serverNowIso(),
+      });
+    },
   });
-  if (addedMb > 0) {
-    await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
-  }
 
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
@@ -70,7 +74,8 @@ export async function addMediaImagesAction(festivalId: string, urls: string[]) {
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
-  const canManage = await getEffectiveFeatureEnabled(festival.tier, "media");
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "media", effectiveFeatures);
   if (!canManage)
     return { success: false, error: "Media is not available on your plan." };
   if (urls.length === 0) return { success: true };
@@ -81,20 +86,22 @@ export async function addMediaImagesAction(festivalId: string, urls: string[]) {
     .where(eq(festivalMediaImage.festivalId, festivalId));
   let order = (maxOrder ?? -1) + 1;
 
-  const addedMb = await StorageUsageService.getUrlsSizeMB(urls);
   const now = serverNowIso();
-  await db.insert(festivalMediaImage).values(
-    urls.map((url) => ({
-      id: randomUUID(),
-      festivalId,
-      url,
-      order: order++,
-      updatedAt: now,
-    })),
-  );
-  if (addedMb > 0) {
-    await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
-  }
+  await StorageBackedFieldService.mutateUrls({
+    festivalId,
+    add: urls,
+    operation: async (tx) => {
+      await tx.insert(festivalMediaImage).values(
+        urls.map((url) => ({
+          id: randomUUID(),
+          festivalId,
+          url,
+          order: order++,
+          updatedAt: now,
+        })),
+      );
+    },
+  });
 
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
@@ -117,13 +124,15 @@ export async function deleteMediaImageAction(
     columns: { id: true, url: true },
   });
   if (!image) return { success: false, error: "Image not found" };
-  const removedMb = await StorageUsageService.getUrlSizeMB(image.url);
-  await db
-    .delete(festivalMediaImage)
-    .where(eq(festivalMediaImage.id, image.id));
-  if (removedMb > 0) {
-    await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb);
-  }
+  await StorageBackedFieldService.mutateUrls({
+    festivalId,
+    remove: [image.url],
+    operation: async (tx) => {
+      await tx
+        .delete(festivalMediaImage)
+        .where(eq(festivalMediaImage.id, image.id));
+    },
+  });
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
   return { success: true };
@@ -145,20 +154,20 @@ export async function deleteMediaImagesAction(
     ),
     columns: { id: true, url: true },
   });
-  const removedMb = await StorageUsageService.getUrlsSizeMB(
-    rows.map((r) => r.url),
-  );
-  await db
-    .delete(festivalMediaImage)
-    .where(
-      and(
-        inArray(festivalMediaImage.id, imageIds),
-        eq(festivalMediaImage.festivalId, festivalId),
-      ),
-    );
-  if (removedMb > 0) {
-    await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb);
-  }
+  await StorageBackedFieldService.mutateUrls({
+    festivalId,
+    remove: rows.map((r) => r.url),
+    operation: async (tx) => {
+      await tx
+        .delete(festivalMediaImage)
+        .where(
+          and(
+            inArray(festivalMediaImage.id, imageIds),
+            eq(festivalMediaImage.festivalId, festivalId),
+          ),
+        );
+    },
+  });
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
   return { success: true };

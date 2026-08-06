@@ -14,10 +14,11 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { festivalNews } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
-import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 
 const handler = createProtectedHandler({
   async GET({ user, request }) {
@@ -58,29 +59,28 @@ const handler = createProtectedHandler({
       return notFound("NOT_FOUND", "Festival not found");
     }
 
-    const canManage = await getEffectiveFeatureEnabled(festival.tier, "news");
+    const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+    const canManage = isEnabled(festival.tier, "news", effectiveFeatures);
     if (!canManage) {
       return forbidden("News is not available on your plan.");
     }
 
-    const addedMb = await StorageUsageService.getUrlSizeMB(
-      parsed.data.imageUrl ?? null,
-    );
-
-    await db.insert(festivalNews).values({
-      id: randomUUID(),
-      updatedAt: serverNowIso(),
+    await StorageBackedFieldService.mutateUrls({
       festivalId,
-      title: parsed.data.title,
-      excerpt: parsed.data.excerpt ?? null,
-      content: parsed.data.content,
-      imageUrl: parsed.data.imageUrl ?? null,
-      publishedAt: parsed.data.publishedAt ?? null,
+      add: [parsed.data.imageUrl],
+      operation: async (tx) => {
+        await tx.insert(festivalNews).values({
+          id: randomUUID(),
+          updatedAt: serverNowIso(),
+          festivalId,
+          title: parsed.data.title,
+          excerpt: parsed.data.excerpt ?? null,
+          content: parsed.data.content,
+          imageUrl: parsed.data.imageUrl ?? null,
+          publishedAt: parsed.data.publishedAt ?? null,
+        });
+      },
     });
-
-    if (addedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
-    }
 
     try {
       const { revalidatePath } = await import("next/cache");
@@ -129,32 +129,26 @@ const handler = createProtectedHandler({
 
     const nextImageUrl =
       data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl;
-    const [addedMb, removedMb] = await Promise.all([
-      data.imageUrl !== undefined && data.imageUrl !== existing.imageUrl
-        ? StorageUsageService.getUrlSizeMB(nextImageUrl)
-        : Promise.resolve(0),
-      data.imageUrl !== undefined && data.imageUrl !== existing.imageUrl
-        ? StorageUsageService.getUrlSizeMB(existing.imageUrl)
-        : Promise.resolve(0),
-    ]);
-    const deltaMb = addedMb - removedMb;
 
-    await db
-      .update(festivalNews)
-      .set({
-        ...(data.title !== undefined && { title: data.title }),
-        ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
-        ...(data.content !== undefined && { content: data.content }),
-        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
-        ...(data.publishedAt !== undefined && {
-          publishedAt: data.publishedAt,
-        }),
-      })
-      .where(eq(festivalNews.id, existing.id));
-
-    if (deltaMb !== 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", deltaMb);
-    }
+    await StorageBackedFieldService.mutateSingleUrl({
+      festivalId,
+      currentUrl: existing.imageUrl,
+      nextUrl: nextImageUrl,
+      operation: async (tx) => {
+        await tx
+          .update(festivalNews)
+          .set({
+            ...(data.title !== undefined && { title: data.title }),
+            ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
+            ...(data.content !== undefined && { content: data.content }),
+            ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+            ...(data.publishedAt !== undefined && {
+              publishedAt: data.publishedAt,
+            }),
+          })
+          .where(eq(festivalNews.id, existing.id));
+      },
+    });
 
     try {
       const { revalidatePath } = await import("next/cache");
@@ -193,16 +187,13 @@ const handler = createProtectedHandler({
       return notFound("NOT_FOUND", "News post not found");
     }
 
-    const removedMb = await StorageUsageService.getUrlSizeMB(existing.imageUrl);
-    await db.delete(festivalNews).where(eq(festivalNews.id, existing.id));
-
-    if (removedMb > 0) {
-      await UsageCounterService.incrementUsage(
-        festivalId,
-        "storage",
-        -removedMb,
-      );
-    }
+    await StorageBackedFieldService.mutateUrls({
+      festivalId,
+      remove: [existing.imageUrl],
+      operation: async (tx) => {
+        await tx.delete(festivalNews).where(eq(festivalNews.id, existing.id));
+      },
+    });
 
     try {
       const { revalidatePath } = await import("next/cache");

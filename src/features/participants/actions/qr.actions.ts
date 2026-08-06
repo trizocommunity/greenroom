@@ -14,10 +14,7 @@ import {
   getParticipantProfileUrl,
   getQrCodeContent,
 } from "@/features/participants/services/participant-profile-url";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 
 export async function exportParticipantsQrPdfAction(
   festivalId: string,
@@ -31,12 +28,7 @@ export async function exportParticipantsQrPdfAction(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  if (
-    !FeatureService.isFeatureEnabled(
-      getTierForFeatureCheck(festival.tier as any),
-      "qrCodes",
-    )
-  ) {
+  if (!isEnabled(festival.tier, "qrCodes")) {
     return {
       success: false,
       error: "QR Codes export is not available on your plan.",

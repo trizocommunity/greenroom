@@ -1,10 +1,9 @@
 import "server-only";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import {
-  type FeaturePath,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import type { BooleanFeaturePath } from "@/features/plan-features/services/feature-gate";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 type Festival = NonNullable<Awaited<ReturnType<typeof findFestivalBySlug>>>;
 
@@ -23,7 +22,7 @@ export type PublicAccessResult =
  */
 export async function resolvePublicFestival(
   slug: string,
-  feature?: FeaturePath,
+  feature?: BooleanFeaturePath,
 ): Promise<PublicAccessResult> {
   const festival = await findFestivalBySlug(slug);
   if (!festival) return { ok: false, reason: "not-found" };
@@ -37,10 +36,10 @@ export async function resolvePublicFestival(
   }
 
   if (feature) {
-    const enabled = await getEffectiveFeatureEnabled(
-      getTierForFeatureCheck(festival.tier),
-      feature,
+    const effectiveFeatures = await loadFeatureOverrides(
+      getResolvedTier(festival.tier),
     );
+    const enabled = isEnabled(festival.tier, feature, effectiveFeatures);
     if (!enabled) return { ok: false, reason: "feature-disabled" };
   }
 

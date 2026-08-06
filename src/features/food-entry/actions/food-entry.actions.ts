@@ -1,19 +1,39 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { getSession } from "@/core/auth/session";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { upsertFoodSlotsSchema, scanFoodEntrySchema } from "../schemas/food-entry.schema";
-import * as service from "../services/food-entry.service";
 import * as repo from "../repositories/food-entry.repository";
+import {
+  scanFoodEntrySchema,
+  upsertFoodSlotsSchema,
+} from "../schemas/food-entry.schema";
+import * as service from "../services/food-entry.service";
 
+const getFilteredEntriesSchema = z.object({
+  festivalId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  groupId: z.string().uuid().optional(),
+  categoryId: z.string().uuid().optional(),
+});
 
-async function getFestivalRole(festivalId: string, userId: string) {
+export async function getFilteredEntriesAction(data: unknown) {
   const session = await getSession();
-  if (!session || !session.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
-  // Real implementation might involve checking festival members, but since it's a server action,
-  // we assume the user has right access or we enforce it. We'll simplify for now.
-  return session;
+  if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
+
+  const parsed = getFilteredEntriesSchema.parse(data);
+  const timezone = await repo.getFestivalTimezone(parsed.festivalId);
+  const entries = await repo.getEntriesByFilters(
+    parsed.festivalId,
+    parsed.sessionId,
+    parsed.date,
+    timezone,
+    parsed.groupId,
+    parsed.categoryId,
+  );
+  return { success: true, entries };
 }
 
 export async function upsertFoodSlotsAction(data: unknown) {
@@ -21,7 +41,7 @@ export async function upsertFoodSlotsAction(data: unknown) {
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   const parsed = upsertFoodSlotsSchema.parse(data);
-  const keepSlotIds = parsed.slots.map(s => s.id).filter(Boolean) as string[];
+  const keepSlotIds = parsed.slots.map((s) => s.id).filter(Boolean) as string[];
   await repo.deleteFoodSlots(parsed.festivalId, keepSlotIds);
 
   for (const slot of parsed.slots) {
@@ -54,19 +74,23 @@ export async function scanFoodEntryAction(data: unknown) {
       parsed.chestNumber,
       session.userId,
       session.name || undefined,
-      session.email || undefined
+      session.email || undefined,
     );
     revalidatePath(`/dashboard/[slug]/event-works/food-entry`);
     return { success: true, entry };
   } catch (error: any) {
-    if (error.code) { // TRPCError like object
+    if (error.code) {
+      // TRPCError like object
       return { success: false, error: error.message };
     }
     return { success: false, error: "An unexpected error occurred." };
   }
 }
 
-export async function toggleSessionStatusAction(sessionId: string, status: "OPEN" | "CLOSED") {
+export async function toggleSessionStatusAction(
+  sessionId: string,
+  status: "OPEN" | "CLOSED",
+) {
   const session = await getSession();
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 

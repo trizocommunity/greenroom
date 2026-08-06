@@ -8,28 +8,38 @@ export const foodSlotSchema = z.object({
   windowEndMin: z.number().int().min(1).max(1440),
 });
 
-export const upsertFoodSlotsSchema = z.object({
-  festivalId: z.string().uuid(),
-  slots: z.array(foodSlotSchema).min(1, "At least one slot is required"),
-}).refine(
-  (data) => {
-    // Validate that no slots overlap and start < end
-    for (const slot of data.slots) {
+export const upsertFoodSlotsSchema = z
+  .object({
+    festivalId: z.string().uuid(),
+    slots: z.array(foodSlotSchema).min(1, "At least one slot is required"),
+  })
+  .superRefine((data, ctx) => {
+    for (let i = 0; i < data.slots.length; i++) {
+      const slot = data.slots[i];
       if (slot.windowStartMin >= slot.windowEndMin) {
-        return false;
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["slots", i, "windowEndMin"],
+          message: "End time must be after start time.",
+        });
       }
     }
-    // Check overlaps
-    const sorted = [...data.slots].sort((a, b) => a.windowStartMin - b.windowStartMin);
+
+    const sorted = [...data.slots].sort(
+      (a, b) => a.windowStartMin - b.windowStartMin,
+    );
     for (let i = 0; i < sorted.length - 1; i++) {
       if (sorted[i].windowEndMin > sorted[i + 1].windowStartMin) {
-        return false;
+        const current = sorted[i];
+        const next = sorted[i + 1];
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["slots"],
+          message: `Session "${current.name}" overlaps with "${next.name}".`,
+        });
       }
     }
-    return true;
-  },
-  { message: "Slots cannot overlap and start time must be before end time." }
-);
+  });
 
 export type UpsertFoodSlotsInput = z.infer<typeof upsertFoodSlotsSchema>;
 export type FoodSlotInput = z.infer<typeof foodSlotSchema>;

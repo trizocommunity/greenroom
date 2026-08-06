@@ -26,9 +26,11 @@ import {
 } from "@/components/ui/card";
 import type { festival as festivalSchema } from "@/core/database/schema";
 import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
-import type { FeaturePath } from "@/features/plan-features/services/features";
+import type { BooleanFeaturePath } from "@/features/plan-features/services/feature-gate";
 import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
-import { getEffectivePlanFeatureMatrix } from "@/features/plan-features/services/plan-features.service";
+import {
+  loadAllFeatureOverrides,
+} from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 import { DashboardCharts } from "./DashboardCharts";
 
@@ -37,8 +39,8 @@ interface OverviewWidgetsProps {
 }
 
 function planFeature(
-  features: Partial<Record<FeaturePath, boolean>>,
-  key: FeaturePath,
+  features: Partial<Record<BooleanFeaturePath, boolean>>,
+  key: BooleanFeaturePath,
 ): boolean {
   return Boolean(features[key]);
 }
@@ -61,7 +63,7 @@ export default async function OverviewWidgets({
   const slug = festival.slug;
   const festivalTz = festival.timezone ?? "UTC";
 
-  const matrix = await getEffectivePlanFeatureMatrix();
+  const matrix = await loadAllFeatureOverrides();
   const features = matrix[tier] ?? {};
   const canUseExternalJudging = isFeatureTagEnabled({
     tier,

@@ -1,11 +1,24 @@
-import { eq, and, asc, sql, desc, gte, lte, inArray } from "drizzle-orm";
+import { fromZonedTime } from "date-fns-tz";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  lte,
+  notInArray,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { 
-  foodHallSlot, 
-  foodHallSession, 
-  foodHallEntry,
+import {
+  category,
   festival,
-  participant
+  foodHallEntry,
+  foodHallSession,
+  foodHallSlot,
+  group,
+  participant,
 } from "@/core/database/schema";
 
 export async function getFoodSlots(festivalId: string) {
@@ -15,10 +28,38 @@ export async function getFoodSlots(festivalId: string) {
   });
 }
 
-export async function getFoodSessionsWithStats(festivalId: string, fromDate?: string, toDate?: string) {
+export async function getFestivalTimezone(festivalId: string) {
+  const f = await db.query.festival.findFirst({
+    where: eq(festival.id, festivalId),
+    columns: { timezone: true },
+  });
+  return f?.timezone || "UTC";
+}
+
+export async function getGroupsAndCategoriesForFestival(festivalId: string) {
+  const groups = await db
+    .select({ id: group.id, name: group.name })
+    .from(group)
+    .where(eq(group.festivalId, festivalId))
+    .orderBy(asc(group.name));
+
+  const categories = await db
+    .select({ id: category.id, name: category.name })
+    .from(category)
+    .where(eq(category.festivalId, festivalId))
+    .orderBy(asc(category.name));
+
+  return { groups, categories };
+}
+
+export async function getFoodSessionsWithStats(
+  festivalId: string,
+  fromDate?: string,
+  toDate?: string,
+) {
   // Query to get sessions and join with slots and count entries
   // For simplicity and efficiency, we can do a raw SQL or a query builder approach.
-  
+
   const conditions = [eq(foodHallSession.festivalId, festivalId)];
   if (fromDate) conditions.push(gte(foodHallSession.sessionDate, fromDate));
   if (toDate) conditions.push(lte(foodHallSession.sessionDate, toDate));
@@ -40,10 +81,7 @@ export async function getFoodSessionsWithStats(festivalId: string, fromDate?: st
     .innerJoin(foodHallSlot, eq(foodHallSession.slotId, foodHallSlot.id))
     .leftJoin(foodHallEntry, eq(foodHallSession.id, foodHallEntry.sessionId))
     .where(and(...conditions))
-    .groupBy(
-      foodHallSession.id,
-      foodHallSlot.id
-    )
+    .groupBy(foodHallSession.id, foodHallSlot.id)
     .orderBy(asc(foodHallSession.sessionDate), asc(foodHallSlot.slotOrder));
 
   return sessions;
@@ -54,7 +92,7 @@ export async function getSessionById(sessionId: string) {
     where: eq(foodHallSession.id, sessionId),
     with: {
       slot: true,
-    }
+    },
   });
 }
 
@@ -67,11 +105,53 @@ export async function getSessionEntries(sessionId: string) {
       scannedByName: foodHallEntry.scannedByName,
       participantId: participant.id,
       participantName: participant.name,
-      // More fields like category_name, team_name can be joined if required
+      groupName: group.name,
+      categoryName: category.name,
     })
     .from(foodHallEntry)
     .innerJoin(participant, eq(foodHallEntry.participantId, participant.id))
+    .leftJoin(group, eq(participant.groupId, group.id))
+    .leftJoin(category, eq(participant.categoryId, category.id))
     .where(eq(foodHallEntry.sessionId, sessionId))
+    .orderBy(desc(foodHallEntry.scannedAt));
+}
+
+export async function getEntriesByFilters(
+  festivalId: string,
+  sessionId: string,
+  date: string,
+  timezone: string,
+  groupId?: string,
+  categoryId?: string,
+) {
+  const dayStart = fromZonedTime(`${date}T00:00:00`, timezone);
+  const dayEnd = fromZonedTime(`${date}T23:59:59.999`, timezone);
+
+  const conditions = [
+    eq(foodHallSession.festivalId, festivalId),
+    eq(foodHallEntry.sessionId, sessionId),
+    gte(foodHallEntry.scannedAt, dayStart.toISOString()),
+    lte(foodHallEntry.scannedAt, dayEnd.toISOString()),
+  ];
+  if (groupId) conditions.push(eq(participant.groupId, groupId));
+  if (categoryId) conditions.push(eq(participant.categoryId, categoryId));
+
+  return await db
+    .select({
+      id: foodHallEntry.id,
+      chestNumber: foodHallEntry.chestNumber,
+      scannedAt: foodHallEntry.scannedAt,
+      scannedByName: foodHallEntry.scannedByName,
+      participantName: participant.name,
+      groupName: group.name,
+      categoryName: category.name,
+    })
+    .from(foodHallEntry)
+    .innerJoin(foodHallSession, eq(foodHallEntry.sessionId, foodHallSession.id))
+    .innerJoin(participant, eq(foodHallEntry.participantId, participant.id))
+    .leftJoin(group, eq(participant.groupId, group.id))
+    .leftJoin(category, eq(participant.categoryId, category.id))
+    .where(and(...conditions))
     .orderBy(desc(foodHallEntry.scannedAt));
 }
 
@@ -80,7 +160,10 @@ export async function insertFoodEntry(data: typeof foodHallEntry.$inferInsert) {
   return entry;
 }
 
-export async function updateSessionStatus(sessionId: string, status: "OPEN" | "CLOSED") {
+export async function updateSessionStatus(
+  sessionId: string,
+  status: "OPEN" | "CLOSED",
+) {
   const [session] = await db
     .update(foodHallSession)
     .set({ status, updatedAt: new Date().toISOString() })
@@ -89,11 +172,19 @@ export async function updateSessionStatus(sessionId: string, status: "OPEN" | "C
   return session;
 }
 
-export async function deleteFoodSlots(festivalId: string, slotIdsToKeep: string[]) {
+export async function deleteFoodSlots(
+  festivalId: string,
+  slotIdsToKeep: string[],
+) {
   if (slotIdsToKeep.length > 0) {
     await db
       .delete(foodHallSlot)
-      .where(and(eq(foodHallSlot.festivalId, festivalId), sql`${foodHallSlot.id} NOT IN ${inArray(foodHallSlot.id, slotIdsToKeep)}`)); // Or use notInArray
+      .where(
+        and(
+          eq(foodHallSlot.festivalId, festivalId),
+          notInArray(foodHallSlot.id, slotIdsToKeep),
+        ),
+      );
   } else {
     await db
       .delete(foodHallSlot)
@@ -119,14 +210,27 @@ export async function upsertFoodSlot(data: typeof foodHallSlot.$inferInsert) {
   return slot;
 }
 
-export async function ensureSessionsForDateRange(festivalId: string, slotIds: string[], startDate: Date, endDate: Date) {
+export async function ensureSessionsForDateRange(
+  festivalId: string,
+  slotIds: string[],
+  startDate: Date,
+  endDate: Date,
+) {
   // We'll generate sessions in the service layer and insert them using insertSession
 }
 
-export async function insertSessions(sessions: (typeof foodHallSession.$inferInsert)[]) {
+export async function insertSessions(
+  sessions: (typeof foodHallSession.$inferInsert)[],
+) {
   if (sessions.length === 0) return;
   await db
     .insert(foodHallSession)
     .values(sessions)
-    .onConflictDoNothing({ target: [foodHallSession.festivalId, foodHallSession.slotId, foodHallSession.sessionDate] });
+    .onConflictDoNothing({
+      target: [
+        foodHallSession.festivalId,
+        foodHallSession.slotId,
+        foodHallSession.sessionDate,
+      ],
+    });
 }

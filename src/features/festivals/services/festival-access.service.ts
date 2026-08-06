@@ -1,11 +1,8 @@
 import { TIER_CONFIG } from "@/config/pricing";
 import type { festival as festivals } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
-import type { FeaturePath } from "@/features/plan-features/services/features";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import type { BooleanFeaturePath } from "@/features/plan-features/services/feature-gate";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 type FestivalRow = typeof festivals.$inferSelect;
@@ -20,10 +17,9 @@ export function isFestivalActive(
 
 export function canUseFeature(
   festival: Pick<FestivalRow, "tier">,
-  feature: FeaturePath,
+  feature: BooleanFeaturePath,
 ) {
-  const tier = getTierForFeatureCheck(festival.tier);
-  return FeatureService.isFeatureEnabled(tier, feature);
+  return isEnabled(festival.tier, feature);
 }
 
 export function getTierLimits(festival: Pick<FestivalRow, "tier">) {

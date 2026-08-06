@@ -9,10 +9,7 @@ import { festival as festivalTable } from "@/core/database/schema";
 import { ERROR_MESSAGES, handleActionError } from "@/core/errors/errors";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { GroupService } from "@/features/groups/services/group.service";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 
 export async function getGroupsAction(festivalId: string) {
   const session = await getSession();
@@ -69,8 +66,7 @@ export async function updateGroupAction(
         columns: { tier: true },
       });
 
-      const tier = getTierForFeatureCheck(festival?.tier);
-      if (!FeatureService.isFeatureEnabled(tier, "members")) {
+      if (!isEnabled(festival?.tier, "members")) {
         return { success: false, error: ERROR_MESSAGES.FORBIDDEN };
       }
     }

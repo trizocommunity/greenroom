@@ -15,7 +15,10 @@ import {
   stage as stageTable,
 } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import {
+  loadFeatureOverrides,
+} from "@/features/plan-features/services/plan-features.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 import { StageManagerLiveMetrics } from "./StageManagerLiveMetrics";
 
@@ -45,9 +48,11 @@ export async function StageManagerOverview({
       })
     : [];
 
-  const canSchedule = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canSchedule = isEnabled(
+    festival.tier,
     "schedule",
+    effectiveFeatures,
   );
 
   const basePath = `/dashboard/${festivalSlug}`;

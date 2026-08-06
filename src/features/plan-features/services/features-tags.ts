@@ -15,7 +15,7 @@ import {
   PLAN_FEATURE_TOGGLE_KEYS,
 } from "@/config/plan-features.config";
 import type { Tier } from "@/core/types/app-enums";
-import type { FeaturePath } from "@/features/plan-features/services/features";
+import type { FeaturePath } from "@/features/plan-features/services/feature-gate";
 
 export type FeatureToggleKey = (typeof PLAN_FEATURE_TOGGLE_KEYS)[number];
 

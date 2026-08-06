@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 
-const STATUS_LABELS: Record<ProgrammeStatus, string> = {
+export const STATUS_LABELS: Record<ProgrammeStatus, string> = {
   DRAFT: "Draft",
   ASSIGNED: "Assigned",
   SCHEDULED: "Scheduled",

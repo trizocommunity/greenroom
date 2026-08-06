@@ -4,7 +4,10 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
 import type { Tier } from "@/core/types/app-enums";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import {
+  loadFeatureOverrides,
+} from "@/features/plan-features/services/plan-features.service";
 import {
   getResolvedTier,
   isBasicTier,
@@ -28,9 +31,11 @@ export default async function TopScorersPage({
   }
 
   const tier = getResolvedTier(festival.tier) as Tier;
-  const canViewLeaderboard = await getEffectiveFeatureEnabled(
+  const effectiveFeatures = await loadFeatureOverrides(tier);
+  const canViewLeaderboard = isEnabled(
     tier,
     "liveScoreboard",
+    effectiveFeatures,
   );
   if (!canViewLeaderboard) {
     redirect(

@@ -27,7 +27,9 @@ import { MS, serverNowMs } from "@/core/datetime/server";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { getInAppBannerState } from "@/features/notifications/services/in-app-banner.service";
-import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
+import {
+  loadFeatureOverrides,
+} from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 import {
   ALL_FESTIVAL_ROLES,
@@ -79,7 +81,7 @@ export default async function FestivalDashboardLayout({
 
   // 4. Prepare Data
   const tierLimits = TIER_CONFIG[getResolvedTier(festival.tier)].limits;
-  const effectiveFeatures = await getEffectiveTierFeatures(
+  const effectiveFeatures = await loadFeatureOverrides(
     getResolvedTier(festival.tier),
   );
 

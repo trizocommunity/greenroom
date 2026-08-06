@@ -11,7 +11,10 @@ import {
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import type { Tier } from "@/core/types/app-enums";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import {
+  loadFeatureOverrides,
+} from "@/features/plan-features/services/plan-features.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 async function getFestivalWithReportingAccess(festivalId: string) {
@@ -21,9 +24,11 @@ async function getFestivalWithReportingAccess(festivalId: string) {
   });
   if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
 
-  const canUseReporting = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canUseReporting = isEnabled(
+    festival.tier,
     "schedule",
+    effectiveFeatures,
   );
   if (!canUseReporting) {
     throw new AppError(

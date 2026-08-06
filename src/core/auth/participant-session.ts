@@ -1,85 +1,52 @@
-import crypto from "crypto";
-import {
-  createCookieSession,
-  deleteCookieSession,
-  getCookieSession,
-} from "@/core/auth/cookie-session";
+import { and, eq, gt, isNull } from "drizzle-orm";
+import { createDbBackedCookieSession } from "@/core/auth/db-backed-cookie-session";
 import { db } from "@/core/database/client";
+import { participantSession } from "@/core/database/schema";
 import { MS, nowPlus, serverNowIso } from "@/core/datetime/server";
 
 export const PARTICIPANT_SESSION_COOKIE = "participant_session";
 
-export function createRawSessionToken(): string {
-  return crypto.randomBytes(32).toString("hex");
-}
-
-export function getSessionExpiryDate(): Date {
-  return nowPlus(12 * MS.hour); // 12 hours
-}
-
-export function getTokenHash(rawToken: string): string {
-  return crypto.createHash("sha256").update(rawToken).digest("hex");
-}
-
-export async function setParticipantSessionCookie(
-  rawToken: string,
-  expiresAt: Date,
-): Promise<void> {
-  await createCookieSession(PARTICIPANT_SESSION_COOKIE, rawToken, {
-    expires: expiresAt,
-  });
-}
-
-export async function clearParticipantSessionCookie(): Promise<void> {
-  await deleteCookieSession(PARTICIPANT_SESSION_COOKIE);
-}
-
-export async function getParticipantSessionCookie(): Promise<
-  string | undefined
-> {
-  return getCookieSession(PARTICIPANT_SESSION_COOKIE);
-}
-
-export async function getParticipantSessionFromCookie() {
-  const rawToken = await getParticipantSessionCookie();
-
-  if (!rawToken) {
-    return null;
-  }
-
-  const tokenHash = getTokenHash(rawToken);
-
-  const sessionData = await db.query.participantSession.findFirst({
-    where: (s: any, { eq, and, isNull, gt }: any) =>
-      and(
-        eq(s.tokenHash, tokenHash),
-        isNull(s.revokedAt),
-        gt(s.expiresAt, serverNowIso()),
+const session = createDbBackedCookieSession({
+  cookieName: PARTICIPANT_SESSION_COOKIE,
+  getExpiryDate: () => nowPlus(12 * MS.hour),
+  async loadSession(tokenHash) {
+    const sessionData = await db.query.participantSession.findFirst({
+      where: and(
+        eq(participantSession.tokenHash, tokenHash),
+        isNull(participantSession.revokedAt),
+        gt(participantSession.expiresAt, serverNowIso()),
       ),
-    with: {
-      participant: {
-        columns: {
-          id: true,
-          festivalId: true,
-          profileSlug: true,
-          isTeamLeader: true,
-          groupId: true,
-          categoryId: true,
+      with: {
+        participant: {
+          columns: {
+            id: true,
+            festivalId: true,
+            profileSlug: true,
+            isTeamLeader: true,
+            groupId: true,
+            categoryId: true,
+          },
+        },
+        festival: {
+          columns: {
+            id: true,
+            slug: true,
+            tier: true,
+          },
         },
       },
-      festival: {
-        columns: {
-          id: true,
-          slug: true,
-          tier: true,
-        },
-      },
-    },
-  });
+    });
 
-  if (!sessionData) {
-    return null;
-  }
+    return sessionData ?? null;
+  },
+});
 
-  return sessionData;
-}
+export const {
+  createRawSessionToken,
+  getTokenHash,
+  getSessionExpiryDate,
+  setCookie: setParticipantSessionCookie,
+  clearCookie: clearParticipantSessionCookie,
+  getCookie: getParticipantSessionCookie,
+  getSessionFromCookie: getParticipantSessionFromCookie,
+} = session;

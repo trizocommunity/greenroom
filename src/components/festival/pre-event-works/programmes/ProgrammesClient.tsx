@@ -19,7 +19,7 @@ import { useCategories } from "@/api/client/categories";
 import { useDeleteProgramme, useProgrammes } from "@/api/client/programmes";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
+import { ProgrammeStatusBadge, STATUS_LABELS } from "@/components/festival/ProgrammeStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -83,6 +83,7 @@ export function ProgrammesClient({
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [stageTypeFilter, setStageTypeFilter] = useState<string>("ALL");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [actionProgramme, setActionProgramme] = useState<{
     programme: any;
@@ -103,6 +104,7 @@ export function ProgrammesClient({
     if (stageTypeFilter !== "ALL" && p.stageType !== stageTypeFilter)
       return false;
     if (typeFilter !== "ALL" && p.type !== typeFilter) return false;
+    if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       const name = (p.name || "").toLowerCase();
@@ -116,6 +118,7 @@ export function ProgrammesClient({
     categoryFilter !== "ALL" ||
     stageTypeFilter !== "ALL" ||
     typeFilter !== "ALL" ||
+    statusFilter !== "ALL" ||
     searchQuery.trim() !== "";
 
   function getProgressMeta(programme: any) {
@@ -223,6 +226,19 @@ export function ProgrammesClient({
                 <SelectItem value="GROUP">Team</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs">
                 <SelectValue placeholder="Category" />
@@ -255,6 +271,7 @@ export function ProgrammesClient({
                   setCategoryFilter("ALL");
                   setStageTypeFilter("ALL");
                   setTypeFilter("ALL");
+                  setStatusFilter("ALL");
                   setSearchQuery("");
                 }}
                 title="Clear filters"

@@ -10,7 +10,10 @@ import { useParticipants } from "@/api/client/participants";
 import { useProgrammes } from "@/api/client/programmes";
 import { StatusPill } from "@/components/app/AppSection";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
+import {
+  ProgrammeStatusBadge,
+  STATUS_LABELS,
+} from "@/components/festival/ProgrammeStatusBadge";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +52,7 @@ import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
 import { toast } from "@/lib/toast";
 import { AssignmentModal } from "./AssignmentModal";
+import { ProgrammeActivityTimeline } from "../programmes/ProgrammeActivityTimeline";
 
 type IndividualAssignmentRow = {
   kind: "individual";
@@ -83,6 +87,7 @@ type ProgrammeCardRow = {
   programmeType: "INDIVIDUAL" | "GROUP";
   categoryName: string | null;
   categoryId: string | null;
+  status: string | null;
   attendeesCount: number;
   teamCount: number;
   assignedAt: string | null;
@@ -96,6 +101,7 @@ type ProgrammeCardRow = {
 function ProgrammeCard({
   programmeName,
   categoryName,
+  status,
   assignedAt,
   progress,
   progressLabel,
@@ -104,6 +110,7 @@ function ProgrammeCard({
 }: {
   programmeName: string;
   categoryName: string | null;
+  status: string | null;
   assignedAt: string | null;
   progress: number;
   progressLabel: string;
@@ -132,6 +139,12 @@ function ProgrammeCard({
             </span>
           )}
         </div>
+        {status && (
+          <ProgrammeStatusBadge
+            status={status as any}
+            className="text-[10px] shrink-0"
+          />
+        )}
       </div>
       <div className="p-3 space-y-3">
         {/* Progress Bar */}
@@ -253,6 +266,7 @@ export function AssignmentsClient({
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [filterType, setFilterType] = useState<string>("ALL");
+  const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
   // The assignment deadline gates Team Leaders only — organisers can always
@@ -278,6 +292,9 @@ export function AssignmentsClient({
       if (filterType !== "ALL") {
         if (a.programme?.type !== filterType) return false;
       }
+      if (filterStatus !== "ALL") {
+        if (a.programme?.status !== filterStatus) return false;
+      }
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const participantName = a.participant?.name?.toLowerCase() || "";
@@ -294,7 +311,14 @@ export function AssignmentsClient({
       }
       return true;
     });
-  }, [assignments, filterGroup, filterCategory, filterType, searchQuery]);
+  }, [
+    assignments,
+    filterGroup,
+    filterCategory,
+    filterType,
+    filterStatus,
+    searchQuery,
+  ]);
 
   const tableRows = useMemo<AssignmentTableRow[]>(() => {
     const rows: AssignmentTableRow[] = [];
@@ -398,6 +422,7 @@ export function AssignmentsClient({
                 row.assignment.programme?.category?.name
               : row.category?.name || row.programme?.category?.name) ?? null,
           categoryId: catId,
+          status: programme.status ?? null,
           attendeesCount: 0,
           teamCount: 0,
           assignedAt: null,
@@ -562,12 +587,14 @@ export function AssignmentsClient({
     filterGroup !== "ALL" ||
     filterCategory !== "ALL" ||
     filterType !== "ALL" ||
+    filterStatus !== "ALL" ||
     searchQuery.trim() !== "";
 
   const clearFilters = () => {
     setFilterGroup("ALL");
     setFilterCategory("ALL");
     setFilterType("ALL");
+    setFilterStatus("ALL");
     setSearchQuery("");
   };
 
@@ -627,8 +654,8 @@ export function AssignmentsClient({
             onClick={() => setAssignmentModalOpen(true)}
             disabled={isReadOnlyMode}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            New assignment
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">New assignment</span>
           </Button>
         </div>
       </div>
@@ -683,6 +710,19 @@ export function AssignmentsClient({
                 <SelectItem value="GROUP">Group</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {hasFilters && (
               <Button
                 variant="ghost"
@@ -723,6 +763,7 @@ export function AssignmentsClient({
               key={card.programmeId}
               programmeName={card.programmeName}
               categoryName={card.categoryName}
+              status={card.status}
               assignedAt={card.assignedAt}
               progress={card.progress}
               progressLabel={card.progressLabel}
