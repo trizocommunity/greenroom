@@ -3,6 +3,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
@@ -268,6 +275,13 @@ export function AssignmentsClient({
   const [filterType, setFilterType] = useState<string>("ALL");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [filterGroup, filterCategory, filterType, filterStatus, searchQuery]);
 
   // The assignment deadline gates Team Leaders only — organisers can always
   // assign from the dashboard, so only the festival lifecycle locks this view.
@@ -758,7 +772,9 @@ export function AssignmentsClient({
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {programmeCards.map((card) => (
+          {programmeCards
+            .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+            .map((card) => (
             <ProgrammeCard
               key={card.programmeId}
               programmeName={card.programmeName}
@@ -775,6 +791,31 @@ export function AssignmentsClient({
             />
           ))}
         </div>
+      )}
+
+      {programmeCards.length > pageSize && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pageIndex > 0) setPageIndex(p => p - 1);
+                }}
+                className={pageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if ((pageIndex + 1) * pageSize < programmeCards.length) setPageIndex(p => p + 1);
+                }}
+                className={(pageIndex + 1) * pageSize >= programmeCards.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       )}
 
       {/* Delete Dialogs */}

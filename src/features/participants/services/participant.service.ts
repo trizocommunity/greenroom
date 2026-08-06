@@ -13,6 +13,7 @@ import {
   deleteParticipant,
   findParticipantById,
   findParticipantsByFestival,
+  findParticipantsByFestivalPaginated,
   updateParticipant,
 } from "@/features/participants/repositories/participant.repository";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
@@ -20,6 +21,22 @@ import { getResolvedTier } from "@/features/plan-features/services/tier";
 export const ParticipantService = {
   async getAll(festivalId: string, groupId?: string) {
     return findParticipantsByFestival(festivalId, groupId);
+  },
+
+  async getAllPaginated(
+    festivalId: string,
+    options: {
+      page: number;
+      pageSize: number;
+      sort?: string;
+      order?: "asc" | "desc";
+      groupId?: string;
+      categoryId?: string;
+      search?: string;
+      isTeamLeader?: boolean;
+    },
+  ) {
+    return findParticipantsByFestivalPaginated(festivalId, options);
   },
 
   async create(

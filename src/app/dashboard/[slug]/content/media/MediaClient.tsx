@@ -15,6 +15,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useCloudinaryUpload } from "@/api/client";
 import {
   useCreateMediaItem,
@@ -67,6 +74,10 @@ export function MediaClient({
   const { isReadOnly } = useFestivalReadOnly();
   const [images, setImages] = useState<ImageRecord[]>(initialImages);
   const [videos, setVideos] = useState<VideoRecord[]>(initialVideos);
+  
+  const [photosPageIndex, setPhotosPageIndex] = useState(0);
+  const [videosPageIndex, setVideosPageIndex] = useState(0);
+  const pageSize = 10;
   const [videoUrlInput, setVideoUrlInput] = useState("");
   const createMediaVideo = useCreateMediaVideo();
   const deleteMediaVideo = useDeleteMediaVideo();
@@ -349,7 +360,7 @@ export function MediaClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-row sm:items-center justify-between gap-4">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Media</h1>
         <HowItWorksButton
           title="How Media works"
@@ -368,9 +379,13 @@ export function MediaClient({
       </div>
 
       <Tabs defaultValue="photos">
-        <TabsList>
-          <TabsTrigger value="photos">Photos</TabsTrigger>
-          <TabsTrigger value="videos">Videos</TabsTrigger>
+        <TabsList className="w-full">
+          <TabsTrigger className="w-1/2" value="photos">
+            Photos
+          </TabsTrigger>
+          <TabsTrigger className="w-1/2" value="videos">
+            Videos
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="photos" className="space-y-6 pt-4">
@@ -384,8 +399,9 @@ export function MediaClient({
               onChange={openUploadModal}
             />
             <Button
-              size="sm"
+              size="lg"
               type="button"
+              className="w-full md:w-fit"
               onClick={() => fileInputRef.current?.click()}
               disabled={isReadOnly}
             >
@@ -446,7 +462,7 @@ export function MediaClient({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {images.map((img, index) => {
+              {images.slice(photosPageIndex * pageSize, (photosPageIndex + 1) * pageSize).map((img, index) => {
                 const isSelected = img.id ? selectedIds.has(img.id) : false;
                 return (
                   <div
@@ -513,6 +529,31 @@ export function MediaClient({
               })}
             </div>
           )}
+
+          {images.length > pageSize && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (photosPageIndex > 0) setPhotosPageIndex(p => p - 1);
+                    }}
+                    className={photosPageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if ((photosPageIndex + 1) * pageSize < images.length) setPhotosPageIndex(p => p + 1);
+                    }}
+                    className={(photosPageIndex + 1) * pageSize >= images.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </TabsContent>
 
         <TabsContent value="videos" className="space-y-6 pt-4">
@@ -522,6 +563,7 @@ export function MediaClient({
               onChange={(e) => setVideoUrlInput(e.target.value)}
               placeholder="Paste a YouTube link (e.g. https://youtube.com/watch?v=...)"
               disabled={isReadOnly}
+              className="h-10"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -531,6 +573,7 @@ export function MediaClient({
             />
             <Button
               type="button"
+              size="lg"
               onClick={handleAddVideo}
               disabled={isReadOnly || createMediaVideo.isPending}
             >
@@ -553,7 +596,7 @@ export function MediaClient({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {videos.map((video) => {
+              {videos.slice(videosPageIndex * pageSize, (videosPageIndex + 1) * pageSize).map((video) => {
                 const videoId = extractYouTubeId(video.url);
                 return (
                   <div
@@ -604,6 +647,31 @@ export function MediaClient({
                 );
               })}
             </div>
+          )}
+
+          {videos.length > pageSize && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (videosPageIndex > 0) setVideosPageIndex(p => p - 1);
+                    }}
+                    className={videosPageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if ((videosPageIndex + 1) * pageSize < videos.length) setVideosPageIndex(p => p + 1);
+                    }}
+                    className={(videosPageIndex + 1) * pageSize >= videos.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           )}
         </TabsContent>
       </Tabs>

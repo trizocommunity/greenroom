@@ -242,10 +242,11 @@ export const getFestivalDashboardSidebarConfig = (
           disabled: !canUseResultsPage,
         },
         {
-          title: "General Entries",
-          href: `${basePath}/event-works/general-entries`,
-          icon: Award,
-          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+          title: "Announcements",
+          href: `${basePath}/event-works/announcement`,
+          icon: Mic2,
+          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
+          disabled: !canUseResultsPage,
         },
         {
           title: "Top Scorers",
@@ -253,18 +254,22 @@ export const getFestivalDashboardSidebarConfig = (
           icon: Trophy,
           allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
+      ],
+    },
+    {
+      title: "Other Works",
+      items: [
+        {
+          title: "General Entries",
+          href: `${basePath}/event-works/general-entries`,
+          icon: Award,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+        },
         {
           title: "Food Entry",
           href: `${basePath}/event-works/food-entry`,
           icon: QrCode,
           allowedRoles: ["ADMIN", "OWNER", "VOLUNTEER"] as FestivalRole[],
-        },
-        {
-          title: "Announcement",
-          href: `${basePath}/event-works/announcement`,
-          icon: Mic2,
-          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
-          disabled: !canUseResultsPage,
         },
         {
           title: "Templates",

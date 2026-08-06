@@ -8,6 +8,17 @@ import {
   SectionHeader,
 } from "@/components/festival/public/PublicSection";
 
+import { useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+
 export interface LatestResult {
   id: string;
   programName: string;
@@ -30,6 +41,10 @@ export function LatestWinners({
   results: LatestResult[];
   accentColor?: string;
 }) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 3;
+  const totalPages = Math.ceil(results.length / pageSize);
+
   if (results.length === 0) return null;
 
   return (
@@ -37,7 +52,7 @@ export function LatestWinners({
       <SectionHeader eyebrow="Results" title="Latest wins" className="mb-8" />
 
       <ol className="divide-y divide-border border-y border-border">
-        {results.map((result, i) => (
+        {results.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize).map((result, i) => (
           <motion.li
             key={result.id}
             initial={{ opacity: 0, y: 8 }}
@@ -80,6 +95,68 @@ export function LatestWinners({
           </motion.li>
         ))}
       </ol>
+      {totalPages > 1 && (
+        <div className="mt-8 flex justify-center pb-6">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPageIndex((p) => Math.max(0, p - 1));
+                  }}
+                  className={pageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+
+              {[...Array(totalPages)].map((_, i) => {
+                if (
+                  i === 0 ||
+                  i === totalPages - 1 ||
+                  (i >= pageIndex - 1 && i <= pageIndex + 1)
+                ) {
+                  return (
+                    <PaginationItem key={i}>
+                      <PaginationLink
+                        href="#"
+                        isActive={pageIndex === i}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPageIndex(i);
+                        }}
+                      >
+                        {i + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                }
+                
+                if (i === pageIndex - 2 || i === pageIndex + 2) {
+                  return (
+                    <PaginationItem key={i}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+                
+                return null;
+              })}
+
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPageIndex((p) => Math.min(totalPages - 1, p + 1));
+                  }}
+                  className={pageIndex === totalPages - 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
 
       <Link
         href={`/${slug}/results`}

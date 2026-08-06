@@ -799,6 +799,21 @@ export const participant = pgTable(
       table.festivalId.asc().nullsLast(),
       table.profileSlug.asc().nullsLast(),
     ),
+    index("participant_festivalId_name_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.name.asc().nullsLast(),
+    ),
+    index("participant_festivalId_categoryId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.categoryId.asc().nullsLast(),
+    ),
+    index("participant_festivalId_groupId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.groupId.asc().nullsLast(),
+    ),
     index("participant_groupId_idx").using(
       "btree",
       table.groupId.asc().nullsLast(),

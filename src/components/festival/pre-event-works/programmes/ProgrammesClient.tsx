@@ -14,7 +14,14 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useCategories } from "@/api/client/categories";
 import { useDeleteProgramme, useProgrammes } from "@/api/client/programmes";
 import { FeatureGate } from "@/components/common/FeatureGate";
@@ -89,6 +96,13 @@ export function ProgrammesClient({
     programme: any;
     action: "view" | "edit" | "delete";
   } | null>(null);
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [categoryFilter, stageTypeFilter, typeFilter, statusFilter, searchQuery]);
 
   if (isLoading) {
     return (
@@ -298,7 +312,9 @@ export function ProgrammesClient({
                 </p>
               </div>
             ) : (
-              filteredProgrammes.map((programme: any) => (
+              filteredProgrammes
+                .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+                .map((programme: any) => (
                 <div
                   key={programme.id}
                   className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all active:scale-[0.99] hover:shadow-md hover:border-primary/25"
@@ -448,7 +464,9 @@ export function ProgrammesClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProgrammes.map((programme: any) => (
+                {filteredProgrammes
+                  .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+                  .map((programme: any) => (
                   <TableRow key={programme.id}>
                     <TableCell className="font-medium">
                       {programme.name}
@@ -581,6 +599,33 @@ export function ProgrammesClient({
               </TableBody>
             </Table>
           </div>
+          
+          {filteredProgrammes.length > pageSize && (
+            <div className="p-4 border-t">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (pageIndex > 0) setPageIndex(p => p - 1);
+                      }}
+                      className={pageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if ((pageIndex + 1) * pageSize < filteredProgrammes.length) setPageIndex(p => p + 1);
+                      }}
+                      className={(pageIndex + 1) * pageSize >= filteredProgrammes.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 

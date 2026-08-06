@@ -5,7 +5,15 @@ import { ChevronRight, Loader2, Search } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PublicResultPosterSection } from "@/components/festival/posters/PublicResultPosterSection";
-import { LoadMore } from "@/components/festival/public/LoadMore";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   EmptyState,
   PublicSection,
@@ -99,6 +107,7 @@ export function ResultsList({
     loadMore,
     refilter,
     refreshFirstPage,
+    goToPage,
   } = usePublicPages<PublicProgrammeResults>({
     endpoint: `/api/festivals/${festivalSlug}/results`,
     select: selectProgrammes,
@@ -366,16 +375,71 @@ export function ResultsList({
                   })}
                 </ul>
 
-                <LoadMore
-                  shown={programmes.length}
-                  total={total}
-                  hasMore={hasMore}
-                  isLoading={isLoadingMore}
-                  error={error}
-                  onLoadMore={loadMore}
-                  noun="programmes"
-                  accentColor={accentColor}
-                />
+                {Math.ceil(total / PAGE_SIZE) > 1 && (
+                  <div className="mt-8 flex justify-center pb-6">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (page > 1) goToPage(page - 1);
+                            }}
+                            className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+
+                        {[...Array(Math.ceil(total / PAGE_SIZE))].map((_, i) => {
+                          const targetPage = i + 1;
+                          const totalPages = Math.ceil(total / PAGE_SIZE);
+                          
+                          if (
+                            targetPage === 1 ||
+                            targetPage === totalPages ||
+                            (targetPage >= page - 1 && targetPage <= page + 1)
+                          ) {
+                            return (
+                              <PaginationItem key={i}>
+                                <PaginationLink
+                                  href="#"
+                                  isActive={page === targetPage}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    goToPage(targetPage);
+                                  }}
+                                >
+                                  {targetPage}
+                                </PaginationLink>
+                              </PaginationItem>
+                            );
+                          }
+                          
+                          if (targetPage === page - 2 || targetPage === page + 2) {
+                            return (
+                              <PaginationItem key={i}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          
+                          return null;
+                        })}
+
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (page < Math.ceil(total / PAGE_SIZE)) goToPage(page + 1);
+                            }}
+                            className={page >= Math.ceil(total / PAGE_SIZE) ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
               </>
             ) : (
               <EmptyState>

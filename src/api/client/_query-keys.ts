@@ -10,6 +10,8 @@ export const queryKeys = {
     all: (festivalId: string) => ["participants", festivalId] as const,
     detail: (festivalId: string, participantId: string) =>
       ["participants", festivalId, participantId] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["participants", festivalId, "paginated", params] as const,
   },
   groups: {
     all: (festivalId: string) => ["groups", festivalId] as const,

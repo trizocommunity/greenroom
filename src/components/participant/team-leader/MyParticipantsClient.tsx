@@ -23,6 +23,15 @@ import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/
 import { AddParticipantDialog } from "@/components/participant/team-leader/AddParticipantDialog";
 import { Button } from "@/components/ui/button";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -102,6 +111,8 @@ export function MyParticipantsClient({
   }, [participants]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
   const [detailsParticipant, setDetailsParticipant] =
     useState<ParticipantForMyParticipants | null>(null);
   const [qrParticipant, setQrParticipant] =
@@ -111,6 +122,9 @@ export function MyParticipantsClient({
     if (selectedCategoryId === "all") return participants;
     return participants.filter((s) => s.category?.id === selectedCategoryId);
   }, [participants, selectedCategoryId]);
+
+  // Reset pagination when filter changes
+  useMemo(() => setPageIndex(0), [selectedCategoryId]);
 
   if (isUpcoming) {
     return (
@@ -192,8 +206,11 @@ export function MyParticipantsClient({
           description="Nobody in your group matches this category yet."
         />
       ) : (
-        <ul className="divide-y divide-border border-y border-border">
-          {visibleParticipants.map((s) => (
+        <>
+          <ul className="divide-y divide-border border-y border-border">
+            {visibleParticipants
+              .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+              .map((s) => (
             <li key={s.id} className="flex items-center gap-4 py-3.5">
               <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                 {s.chestNumber ?? "—"}
@@ -239,7 +256,81 @@ export function MyParticipantsClient({
               </DropdownMenu>
             </li>
           ))}
-        </ul>
+          </ul>
+          
+          {visibleParticipants.length > pageSize && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (pageIndex > 0) setPageIndex((p) => p - 1);
+                    }}
+                    className={
+                      pageIndex === 0
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
+                  />
+                </PaginationItem>
+
+                {[...Array(Math.ceil(visibleParticipants.length / pageSize))].map((_, i) => {
+                  const targetPage = i;
+                  const totalPages = Math.ceil(visibleParticipants.length / pageSize);
+                  
+                  if (
+                    targetPage === 0 ||
+                    targetPage === totalPages - 1 ||
+                    (targetPage >= pageIndex - 1 && targetPage <= pageIndex + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          href="#"
+                          isActive={pageIndex === targetPage}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPageIndex(targetPage);
+                          }}
+                        >
+                          {targetPage + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  if (targetPage === pageIndex - 2 || targetPage === pageIndex + 2) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if ((pageIndex + 1) * pageSize < visibleParticipants.length)
+                        setPageIndex((p) => p + 1);
+                    }}
+                    className={
+                      (pageIndex + 1) * pageSize >= visibleParticipants.length
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       )}
 
       {detailsParticipant ? (

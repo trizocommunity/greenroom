@@ -12,6 +12,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useCloudinaryUpload } from "@/api/client";
 import {
   useCreateNews,
@@ -98,6 +105,9 @@ export function NewsClient({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 10;
   const [saving, setSaving] = useState(false);
   const [viewDetailsPost, setViewDetailsPost] = useState<NewsPost | null>(null);
   const uploadMutation = useCloudinaryUpload();
@@ -317,7 +327,9 @@ export function NewsClient({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {displayPosts.map((post) => (
+        {displayPosts
+          .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+          .map((post) => (
           <Card
             key={post.id}
             className={cn(
@@ -398,6 +410,31 @@ export function NewsClient({
           </Card>
         ))}
       </div>
+
+      {displayPosts.length > pageSize && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pageIndex > 0) setPageIndex(p => p - 1);
+                }}
+                className={pageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if ((pageIndex + 1) * pageSize < displayPosts.length) setPageIndex(p => p + 1);
+                }}
+                className={(pageIndex + 1) * pageSize >= displayPosts.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       <DeleteDialog
         title="Delete news post"

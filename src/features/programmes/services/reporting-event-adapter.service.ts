@@ -41,22 +41,22 @@ export const ReportingEventAdapter = {
         });
 
         await NotificationService.dispatch({
-          eventType: "REPORTING_STARTED",
+          eventType: "PROGRAMME_STATUS_CHANGED",
           festivalId: event.festivalId,
           targets: {
             programmeId: event.programmeId,
             includeTeamLeadersForProgramme: true,
           },
           context: {
-            title: "Programme reporting started",
-            body: "Stage reporting has started. Please report to the stage manager.",
+            title: "Programme status updated",
+            body: "Programme reporting is currently active.",
             payload: {
               reportingSessionId: event.reportingSessionId,
               programmeId: event.programmeId,
               status: "REPORTING",
             },
           },
-          channels: ["IN_APP", "EMAIL"],
+          channels: ["IN_APP"],
         });
         return { participantCodes: [] };
       }

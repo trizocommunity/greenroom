@@ -4,6 +4,7 @@ import { ArrowUpRight, Bell, Crown, Menu, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { useNotifications } from "@/api/client";
 import { APP_CONTAINER, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ interface ParticipantNavbarProps {
     name: string;
   };
   participant: {
+    id: string;
     isTeamLeader: boolean;
     name: string;
   };
@@ -38,6 +40,9 @@ export function ParticipantNavbar({
   assignedProgrammesTopStatus = null,
 }: ParticipantNavbarProps) {
   const pathname = usePathname();
+
+  const { data: notifications = [] } = useNotifications(participant.id);
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const linkBase = `/${festival.slug}/${participantSlugParam}`;
   const isTeamLeader = participant.isTeamLeader;
@@ -128,6 +133,7 @@ export function ParticipantNavbar({
             href={`${linkBase}/notifications`}
             label="Notifications"
             icon={Bell}
+            badgeCount={unreadCount}
           />
           <IconLink
             href={participantMainHref}
@@ -196,21 +202,28 @@ function IconLink({
   label,
   icon: Icon,
   className,
+  badgeCount,
 }: {
   href: string;
   label: string;
   icon: typeof Bell;
   className?: string;
+  badgeCount?: number;
 }) {
   return (
     <Link href={href} className={className}>
       <Button
         variant="ghost"
         size="icon"
-        className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+        className="relative h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
         aria-label={label}
       >
         <Icon className="h-4 w-4" />
+        {badgeCount !== undefined && badgeCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground ring-2 ring-background">
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </span>
+        )}
       </Button>
     </Link>
   );

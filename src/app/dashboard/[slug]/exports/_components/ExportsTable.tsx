@@ -1,7 +1,16 @@
 "use client";
 
 import { CheckCircle2, Download, Loader2, Trash2, XCircle } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +81,9 @@ export function ExportsTable({
   const seenProcessing = useRef<Set<string>>(new Set());
   const autoDownloaded = useRef<Set<string>>(new Set());
 
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
+
   useEffect(() => {
     for (const e of exports) {
       if (e.status === "PROCESSING") {
@@ -91,7 +103,9 @@ export function ExportsTable({
   return (
     <>
       <div className="grid grid-cols-1 gap-4 md:hidden">
-        {exports.map((e) => {
+        {exports
+          .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+          .map((e) => {
           const meta = getExportTypeMeta(e.type);
           const Icon = meta.icon;
           const firstBadge = e.filterBadges[0];
@@ -210,7 +224,9 @@ export function ExportsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {exports.map((e) => {
+            {exports
+              .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+              .map((e) => {
               const meta = getExportTypeMeta(e.type);
               const Icon = meta.icon;
               const firstBadge = e.filterBadges[0];
@@ -312,6 +328,70 @@ export function ExportsTable({
           </TableBody>
         </Table>
       </div>
+
+      {exports.length > pageSize && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pageIndex > 0) setPageIndex(p => p - 1);
+                }}
+                className={pageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+
+            {[...Array(Math.ceil(exports.length / pageSize))].map((_, i) => {
+              const targetPage = i;
+              const totalPages = Math.ceil(exports.length / pageSize);
+              
+              if (
+                targetPage === 0 ||
+                targetPage === totalPages - 1 ||
+                (targetPage >= pageIndex - 1 && targetPage <= pageIndex + 1)
+              ) {
+                return (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      href="#"
+                      isActive={pageIndex === targetPage}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setPageIndex(targetPage);
+                      }}
+                    >
+                      {targetPage + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              }
+              
+              if (targetPage === pageIndex - 2 || targetPage === pageIndex + 2) {
+                return (
+                  <PaginationItem key={i}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                );
+              }
+              
+              return null;
+            })}
+
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if ((pageIndex + 1) * pageSize < exports.length) setPageIndex(p => p + 1);
+                }}
+                className={(pageIndex + 1) * pageSize >= exports.length ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
     </>
   );
 }

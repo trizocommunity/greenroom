@@ -13,7 +13,14 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   useCreateJudge,
   useDeleteJudge,
@@ -108,6 +115,13 @@ export function JudgesClient({
     description?: string;
   }>({});
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [searchQuery]);
 
   const filteredJudges = judges.filter((j) => {
     if (!searchQuery.trim()) return true;
@@ -235,7 +249,7 @@ export function JudgesClient({
     <div className="space-y-6 pt-2">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {children}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
@@ -267,140 +281,176 @@ export function JudgesClient({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filteredJudges.map((j) => (
-          <div
-            key={j.id}
-            className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
-          >
-            <div className="flex flex-1 flex-col p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 min-w-0 flex-1">
-                  <div className="h-10 w-10 shrink-0 rounded-full border bg-muted/50 flex items-center justify-center text-xs font-semibold">
-                    {getInitials(j.name)}
+        {filteredJudges
+          .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+          .map((j) => (
+            <div
+              key={j.id}
+              className="group/card relative flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20"
+            >
+              <div className="flex flex-1 flex-col p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="h-10 w-10 shrink-0 rounded-full border bg-muted/50 flex items-center justify-center text-xs font-semibold">
+                      {getInitials(j.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-base leading-tight text-foreground line-clamp-2">
+                        {j.name}
+                      </h3>
+                      <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
+                        {j.description || "No description"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-base leading-tight text-foreground line-clamp-2">
-                      {j.name}
-                    </h3>
-                    <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">
-                      {j.description || "No description"}
-                    </p>
-                  </div>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setViewTab("activities");
-                        setViewingJudge(j as JudgeRow);
-                      }}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Activities
-                    </DropdownMenuItem>
-                    {!isReadOnly ? (
-                      <DropdownMenuItem
-                        onSelect={() => openEdit(j as JudgeRow)}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                       >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                    ) : null}
-                    {!isReadOnly ? (
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onSelect={() => setDeleting(j as JudgeRow)}
+                        onSelect={() => {
+                          setViewTab("activities");
+                          setViewingJudge(j as JudgeRow);
+                        }}
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
+                        <Eye className="h-4 w-4 mr-2" />
+                        Activities
                       </DropdownMenuItem>
-                    ) : null}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Spacer so footer stays at bottom */}
-              <div className="flex-1 min-h-4" />
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  Assigned stages
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {j.assignedStages && j.assignedStages.length > 0 ? (
-                    j.assignedStages
-                      .slice(0, 3)
-                      .map((stage) => (
-                        <Badge
-                          key={stage.id}
-                          className="bg-primary/10 text-primary border-primary/30"
-                          variant="outline"
+                      {!isReadOnly ? (
+                        <DropdownMenuItem
+                          onSelect={() => openEdit(j as JudgeRow)}
                         >
-                          {stage.name}
-                        </Badge>
-                      ))
-                      .concat(
-                        j.assignedStages.length > 3
-                          ? ([
-                              <Badge
-                                key={`${j.id}-more-stages`}
-                                variant="outline"
-                              >
-                                +{j.assignedStages.length - 3} more
-                              </Badge>,
-                            ] as any)
-                          : [],
-                      )
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      No stages assigned
-                    </span>
-                  )}
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                      ) : null}
+                      {!isReadOnly ? (
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onSelect={() => setDeleting(j as JudgeRow)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </div>
 
-              <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5 overflow-x-auto">
-                <div className="flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm whitespace-nowrap">
-                    <span className="font-semibold text-foreground">
-                      {j.activities?.length ?? 0}
-                    </span>
-                    <span className="text-muted-foreground"> Activities</span>
-                  </span>
+                {/* Spacer so footer stays at bottom */}
+                <div className="flex-1 min-h-4" />
+
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Assigned stages
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {j.assignedStages && j.assignedStages.length > 0 ? (
+                      j.assignedStages
+                        .slice(0, 3)
+                        .map((stage) => (
+                          <Badge
+                            key={stage.id}
+                            className="bg-primary/10 text-primary border-primary/30"
+                            variant="outline"
+                          >
+                            {stage.name}
+                          </Badge>
+                        ))
+                        .concat(
+                          j.assignedStages.length > 3
+                            ? ([
+                                <Badge
+                                  key={`${j.id}-more-stages`}
+                                  variant="outline"
+                                >
+                                  +{j.assignedStages.length - 3} more
+                                </Badge>,
+                              ] as any)
+                            : [],
+                        )
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        No stages assigned
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 border-l border-border pl-4">
-                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm whitespace-nowrap">
-                    <span className="font-semibold text-foreground">
-                      {j.programmes?.length ?? 0}
+
+                <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/40 px-3 py-2.5 overflow-x-auto">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm whitespace-nowrap">
+                      <span className="font-semibold text-foreground">
+                        {j.activities?.length ?? 0}
+                      </span>
+                      <span className="text-muted-foreground"> Activities</span>
                     </span>
-                    <span className="text-muted-foreground"> Programmes</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 border-l border-border pl-4">
-                  <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm whitespace-nowrap">
-                    <span className="font-semibold text-foreground">
-                      {j.assignedStages?.length ?? 0}
+                  </div>
+                  <div className="flex items-center gap-2 border-l border-border pl-4">
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm whitespace-nowrap">
+                      <span className="font-semibold text-foreground">
+                        {j.programmes?.length ?? 0}
+                      </span>
+                      <span className="text-muted-foreground"> Programmes</span>
                     </span>
-                    <span className="text-muted-foreground"> Stages</span>
-                  </span>
+                  </div>
+                  <div className="flex items-center gap-2 border-l border-border pl-4">
+                    <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm whitespace-nowrap">
+                      <span className="font-semibold text-foreground">
+                        {j.assignedStages?.length ?? 0}
+                      </span>
+                      <span className="text-muted-foreground"> Stages</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
       </div>
+
+      {filteredJudges.length > pageSize && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pageIndex > 0) setPageIndex((p) => p - 1);
+                }}
+                className={
+                  pageIndex === 0
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if ((pageIndex + 1) * pageSize < filteredJudges.length)
+                    setPageIndex((p) => p + 1);
+                }}
+                className={
+                  (pageIndex + 1) * pageSize >= filteredJudges.length
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       {judges.length === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">

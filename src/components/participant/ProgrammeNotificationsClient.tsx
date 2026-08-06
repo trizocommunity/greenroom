@@ -10,7 +10,17 @@ import {
 import { AppEmptyState, AppPageHeader } from "@/components/app/AppSection";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { cn } from "@/core/utils/cn";
+import { useState, useMemo } from "react";
 
 export function ProgrammeNotificationsClient({
   participantId,
@@ -28,6 +38,9 @@ export function ProgrammeNotificationsClient({
   const markAllReadMutation = useMarkAllNotificationsRead();
   const markOneReadMutation = useMarkNotificationRead();
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
 
   return (
     <div className="space-y-8">
@@ -64,9 +77,12 @@ export function ProgrammeNotificationsClient({
           description="You will be notified here when reporting opens for one of your programmes."
         />
       ) : (
-        <ul className="border-y border-border">
-          {notifications.map((n) => (
-            <li key={n.id}>
+        <>
+          <ul className="border-y border-border">
+            {notifications
+              .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+              .map((n) => (
+              <li key={n.id}>
               <button
                 type="button"
                 onClick={() =>
@@ -107,7 +123,81 @@ export function ProgrammeNotificationsClient({
               </button>
             </li>
           ))}
-        </ul>
+          </ul>
+          
+          {notifications.length > pageSize && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (pageIndex > 0) setPageIndex((p) => p - 1);
+                    }}
+                    className={
+                      pageIndex === 0
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
+                  />
+                </PaginationItem>
+
+                {[...Array(Math.ceil(notifications.length / pageSize))].map((_, i) => {
+                  const targetPage = i;
+                  const totalPages = Math.ceil(notifications.length / pageSize);
+                  
+                  if (
+                    targetPage === 0 ||
+                    targetPage === totalPages - 1 ||
+                    (targetPage >= pageIndex - 1 && targetPage <= pageIndex + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          href="#"
+                          isActive={pageIndex === targetPage}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPageIndex(targetPage);
+                          }}
+                        >
+                          {targetPage + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  if (targetPage === pageIndex - 2 || targetPage === pageIndex + 2) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if ((pageIndex + 1) * pageSize < notifications.length)
+                        setPageIndex((p) => p + 1);
+                    }}
+                    className={
+                      (pageIndex + 1) * pageSize >= notifications.length
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       )}
     </div>
   );

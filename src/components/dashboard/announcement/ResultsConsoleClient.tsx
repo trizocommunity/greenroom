@@ -20,6 +20,15 @@ import {
   useTransition,
   useCallback,
 } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -274,6 +283,18 @@ export function ResultsConsoleClient({
   const [swapTarget, setSwapTarget] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [resultsPageIndex, setResultsPageIndex] = useState(0);
+  const [standingsPageIndex, setStandingsPageIndex] = useState(0);
+  const pageSize = 15;
+
+  useEffect(() => {
+    setResultsPageIndex(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setStandingsPageIndex(0);
+  }, [standingsScope, upToResultNumber]);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -509,7 +530,9 @@ export function ResultsConsoleClient({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredSorted.map((p) => (
+                      {filteredSorted
+                        .slice(resultsPageIndex * pageSize, (resultsPageIndex + 1) * pageSize)
+                        .map((p) => (
                         <SortableProgrammeRow
                           key={p.id}
                           p={p}
@@ -523,6 +546,70 @@ export function ResultsConsoleClient({
                 </SortableContext>
               </DndContext>
             </div>
+          )}
+
+          {filteredSorted.length > pageSize && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (resultsPageIndex > 0) setResultsPageIndex(p => p - 1);
+                    }}
+                    className={resultsPageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+
+                {[...Array(Math.ceil(filteredSorted.length / pageSize))].map((_, i) => {
+                  const targetPage = i;
+                  const totalPages = Math.ceil(filteredSorted.length / pageSize);
+                  
+                  if (
+                    targetPage === 0 ||
+                    targetPage === totalPages - 1 ||
+                    (targetPage >= resultsPageIndex - 1 && targetPage <= resultsPageIndex + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          href="#"
+                          isActive={resultsPageIndex === targetPage}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setResultsPageIndex(targetPage);
+                          }}
+                        >
+                          {targetPage + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  if (targetPage === resultsPageIndex - 2 || targetPage === resultsPageIndex + 2) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if ((resultsPageIndex + 1) * pageSize < filteredSorted.length) setResultsPageIndex(p => p + 1);
+                    }}
+                    className={(resultsPageIndex + 1) * pageSize >= filteredSorted.length ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           )}
         </div>
 
@@ -569,10 +656,10 @@ export function ResultsConsoleClient({
           </div>
 
           <div
-            className="border rounded-xl bg-card overflow-hidden"
+            className="border rounded-xl bg-card overflow-hidden flex flex-col"
             style={{ maxHeight: "calc(100vh - 200px)" }}
           >
-            <ScrollArea className="h-full relative">
+            <ScrollArea className="flex-1 relative">
               {isFetchingStandings && (
                 <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-20 flex items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -598,7 +685,9 @@ export function ResultsConsoleClient({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dynamicStandings.map((s) => (
+                    {dynamicStandings
+                      .slice(standingsPageIndex * pageSize, (standingsPageIndex + 1) * pageSize)
+                      .map((s) => (
                       <TableRow
                         key={s.name}
                         className={cn(
@@ -621,6 +710,69 @@ export function ResultsConsoleClient({
                 </Table>
               )}
             </ScrollArea>
+            {dynamicStandings.length > pageSize && (
+              <Pagination className="py-2 border-t mt-auto shrink-0 bg-muted/20">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (standingsPageIndex > 0) setStandingsPageIndex(p => p - 1);
+                      }}
+                      className={standingsPageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+
+                  {[...Array(Math.ceil(dynamicStandings.length / pageSize))].map((_, i) => {
+                    const targetPage = i;
+                    const totalPages = Math.ceil(dynamicStandings.length / pageSize);
+                    
+                    if (
+                      targetPage === 0 ||
+                      targetPage === totalPages - 1 ||
+                      (targetPage >= standingsPageIndex - 1 && targetPage <= standingsPageIndex + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationLink
+                            href="#"
+                            isActive={standingsPageIndex === targetPage}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setStandingsPageIndex(targetPage);
+                            }}
+                          >
+                            {targetPage + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    if (targetPage === standingsPageIndex - 2 || targetPage === standingsPageIndex + 2) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    
+                    return null;
+                  })}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if ((standingsPageIndex + 1) * pageSize < dynamicStandings.length) setStandingsPageIndex(p => p + 1);
+                      }}
+                      className={(standingsPageIndex + 1) * pageSize >= dynamicStandings.length ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
         </div>
       </div>

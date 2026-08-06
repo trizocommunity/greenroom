@@ -547,7 +547,7 @@ export function BulkUploadFlow<T>({
                     </div>
 
                     {/* Mobile Cards View */}
-                    <div className="sm:hidden flex flex-col gap-4 p-4">
+                    <div className="sm:hidden flex flex-col gap-3 p-3">
                       {[...parsedData]
                         .sort((a, b) =>
                           a.isValid === b.isValid ? 0 : a.isValid ? -1 : 1,
@@ -556,52 +556,52 @@ export function BulkUploadFlow<T>({
                           <div
                             key={row.id}
                             className={cn(
-                              "flex flex-col gap-3 p-4 rounded-xl border shadow-sm",
+                              "flex flex-col gap-2 p-3 rounded-xl border shadow-sm",
                               !row.isValid
                                 ? "bg-red-500/5 border-red-500/20"
                                 : "bg-card border-border",
                             )}
                           >
-                            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                            <div className="flex items-center justify-between border-b border-border/50 pb-2">
                               <div className="font-mono text-xs font-medium text-muted-foreground">
                                 Row {row.originalRowIndex + 2}
                               </div>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-0.5">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                  className="h-7 w-7 text-blue-600 hover:bg-blue-50"
                                   onClick={() => setEditingItemId(row.id)}
                                 >
-                                  <Edit2 className="h-4 w-4" />
+                                  <Edit2 className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-red-600 hover:bg-red-50"
+                                  className="h-7 w-7 text-red-600 hover:bg-red-50"
                                   onClick={() => handleDeleteItem(row.id)}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                               {columns.map((col, cIdx) => (
-                                <div key={cIdx} className="flex flex-col gap-1">
+                                <div key={cIdx} className="flex flex-col gap-0.5">
                                   <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                                     {col.header}
                                   </span>
-                                  <div className="font-medium break-words text-sm">
+                                  <div className="font-medium break-words text-xs">
                                     {col.cell(row.data)}
                                   </div>
                                 </div>
                               ))}
                             </div>
 
-                            <div className="flex flex-col gap-2 pt-3 border-t border-border/50">
+                            <div className="flex flex-col gap-1.5 pt-2 border-t border-border/50">
                               {row.isValid && (
-                                <div className="text-xs text-emerald-500 font-medium flex items-center gap-1.5 bg-emerald-500/10 w-fit px-2 py-1 rounded-full border border-emerald-500/20">
+                                <div className="text-[10px] text-emerald-500 font-medium flex items-center gap-1 bg-emerald-500/10 w-fit px-1.5 py-0.5 rounded-full border border-emerald-500/20">
                                   <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />{" "}
                                   Ready
                                 </div>
@@ -609,18 +609,18 @@ export function BulkUploadFlow<T>({
                               {row.errors.map((err, i) => (
                                 <span
                                   key={`error-${i}`}
-                                  className="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none text-red-600 bg-red-500/10 border-red-500/30"
+                                  className="text-[9px] font-bold flex items-center gap-1 px-1.5 py-0.5 rounded border shadow-sm uppercase tracking-tight leading-none text-red-600 bg-red-500/10 border-red-500/30"
                                 >
-                                  <AlertCircle className="h-3 w-3 shrink-0 text-red-600" />{" "}
+                                  <AlertCircle className="h-2.5 w-2.5 shrink-0 text-red-600" />{" "}
                                   {err}
                                 </span>
                               ))}
                               {row.warnings?.map((warning, i) => (
                                 <span
                                   key={`warning-${i}`}
-                                  className="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 rounded-md border shadow-sm uppercase tracking-tight leading-none text-amber-600 bg-amber-500/10 border-amber-500/30"
+                                  className="text-[9px] font-bold flex items-center gap-1 px-1.5 py-0.5 rounded border shadow-sm uppercase tracking-tight leading-none text-amber-600 bg-amber-500/10 border-amber-500/30"
                                 >
-                                  <AlertCircle className="h-3 w-3 shrink-0 text-amber-600" />{" "}
+                                  <AlertCircle className="h-2.5 w-2.5 shrink-0 text-amber-600" />{" "}
                                   {warning}
                                 </span>
                               ))}

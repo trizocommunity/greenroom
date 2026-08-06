@@ -22,6 +22,15 @@ import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { AssignmentModal } from "@/components/festival/pre-event-works/assignments/AssignmentModal";
 import { DeadlineWindowGate } from "@/components/festival/pre-event-works/DeadlineWindowGate";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -144,6 +153,10 @@ export function AssignProgrammesClient({
   const [selectedProgrammeCategoryId, setSelectedProgrammeCategoryId] =
     useState<string>(leaderCategoryId);
 
+  const [assignPageIndex, setAssignPageIndex] = useState(0);
+  const [assignmentsPageIndex, setAssignmentsPageIndex] = useState(0);
+  const pageSize = 15;
+
   const selectedProgrammeCategoryType = useMemo(() => {
     return (
       programmeCategoryOptions.find((c) => c.id === selectedProgrammeCategoryId)
@@ -164,6 +177,10 @@ export function AssignProgrammesClient({
     }, 5000);
     return () => window.clearInterval(intervalId);
   }, [festivalId, refetch]);
+
+  useEffect(() => {
+    setAssignPageIndex(0);
+  }, [selectedProgrammeCategoryId, selectedProgrammeType]);
 
   useEffect(() => {
     if (!programmeCategoryOptions.length) return;
@@ -1158,9 +1175,12 @@ export function AssignProgrammesClient({
               description="Nothing matches these filters."
             />
           ) : (
-            <ul className="divide-y divide-border border-y border-border">
-              {eligibleProgrammes.map((p) => {
-                const capacity = groupCapacityByProgrammeId.get(p.id);
+            <>
+              <ul className="divide-y divide-border border-y border-border">
+                {eligibleProgrammes
+                  .slice(assignPageIndex * pageSize, (assignPageIndex + 1) * pageSize)
+                  .map((p) => {
+                  const capacity = groupCapacityByProgrammeId.get(p.id);
                 const isFull = capacity?.isFull ?? false;
 
                 return (
@@ -1201,7 +1221,72 @@ export function AssignProgrammesClient({
                   </li>
                 );
               })}
-            </ul>
+              </ul>
+
+              {eligibleProgrammes.length > pageSize && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (assignPageIndex > 0) setAssignPageIndex(p => p - 1);
+                        }}
+                        className={assignPageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+
+                    {[...Array(Math.ceil(eligibleProgrammes.length / pageSize))].map((_, i) => {
+                      const targetPage = i;
+                      const totalPages = Math.ceil(eligibleProgrammes.length / pageSize);
+                      
+                      if (
+                        targetPage === 0 ||
+                        targetPage === totalPages - 1 ||
+                        (targetPage >= assignPageIndex - 1 && targetPage <= assignPageIndex + 1)
+                      ) {
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              href="#"
+                              isActive={assignPageIndex === targetPage}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setAssignPageIndex(targetPage);
+                              }}
+                            >
+                              {targetPage + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      }
+                      
+                      if (targetPage === assignPageIndex - 2 || targetPage === assignPageIndex + 2) {
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+                      
+                      return null;
+                    })}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if ((assignPageIndex + 1) * pageSize < eligibleProgrammes.length) setAssignPageIndex(p => p + 1);
+                        }}
+                        className={(assignPageIndex + 1) * pageSize >= eligibleProgrammes.length ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -1213,9 +1298,12 @@ export function AssignProgrammesClient({
               description="Once you assign participants to a programme, it will appear here."
             />
           ) : (
-            <ul className="divide-y divide-border border-y border-border">
-              {programmeAssignmentRows.map((row) => {
-                const details = programmeDetailsById.get(row.programmeId);
+            <>
+              <ul className="divide-y divide-border border-y border-border">
+                {programmeAssignmentRows
+                  .slice(assignmentsPageIndex * pageSize, (assignmentsPageIndex + 1) * pageSize)
+                  .map((row) => {
+                  const details = programmeDetailsById.get(row.programmeId);
                 const isGroup =
                   (details?.type ?? row.programme?.type) === "GROUP";
                 const memberCount = row.assignments.length;
@@ -1264,7 +1352,72 @@ export function AssignProgrammesClient({
                   </li>
                 );
               })}
-            </ul>
+              </ul>
+
+              {programmeAssignmentRows.length > pageSize && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (assignmentsPageIndex > 0) setAssignmentsPageIndex(p => p - 1);
+                        }}
+                        className={assignmentsPageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+
+                    {[...Array(Math.ceil(programmeAssignmentRows.length / pageSize))].map((_, i) => {
+                      const targetPage = i;
+                      const totalPages = Math.ceil(programmeAssignmentRows.length / pageSize);
+                      
+                      if (
+                        targetPage === 0 ||
+                        targetPage === totalPages - 1 ||
+                        (targetPage >= assignmentsPageIndex - 1 && targetPage <= assignmentsPageIndex + 1)
+                      ) {
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              href="#"
+                              isActive={assignmentsPageIndex === targetPage}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setAssignmentsPageIndex(targetPage);
+                              }}
+                            >
+                              {targetPage + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      }
+                      
+                      if (targetPage === assignmentsPageIndex - 2 || targetPage === assignmentsPageIndex + 2) {
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+                      
+                      return null;
+                    })}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if ((assignmentsPageIndex + 1) * pageSize < programmeAssignmentRows.length) setAssignmentsPageIndex(p => p + 1);
+                        }}
+                        className={(assignmentsPageIndex + 1) * pageSize >= programmeAssignmentRows.length ? "pointer-events-none opacity-50" : ""}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>

@@ -16,6 +16,15 @@ import {
   useState,
   useTransition,
 } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,6 +139,10 @@ export function AnnouncerClient({
   const [activeProgramme, setActiveProgramme] =
     useState<AnnouncerQueueProgramme | null>(null);
 
+  const [queuePageIndex, setQueuePageIndex] = useState(0);
+  const [publishedPageIndex, setPublishedPageIndex] = useState(0);
+  const pageSize = 15;
+
   useEffect(() => {
     const interval = setInterval(() => router.refresh(), 15_000);
     return () => clearInterval(interval);
@@ -194,7 +207,9 @@ export function AnnouncerClient({
                     Ready to Announce
                   </h2>
                   <div className="grid gap-3">
-                    {sorted.map((p) => (
+                    {sorted
+                      .slice(queuePageIndex * pageSize, (queuePageIndex + 1) * pageSize)
+                      .map((p) => (
                       <div
                         key={p.id}
                         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-violet-500/[0.02]"
@@ -251,6 +266,70 @@ export function AnnouncerClient({
                       </div>
                     ))}
                   </div>
+
+                  {sorted.length > pageSize && (
+                    <Pagination className="mt-4">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (queuePageIndex > 0) setQueuePageIndex(p => p - 1);
+                            }}
+                            className={queuePageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+
+                        {[...Array(Math.ceil(sorted.length / pageSize))].map((_, i) => {
+                          const targetPage = i;
+                          const totalPages = Math.ceil(sorted.length / pageSize);
+                          
+                          if (
+                            targetPage === 0 ||
+                            targetPage === totalPages - 1 ||
+                            (targetPage >= queuePageIndex - 1 && targetPage <= queuePageIndex + 1)
+                          ) {
+                            return (
+                              <PaginationItem key={i}>
+                                <PaginationLink
+                                  href="#"
+                                  isActive={queuePageIndex === targetPage}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setQueuePageIndex(targetPage);
+                                  }}
+                                >
+                                  {targetPage + 1}
+                                </PaginationLink>
+                              </PaginationItem>
+                            );
+                          }
+                          
+                          if (targetPage === queuePageIndex - 2 || targetPage === queuePageIndex + 2) {
+                            return (
+                              <PaginationItem key={i}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          
+                          return null;
+                        })}
+
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if ((queuePageIndex + 1) * pageSize < sorted.length) setQueuePageIndex(p => p + 1);
+                            }}
+                            className={(queuePageIndex + 1) * pageSize >= sorted.length ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
                 </div>
               )}
 
@@ -261,7 +340,9 @@ export function AnnouncerClient({
                     Announced Results
                   </h2>
                   <div className="grid gap-2">
-                    {publishedResults.map((p) => (
+                    {publishedResults
+                      .slice(publishedPageIndex * pageSize, (publishedPageIndex + 1) * pageSize)
+                      .map((p) => (
                       <div
                         key={p.id}
                         className="flex items-center justify-between gap-4 rounded-lg border bg-card/50 p-3"
@@ -296,13 +377,74 @@ export function AnnouncerClient({
                           >
                             Announced
                           </Badge>
-                          <span className="text-xs text-muted-foreground hidden sm:inline">
-                            {p.publishedByName ?? "—"}
-                          </span>
                         </div>
                       </div>
                     ))}
                   </div>
+                  
+                  {publishedResults.length > pageSize && (
+                    <Pagination className="mt-4">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (publishedPageIndex > 0) setPublishedPageIndex(p => p - 1);
+                            }}
+                            className={publishedPageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+
+                        {[...Array(Math.ceil(publishedResults.length / pageSize))].map((_, i) => {
+                          const targetPage = i;
+                          const totalPages = Math.ceil(publishedResults.length / pageSize);
+                          
+                          if (
+                            targetPage === 0 ||
+                            targetPage === totalPages - 1 ||
+                            (targetPage >= publishedPageIndex - 1 && targetPage <= publishedPageIndex + 1)
+                          ) {
+                            return (
+                              <PaginationItem key={i}>
+                                <PaginationLink
+                                  href="#"
+                                  isActive={publishedPageIndex === targetPage}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setPublishedPageIndex(targetPage);
+                                  }}
+                                >
+                                  {targetPage + 1}
+                                </PaginationLink>
+                              </PaginationItem>
+                            );
+                          }
+                          
+                          if (targetPage === publishedPageIndex - 2 || targetPage === publishedPageIndex + 2) {
+                            return (
+                              <PaginationItem key={i}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          
+                          return null;
+                        })}
+
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if ((publishedPageIndex + 1) * pageSize < publishedResults.length) setPublishedPageIndex(p => p + 1);
+                            }}
+                            className={(publishedPageIndex + 1) * pageSize >= publishedResults.length ? "pointer-events-none opacity-50" : ""}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
                 </div>
               )}
             </>

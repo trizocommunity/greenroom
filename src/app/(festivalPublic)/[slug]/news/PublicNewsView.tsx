@@ -4,7 +4,15 @@ import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useState } from "react";
-import { LoadMore } from "@/components/festival/public/LoadMore";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { NewsImage } from "@/components/festival/public/NewsImage";
 import { EmptyState } from "@/components/festival/public/PublicSection";
 import { cn } from "@/core/utils/cn";
@@ -56,6 +64,8 @@ export function PublicNewsView({
     isLoadingMore,
     error,
     loadMore,
+    page,
+    goToPage,
   } = usePublicPages<Post>({
     endpoint: `/api/festivals/${festivalSlug}/news`,
     select: selectPosts,
@@ -165,16 +175,71 @@ export function PublicNewsView({
         })}
       </ol>
 
-      <LoadMore
-        shown={posts.length}
-        total={total}
-        hasMore={hasMore}
-        isLoading={isLoadingMore}
-        error={error}
-        onLoadMore={loadMore}
-        noun="posts"
-        accentColor={accentColor}
-      />
+      {Math.ceil(total / pageSize) > 1 && (
+        <div className="mt-8 flex justify-center pb-6">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page > 1) goToPage(page - 1);
+                  }}
+                  className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+
+              {[...Array(Math.ceil(total / pageSize))].map((_, i) => {
+                const targetPage = i + 1;
+                const totalPages = Math.ceil(total / pageSize);
+                
+                if (
+                  targetPage === 1 ||
+                  targetPage === totalPages ||
+                  (targetPage >= page - 1 && targetPage <= page + 1)
+                ) {
+                  return (
+                    <PaginationItem key={i}>
+                      <PaginationLink
+                        href="#"
+                        isActive={page === targetPage}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          goToPage(targetPage);
+                        }}
+                      >
+                        {targetPage}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                }
+                
+                if (targetPage === page - 2 || targetPage === page + 2) {
+                  return (
+                    <PaginationItem key={i}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+                
+                return null;
+              })}
+
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page < Math.ceil(total / pageSize)) goToPage(page + 1);
+                  }}
+                  className={page >= Math.ceil(total / pageSize) ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </>
   );
 }

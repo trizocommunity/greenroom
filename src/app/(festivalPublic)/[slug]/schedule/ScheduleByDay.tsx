@@ -3,6 +3,15 @@
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { EmptyState } from "@/components/festival/public/PublicSection";
 import { cn } from "@/core/utils/cn";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
@@ -49,6 +58,7 @@ export function ScheduleByDay({
 }) {
   const [activeDay, setActiveDay] = useState(days[0]?.dateKey ?? "");
   const [activeStageId, setActiveStageId] = useState("");
+  const [pageIndex, setPageIndex] = useState(0);
 
   const activeData = days.find((d) => d.dateKey === activeDay);
 
@@ -65,6 +75,9 @@ export function ScheduleByDay({
     activeData && activeStageId !== ""
       ? activeData.entries.filter((e) => e.stage?.id === activeStageId)
       : (activeData?.entries ?? []);
+
+  const pageSize = 15;
+  const totalPages = Math.ceil(filteredEntries.length / pageSize);
 
   if (days.length === 0) return null;
 
@@ -152,16 +165,83 @@ export function ScheduleByDay({
           {filteredEntries.length === 0 ? (
             <EmptyState>Nothing scheduled on this stage.</EmptyState>
           ) : (
-            <ol className="divide-y divide-border border-y border-border">
-              {filteredEntries.map((entry, i) => (
-                <ScheduleRow
-                  key={entry.id}
-                  entry={entry}
-                  index={i}
-                  accentColor={accentColor}
-                />
-              ))}
-            </ol>
+            <>
+              <ol className="divide-y divide-border border-y border-border">
+                {filteredEntries
+                  .slice(pageIndex * pageSize, pageIndex * pageSize + pageSize)
+                  .map((entry, i) => (
+                    <ScheduleRow
+                      key={entry.id}
+                      entry={entry}
+                      index={i}
+                      accentColor={accentColor}
+                    />
+                  ))}
+              </ol>
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex justify-center pb-6">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPageIndex((p) => Math.max(0, p - 1));
+                          }}
+                          className={pageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+
+                      {[...Array(totalPages)].map((_, i) => {
+                        if (
+                          i === 0 ||
+                          i === totalPages - 1 ||
+                          (i >= pageIndex - 1 && i <= pageIndex + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                href="#"
+                                isActive={pageIndex === i}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setPageIndex(i);
+                                }}
+                              >
+                                {i + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        }
+                        
+                        if (i === pageIndex - 2 || i === pageIndex + 2) {
+                          return (
+                            <PaginationItem key={i}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          );
+                        }
+                        
+                        return null;
+                      })}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPageIndex((p) => Math.min(totalPages - 1, p + 1));
+                          }}
+                          className={pageIndex === totalPages - 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

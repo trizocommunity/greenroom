@@ -6,6 +6,13 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -160,6 +167,12 @@ export function LeaderboardClient({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedParticipant, setSelectedParticipant] = useState<ParticipantRow | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [searchQuery, participantFilterCategory, participantFilterGroup]);
 
   const festivalContext = useFestival();
   const tier = getResolvedTier(tierProp ?? festivalContext.tier);
@@ -349,7 +362,9 @@ export function LeaderboardClient({
             </TableHeader>
             <TableBody>
               {participantStandings.length > 0 ? (
-                participantStandings.map((row) => (
+                participantStandings
+                  .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+                  .map((row) => (
                   <TableRow
                     key={row.participantId}
                     className={cn("cursor-pointer hover:bg-muted/50 transition-colors", RANK_STYLES[row.rank - 1]?.row)}
@@ -421,7 +436,9 @@ export function LeaderboardClient({
         {/* Mobile */}
         <div className="md:hidden p-3 space-y-2">
           {participantStandings.length > 0 ? (
-            participantStandings.map((row) => (
+            participantStandings
+              .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+              .map((row) => (
               <div
                 key={row.participantId}
                 onClick={() => setSelectedParticipant(row)}
@@ -491,6 +508,31 @@ export function LeaderboardClient({
         </div>
       </Card>
       
+      {participantStandings.length > pageSize && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pageIndex > 0) setPageIndex(p => p - 1);
+                }}
+                className={pageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if ((pageIndex + 1) * pageSize < participantStandings.length) setPageIndex(p => p + 1);
+                }}
+                className={(pageIndex + 1) * pageSize >= participantStandings.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
       {/* Participant Breakdown Drawer */}
       <Drawer open={!!selectedParticipant} onOpenChange={(open) => !open && setSelectedParticipant(null)}>
         <DrawerContent>

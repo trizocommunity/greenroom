@@ -94,6 +94,7 @@ export default async function ParticipantLayout({
               name: festival.name,
             }}
             participant={{
+              id: participant.id,
               isTeamLeader: Boolean(participant.isTeamLeader),
               name: participant.name,
             }}
