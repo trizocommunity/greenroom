@@ -1,4 +1,4 @@
-import { magicLinkClient, twoFactorClient } from "better-auth/client/plugins";
+import { emailOTPClient, twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 /**
@@ -11,6 +11,11 @@ import { createAuthClient } from "better-auth/react";
  * `baseURL` defaults to the current origin in the browser. We pass
  * `NEXT_PUBLIC_APP_URL` for SSR-time callers so the relative fetch
  * resolves correctly.
+ *
+ * `emailOTPClient` (ISSUE-42 PR B): registers the new
+ * `/sign-in/email-otp` + `/email-otp/send-verification-otp` endpoints
+ * on the client surface. Replaces `magicLinkClient` — the magic-link
+ * plugin was unmounted from the server in PR C.
  *
  * The `twoFactorClient` plugin (PR 4 of ISSUE-41) registers the
  * `/two-factor/*` endpoints on the client surface — enable, disable,
@@ -26,7 +31,7 @@ export const authClient = createAuthClient({
       ? window.location.origin
       : (process.env.NEXT_PUBLIC_APP_URL ?? undefined),
   plugins: [
-    magicLinkClient(),
+    emailOTPClient(),
     twoFactorClient({
       twoFactorPage: "/auth/2fa",
     }),

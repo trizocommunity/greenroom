@@ -3,10 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockHeaders = vi.fn(async () => new Headers());
 const mockGetSession = vi.fn();
 const mockSignOut = vi.fn();
-const mockSignInMagicLink = vi.fn();
-const mockMagicLinkVerify = vi.fn();
+const mockCreateVerificationOTP = vi.fn();
+const mockSignInEmailOTP = vi.fn();
 const mockUserFindFirst = vi.fn();
-const mockVerificationSelect = vi.fn();
 
 vi.mock("server-only", () => ({}));
 
@@ -19,8 +18,9 @@ vi.mock("@/core/auth/better-auth/auth", () => ({
     api: {
       getSession: (...args: unknown[]) => mockGetSession(...args),
       signOut: (...args: unknown[]) => mockSignOut(...args),
-      signInMagicLink: (...args: unknown[]) => mockSignInMagicLink(...args),
-      magicLinkVerify: (...args: unknown[]) => mockMagicLinkVerify(...args),
+      createVerificationOTP: (...args: unknown[]) =>
+        mockCreateVerificationOTP(...args),
+      signInEmailOTP: (...args: unknown[]) => mockSignInEmailOTP(...args),
     },
   },
 }));
@@ -32,20 +32,12 @@ vi.mock("@/core/database/client", () => ({
         findFirst: (...args: unknown[]) => mockUserFindFirst(...args),
       },
     },
-    select: (...args: unknown[]) => mockVerificationSelect(...args),
   },
 }));
 
 vi.mock("@/core/database/schema", () => ({
   user: { id: "id" },
-  verification: { identifier: "identifier", value: "value", createdAt: "createdAt" },
 }));
-
-vi.mock("drizzle-orm", async () => {
-  const actual =
-    await vi.importActual<typeof import("drizzle-orm")>("drizzle-orm");
-  return actual;
-});
 
 import {
   createSession,
@@ -59,10 +51,9 @@ beforeEach(() => {
   mockHeaders.mockClear();
   mockGetSession.mockReset();
   mockSignOut.mockReset();
-  mockSignInMagicLink.mockReset();
-  mockMagicLinkVerify.mockReset();
+  mockCreateVerificationOTP.mockReset();
+  mockSignInEmailOTP.mockReset();
   mockUserFindFirst.mockReset();
-  mockVerificationSelect.mockReset();
 });
 
 describe("getSession — adapter over Better Auth", () => {
@@ -163,43 +154,13 @@ describe("deleteSession — delegates to Better Auth signOut", () => {
 describe("createSession — backwards-compat shim", () => {
   it("looks up the user by id and delegates to signInUserByEmail", async () => {
     mockUserFindFirst.mockResolvedValueOnce({ email: "alice@example.com" });
-    mockSignInMagicLink.mockResolvedValueOnce({ status: true });
-    mockVerificationSelect.mockReturnValueOnce({
-      from: () => ({
-        orderBy: () => ({
-          limit: () => ({
-            [Symbol.iterator]: function* () {
-              yield {
-                identifier: "tok-1",
-                value: JSON.stringify({ email: "alice@example.com" }),
-                createdAt: new Date(),
-              };
-            },
-            [Symbol.asyncIterator]: async function* () {
-              yield {
-                identifier: "tok-1",
-                value: JSON.stringify({ email: "alice@example.com" }),
-                createdAt: new Date(),
-              };
-            },
-            then: (resolve: (v: unknown) => void) =>
-              resolve([
-                {
-                  identifier: "tok-1",
-                  value: JSON.stringify({ email: "alice@example.com" }),
-                  createdAt: new Date(),
-                },
-              ]),
-          }),
-        }),
-      }),
-    });
-    mockMagicLinkVerify.mockResolvedValueOnce({ redirect: true });
+    mockCreateVerificationOTP.mockResolvedValueOnce("1234");
+    mockSignInEmailOTP.mockResolvedValueOnce({ token: "session-token" });
 
     await createSession("user-1", "USER");
 
-    expect(mockSignInMagicLink).toHaveBeenCalledTimes(1);
-    expect(mockMagicLinkVerify).toHaveBeenCalledTimes(1);
+    expect(mockCreateVerificationOTP).toHaveBeenCalledTimes(1);
+    expect(mockSignInEmailOTP).toHaveBeenCalledTimes(1);
   });
 
   it("throws when the user has no email", async () => {
@@ -211,47 +172,33 @@ describe("createSession — backwards-compat shim", () => {
   });
 });
 
-describe("signInUserByEmail — silent session mint", () => {
-  it("emits a verification row and consumes it via magicLinkVerify", async () => {
-    mockSignInMagicLink.mockResolvedValueOnce({ status: true });
-    mockVerificationSelect.mockReturnValueOnce({
-      from: () => ({
-        orderBy: () => ({
-          limit: () =>
-            Promise.resolve([
-              {
-                identifier: "tok-2",
-                value: JSON.stringify({ email: "bob@example.com" }),
-                createdAt: new Date(),
-              },
-            ]),
-        }),
-      }),
-    });
-    mockMagicLinkVerify.mockResolvedValueOnce({ redirect: true });
+describe("signInUserByEmail — silent session mint (ISSUE-42)", () => {
+  it("mints an OTP via createVerificationOTP and consumes it via signInEmailOTP", async () => {
+    mockCreateVerificationOTP.mockResolvedValueOnce("9876");
+    mockSignInEmailOTP.mockResolvedValueOnce({ token: "session-token" });
 
     await signInUserByEmail("  Bob@Example.COM ");
 
-    expect(mockSignInMagicLink).toHaveBeenCalledTimes(1);
-    const body = mockSignInMagicLink.mock.calls[0]?.[0]?.body;
-    expect(body?.email).toBe("bob@example.com");
-    expect(mockMagicLinkVerify).toHaveBeenCalledTimes(1);
-    const query = mockMagicLinkVerify.mock.calls[0]?.[0]?.query;
-    expect(query?.token).toBe("tok-2");
-  });
-
-  it("throws when no verification row can be located", async () => {
-    mockSignInMagicLink.mockResolvedValueOnce({ status: true });
-    mockVerificationSelect.mockReturnValueOnce({
-      from: () => ({
-        orderBy: () => ({
-          limit: () => Promise.resolve([]),
-        }),
-      }),
+    expect(mockCreateVerificationOTP).toHaveBeenCalledTimes(1);
+    const createBody = mockCreateVerificationOTP.mock.calls[0]?.[0]?.body;
+    expect(createBody).toEqual({
+      email: "bob@example.com",
+      type: "sign-in",
     });
 
+    expect(mockSignInEmailOTP).toHaveBeenCalledTimes(1);
+    const signInBody = mockSignInEmailOTP.mock.calls[0]?.[0]?.body;
+    expect(signInBody).toEqual({
+      email: "bob@example.com",
+      otp: "9876",
+    });
+  });
+
+  it("throws when createVerificationOTP returns an unexpected shape", async () => {
+    mockCreateVerificationOTP.mockResolvedValueOnce({ wrong: "shape" });
+
     await expect(signInUserByEmail("ghost@example.com")).rejects.toThrow(
-      /no verification row/,
+      /unexpected shape/,
     );
   });
 });

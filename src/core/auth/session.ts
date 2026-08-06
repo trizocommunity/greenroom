@@ -117,14 +117,14 @@ export async function createSession(
  * invitation-accept and any other flow that has proof of email
  * ownership (the invitation token, in our case).
  *
- * Approach: Better Auth's only public "issue session without password"
- * API is the magic-link path (`signInMagicLink` → `magicLinkVerify`).
- * We don't want to email the user twice, so the production
- * `sendMagicLink` hook honours `process.env.GREENROOM_SILENT_AUTH` —
- * set that env in the request scope to suppress the actual email send.
- * Read the freshly created verification row, then call
- * `magicLinkVerify` to consume it. `nextCookies` writes the session
- * cookie automatically.
+ * Approach (ISSUE-42 PR A): Better Auth's `emailOTP` plugin exposes
+ * `createVerificationOTP`, which returns the OTP string in the response
+ * directly — no DB read-back needed (which the previous magic-link
+ * implementation required). `sendVerificationOTP` honours
+ * `process.env.GREENROOM_SILENT_AUTH` so the invitation-accept path can
+ * skip the email send while still going through the production hook.
+ * `signInEmailOTP` then consumes the OTP and mints the session via
+ * `nextCookies`.
  *
  * Throws if Better Auth cannot mint a session — caller should surface
  * a 500 in that case.
@@ -133,16 +133,23 @@ export async function signInUserByEmail(email: string): Promise<void> {
   const hdrs = await headers();
   const normalisedEmail = email.toLowerCase().trim();
 
-  // Step 1: emit a verification row. The sendMagicLink hook detects
-  // the SILENT flag (set by the route) and skips the actual send.
+  // Step 1: emit an OTP. The sendVerificationOTP hook detects the
+  // SILENT flag (set by the route) and skips the actual send.
   const previousSilent = process.env.GREENROOM_SILENT_AUTH;
   process.env.GREENROOM_SILENT_AUTH = "1";
+  let otp: string;
   try {
-    await auth.api.signInMagicLink({
-      body: { email: normalisedEmail, callbackURL: "/" },
+    const result = await auth.api.createVerificationOTP({
+      body: { email: normalisedEmail, type: "sign-in" },
       headers: hdrs,
       asResponse: false,
     });
+    if (typeof result !== "string") {
+      throw new Error(
+        `signInUserByEmail: createVerificationOTP returned unexpected shape for ${normalisedEmail}`,
+      );
+    }
+    otp = result;
   } finally {
     if (previousSilent === undefined) {
       delete process.env.GREENROOM_SILENT_AUTH;
@@ -151,36 +158,10 @@ export async function signInUserByEmail(email: string): Promise<void> {
     }
   }
 
-  // Step 2: locate the verification row. Better Auth stores the
-  // token in `identifier` and the email inside the JSON `value`
-  // column. Filter in JS for safety — the verification table is
-  // small and this only runs on invitation accept.
-  const { db } = await import("@/core/database/client");
-  const { verification } = await import("@/core/database/schema");
-  const { desc } = await import("drizzle-orm");
-  const rows = await db
-    .select()
-    .from(verification)
-    .orderBy(desc(verification.createdAt))
-    .limit(10);
-  const match = rows.find((r) => {
-    try {
-      const parsed = JSON.parse(r.value) as { email?: string };
-      return parsed.email?.toLowerCase() === normalisedEmail;
-    } catch {
-      return false;
-    }
-  });
-  if (!match) {
-    throw new Error(
-      `signInUserByEmail: no verification row found for ${normalisedEmail}`,
-    );
-  }
-
-  // Step 3: consume the token, which mints the session and writes
+  // Step 2: consume the OTP, which mints the session and writes
   // the cookie via nextCookies.
-  await auth.api.magicLinkVerify({
-    query: { token: match.identifier, callbackURL: "/" },
+  await auth.api.signInEmailOTP({
+    body: { email: normalisedEmail, otp },
     headers: hdrs,
     asResponse: false,
   });

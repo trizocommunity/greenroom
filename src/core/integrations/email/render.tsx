@@ -6,6 +6,7 @@ import {
   festivalInvitationSubject,
 } from "./kinds/festival-invitation";
 import { MagicLinkEmail } from "./kinds/magic-link";
+import { SignInOtpEmail, signInOtpSubject } from "./kinds/sign-in-otp";
 import {
   TeamLeaderOtpEmail,
   teamLeaderOtpSubject,
@@ -27,6 +28,7 @@ export type RenderedEmail = {
 };
 
 const DEFAULT_MAGIC_LINK_EXPIRY_MINUTES = 30;
+const DEFAULT_SIGN_IN_OTP_EXPIRY_MINUTES = 5;
 const DEFAULT_INVITATION_EXPIRY_HOURS = 48;
 const DEFAULT_OTP_EXPIRY_MINUTES = 10;
 const DEFAULT_TWO_FACTOR_OTP_EXPIRY_MINUTES = 5;
@@ -56,6 +58,7 @@ export function resolveTheme(
     case "festival_invitation":
       return "light";
     case "magic_link":
+    case "sign_in_otp":
     case "team_leader_otp":
     case "two_factor_otp":
     case "festival_expiring_soon":
@@ -92,6 +95,20 @@ export async function renderEmail(
         />
       );
       subject = "[Greenroom] Your sign-in link";
+      break;
+    }
+    case "sign_in_otp": {
+      element = (
+        <SignInOtpEmail
+          otp={kind.otp}
+          email={kind.email}
+          expiresInMinutes={
+            kind.expiresInMinutes ?? DEFAULT_SIGN_IN_OTP_EXPIRY_MINUTES
+          }
+          theme={effectiveTheme}
+        />
+      );
+      subject = signInOtpSubject();
       break;
     }
     case "festival_invitation": {

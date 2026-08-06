@@ -124,9 +124,10 @@ describe("sendEmail — global toggle", () => {
 });
 
 describe("EMAIL_KINDS registry", () => {
-  it("contains exactly the 5 production kinds", () => {
+  it("contains exactly the 6 production kinds (ISSUE-42 adds sign_in_otp)", () => {
     expect(EMAIL_KINDS).toEqual([
       "magic_link",
+      "sign_in_otp",
       "festival_invitation",
       "team_leader_otp",
       "two_factor_otp",

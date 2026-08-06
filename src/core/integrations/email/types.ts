@@ -24,6 +24,12 @@ export type EmailKind =
       callbackURL?: string;
     }
   | {
+      kind: "sign_in_otp";
+      otp: string;
+      email: string;
+      expiresInMinutes?: number;
+    }
+  | {
       kind: "festival_invitation";
       token: string;
       festivalName: string;
@@ -68,6 +74,7 @@ export type SendEmailResult =
  */
 export const EMAIL_KINDS = [
   "magic_link",
+  "sign_in_otp",
   "festival_invitation",
   "team_leader_otp",
   "two_factor_otp",
@@ -88,6 +95,11 @@ export const EMAIL_KIND_META: Record<
   magic_link: {
     label: "Magic-link sign-in",
     description: "One-time sign-in link sent when a user requests email login.",
+  },
+  sign_in_otp: {
+    label: "Sign-in verification code",
+    description:
+      "One-time 4-digit code sent when a user requests email sign-in (replaces magic-link).",
   },
   festival_invitation: {
     label: "Festival invitation",

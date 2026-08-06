@@ -3,7 +3,7 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
-import { magicLink, twoFactor } from "better-auth/plugins";
+import { emailOTP, magicLink, twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { randomUUID } from "node:crypto";
 import { db } from "@/core/database/client";
@@ -19,6 +19,9 @@ import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
 const MAGIC_LINK_EXPIRY_SECONDS = 30 * 60; // 30 minutes — matches magicLinkToken table TTL
+const SIGN_IN_OTP_EXPIRY_SECONDS = 5 * 60; // 5 minutes — matches two_factor_otp
+const SIGN_IN_OTP_DIGITS = 4; // user override (Locked Decision #1)
+const SIGN_IN_OTP_ATTEMPTS = 3; // Locked Decision #7
 
 /**
  * Better Auth server config.
@@ -174,6 +177,8 @@ export const auth = betterAuth({
         // the `callbackURL` so the user lands where the client asked
         // (the form sets `callbackURL: "/profile"`). Default to `/profile`
         // to match the default in `BetterAuthMagicLinkRequestForm`.
+        // ISSUE-42 PR C unmounts this plugin entirely; the line below
+        // is the only remaining call-site for `sendMagicLinkEmail`.
         const parsed = new URL(url);
         const tokenParam = parsed.searchParams.get("token") ?? "";
         const callbackURL =
@@ -184,6 +189,32 @@ export const auth = betterAuth({
           MAGIC_LINK_EXPIRY_SECONDS / 60,
           callbackURL,
         );
+      },
+    }),
+    // ISSUE-42 PR A: replace magic-link click-the-link sign-in with an
+    // email-OTP plugin. Both plugins coexist through PR B; PR C unmounts
+    // `magicLink` above. The hook respects `GREENROOM_SILENT_AUTH` for
+    // the same reason as `sendMagicLink` — `signInUserByEmail` mints a
+    // session without re-emailing the user. `storeOTP: "hashed"` is a
+    // security uplift over magic-link's plain storage (Locked Decision
+    // #2). `allowedAttempts: 3` bounds online-attack on the 4-digit code.
+    emailOTP({
+      otpLength: SIGN_IN_OTP_DIGITS,
+      expiresIn: SIGN_IN_OTP_EXPIRY_SECONDS,
+      allowedAttempts: SIGN_IN_OTP_ATTEMPTS,
+      storeOTP: "hashed",
+      async sendVerificationOTP({ email, otp }) {
+        if (process.env.GREENROOM_SILENT_AUTH === "1") return;
+        const { sendEmail } = await import("@/core/integrations/email/send");
+        await sendEmail({
+          to: email,
+          kind: {
+            kind: "sign_in_otp",
+            otp,
+            email,
+            expiresInMinutes: SIGN_IN_OTP_EXPIRY_SECONDS / 60,
+          },
+        });
       },
     }),
     // Two-factor (PR 4 of ISSUE-41). TOTP (authenticator apps) plus
@@ -253,11 +284,25 @@ export const auth = betterAuth({
       // magic-link and Google paths. Magic-link is silent in audit (we
       // don't want one row per "check your email" click); only record
       // when a session was actually minted.
+      // ISSUE-42: the new emailOTP path runs alongside magic-link for
+      // PR A / B (both plugins mounted); PR C drops magic-link and
+      // emailOTP becomes the sole sign-in. The audit action emitted
+      // for the new path is `SIGN_IN_EMAIL_OTP` — `SIGN_IN_MAGIC_LINK`
+      // is kept (not removed) for backwards-compat with historical
+      // audit rows.
       const isMagicLinkVerify = path === "/magic-link/verify";
       const isMagicLinkSignIn = path === "/sign-in/magic-link";
+      const isEmailOtpSendVerification =
+        path === "/email-otp/send-verification-otp";
+      const isEmailOtpSignIn =
+        path === "/sign-in/email-otp" || path === "/email-otp/verify-email";
       const isGoogleSignIn = path === "/sign-in/social";
       const isAnySignIn =
-        isMagicLinkVerify || isMagicLinkSignIn || isGoogleSignIn;
+        isMagicLinkVerify ||
+        isMagicLinkSignIn ||
+        isEmailOtpSendVerification ||
+        isEmailOtpSignIn ||
+        isGoogleSignIn;
 
       // PR 4: 2FA management endpoints. The `/two-factor/enable` and
       // `/two-factor/disable` paths set `newSession` (Better Auth
@@ -310,6 +355,20 @@ export const auth = betterAuth({
       }
 
       try {
+        if (isEmailOtpSignIn) {
+          // ISSUE-42 PR A: the new email-OTP sign-in path emits
+          // `SIGN_IN_EMAIL_OTP` audit entries. `SIGN_IN_MAGIC_LINK`
+          // continues to be emitted from the magic-link branch below
+          // for backwards-compat with historical rows.
+          await createAuditLog({
+            action: "SIGN_IN_EMAIL_OTP",
+            targetType: "USER",
+            targetId: userId,
+            actor: { actorId: userId, actorRole },
+            metadata: { ip, userAgent },
+          });
+        }
+
         if (isGoogleSignIn) {
           await createAuditLog({
             action: "SIGN_IN_GOOGLE",

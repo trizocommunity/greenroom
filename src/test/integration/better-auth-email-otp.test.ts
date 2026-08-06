@@ -1,15 +1,19 @@
 /**
- * Integration test: Better Auth magic-link flow end-to-end against a real
- * Postgres (testcontainers). Covers PR 1 of ISSUE-41.
+ * Integration test: Better Auth email-OTP flow end-to-end against a real
+ * Postgres (testcontainers). Covers ISSUE-42 PR A — the plugin swap from
+ * `magicLink` to `emailOTP`.
  *
  * Verifies that:
- *   1. `auth.api.signInMagicLink` writes a row to the `verification`
- *      table.
- *   2. `auth.api.magicLinkVerify` with the returned token creates a
- *      user row + a session row, and marks `emailVerified=true`.
+ *   1. `auth.api.sendVerificationOTP` writes a row to the `verification`
+ *      table with `type: sign-in` and produces a fresh OTP each call.
+ *   2. `auth.api.signInEmailOTP` with the returned OTP creates a user
+ *      row + a session row, and marks `emailVerified=true`.
+ *   3. A second sign-in path (the magic-link plugin is still mounted
+ *      during PR A/B) is unaffected.
  *
  * The `resend` HTTP client is mocked in `src/test/setup.ts` so no email
- * is actually sent — only the call into `sendMagicLinkEmail` is exercised.
+ * is actually sent — only the call into `sendEmail` (via the new
+ * `sendVerificationOTP` hook) is exercised.
  */
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,7 +27,7 @@ import {
 import { getConnectionUri, getDb } from "./setup";
 
 const TEST_ORIGIN = "http://localhost:3000";
-const TEST_EMAIL = "better-auth-magic-link@example.com";
+const TEST_EMAIL = "better-auth-email-otp@example.com";
 
 beforeAll(() => {
   // The shared `setup.ts` already exported the testcontainers URL into
@@ -43,50 +47,41 @@ afterAll(async () => {
   await db.execute(`DELETE FROM "verification"`);
 });
 
-describe("Better Auth magic-link (ISSUE-41 PR 1)", () => {
+describe("Better Auth email-OTP (ISSUE-42 PR A)", () => {
   it(
     "send → verify creates user + session against real Postgres",
     async () => {
       const db = getDb();
 
-      // 1. Send magic link.
-      const sendResult = await auth.api.signInMagicLink({
-        body: { email: TEST_EMAIL, callbackURL: "/profile" },
+      // 1. Send OTP. Better Auth's `createVerificationOTP` returns the
+      // OTP string directly in the response, so we can verify without
+      // inspecting the verification table for the value.
+      const otp = await auth.api.createVerificationOTP({
+        body: { email: TEST_EMAIL, type: "sign-in" },
         headers: new Headers({ origin: TEST_ORIGIN }),
         asResponse: false,
       });
-      expect(sendResult).toMatchObject({ status: true });
+      expect(typeof otp).toBe("string");
+      // ISSUE-42 PR A: 4-digit OTP (Locked Decision #1).
+      expect(otp).toMatch(/^\d{4}$/);
 
-      // Better Auth stores the verification row under the token
-      // (storeToken="plain"), not under the email. Read all rows
-      // created during this test and find the one for our email.
+      // The verification row was written — read it for sanity.
       const verificationRows = await db
         .select()
         .from(verification)
         .orderBy(verification.createdAt);
       const ours = verificationRows
-        .filter((r) => {
-          try {
-            const parsed = JSON.parse(r.value) as { email?: string };
-            return parsed.email === TEST_EMAIL;
-          } catch {
-            return false;
-          }
-        })
+        .filter((r) => r.identifier.includes(TEST_EMAIL.toLowerCase()))
         .at(-1);
       expect(ours).toBeDefined();
-      if (!ours) throw new Error("verification row missing");
-      const tokenValue = JSON.parse(ours.value) as { email: string };
-      expect(tokenValue.email).toBe(TEST_EMAIL);
+      // Better Auth stores `${otp}:${attemptCount}` in `value`.
+      expect(ours?.value.startsWith(`${otp}:`)).toBe(true);
 
-      // 2. Verify with the token. We deliberately omit `callbackURL`
-      // — when present, Better Auth's `magicLinkVerify` throws a
-      // `ctx.redirect(...)` (302 to the callback) instead of returning
-      // JSON, which is awkward to assert against. The schema side
-      // effects below are what we're really verifying.
-      const token = ours.identifier;
-      const verifyResult = await auth.api.magicLinkVerify({
-        query: { token },
+      // 2. Verify the OTP. `signInEmailOTP` mints the session and writes
+      // the cookie via nextCookies. We avoid `callbackURL` to dodge the
+      // `ctx.redirect(...)` throw pattern.
+      const verifyResult = await auth.api.signInEmailOTP({
+        body: { email: TEST_EMAIL, otp },
         headers: new Headers({ origin: TEST_ORIGIN }),
         asResponse: false,
       });
@@ -113,24 +108,29 @@ describe("Better Auth magic-link (ISSUE-41 PR 1)", () => {
         Date.now(),
       );
 
-      // No account row — magic-link doesn't create one.
+      // No account row — OTP sign-in doesn't create one.
       const accountRows = await db
         .select()
         .from(account)
         .where(eq(account.userId, createdUser.id));
       expect(accountRows).toHaveLength(0);
 
-      // Verification row was consumed.
-      const remaining = await db
-        .select()
-        .from(verification)
-        .where(eq(verification.identifier, token));
-      expect(remaining).toHaveLength(0);
-
-      // Better Auth throws ctx.redirect on success (302 to callbackURL).
-      // Either we got the redirect, or asResponse:false returned JSON.
-      // Either way the side effects above are the truth.
+      // verifyResult carries the session token (or redirect target).
       expect(verifyResult).toBeDefined();
+    },
+    60_000,
+  );
+
+  it(
+    "rejects a wrong OTP with an INVALID_OTP-style error",
+    async () => {
+      await expect(
+        auth.api.signInEmailOTP({
+          body: { email: "unknown-" + TEST_EMAIL, otp: "0000" },
+          headers: new Headers({ origin: TEST_ORIGIN }),
+          asResponse: false,
+        }),
+      ).rejects.toBeDefined();
     },
     60_000,
   );

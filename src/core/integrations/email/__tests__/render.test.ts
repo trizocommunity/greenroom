@@ -220,3 +220,37 @@ describe("renderEmail — two_factor_otp", () => {
     expect(result.html).toContain("10 minutes");
   });
 });
+
+describe("renderEmail — sign_in_otp (ISSUE-42)", () => {
+  it("renders dark theme with 4-digit OTP code prominent + email address", async () => {
+    const result = await renderEmail({
+      kind: "sign_in_otp",
+      otp: "4821",
+      email: "alice@example.com",
+    });
+    expect(result.subject).toBe("[Greenroom] Your sign-in code");
+    expect(result.html).toContain("4821");
+    expect(result.html).toContain("alice@example.com");
+    expect(result.html).toContain("rgb(11,14,20)"); // dark canvas
+    expect(result.text).toContain("4821");
+  });
+
+  it("default 5-minute expiry copy", async () => {
+    const result = await renderEmail({
+      kind: "sign_in_otp",
+      otp: "0123",
+      email: "alice@example.com",
+    });
+    expect(result.html).toContain("5 minutes");
+  });
+
+  it("respects expiresInMinutes override", async () => {
+    const result = await renderEmail({
+      kind: "sign_in_otp",
+      otp: "1234",
+      email: "alice@example.com",
+      expiresInMinutes: 10,
+    });
+    expect(result.html).toContain("10 minutes");
+  });
+});

@@ -38,22 +38,28 @@ describe("better-auth config (ISSUE-41 PR 1 + PR 2 + PR 4)", () => {
       expect(typeof auth.handler).toBe("function");
       expect(typeof auth.options).toBe("object");
 
-      // Better Auth surface we depend on across PRs. Failing this list
-      // catches upstream breaking changes during `npm upgrade better-auth`.
-      expect(typeof auth.api.signInMagicLink).toBe("function");
-      expect(typeof auth.api.getSession).toBe("function");
-      expect(typeof auth.api.signOut).toBe("function");
-      expect(typeof auth.api.revokeSession).toBe("function");
+    // Better Auth surface we depend on across PRs. Failing this list
+    // catches upstream breaking changes during `npm upgrade better-auth`.
+    // ISSUE-42 PR A: magic-link path stays for PR B; the new emailOTP
+    // path runs alongside. PR C drops signInMagicLink (see issue).
+    expect(typeof auth.api.signInMagicLink).toBe("function");
+    expect(typeof auth.api.magicLinkVerify).toBe("function");
+    expect(typeof auth.api.signInEmailOTP).toBe("function");
+    expect(typeof auth.api.sendVerificationOTP).toBe("function");
+    expect(typeof auth.api.createVerificationOTP).toBe("function");
+    expect(typeof auth.api.getSession).toBe("function");
+    expect(typeof auth.api.signOut).toBe("function");
+    expect(typeof auth.api.revokeSession).toBe("function");
 
-      // PR 4 — 2FA plugin surface.
-      expect(typeof auth.api.enableTwoFactor).toBe("function");
-      expect(typeof auth.api.disableTwoFactor).toBe("function");
-      expect(typeof auth.api.verifyTOTP).toBe("function");
-      expect(typeof auth.api.verifyTwoFactorOTP).toBe("function");
-      expect(typeof auth.api.verifyBackupCode).toBe("function");
-      expect(typeof auth.api.sendTwoFactorOTP).toBe("function");
-      expect(typeof auth.api.generateBackupCodes).toBe("function");
-    },
+    // PR 4 — 2FA plugin surface.
+    expect(typeof auth.api.enableTwoFactor).toBe("function");
+    expect(typeof auth.api.disableTwoFactor).toBe("function");
+    expect(typeof auth.api.verifyTOTP).toBe("function");
+    expect(typeof auth.api.verifyTwoFactorOTP).toBe("function");
+    expect(typeof auth.api.verifyBackupCode).toBe("function");
+    expect(typeof auth.api.sendTwoFactorOTP).toBe("function");
+    expect(typeof auth.api.generateBackupCodes).toBe("function");
+  },
     30_000,
   );
 

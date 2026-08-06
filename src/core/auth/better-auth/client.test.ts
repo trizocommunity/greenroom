@@ -7,10 +7,25 @@ import { authClient } from "@/core/auth/better-auth/client";
  * depend on exist with the expected shapes. Real auth-flow coverage
  * lives in the integration tests under `src/test/integration`.
  */
-describe("better-auth client (ISSUE-41 PR 1 + PR 2 + PR 4)", () => {
-  it("exposes signIn.magicLink, signIn.social, signOut, and twoFactor client surface", () => {
+describe("better-auth client (ISSUE-41 PR 1 + PR 2 + PR 4 + ISSUE-42 PR B)", () => {
+  it("exposes emailOtp.sendVerificationOtp, signIn.social, signOut, and twoFactor client surface", () => {
     expect(authClient).toBeDefined();
-    expect(typeof authClient.signIn.magicLink).toBe("function");
+    // ISSUE-42 PR B: `emailOTPClient` + the server plugin add the new
+    // `emailOtp.sendVerificationOtp` / `emailOtp.verify` methods. The
+    // old `signIn.magicLink` (from `magicLinkClient`) is gone — server
+    // `magicLink` plugin was unmounted in PR C.
+    const emailOtp = (
+      authClient as unknown as {
+        emailOtp?: {
+          sendVerificationOtp?: unknown;
+          verify?: unknown;
+        };
+      }
+    ).emailOtp;
+    expect(emailOtp).toBeDefined();
+    expect(typeof emailOtp?.sendVerificationOtp).toBe("function");
+    expect(typeof emailOtp?.verify).toBe("function");
+
     expect(typeof authClient.signIn.social).toBe("function");
     expect(typeof authClient.signOut).toBe("function");
 
