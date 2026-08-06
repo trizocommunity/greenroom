@@ -4,6 +4,8 @@ Status: draft for review
 Supersedes: the Results / Announcement Desk / Group Standings three-page flow
 Owner: TBD
 
+> **Implementation status:** Partially implemented. The codebase still uses the old two-step publish/announce model (`result.isPublished` and `result.isAnnounced`), the Announcer page lives at `/dashboard/[slug]/event-works/announcement` (not `/event-works/announcer`), and several spec details (template selection at announce time, published-to-published number swaps, `result.publishedAt`) are not yet reflected in the schema or actions. This document remains the target design; gaps are called out inline.
+
 ---
 
 ## 1. What this is
@@ -34,6 +36,8 @@ This spec replaces all of that with **two pages** — the **Announcer** (prep + 
 ## 3. The two pages
 
 ### Page A — Announcer (`/event-works/announcer`)
+
+> Current code: the page is at `/dashboard/[slug]/event-works/announcement`; `/dashboard/[slug]/announcer` redirects to the dashboard.
 
 **Purpose:** The prep area. The announcer reviews judgement-completed programmes, assigns a result number, selects a result poster template, previews the result roster, and clicks **Announce** — which makes it public in one step.
 
@@ -68,6 +72,8 @@ Same rules as before:
 - **Scope:** unique per festival. Assigned by admins.
 - **Default suggestion:** `max(resultNumber) + 1` for the festival when judgement completes.
 - **Swap:** entering a number held by another *unpublished* programme offers to swap. Entering a number held by a *published* programme is rejected.
+
+> Current code: `swapResultNumbers` is implemented as a drag-and-drop reorder and asserts `assertProgrammePrePublishing`, which rejects `PUBLISHED`/`ANNOUNCED` programmes. Published-to-published swaps are not yet supported.
 - **Required:** announcing without a number is blocked.
 
 ### 4.4 The announcer drawer
@@ -81,6 +87,8 @@ Opened from any row. This is where the announcer does all their prep.
 - Announcer selects which template(s) to use for this result
 - A live **template preview** renders with the result data bound into it (using the existing `buildResultPosterBindings` + Konva canvas)
 - The result number (`#{resultNo}`) is prominent on the template
+
+> Current code: `announceResult` does not accept template codes, `programme.resultPosterTemplateCode` does not exist, and `updateResultTemplates` is not implemented.
 
 **Result roster** — one row per participant/team, tabular on desktop, cards on mobile:
 
@@ -122,6 +130,8 @@ One action. No desk. No separate announce step. No display-mode flip.
 ### 5.1 Layout
 
 One page, `/dashboard/[slug]/event-works/results`, a 5-column grid:
+
+> Current code: the Results page exists, but it still works with `isPublished`/`isAnnounced` and a separate `announceStandings` step that copies `queuedTeamStandings` into `teamStandings`.
 
 ```
 ┌──────────────────────────────────────────┬──────────────────────┐
@@ -244,6 +254,8 @@ CREATE UNIQUE INDEX programme_festivalId_resultNumber_key
   WHERE result_number IS NOT NULL;
 ```
 
+> Current code: `programme` does not have a `result_number` column. Result numbering is managed via `programmeCodeLetter` or not persisted per spec.
+
 ### 8.2 `result` — collapse the two flags
 
 ```sql
@@ -259,6 +271,8 @@ ALTER TABLE result
 
 A result that was on the desk but never announced was not public. Setting `isPublished = isAnnounced` preserves exactly the right semantics.
 
+> Current code: the `result` table still has both `isPublished` and `isAnnounced`; the collapse has not been performed.
+
 ### 8.3 `festival`
 
 ```sql
@@ -272,6 +286,8 @@ ALTER TABLE festival ADD COLUMN standings_published_at timestamptz;
 ```
 
 `teamStandings` (jsonb) stays.
+
+> Current code: `festival` still has `announcerResultsPerStandings`, `announcedProgrammesSinceStandings`, and `publicDisplayMode`.
 
 ### 8.4 `programme.status` backfill
 
@@ -326,6 +342,8 @@ publishStandings(festivalId)
 getStandings(festivalId, { scope: "all" | "published" })
   → server-side computation for section 2's dropdown
 ```
+
+> Current code: `announceResult` exists but does not take templates and does not set `result.publishedAt` (schema has `publishedByName`/`publishedByEmail` only). `setProgrammeResultNumber`, `unpublishResult`, and `swapResultNumbers` exist in some form but do not match the signatures above. `updateResultTemplates` and `getStandings` are not implemented per spec.
 
 `publishStandings` taking no standings argument closes the trust hole where the old action accepted an arbitrary client-supplied array.
 

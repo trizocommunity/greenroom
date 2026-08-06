@@ -2,7 +2,7 @@
 
 A festival-management SaaS that helps organizers run events end-to-end — tickets, schedules, teams, payments, the lot.
 
-Built with Next.js 16, React 19, Drizzle ORM, and PostgreSQL (Neon in production).
+Built with Next.js 16, React 19, Drizzle ORM, PostgreSQL (Neon in production), and Better Auth for user/admin sessions.
 
 ---
 
@@ -15,10 +15,10 @@ npm install
 cp .env.example .env.local
 ```
 
-Open `.env.local` and fill in at least `JWT_SECRET` and your database URL:
+Open `.env.local` and fill in at least `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, and your database URLs:
 
 ```bash
-openssl rand -hex 32   # paste into JWT_SECRET (32+ chars)
+openssl rand -hex 32   # paste into BETTER_AUTH_SECRET (32+ chars)
 ```
 
 Pick **one** database option below, then come back and start the app:
@@ -35,7 +35,7 @@ neonctl connection-string main --pooled       # → DATABASE_URL
 neonctl connection-string main                # → DATABASE_URL_UNPOOLED
 ```
 
-Drop both into `.env.local`, then:
+Drop both into `.env.local`, fill `BETTER_AUTH_SECRET`, then:
 
 ```bash
 npm run db:push   # apply the schema
@@ -60,7 +60,8 @@ Stop the database whenever: `npm run db:stop`.
 1. Create a Neon project + branch.
 2. In Vercel, add these env vars for **Production** and **Preview**:
    - `DATABASE_URL` and `DATABASE_URL_UNPOOLED` (the pooled + direct Neon strings).
-   - `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` (generate fresh ones per env).
+   - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` (generate fresh secrets per env).
+   - Google OAuth credentials if you use them: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
    - Anything you actually use: `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `CLOUDINARY_*`.
 3. Install the **Neon → Vercel** integration so each PR preview gets its own isolated DB branch.
 4. Push to your default branch — Vercel builds and deploys.

@@ -1,8 +1,8 @@
-﻿# BASIC Plan
+# BASIC Plan
 
 **Purpose:** Entry-level festival plan. Single source of truth for spec, behavior, and how it is enforced in the codebase.
 
-**Config source:** `src/config/pricing.ts` (`TIER_CONFIG.BASIC`). Feature resolution may include Super Admin overrides via `src/server/services/plan-features.service.ts`.
+**Config source:** `src/config/pricing.ts` (`TIER_CONFIG.BASIC`). Feature resolution may include Super Admin overrides via `src/features/plan-features/services/plan-features.service.ts`.
 
 ---
 
@@ -11,7 +11,7 @@
 | Item | Value |
 |------|--------|
 | **Price** | â‚¹1,500 |
-| **Duration** | 30 days (active) |
+| **Duration** | 90 days (active) |
 | **Target** | Small local festivals, schools, first-time organizers |
 
 ### Limits
@@ -21,7 +21,7 @@
 | Participants | 250 |
 | Programmes | 100 |
 | Events | 10 |
-| Stages | 2 |
+| Stages | 10 |
 | Storage | 512 MB (0.5 GB) |
 | Categories | 5 |
 
@@ -38,9 +38,10 @@
 ### Included (BASIC)
 
 - **Pre-Works:** Categories, Groups, Participants, Programmes, Assignments.
-- **Event-Works:** Scoring Policy (grade rules + award matrix), Scoring (programme-first marks entry), Chest Numbers, Leaderboard (published award points).
-- **Import/Export:** Participant import (CSV/Excel), PDF export only.
+- **Event-Works:** Scoring Policy, Scoring/Chest Numbers, Leaderboard.
+- **Import/Export:** Participant import (CSV/Excel), PDF export, Exports.
 - **Landing:** Basic public page (festival title + results).
+- **Templates:** Poster editor (`templates: true`).
 - **Support:** WhatsApp support (config: `supportLevel: "whatsapp"`, `supportResponseTime: 24`).
 - **Branding:** Basic logo upload only (`logoUpload: true`).
 
@@ -49,9 +50,9 @@
 - Full landing page builder, media, news.
 - Bulk upload (participants, programmes).
 - Festival settings page, team members (max 1 = owner only).
-- QR codes, stage management, schedule/sessions.
+- QR codes, stage management, schedule/sessions, food hall.
 - Excel export, advanced analytics, dedicated Results explore / announcer desk.
-- External judging, reporting, schedule, judge PIN links.
+- External judging, reporting, judge PIN links.
 - Certificates (auto/custom/bulk), email/SMS/bulk notifications.
 - Custom URL/domain, custom colors, white-label.
 - Participant profile (dashboard and public profile page).
@@ -65,7 +66,7 @@
 
 - **Tier + limits:** `TIER_CONFIG.BASIC` in `src/config/pricing.ts` (limits and `features` object).
 - **Server (config only):** `FeatureService.isFeatureEnabled(tier, feature)` in `src/lib/features.ts` reads from `TIER_CONFIG` only.
-- **Server (with overrides):** `getEffectiveFeatureEnabled(tier, feature)` and `getEffectiveTierFeatures(tier)` in `src/server/services/plan-features.service.ts` merge config with Super Admin overrides stored in `SystemConfig`.
+- **Server (with overrides):** `getEffectiveFeatureEnabled(tier, feature)` and `getEffectiveTierFeatures(tier)` in `src/features/plan-features/services/plan-features.service.ts` merge config with Super Admin overrides stored in `SystemConfig`.
 - **Dashboard context:** `src/app/dashboard/[slug]/layout.tsx` loads `getEffectiveTierFeatures(getResolvedTier(festival.tier))` and passes result as `effectiveFeatures` into `FestivalProvider`. Client feature checks respect these overrides when present.
 
 ### 3.2 Client (UI) gating
@@ -76,7 +77,7 @@
 
 ### 3.3 Server-side enforcement
 
-- **Routes:** Pages under `/dashboard/[slug]/settings`, `/dashboard/[slug]/members`, `/dashboard/[slug]/content/media`, `/dashboard/[slug]/content/news`, `/dashboard/[slug]/pre-works/stage-management`, `/dashboard/[slug]/pre-works/schedule`, `/dashboard/[slug]/pre-works/sessions`, `/dashboard/[slug]/pre-works/qr-codes`, `/dashboard/[slug]/event-works/leaderboard`, and participant profile routes check feature access (via `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled`) and redirect or `notFound()` for BASIC where the feature is disabled.
+- **Routes:** Pages under `/dashboard/[slug]/settings`, `/dashboard/[slug]/members`, `/dashboard/[slug]/content/media`, `/dashboard/[slug]/content/news`, `/dashboard/[slug]/pre-event-works/stage-management`, `/dashboard/[slug]/pre-event-works/schedule`, `/dashboard/[slug]/pre-event-works/sessions`, `/dashboard/[slug]/pre-event-works/qr-codes`, `/dashboard/[slug]/event-works/leaderboard`, `/dashboard/[slug]/event-works/food-entry`, and participant profile routes check feature access (via `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled`) and redirect or `notFound()` for BASIC where the feature is disabled.
 - **Actions:** Relevant server actions (e.g. Excel export, media, news, schedule, QR, team members) validate tier/feature (and limits) before performing mutations or exports.
 - **Limits:** Participant/programme/event/stage/category limits are enforced using `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts` and `participant.service.ts`.
 
@@ -97,23 +98,23 @@
 |------|--------|
 | Tier & limits config | `src/config/pricing.ts` |
 | Feature flags (config-only) | `src/lib/features.ts` |
-| Effective features (config + overrides) | `src/server/services/plan-features.service.ts` |
+| Effective features (config + overrides) | `src/features/plan-features/services/plan-features.service.ts` |
 | Plan feature toggles (Super Admin) | `src/config/plan-features.config.ts` |
-| Client feature hooks | `src/hooks/useFeature.ts` |
+| Client feature hooks | `src/features/plan-features/hooks/use-feature.ts` |
 | Dashboard layout & context | `src/app/dashboard/[slug]/layout.tsx`, `FestivalProvider` |
 | Sidebar filtering | `src/components/festival/dashboard/FestivalDashboardSidebar.tsx` |
 | Sidebar structure | `src/config/sidebar.config.ts` |
-| Festival context (expiry, role) | `src/server/services/festival-context.service.ts` |
+| Festival context (expiry, role) | `src/features/festivals/services/festival-context.service.ts` |
 
 ---
 
 ## 5. User journey (summary)
 
-1. **Purchase:** User selects BASIC (â‚¹1,500) â†’ payment â†’ festival created with 30-day validity.
+1. **Purchase:** User selects BASIC (â‚¹1,500) â†’ payment â†’ festival created with 90-day validity.
 2. **Setup:** Create categories, groups â†’ import participants (CSV) â†’ create programmes (manual) â†’ assign participants to programmes.
-3. **Event:** Configure scoring policy â†’ assign participants â†’ enter scores per programme (0â€“100) â†’ publish per programme â†’ view leaderboard (award points).
+3. **Event:** Configure scoring policy â†’ assign participants â†’ enter scores per programme â†’ publish per programme â†’ view leaderboard (award points).
 4. **Public:** Share festival URL â†’ public sees basic page (title + results).
-5. **Expiry:** After 30 days, access redirects to profile; tier-aware cleanup may delete BASIC festival data.
+5. **Expiry:** After 90 days, access redirects to profile; tier-aware cleanup may delete BASIC festival data.
 
 ---
 
