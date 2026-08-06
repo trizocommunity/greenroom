@@ -5,7 +5,6 @@ import {
   FestivalInvitationEmail,
   festivalInvitationSubject,
 } from "./kinds/festival-invitation";
-import { MagicLinkEmail } from "./kinds/magic-link";
 import { SignInOtpEmail, signInOtpSubject } from "./kinds/sign-in-otp";
 import {
   TeamLeaderOtpEmail,
@@ -27,7 +26,6 @@ export type RenderedEmail = {
   text: string;
 };
 
-const DEFAULT_MAGIC_LINK_EXPIRY_MINUTES = 30;
 const DEFAULT_SIGN_IN_OTP_EXPIRY_MINUTES = 5;
 const DEFAULT_INVITATION_EXPIRY_HOURS = 48;
 const DEFAULT_OTP_EXPIRY_MINUTES = 10;
@@ -39,11 +37,6 @@ const BASE_URL = (
     ? "https://greenroomm.vercel.app"
     : "http://localhost:3000")
 ).replace(/\/+$/, "");
-
-function magicLinkUrl(token: string, callbackURL: string) {
-  const params = new URLSearchParams({ token, callbackURL });
-  return `${BASE_URL}/api/auth/magic-link/verify?${params.toString()}`;
-}
 
 function inviteUrl(token: string) {
   return `${BASE_URL}/invite/${token}`;
@@ -57,7 +50,6 @@ export function resolveTheme(
   switch (kind.kind) {
     case "festival_invitation":
       return "light";
-    case "magic_link":
     case "sign_in_otp":
     case "team_leader_otp":
     case "two_factor_otp":
@@ -84,19 +76,6 @@ export async function renderEmail(
   let subject: string;
 
   switch (kind.kind) {
-    case "magic_link": {
-      element = (
-        <MagicLinkEmail
-          url={magicLinkUrl(kind.token, kind.callbackURL ?? "/profile")}
-          expiresInMinutes={
-            kind.expiresInMinutes ?? DEFAULT_MAGIC_LINK_EXPIRY_MINUTES
-          }
-          theme={effectiveTheme}
-        />
-      );
-      subject = "[Greenroom] Your sign-in link";
-      break;
-    }
     case "sign_in_otp": {
       element = (
         <SignInOtpEmail

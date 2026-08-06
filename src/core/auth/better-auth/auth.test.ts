@@ -9,7 +9,6 @@ vi.mock("@/core/database/client", () => ({
 }));
 
 vi.mock("@/core/integrations/email", () => ({
-  sendMagicLinkEmail: vi.fn().mockResolvedValue(undefined),
   sendEmail: vi.fn().mockResolvedValue({ id: "test-email-id" }),
 }));
 
@@ -40,10 +39,8 @@ describe("better-auth config (ISSUE-41 PR 1 + PR 2 + PR 4)", () => {
 
     // Better Auth surface we depend on across PRs. Failing this list
     // catches upstream breaking changes during `npm upgrade better-auth`.
-    // ISSUE-42 PR A: magic-link path stays for PR B; the new emailOTP
-    // path runs alongside. PR C drops signInMagicLink (see issue).
-    expect(typeof auth.api.signInMagicLink).toBe("function");
-    expect(typeof auth.api.magicLinkVerify).toBe("function");
+    // ISSUE-42 PR C: the magic-link plugin is unmounted. Sign-in goes
+    // through the emailOTP plugin only.
     expect(typeof auth.api.signInEmailOTP).toBe("function");
     expect(typeof auth.api.sendVerificationOTP).toBe("function");
     expect(typeof auth.api.createVerificationOTP).toBe("function");

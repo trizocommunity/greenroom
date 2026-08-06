@@ -119,8 +119,8 @@ export const useLogout = () => {
 
 /**
  * Helper for redirecting after sign-in. The Better Auth client SDK
- * already handles magic-link redirect (`callbackURL` in the
- * `signIn.magicLink` call), but social sign-in and invitation accept
+ * already handles email-OTP and Google redirects (via `callbackURL`
+ * on the sign-in calls), but social sign-in and invitation accept
  * flows need to compute the post-auth route explicitly.
  */
 export function buildPostAuthRoute(user: {

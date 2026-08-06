@@ -45,12 +45,12 @@ describe("sendEmail — global toggle", () => {
 
       const result = await sendEmail({
         to: "x@example.com",
-        kind: { kind: "magic_link", token: "tok" },
+        kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
       });
 
       expect("kindDisabled" in result).toBe(true);
       if ("kindDisabled" in result) {
-        expect(result.id).toBe("skipped-magic_link");
+        expect(result.id).toBe("skipped-sign_in_otp");
       }
     },
     15_000,
@@ -64,7 +64,7 @@ describe("sendEmail — global toggle", () => {
     const { sendEmail } = await import("../send");
     const result = await sendEmail({
       to: "x@example.com",
-      kind: { kind: "magic_link", token: "tok" },
+      kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
     });
 
     expect("kindDisabled" in result).toBe(false);
@@ -82,7 +82,7 @@ describe("sendEmail — global toggle", () => {
 
     const result = await sendEmail({
       to: "x@example.com",
-      kind: { kind: "magic_link", token: "tok" },
+      kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
     });
 
     expect("id" in result).toBe(true);
@@ -105,7 +105,7 @@ describe("sendEmail — global toggle", () => {
 
     await sendEmail({
       to: ["alice@example.com", "bob@example.com"],
-      kind: { kind: "magic_link", token: "tok" },
+      kind: { kind: "sign_in_otp", otp: "1234", email: "alice@example.com" },
     });
 
     const allWarned = warnSpy.mock.calls
@@ -124,9 +124,8 @@ describe("sendEmail — global toggle", () => {
 });
 
 describe("EMAIL_KINDS registry", () => {
-  it("contains exactly the 6 production kinds (ISSUE-42 adds sign_in_otp)", () => {
+  it("contains exactly the 5 production kinds (ISSUE-42 PR C drops magic_link)", () => {
     expect(EMAIL_KINDS).toEqual([
-      "magic_link",
       "sign_in_otp",
       "festival_invitation",
       "team_leader_otp",

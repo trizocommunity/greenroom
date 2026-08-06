@@ -83,7 +83,7 @@ export async function getSessionFromHeaders(
  *
  * Only one caller survives PR 3: `/api/v1/invitations/accept`, which
  * needs to sign a user in after we've validated their invitation
- * token (proof of email ownership — same trust model magic-link sign-in
+ * token (proof of email ownership — same trust model email-OTP sign-in
  * already relies on). That route has the email, so it calls
  * `signInUserByEmail(email)` below rather than this function.
  *

@@ -3,7 +3,7 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
-import { emailOTP, magicLink, twoFactor } from "better-auth/plugins";
+import { emailOTP, twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { randomUUID } from "node:crypto";
 import { db } from "@/core/database/client";
@@ -15,10 +15,8 @@ import {
   userLoginEvent,
   verification,
 } from "@/core/database/schema";
-import { sendMagicLinkEmail } from "@/core/integrations/email";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 
-const MAGIC_LINK_EXPIRY_SECONDS = 30 * 60; // 30 minutes — matches magicLinkToken table TTL
 const SIGN_IN_OTP_EXPIRY_SECONDS = 5 * 60; // 5 minutes — matches two_factor_otp
 const SIGN_IN_OTP_DIGITS = 4; // user override (Locked Decision #1)
 const SIGN_IN_OTP_ATTEMPTS = 3; // Locked Decision #7
@@ -159,45 +157,12 @@ export const auth = betterAuth({
   },
 
   plugins: [
-    magicLink({
-      expiresIn: MAGIC_LINK_EXPIRY_SECONDS,
-      sendMagicLink: async ({ email, url }) => {
-        // PR 3: `signInUserByEmail` (used by the invitation-accept
-        // flow) needs to mint a session without sending another email
-        // to the user — they already proved ownership of the address
-        // by presenting a valid invitation token. Set the SILENT env
-        // for that single call to suppress the send.
-        if (process.env.GREENROOM_SILENT_AUTH === "1") return;
-
-        // Better Auth builds the verification URL as
-        //   `${baseURL}/api/auth/magic-link/verify?token=<token>&callbackURL=<url>`
-        // and hands it to us via the `url` field. We rebuild the URL
-        // from the bare token so the email renderer stays decoupled
-        // from Better Auth's path conventions, but we need to forward
-        // the `callbackURL` so the user lands where the client asked
-        // (the form sets `callbackURL: "/profile"`). Default to `/profile`
-        // to match the default in `EmailOtpSignInForm`.
-        // ISSUE-42 PR C unmounts this plugin entirely; the line below
-        // is the only remaining call-site for `sendMagicLinkEmail`.
-        const parsed = new URL(url);
-        const tokenParam = parsed.searchParams.get("token") ?? "";
-        const callbackURL =
-          parsed.searchParams.get("callbackURL") ?? "/profile";
-        await sendMagicLinkEmail(
-          email,
-          tokenParam,
-          MAGIC_LINK_EXPIRY_SECONDS / 60,
-          callbackURL,
-        );
-      },
-    }),
-    // ISSUE-42 PR A: replace magic-link click-the-link sign-in with an
-    // email-OTP plugin. Both plugins coexist through PR B; PR C unmounts
-    // `magicLink` above. The hook respects `GREENROOM_SILENT_AUTH` for
-    // the same reason as `sendMagicLink` — `signInUserByEmail` mints a
-    // session without re-emailing the user. `storeOTP: "hashed"` is a
-    // security uplift over magic-link's plain storage (Locked Decision
-    // #2). `allowedAttempts: 3` bounds online-attack on the 4-digit code.
+    // ISSUE-42 (replaces magic-link): sign-in is now a 4-digit email OTP
+    // — paste-friendly (`autocomplete="one-time-code"`), 5-minute window,
+    // 3 attempts per code, hashed at rest (`storeOTP: "hashed"` — Locked
+    // Decision #2). The hook respects `GREENROOM_SILENT_AUTH` so
+    // `signInUserByEmail` (invitation-accept) can mint a session
+    // without re-emailing the user.
     emailOTP({
       otpLength: SIGN_IN_OTP_DIGITS,
       expiresIn: SIGN_IN_OTP_EXPIRY_SECONDS,
@@ -281,28 +246,20 @@ export const auth = betterAuth({
       const newSession = ctx.context.newSession;
 
       // Track sign-in for analytics + write audit-log entries for the
-      // magic-link and Google paths. Magic-link is silent in audit (we
-      // don't want one row per "check your email" click); only record
-      // when a session was actually minted.
-      // ISSUE-42: the new emailOTP path runs alongside magic-link for
-      // PR A / B (both plugins mounted); PR C drops magic-link and
-      // emailOTP becomes the sole sign-in. The audit action emitted
-      // for the new path is `SIGN_IN_EMAIL_OTP` — `SIGN_IN_MAGIC_LINK`
-      // is kept (not removed) for backwards-compat with historical
-      // audit rows.
-      const isMagicLinkVerify = path === "/magic-link/verify";
-      const isMagicLinkSignIn = path === "/sign-in/magic-link";
+      // email-OTP and Google paths. Both flows mint a session before
+      // this hook runs (`newSession` is populated); we record login
+      // analytics only when a session was actually minted.
+      // ISSUE-42 PR C: the magic-link plugin is unmounted — the audit
+      // action emitted for sign-in OTP is `SIGN_IN_EMAIL_OTP`.
+      // `SIGN_IN_MAGIC_LINK` stays in the AuditAction union for
+      // historical-row backwards-compat.
       const isEmailOtpSendVerification =
         path === "/email-otp/send-verification-otp";
       const isEmailOtpSignIn =
         path === "/sign-in/email-otp" || path === "/email-otp/verify-email";
       const isGoogleSignIn = path === "/sign-in/social";
       const isAnySignIn =
-        isMagicLinkVerify ||
-        isMagicLinkSignIn ||
-        isEmailOtpSendVerification ||
-        isEmailOtpSignIn ||
-        isGoogleSignIn;
+        isEmailOtpSendVerification || isEmailOtpSignIn || isGoogleSignIn;
 
       // PR 4: 2FA management endpoints. The `/two-factor/enable` and
       // `/two-factor/disable` paths set `newSession` (Better Auth
@@ -356,10 +313,10 @@ export const auth = betterAuth({
 
       try {
         if (isEmailOtpSignIn) {
-          // ISSUE-42 PR A: the new email-OTP sign-in path emits
+          // ISSUE-42: the email-OTP sign-in path emits
           // `SIGN_IN_EMAIL_OTP` audit entries. `SIGN_IN_MAGIC_LINK`
-          // continues to be emitted from the magic-link branch below
-          // for backwards-compat with historical rows.
+          // remains in the union for backwards-compat with historical
+          // rows — no new rows are emitted under that constant.
           await createAuditLog({
             action: "SIGN_IN_EMAIL_OTP",
             targetType: "USER",
@@ -380,10 +337,10 @@ export const auth = betterAuth({
 
           // Account-link audit: if Better Auth just created an
           // `account` row for this user with providerId="google", it
-          // means a magic-link user linked their Google identity in
-          // this flow (auto-link by verified email). Distinguish
-          // "new user via Google" from "linked Google to existing
-          // user" so the audit log tells the right story.
+          // means an existing email-OTP user linked their Google
+          // identity in this flow (auto-link by verified email).
+          // Distinguish "new user via Google" from "linked Google to
+          // existing user" so the audit log tells the right story.
           const justLinked = await db.query.account.findFirst({
             where: (a, { and, eq }) =>
               and(eq(a.userId, userId), eq(a.providerId, "google")),

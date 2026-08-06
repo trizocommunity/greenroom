@@ -16,10 +16,17 @@ cookie set/get/delete shape identical across all three.
 **Principals:** A row in the `user` table with a `globalRole`
 (`"USER"` or `"SUPER_ADMIN"`) stored as a Better Auth `additionalField`.
 
+**Sign-in:** Better Auth's `emailOTP` plugin (ISSUE-42) — 4 digits pasteable
+on mobile (`autocomplete="one-time-code"`), 5-minute window, 3 attempts per
+code, hashed at rest. The browser flow is two-step: enter email → enter
+the 4-digit code (see `src/components/auth/EmailOtpSignInForm.tsx`).
+Server-routed through our existing Resend sender
+(`SendVerificationOTP` hook → `sendEmail({ kind: "sign_in_otp" })`).
+
 **2FA:** the `twoFactor` plugin is enabled in `auth.ts` — TOTP (authenticator
 apps, 6 digits / 30s) plus email OTP as a fallback, 10 backup codes of
 length 10, and account lockout (10 failed attempts → 15-minute cool-off,
-NIST SP 800-63B §5.2.2). Passwordless users (magic-link or Google-only)
+NIST SP 800-63B §5.2.2). Passwordless users (email-OTP or Google-only)
 can still enable 2FA. After enabling, the first sign-in factor that
 succeeds lands the user on `/auth/2fa` for the second factor; the
 challenge page handles TOTP / OTP / backup-code tabs. Setup, disable, and
@@ -38,13 +45,17 @@ section). See `src/app/(auth)/2fa/page.tsx` and
   `createSession(dbUser.id, role)` call site in
   `invitations/accept` still works.
 - `signInUserByEmail(email): Promise<void>` — mint a session for a known
-  email without sending an email. Issues a magic-link verification row
-  (with `sendMagicLink` hook suppressed via
-  `process.env.GREENROOM_SILENT_AUTH`), then consumes it via
-  `magicLinkVerify`.
+  email without sending an email. Creates an OTP via
+  `auth.api.createVerificationOTP` (with the `sendVerificationOTP` hook
+  suppressed via `process.env.GREENROOM_SILENT_AUTH`), then consumes it
+  via `auth.api.signInEmailOTP`. Cleaner than the previous magic-link
+  JSON read-back — the OTP is returned in the create response.
 - `deleteSession(): Promise<void>` — calls `auth.api.signOut({ headers })`.
 
-The legacy JWT cookie (`session`) and `JWT_SECRET` env are gone.
+The legacy JWT cookie (`session`), `JWT_SECRET` env, and magic-link
+plugin are gone (see ISSUE-41 for the migration, ISSUE-42 for the
+magic-link → email-OTP cutover). The `magicLinkToken` DB table is a
+no-op left behind by the migration; dropping it is a separate cleanup.
 
 ## 2. Participant (custom)
 

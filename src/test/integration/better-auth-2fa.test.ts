@@ -27,13 +27,11 @@ import { auth } from "@/core/auth/better-auth/auth";
 import {
   twoFactor as twoFactorTable,
   user as userTable,
-  verification,
 } from "@/core/database/schema";
 import { getConnectionUri, getDb } from "./setup";
 
 const TEST_ORIGIN = "http://localhost:3000";
 const TEST_EMAIL = "better-auth-2fa@example.com";
-const TEST_CALLBACK = "/profile";
 
 let createdUserId: string | null = null;
 
@@ -57,43 +55,28 @@ describe("Better Auth 2FA schema (ISSUE-41 PR 4)", () => {
     async () => {
       const db = getDb();
 
-      // 1. Sign the user up via magic-link. sendMagicLink is silenced
-      // via the same env Better Auth reads for invitation-accept
-      // (see `signInUserByEmail`).
+      // 1. Sign the user up via email-OTP. Better Auth's
+      // `sendVerificationOTP` hook honours `GREENROOM_SILENT_AUTH` —
+      // same env Better Auth reads for invitation-accept, so no email
+      // leaves the test process. `createVerificationOTP` returns the
+      // OTP string in the response (no DB read-back needed, unlike
+      // the prior magic-link bootstrap).
       process.env.GREENROOM_SILENT_AUTH = "1";
+      let otp: string;
       try {
-        await auth.api.signInMagicLink({
-          body: { email: TEST_EMAIL, callbackURL: TEST_CALLBACK },
+        otp = await auth.api.createVerificationOTP({
+          body: { email: TEST_EMAIL, type: "sign-in" },
           headers: new Headers({ origin: TEST_ORIGIN }),
           asResponse: false,
         });
       } finally {
         delete process.env.GREENROOM_SILENT_AUTH;
       }
+      expect(typeof otp).toBe("string");
 
-      // 2. Consume the verification row to materialise the user.
-      const verificationRows = await db
-        .select()
-        .from(verification)
-        .orderBy(verification.createdAt);
-      const match = verificationRows
-        .filter((r) => {
-          try {
-            const parsed = JSON.parse(r.value) as { email?: string };
-            return parsed.email === TEST_EMAIL;
-          } catch {
-            return false;
-          }
-        })
-        .at(-1);
-      expect(match).toBeDefined();
-      if (!match) throw new Error("verification row missing");
-
-      await auth.api.magicLinkVerify({
-        // No callbackURL → Better Auth returns JSON instead of
-        // throwing a 302 redirect. Easier to assert against in a
-        // test.
-        query: { token: match.identifier },
+      // 2. Consume the OTP to materialise the user row.
+      await auth.api.signInEmailOTP({
+        body: { email: TEST_EMAIL, otp },
         headers: new Headers({ origin: TEST_ORIGIN }),
         asResponse: false,
       });

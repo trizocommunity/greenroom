@@ -18,12 +18,6 @@ export type EmailContext = {
 
 export type EmailKind =
   | {
-      kind: "magic_link";
-      token: string;
-      expiresInMinutes?: number;
-      callbackURL?: string;
-    }
-  | {
       kind: "sign_in_otp";
       otp: string;
       email: string;
@@ -73,7 +67,6 @@ export type SendEmailResult =
  * one toggle per kind and by the send path to look up its current setting.
  */
 export const EMAIL_KINDS = [
-  "magic_link",
   "sign_in_otp",
   "festival_invitation",
   "team_leader_otp",
@@ -92,10 +85,6 @@ export const EMAIL_KIND_META: Record<
   EmailKindName,
   { label: string; description: string }
 > = {
-  magic_link: {
-    label: "Magic-link sign-in",
-    description: "One-time sign-in link sent when a user requests email login.",
-  },
   sign_in_otp: {
     label: "Sign-in verification code",
     description:

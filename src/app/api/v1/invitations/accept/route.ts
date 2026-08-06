@@ -51,7 +51,7 @@ export const POST = async (req: Request) => {
 
     // The invite link is only ever delivered to the invitation's own email
     // address, so possessing a valid token is proof of ownership — the same
-    // trust model magic-link sign-in already relies on. If the visitor isn't
+    // trust model email-OTP sign-in already relies on. If the visitor isn't
     // signed in yet, log them into (or create) the account for that email
     // instead of forcing a separate manual sign-in round trip.
     let session = await getSession();

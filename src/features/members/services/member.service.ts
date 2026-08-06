@@ -57,18 +57,19 @@ export const MemberService = {
     });
 
     if (isNewUser) {
-      // Send a magic link so the new member can sign in. Better Auth's
-      // `sendMagicLink` hook (`core/auth/better-auth/auth.ts`) sends the
-      // existing `sendMagicLinkEmail` — no email-send code here.
+      // Send a sign-in OTP so the new member can sign in. Better Auth's
+      // `sendVerificationOTP` hook (`core/auth/better-auth/auth.ts`)
+      // routes through our `send_in_otp` email template — no email-send
+      // code here.
       const hdrs = await headers();
       await auth.api
-        .signInMagicLink({
-          body: { email: data.email, callbackURL: "/profile" },
+        .sendVerificationOTP({
+          body: { email: data.email, type: "sign-in" },
           headers: hdrs,
           asResponse: false,
         })
         .catch((err) => {
-          console.error("[member.add] signInMagicLink failed", err);
+          console.error("[member.add] sendVerificationOTP failed", err);
         });
     }
 
