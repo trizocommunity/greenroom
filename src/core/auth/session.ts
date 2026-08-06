@@ -27,6 +27,8 @@ export interface SessionPayload {
   userId: string;
   role: GlobalRole;
   expires: Date;
+  name?: string;
+  email?: string;
   [key: string]: unknown;
 }
 
@@ -71,6 +73,8 @@ export async function getSessionFromHeaders(
     userId: result.user.id,
     role: mapGlobalRole(u.globalRole ?? "USER"),
     expires: new Date(result.session.expiresAt),
+    name: result.user.name,
+    email: result.user.email,
   };
 }
 

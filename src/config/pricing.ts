@@ -21,6 +21,7 @@ export interface TierFeatures {
   results: boolean;
   stageManagement: boolean;
   schedule: boolean;
+  foodHall: boolean;
 
   // Team & Collaboration
   members: boolean;
@@ -151,6 +152,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       results: true,
       stageManagement: false,
       schedule: false,
+      foodHall: false,
 
       // Team & Collaboration
       members: false,
@@ -249,6 +251,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       results: true,
       stageManagement: true,
       schedule: true,
+      foodHall: true,
 
       // Team & Collaboration — unlimited members with full RBAC
       members: true,
@@ -347,6 +350,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       results: true,
       stageManagement: true,
       schedule: true,
+      foodHall: true,
 
       // Team & Collaboration — unlimited members with full RBAC
       members: true,

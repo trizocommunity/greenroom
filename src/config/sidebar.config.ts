@@ -37,6 +37,7 @@ export type FestivalRole =
   | "STAGE_MANAGER"
   | "ANNOUNCER"
   | "MEDIA"
+  | "VOLUNTEER"
   | "OWNER";
 
 export const SUPER_ADMIN_SIDEBAR_ITEMS = [
@@ -251,6 +252,12 @@ export const getFestivalDashboardSidebarConfig = (
           href: `${basePath}/event-works/top-scorers`,
           icon: Trophy,
           allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+        },
+        {
+          title: "Food Entry",
+          href: `${basePath}/event-works/food-entry`,
+          icon: QrCode,
+          allowedRoles: ["ADMIN", "OWNER", "VOLUNTEER"] as FestivalRole[],
         },
         {
           title: "Announcement",

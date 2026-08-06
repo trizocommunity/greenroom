@@ -32,6 +32,7 @@ export const festivalRole = pgEnum("FestivalRole", [
   "ANNOUNCER",
   "STAGE_MANAGER",
   "MEDIA",
+  "VOLUNTEER",
 ]);
 export const posterTemplateType = pgEnum("PosterTemplateType", [
   "RESULT",
@@ -97,6 +98,7 @@ export const programmeReportingStatus = pgEnum("ProgrammeReportingStatus", [
   "RESET",
   "CLOSED",
 ]);
+export const sessionStatus = pgEnum("SessionStatus", ["OPEN", "CLOSED"]);
 export const programmeStatus = pgEnum("ProgrammeStatus", [
   "DRAFT",
   "ASSIGNED",
@@ -450,6 +452,7 @@ export const festival = pgTable(
     branding: jsonb(),
     rules: jsonb(),
     structure: jsonb(),
+    foodHallSettings: jsonb(),
     isLocked: boolean().default(true).notNull(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
@@ -2492,4 +2495,85 @@ export const generalEntryAward = pgTable(
       .onUpdate("cascade")
       .onDelete("cascade"),
   ],
+);
+
+// ─── Food Hall Entry ─────────────────────────────────────────────────────────
+
+export const foodHallSlot = pgTable(
+  "food_hall_slot",
+  {
+    id: text("id").primaryKey().notNull(),
+    festivalId: text("festival_id")
+      .notNull()
+      .references(() => festival.id, { onDelete: "cascade" }),
+    slotOrder: integer("slot_order").notNull(),
+    name: text("name").notNull(),
+    windowStartMin: integer("window_start_min").notNull(),
+    windowEndMin: integer("window_end_min").notNull(),
+    createdAt: tzTimestampNamed("created_at").defaultNow().notNull(),
+    updatedAt: tzTimestampNamed("updated_at").defaultNow().notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
+  },
+  (table) => [
+    uniqueIndex("food_hall_slot_festival_order_idx").on(
+      table.festivalId,
+      table.slotOrder
+    ),
+  ]
+);
+
+export const foodHallSession = pgTable(
+  "food_hall_session",
+  {
+    id: text("id").primaryKey().notNull(),
+    festivalId: text("festival_id")
+      .notNull()
+      .references(() => festival.id, { onDelete: "cascade" }),
+    slotId: text("slot_id")
+      .notNull()
+      .references(() => foodHallSlot.id, { onDelete: "cascade" }),
+    sessionDate: text("session_date").notNull(),
+    status: sessionStatus("status").default("OPEN").notNull(),
+    createdAt: tzTimestampNamed("created_at").defaultNow().notNull(),
+    updatedAt: tzTimestampNamed("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("food_hall_session_unique_idx").on(
+      table.festivalId,
+      table.slotId,
+      table.sessionDate
+    ),
+    index("food_hall_session_festival_date_idx").on(
+      table.festivalId,
+      table.sessionDate
+    ),
+  ]
+);
+
+export const foodHallEntry = pgTable(
+  "food_hall_entry",
+  {
+    id: text("id").primaryKey().notNull(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => foodHallSession.id, { onDelete: "cascade" }),
+    participantId: text("participant_id")
+      .notNull()
+      .references(() => participant.id, { onDelete: "cascade" }),
+    chestNumber: text("chest_number").notNull(),
+    scannedAt: tzTimestampNamed("scanned_at").defaultNow().notNull(),
+    scannedByUserId: text("scanned_by_user_id"),
+    scannedByName: text("scanned_by_name"),
+    scannedByEmail: text("scanned_by_email"),
+    createdAt: tzTimestampNamed("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("food_hall_entry_unique_idx").on(
+      table.sessionId,
+      table.participantId
+    ),
+    index("food_hall_entry_participant_idx").on(table.participantId),
+    index("food_hall_entry_scanned_at_idx").on(table.scannedAt), 
+  ]
 );

@@ -75,6 +75,8 @@ export const paymentRelations = relations(payment, ({ one }) => ({
 }));
 
 export const festivalRelations = relations(festival, ({ one, many }) => ({
+  foodHallSlots: many(foodHallSlot),
+  foodHallSessions: many(foodHallSession),
   payments: many(payment),
   programmes: many(programme),
   groups: many(group),
@@ -165,6 +167,7 @@ export const programmeRelations = relations(programme, ({ one, many }) => ({
 }));
 
 export const participantRelations = relations(participant, ({ one, many }) => ({
+  foodHallEntries: many(foodHallEntry),
   festival: one(festival, {
     fields: [participant.festivalId],
     references: [festival.id],
@@ -736,4 +739,48 @@ export const generalEntryAwardRelations = relations(
       references: [group.id],
     }),
   }),
+);
+
+// ─── Food Hall Entry Relations ─────────────────────────────────────────────────────────
+
+import { foodHallSlot, foodHallSession, foodHallEntry } from "./schema";
+
+export const foodHallSlotRelations = relations(
+  foodHallSlot,
+  ({ one, many }) => ({
+    festival: one(festival, {
+      fields: [foodHallSlot.festivalId],
+      references: [festival.id],
+    }),
+    sessions: many(foodHallSession),
+  })
+);
+
+export const foodHallSessionRelations = relations(
+  foodHallSession,
+  ({ one, many }) => ({
+    festival: one(festival, {
+      fields: [foodHallSession.festivalId],
+      references: [festival.id],
+    }),
+    slot: one(foodHallSlot, {
+      fields: [foodHallSession.slotId],
+      references: [foodHallSlot.id],
+    }),
+    entries: many(foodHallEntry),
+  })
+);
+
+export const foodHallEntryRelations = relations(
+  foodHallEntry,
+  ({ one }) => ({
+    session: one(foodHallSession, {
+      fields: [foodHallEntry.sessionId],
+      references: [foodHallSession.id],
+    }),
+    participant: one(participant, {
+      fields: [foodHallEntry.participantId],
+      references: [participant.id],
+    }),
+  })
 );

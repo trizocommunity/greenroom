@@ -117,6 +117,7 @@ function getFeatureLabel(feature: FeaturePath): string {
 
     // Event-Works
     chestNumbers: "Chest Numbers",
+    foodHall: "Food Hall",
     results: "Results",
     stageManagement: "Stage Management",
     schedule: "Schedule",

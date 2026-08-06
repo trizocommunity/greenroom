@@ -5,6 +5,7 @@ export const ALL_FESTIVAL_ROLES = [
   "ANNOUNCER",
   "STAGE_MANAGER",
   "MEDIA",
+  "VOLUNTEER",
 ] as const;
 
 export type SwitchableFestivalRole = (typeof ALL_FESTIVAL_ROLES)[number];
