@@ -176,7 +176,7 @@ export const auth = betterAuth({
         // from Better Auth's path conventions, but we need to forward
         // the `callbackURL` so the user lands where the client asked
         // (the form sets `callbackURL: "/profile"`). Default to `/profile`
-        // to match the default in `BetterAuthMagicLinkRequestForm`.
+        // to match the default in `EmailOtpSignInForm`.
         // ISSUE-42 PR C unmounts this plugin entirely; the line below
         // is the only remaining call-site for `sendMagicLinkEmail`.
         const parsed = new URL(url);

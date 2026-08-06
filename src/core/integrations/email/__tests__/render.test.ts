@@ -13,8 +13,9 @@ describe("renderEmail — magic_link", () => {
     expect(result.html).toContain("rgb(239,68,68)"); // dark brand
     // Should point at Better Auth's catch-all verify endpoint, not the
     // deleted `/login/verify/[token]` page. Default callbackURL is
-    // `/profile` (matches BetterAuthMagicLinkRequestForm). HTML output
-    // HTML-encodes the `&` between query params, so look for `&amp;`.
+    // `/profile` (matches EmailOtpSignInForm's hard-redirect target).
+    // HTML output HTML-encodes the `&` between query params, so look for
+    // `&amp;`.
     expect(result.html).toMatch(
       /api\/auth\/magic-link\/verify\?token=abc123&amp;callbackURL=%2Fprofile/,
     );
