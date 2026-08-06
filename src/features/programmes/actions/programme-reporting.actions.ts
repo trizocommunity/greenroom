@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
@@ -21,6 +21,7 @@ import {
   assertStageManagerAccessForStage,
 } from "@/features/programmes/actions/reporting-access";
 import { revalidateProgrammeReporting } from "@/features/programmes/actions/reporting-revalidation";
+import { ReportingSessionRepository } from "@/features/programmes/repositories/reporting-session.repository";
 import { ProgrammeReportingService } from "@/features/programmes/services/programme-reporting.service";
 
 async function getProgrammeIdForReportingSession(reportingSessionId: string) {
@@ -339,26 +340,6 @@ export async function scanAndReportParticipantAction(
       };
     }
 
-    const participant = await db.query.participant.findFirst({
-      where: and(
-        eq(participantTable.festivalId, festivalId),
-        sql`UPPER(${participantTable.chestNumber}) = ${normalizedChestNumber}`,
-      ),
-      with: {
-        group: { columns: { id: true, name: true } },
-        category: { columns: { id: true, name: true } },
-      },
-    });
-
-    if (!participant) {
-      return {
-        success: false,
-        error: `No participant found with chest number: ${normalizedChestNumber}`,
-        reason: "PARTICIPANT_NOT_FOUND",
-        chestNumber: normalizedChestNumber,
-      };
-    }
-
     const session = await db.query.programmeReportingSession.findFirst({
       where: eq(prsTable.id, reportingSessionId),
       with: {
@@ -383,49 +364,37 @@ export async function scanAndReportParticipantAction(
       };
     }
 
-    let assignment: { id: string; teamNumber: number | null } | undefined;
-    if (session.programme?.type === "GROUP") {
-      const member = await db.query.programmeAssignmentMember.findFirst({
-        where: eq(assignmentMemberTable.participantId, participant.id),
-        with: {
-          assignment: {
-            columns: {
-              id: true,
-              programmeId: true,
-              teamNumber: true,
-            },
-          },
-        },
-      });
-      if (member?.assignment?.programmeId === session.programmeId) {
-        assignment = {
-          id: member.assignment.id,
-          teamNumber: member.assignment.teamNumber,
-        };
-      }
-    } else {
-      const individualRow = await db.query.programmeAssignment.findFirst({
-        where: and(
-          eq(assignmentTable.programmeId, session.programmeId),
-          eq(assignmentTable.participantId, participant.id),
-        ),
-        columns: { id: true, teamNumber: true },
-      });
-      if (individualRow) assignment = individualRow;
-    }
+    const assignment =
+      await ReportingSessionRepository.findAssignmentByChestNumber(
+        reportingSessionId,
+        normalizedChestNumber,
+      );
 
     if (!assignment) {
+      const participant = await db.query.participant.findFirst({
+        where: and(
+          eq(participantTable.festivalId, festivalId),
+          sql`UPPER(${participantTable.chestNumber}) = ${normalizedChestNumber}`,
+        ),
+        with: {
+          group: { columns: { id: true, name: true } },
+          category: { columns: { id: true, name: true } },
+        },
+      });
+
       return {
         success: false,
-        error: `${participant.name} is not assigned to "${session.programme?.name}"`,
+        error: `${participant?.name ?? "Participant"} is not assigned to "${session.programme?.name}"`,
         reason: "NOT_ASSIGNED_TO_PROGRAMME",
-        participant: {
-          id: participant.id,
-          name: participant.name,
-          chestNumber: participant.chestNumber,
-          groupName: participant.group?.name,
-          categoryName: participant.category?.name,
-        },
+        participant: participant
+          ? {
+              id: participant.id,
+              name: participant.name,
+              chestNumber: participant.chestNumber,
+              groupName: participant.group?.name,
+              categoryName: participant.category?.name,
+            }
+          : undefined,
         programme: {
           id: session.programmeId,
           name: session.programme?.name,
@@ -433,11 +402,28 @@ export async function scanAndReportParticipantAction(
       };
     }
 
+    const participant = await db.query.participant.findFirst({
+      where: eq(participantTable.id, assignment.participantId),
+      with: {
+        group: { columns: { id: true, name: true } },
+        category: { columns: { id: true, name: true } },
+      },
+    });
+
+    if (!participant) {
+      return {
+        success: false,
+        error: `No participant found for assignment`,
+        reason: "PARTICIPANT_NOT_FOUND",
+        chestNumber: normalizedChestNumber,
+      };
+    }
+
     const existingReport =
       await db.query.programmeReportedParticipant.findFirst({
         where: and(
           eq(reportedParticipantTable.reportingSessionId, reportingSessionId),
-          eq(reportedParticipantTable.assignmentId, assignment.id),
+          eq(reportedParticipantTable.assignmentId, assignment.assignmentId),
         ),
       });
 
@@ -461,7 +447,7 @@ export async function scanAndReportParticipantAction(
 
     await ProgrammeReportingService.markParticipant(
       reportingSessionId,
-      assignment.id,
+      assignment.assignmentId,
       true,
       actorName,
     );
@@ -483,7 +469,7 @@ export async function scanAndReportParticipantAction(
         name: session.programme?.name,
       },
       assignment: {
-        id: assignment.id,
+        id: assignment.assignmentId,
         teamNumber: assignment.teamNumber,
       },
     };
