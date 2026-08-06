@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
 import {
-  announceResult,
+  publishResult,
   publishStandings,
   swapResultNumbers,
   unpublishResult,
@@ -157,7 +157,7 @@ function SortableProgrammeRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: p.id });
+  } = useSortable({ id: p.id, disabled: p.status === "PUBLISHED" || p.status === "ANNOUNCED" });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -175,7 +175,10 @@ function SortableProgrammeRow({
       )}
     >
       <TableCell
-        className="cursor-move text-muted-foreground text-center"
+        className={cn(
+          "text-center",
+        p.status === "PUBLISHED" || p.status === "ANNOUNCED" ? "text-muted-foreground/30 cursor-not-allowed" : "cursor-move text-muted-foreground"
+        )}
         {...attributes}
         {...listeners}
       >
@@ -229,7 +232,7 @@ function SortableProgrammeRow({
               <Eye className="h-4 w-4 mr-2" />
               Open Result
             </DropdownMenuItem>
-            {canUnpublish && p.status === "PUBLISHED" && (
+            {canUnpublish && (p.status === "PUBLISHED" || p.status === "ANNOUNCED") && (
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => handleUnpublish(p.id)}
@@ -260,7 +263,7 @@ export function ResultsConsoleClient({
     useState<AnnouncerQueueProgramme | null>(null);
 
   // Section 2 filters
-  const [standingsScope, setStandingsScope] = useState<"published" | "all">(
+  const [standingsScope, setStandingsScope] = useState<"published" | "all" | "general">(
     "published",
   );
   const [upToResultNumber, setUpToResultNumber] = useState<string>("");
@@ -350,19 +353,21 @@ export function ResultsConsoleClient({
       }
       toast.success("Result unpublished — moved back to Announcer.");
       setActiveProgramme(null);
+      fetchStandings();
       router.refresh();
     });
   }
 
   function handlePublish(programmeId: string) {
     startTransition(async () => {
-      const res = await announceResult(festivalId, programmeId);
+      const res = await publishResult(festivalId, programmeId);
       if (!res.success) {
         toast.error(res.error);
         return;
       }
       toast.success("Result published successfully.");
       setActiveProgramme(null);
+      fetchStandings();
       router.refresh();
     });
   }
@@ -407,7 +412,7 @@ export function ResultsConsoleClient({
         toast.error(res.error);
         return;
       }
-      toast.success("Standings published to the public site.");
+      toast.success("Standings staged for the announcer.");
       router.refresh();
     });
   }
@@ -523,9 +528,9 @@ export function ResultsConsoleClient({
 
         {/* Section 2 — Team Standings */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="relative w-32">
+              <div className="relative w-24">
                 <Input
                   placeholder="After #"
                   className="h-9 pl-3 text-sm font-medium"
@@ -533,37 +538,34 @@ export function ResultsConsoleClient({
                   onChange={(e) => setUpToResultNumber(e.target.value)}
                 />
               </div>
-            </div>
-            <div className="flex items-center justify-between gap-2">
               <Select
                 value={standingsScope}
                 onValueChange={(v) =>
-                  setStandingsScope(v as "published" | "all")
+                  setStandingsScope(v as "published" | "all" | "general")
                 }
               >
-                <SelectTrigger className="h-9 w-40 bg-background text-sm font-medium">
+                <SelectTrigger className="h-9 w-[150px] bg-background text-sm font-medium">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="published">Published Results</SelectItem>
                   <SelectItem value="all">All Results</SelectItem>
+                  <SelectItem value="general">General Entries</SelectItem>
                 </SelectContent>
               </Select>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  className="bg-red-600 hover:bg-red-700 text-white shadow-sm h-9"
-                  disabled={isPending}
-                  onClick={handlePublishStandings}
-                >
-                  {isPending && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                  )}
-                  Publish Team Points
-                </Button>
-              </div>
             </div>
+
+            <Button
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white shadow-sm h-9"
+              disabled={isPending}
+              onClick={handlePublishStandings}
+            >
+              {isPending && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              )}
+              Send to Announcer
+            </Button>
           </div>
 
           <div
@@ -727,7 +729,7 @@ export function ResultsConsoleClient({
                 </div>
 
                 {/* Swap result number */}
-                <div className="space-y-3 mt-4 bg-muted/30 p-4 rounded-xl border border-muted">
+                <div className="space-y-3 mt-4 bg-muted/30 py-4 rounded-xl border border-muted">
                   <p className="text-sm font-semibold flex items-center gap-1.5">
                     <ArrowDownUp className="h-4 w-4" />
                     Swap Result Number
@@ -736,16 +738,17 @@ export function ResultsConsoleClient({
                     <Select
                       value={swapTarget ?? ""}
                       onValueChange={(v) => setSwapTarget(v || null)}
+                      disabled={activeProgramme.status === "PUBLISHED" || activeProgramme.status === "ANNOUNCED"}
                     >
                       <SelectTrigger className="h-9 w-64 text-sm font-medium bg-background">
-                        <SelectValue placeholder="Select a result to swap with" />
+                        <SelectValue placeholder={activeProgramme.status === "PUBLISHED" || activeProgramme.status === "ANNOUNCED" ? "Swap disabled for published results" : "Select a result to swap with"} />
                       </SelectTrigger>
                       <SelectContent>
                         {programmes
                           .filter(
                             (p) =>
                               p.id !== activeProgramme.id &&
-                              p.resultNumber != null,
+                              p.status !== "PUBLISHED" && p.status !== "ANNOUNCED",
                           )
                           .map((p) => (
                             <SelectItem key={p.id} value={p.id}>
@@ -757,7 +760,7 @@ export function ResultsConsoleClient({
                     <Button
                       size="sm"
                       className="h-9 font-medium"
-                      disabled={!swapTarget || isPending}
+                      disabled={!swapTarget || isPending || activeProgramme.status === "PUBLISHED" || activeProgramme.status === "ANNOUNCED"}
                       onClick={() =>
                         swapTarget &&
                         handleSwapNumbers(activeProgramme.id, swapTarget)
@@ -768,13 +771,13 @@ export function ResultsConsoleClient({
                   </div>
                 </div>
 
-                <DrawerFooter className="mt-4 px-0 pb-0 flex-row justify-end gap-2">
-                  {activeProgramme.status !== "PUBLISHED" && (
+                <DrawerFooter className="mt-4 px-0 pb-0 gap-2">
+                  {activeProgramme.status !== "PUBLISHED" && activeProgramme.status !== "ANNOUNCED" && (
                     <Button
-                      size="sm"
+                      size="lg"
                       disabled={isPending}
                       onClick={() => handlePublish(activeProgramme.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      // className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       {isPending ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
@@ -784,4 +787,27 @@ export function ResultsConsoleClient({
                       Publish
                     </Button>
                   )}
-                  {canUnpublish && activeProgramme.status === 
+                  {canUnpublish && (activeProgramme.status === "PUBLISHED" || activeProgramme.status === "ANNOUNCED") && (
+                    <Button
+                      variant="destructive"
+                      size="lg"
+                      disabled={isPending}
+                      onClick={() => handleUnpublish(activeProgramme.id)}
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      ) : (
+                        <Undo2 className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      Unpublish
+                    </Button>
+                  )}
+                </DrawerFooter>
+              </>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    </>
+  );
+}

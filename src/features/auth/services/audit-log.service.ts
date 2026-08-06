@@ -51,7 +51,15 @@ export type AuditAction =
   | "ENABLE_2FA"
   | "DISABLE_2FA"
   | "VERIFY_2FA"
-  | "REGENERATE_BACKUP_CODES";
+  | "REGENERATE_BACKUP_CODES"
+  | "CREATE_GENERAL_ENTRY_CATEGORY"
+  | "UPDATE_GENERAL_ENTRY_CATEGORY"
+  | "DELETE_GENERAL_ENTRY_CATEGORY"
+  | "CREATE_GENERAL_ENTRY"
+  | "UPDATE_GENERAL_ENTRY"
+  | "DELETE_GENERAL_ENTRY"
+  | "PUBLISH_GENERAL_ENTRY"
+  | "UNPUBLISH_GENERAL_ENTRY";
 
 type TargetType =
   | "FESTIVAL"
@@ -62,7 +70,9 @@ type TargetType =
   | "PROGRAMME_TEAM_LEAD"
   | "REPORTING_SESSION"
   | "JUDGEMENT_SCORE"
-  | "RESULT";
+  | "RESULT"
+  | "GENERAL_ENTRY"
+  | "GENERAL_ENTRY_CATEGORY";
 
 /**
  * Identifies the actor for contexts with no admin session cookie — the

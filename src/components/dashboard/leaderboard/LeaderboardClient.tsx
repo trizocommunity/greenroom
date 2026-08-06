@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Flame,
   Search,
   Users,
 } from "lucide-react";
@@ -255,68 +254,68 @@ export function LeaderboardClient({
   return (
     <div className="space-y-6">
       {children}
-      {/* Top Scorers — full width */}
-      <Card className="p-0 overflow-hidden border-0 shadow-lg shadow-violet-500/5 ring-1 ring-violet-500/20">
-        <div className="p-4 border-b border-violet-500/10 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/5 to-transparent">
-          <div className="flex flex-col gap-1 mb-4">
-            <h3 className="text-xl font-bold flex items-center gap-2 text-foreground">
-              <Flame className="h-5 w-5 text-fuchsia-500" />
-              Top Scorers
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              View event top performers and their total points (only includes
-              published results)
-            </p>
+      
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Top Scorers
+        </h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          View event top performers and their total points (only includes published results)
+        </p>
+      </div>
+
+      {!hideParticipantFilters && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search participants..."
+              className="h-9 pl-8 w-full bg-background"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          {!hideParticipantFilters && (
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search participants..."
-                  className="h-9 pl-8 w-full bg-background"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Select
-                value={participantFilterCategory}
-                onValueChange={setParticipantFilterCategory}
-              >
-                <SelectTrigger className="h-9 text-sm w-[150px] bg-background">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories
-                    .filter((c) => c.type !== "GENERAL")
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={participantFilterGroup}
-                onValueChange={setParticipantFilterGroup}
-              >
-                <SelectTrigger className="h-9 text-sm w-[150px] bg-background">
-                  <SelectValue placeholder="All Groups" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Groups</SelectItem>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name}
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={participantFilterCategory}
+              onValueChange={setParticipantFilterCategory}
+            >
+              <SelectTrigger className="h-9 text-sm w-[150px] sm:w-[180px] bg-background">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories
+                  .filter((c) => c.type !== "GENERAL")
+                  .map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+              </SelectContent>
+            </Select>
+            <Select
+              value={participantFilterGroup}
+              onValueChange={setParticipantFilterGroup}
+            >
+              <SelectTrigger className="h-9 text-sm w-[150px] sm:w-[180px] bg-background">
+                <SelectValue placeholder="All Groups" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Groups</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+      )}
 
+      {/* Top Scorers Table */}
+      <Card className="p-0 overflow-hidden border">
         {/* Desktop */}
         <div className="hidden md:block">
           <Table>

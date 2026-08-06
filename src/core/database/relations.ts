@@ -43,6 +43,9 @@ import {
   user,
   userLoginEvent,
   userPurchaseSummary,
+  generalEntryCategory,
+  generalEntry,
+  generalEntryAward,
 } from "./schema";
 
 export const userRelations = relations(user, ({ one, many }) => ({
@@ -106,6 +109,8 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   pendingInvitations: many(pendingInvitation),
   stagePortalCredentials: many(stagePortalCredential),
   stagePortalSessions: many(stagePortalSession),
+  generalEntryCategories: many(generalEntryCategory),
+  generalEntries: many(generalEntry),
 }));
 
 export const festivalPosterTemplateRelations = relations(
@@ -138,6 +143,7 @@ export const groupRelations = relations(group, ({ one, many }) => ({
   assignments: many(programmeAssignment),
   programmeReportedParticipants: many(programmeReportedParticipant),
   programmeTeamLeads: many(programmeTeamLead),
+  generalEntryAwards: many(generalEntryAward),
 }));
 
 export const programmeRelations = relations(programme, ({ one, many }) => ({
@@ -688,6 +694,46 @@ export const festivalTemplateAssignmentRelations = relations(
     festival: one(festival, {
       fields: [festivalTemplateAssignment.festivalId],
       references: [festival.id],
+    }),
+  }),
+);
+
+export const generalEntryCategoryRelations = relations(
+  generalEntryCategory,
+  ({ one, many }) => ({
+    festival: one(festival, {
+      fields: [generalEntryCategory.festivalId],
+      references: [festival.id],
+    }),
+    generalEntries: many(generalEntry),
+  }),
+);
+
+export const generalEntryRelations = relations(
+  generalEntry,
+  ({ one, many }) => ({
+    festival: one(festival, {
+      fields: [generalEntry.festivalId],
+      references: [festival.id],
+    }),
+    category: one(generalEntryCategory, {
+      fields: [generalEntry.categoryId],
+      references: [generalEntryCategory.id],
+    }),
+    awards: many(generalEntryAward),
+  }),
+);
+
+export const generalEntryAwardRelations = relations(
+  generalEntryAward,
+  ({ one }) => ({
+    generalEntry: one(generalEntry, {
+      fields: [generalEntryAward.generalEntryId],
+      references: [generalEntry.id],
+    }),
+    group: one(group, {
+      fields: [generalEntryAward.groupId],
+      references: [group.id],
     }),
   }),
 );

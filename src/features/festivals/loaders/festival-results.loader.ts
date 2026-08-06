@@ -98,7 +98,7 @@ export async function getPublicProgrammeResults(
 
   const filters = [
     eq(resultTable.festivalId, festivalId),
-    eq(resultTable.isPublished, true),
+    eq(programmeTable.status, "ANNOUNCED"),
   ];
   if (typeFilter) {
     filters.push(eq(programmeTable.type, typeFilter));
@@ -229,8 +229,11 @@ export async function getPublicTopResults(
   const winners = await db.query.result.findMany({
     where: and(
       eq(resultTable.festivalId, festivalId),
-      eq(resultTable.isPublished, true),
       eq(resultTable.position, 1),
+      inArray(
+        resultTable.programmeId,
+        db.select({ id: programmeTable.id }).from(programmeTable).where(eq(programmeTable.status, "ANNOUNCED"))
+      )
     ),
     orderBy: [sql`${resultTable.updatedAt} DESC NULLS LAST`],
     limit: limit * 4, // headroom: GROUP programmes yield one row per member

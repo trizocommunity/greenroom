@@ -12,8 +12,14 @@ import {
 import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
+import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { assertAnnouncerAccess } from "@/features/announcement/actions/announcement-access";
-import { computeStandings, type TeamStandingRow } from "@/features/announcement/services/announcer.service";
+import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
+import {
+  computeStandings,
+  getNextResultNumber,
+  type TeamStandingRow,
+} from "@/features/announcement/services/announcer.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
 import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
@@ -119,6 +125,75 @@ export async function setProgrammeResultNumber(
   }
 }
 
+export async function publishResult(
+  festivalId: string,
+  programmeId: string,
+): Promise<ActionResponse<void>> {
+  try {
+    const actorName = await assertAnnouncerAccess(festivalId);
+    await ensureFestivalWritable(festivalId);
+
+    const programme = await db.query.programme.findFirst({
+      where: and(
+        eq(programmeTable.id, programmeId),
+        eq(programmeTable.festivalId, festivalId),
+      ),
+      columns: {
+        id: true,
+        name: true,
+        resultNumber: true,
+        status: true,
+      },
+    });
+    if (!programme) return { success: false, error: "Programme not found" };
+
+    if (programme.resultNumber == null) {
+      return {
+        success: false,
+        error: "Assign a result number before publishing.",
+      };
+    }
+
+    const session = await getSession();
+    const now = serverNowIso();
+
+    await db
+      .update(resultTable)
+      .set({
+        isPublished: true,
+        publishedByEmail: (session?.email as string) ?? null,
+        publishedByName: actorName,
+        updatedAt: now,
+      })
+      .where(eq(resultTable.programmeId, programmeId));
+
+    await db
+      .update(programmeTable)
+      .set({
+        status: "PUBLISHED",
+        publishedAt: now,
+        publishedByEmail: (session?.email as string) ?? null,
+        publishedByName: actorName,
+        updatedAt: now,
+      })
+      .where(eq(programmeTable.id, programmeId));
+
+    const slug = await getFestivalSlug(festivalId);
+    if (slug) revalidateAnnouncerPaths(slug);
+
+    await createAuditLog({
+      action: "PUBLISH_RESULTS",
+      targetType: "RESULT",
+      targetId: programmeId,
+      metadata: { festivalId, programmeId },
+    }).catch((err) => console.error("[AuditLog] PUBLISH_RESULTS failed", err));
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
 export async function announceResult(
   festivalId: string,
   programmeId: string,
@@ -164,7 +239,7 @@ export async function announceResult(
     await db
       .update(programmeTable)
       .set({
-        status: "PUBLISHED",
+        status: "ANNOUNCED",
         publishedAt: now,
         publishedByEmail: (session?.email as string) ?? null,
         publishedByName: actorName,
@@ -208,10 +283,10 @@ export async function unpublishResult(
     });
     if (!programme) return { success: false, error: "Programme not found" };
 
-    if (programme.status !== "PUBLISHED") {
+    if (programme.status !== "PUBLISHED" && programme.status !== "ANNOUNCED") {
       return {
         success: false,
-        error: "Only published results can be unpublished.",
+        error: "Only published or announced results can be unpublished.",
       };
     }
 
@@ -332,7 +407,26 @@ export async function publishStandings(
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
 
-    const standings = await computeStandings(festivalId, "published", upToResultNumber);
+    const programmeStandings = await computeStandings(festivalId, "published", upToResultNumber);
+    const generalStandings = await computeGeneralEntryStandings(festivalId);
+
+    const mergedMap = new Map<string, TeamStandingRow>();
+    for (const r of programmeStandings) {
+      mergedMap.set(r.name, { ...r });
+    }
+    for (const r of generalStandings) {
+      if (!mergedMap.has(r.name)) {
+        mergedMap.set(r.name, { name: r.name, points: 0, rank: 0, isGroup: true });
+      }
+      mergedMap.get(r.name)!.points += r.points;
+    }
+
+    const standings = Array.from(mergedMap.values())
+      .sort((a, b) => b.points - a.points)
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+      }));
 
     const highestResult = await db.query.programme.findFirst({
       where: and(
@@ -347,7 +441,7 @@ export async function publishStandings(
     await db
       .update(festivalTable)
       .set({
-        teamStandings: standings,
+        queuedTeamStandings: standings,
         standingsPublishedAtResultNumber: highestResult?.resultNumber ?? null,
         standingsPublishedAt: now,
         updatedAt: now,
@@ -365,13 +459,49 @@ export async function publishStandings(
 
 export async function fetchStandingsAction(
   festivalId: string,
-  scope: "all" | "published",
+  scope: "all" | "published" | "general",
   upToResultNumber?: number
 ): Promise<ActionResponse<TeamStandingRow[]>> {
   try {
     await assertAnnouncerAccess(festivalId);
     const standings = await computeStandings(festivalId, scope, upToResultNumber);
     return { success: true, data: standings };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function announceStandings(
+  festivalId: string,
+): Promise<ActionResponse<void>> {
+  try {
+    await assertAnnouncerAccess(festivalId);
+    await ensureFestivalWritable(festivalId);
+
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      columns: { queuedTeamStandings: true },
+    });
+
+    if (!festival?.queuedTeamStandings) {
+      return { success: false, error: "No queued standings to announce" };
+    }
+
+    const now = serverNowIso();
+    await db
+      .update(festivalTable)
+      .set({
+        teamStandings: festival.queuedTeamStandings,
+        queuedTeamStandings: null,
+        standingsAnnouncedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(festivalTable.id, festivalId));
+
+    const slug = await getFestivalSlug(festivalId);
+    if (slug) revalidateAnnouncerPaths(slug);
+
+    return { success: true, data: undefined };
   } catch (error) {
     return handleActionError(error);
   }

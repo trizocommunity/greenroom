@@ -24,12 +24,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
-import { announceResult } from "@/features/announcement/actions/announcer.actions";
+import { announceResult, announceStandings } from "@/features/announcement/actions/announcer.actions";
 import type {
   AnnouncerQueueProgramme,
   PublishedResultProgramme,
   TeamStandingRow,
-  ParticipantTopScorerRow,
 } from "@/features/announcement/services/announcer.service";
 import { toast } from "@/lib/toast";
 
@@ -39,9 +38,14 @@ interface AnnouncerClientProps {
   queue: AnnouncerQueueProgramme[];
   nextResultNumber: number;
   publishedResults: PublishedResultProgramme[];
-  vocalOfTheFest: ParticipantTopScorerRow | null;
-  penOfTheFest: ParticipantTopScorerRow | null;
-  liveStandings: TeamStandingRow[];
+  standingsContext: {
+    publishedStandings: TeamStandingRow[];
+    queuedTeamStandings: TeamStandingRow[];
+    standingsPublishedAtResultNumber: number | null;
+    standingsPublishedAt: string | null;
+    standingsAnnouncedAt: string | null;
+    highestPublishedResultNumber: number | null;
+  };
 }
 
 const MEDAL_ROWS = [
@@ -71,14 +75,11 @@ function PlaceLabel({ rank }: { rank: number }) {
     );
   return <span className="pl-6 text-muted-foreground">{rank}th</span>;
 }
-
 export function AnnouncerClient({
   festivalId,
   queue,
   publishedResults,
-  vocalOfTheFest,
-  penOfTheFest,
-  liveStandings,
+  standingsContext,
 }: AnnouncerClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -124,59 +125,7 @@ export function AnnouncerClient({
         {/* Left Column (3/4) */}
         <div className="lg:col-span-3 space-y-8">
           
-          {/* Top Scorers Cards */}
-          {(vocalOfTheFest || penOfTheFest) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {vocalOfTheFest && (
-                <Card className="bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 border-violet-500/20 shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-violet-700 dark:text-violet-400">
-                      <Star className="h-4 w-4" />
-                      Vocal of the Fest
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-bold text-lg">{vocalOfTheFest.name}</p>
-                        <p className="text-sm text-muted-foreground">{vocalOfTheFest.groupName}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-mono font-bold text-lg text-violet-600 dark:text-violet-400">
-                          {vocalOfTheFest.stagePoints}
-                        </p>
-                        <p className="text-xs text-muted-foreground">pts</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              {penOfTheFest && (
-                <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border-blue-500/20 shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-700 dark:text-blue-400">
-                      <Award className="h-4 w-4" />
-                      Pen of the Fest
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-bold text-lg">{penOfTheFest.name}</p>
-                        <p className="text-sm text-muted-foreground">{penOfTheFest.groupName}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-mono font-bold text-lg text-blue-600 dark:text-blue-400">
-                          {penOfTheFest.offstagePoints}
-                        </p>
-                        <p className="text-xs text-muted-foreground">pts</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
+          
 
           {!hasQueue && !hasPublished ? (
             <Card className="border-dashed shadow-none">
@@ -336,25 +285,61 @@ export function AnnouncerClient({
           )}
         </div>
 
-        {/* Right Column (1/4) - Team Standings */}
-        <div className="lg:col-span-1">
-          <div
-            className="border-0 ring-1 ring-emerald-500/20 rounded-xl bg-card overflow-hidden flex flex-col shadow-lg shadow-emerald-500/5 sticky top-6"
-            style={{ maxHeight: "calc(100vh - 48px)" }}
-          >
-            <div className="p-3 border-b border-emerald-500/10 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 to-teal-500/5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-sm">
-                  <Trophy className="h-3.5 w-3.5" />
-                </span>
-                <span className="font-bold text-sm">Team Standings</span>
-              </div>
-            </div>
+        {/* Right Column (1/4) */}
+        <div className="space-y-6 lg:col-span-1">
+          {standingsContext.queuedTeamStandings.length > 0 && (
+            <Card className="border-violet-500/20 bg-violet-500/5 shadow-sm">
+              <CardHeader className="py-4 border-b border-violet-500/10">
+                <CardTitle className="text-sm font-semibold flex items-center justify-between text-violet-700 dark:text-violet-400">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    Queued Standings
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  Standings updated after Result #{standingsContext.standingsPublishedAtResultNumber} are waiting to be announced.
+                </div>
+                <Button 
+                  className="w-full bg-violet-600 hover:bg-violet-700 text-white" 
+                  onClick={() => {
+                    startTransition(async () => {
+                      const res = await announceStandings(festivalId);
+                      if (!res.success) {
+                        toast.error(res.error);
+                        return;
+                      }
+                      toast.success("Standings announced successfully!");
+                      router.refresh();
+                    });
+                  }}
+                  disabled={isPending}
+                >
+                  {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Megaphone className="h-4 w-4 mr-2" />}
+                  Announce Standings
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-            <ScrollArea className="flex-1 overflow-auto">
-              {liveStandings.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No standings data.
+          <div className="border-0 ring-1 ring-border rounded-xl bg-card overflow-hidden shadow-sm sticky top-6">
+            <div className="bg-muted/50 p-4 border-b flex items-center justify-between">
+              <h2 className="font-semibold tracking-tight flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-amber-500" />
+                Live Standings
+              </h2>
+              {standingsContext.standingsAnnouncedAt && (
+                <Badge variant="outline" className="text-[10px] font-normal bg-background">
+                  Updated
+                </Badge>
+              )}
+            </div>
+            
+            <ScrollArea className="h-[400px]">
+              {standingsContext.publishedStandings.length === 0 ? (
+                <p className="text-sm text-muted-foreground p-6 text-center">
+                  No standings published yet.
                 </p>
               ) : (
                 <Table>
@@ -366,7 +351,7 @@ export function AnnouncerClient({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {liveStandings.map((s) => (
+                    {standingsContext.publishedStandings.map((s) => (
                       <TableRow
                         key={s.name}
                         className={cn(MEDAL_ROWS[s.rank - 1])}

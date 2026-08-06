@@ -1,5 +1,7 @@
 import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
+import { currentTimestampSql } from "@/core/datetime";
+import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
 import {
   category as categoryTable,
   festival as festivalTable,
@@ -54,7 +56,7 @@ export async function getAnnouncerQueue(
   const programmes = await db.query.programme.findMany({
     where: and(
       eq(programmeTable.festivalId, festivalId),
-      inArray(programmeTable.status, ["PENDING_PUBLICATION"]),
+      inArray(programmeTable.status, ["PUBLISHED"]),
     ),
     with: { category: { columns: { name: true } } },
     orderBy: [asc(programmeTable.resultNumber)],
@@ -197,7 +199,7 @@ export async function getAnnouncerQueue(
   return programmes
     .filter((p) => {
       const progResults = resultsByProgramme.get(p.id) ?? [];
-      return progResults.length > 0 && progResults.some((r) => !r.isPublished);
+      return progResults.length > 0;
     })
     .map((p) => {
       const progResults = resultsByProgramme.get(p.id) ?? [];
@@ -317,7 +319,7 @@ export async function getPublishedResults(
   const programmes = await db.query.programme.findMany({
     where: and(
       eq(programmeTable.festivalId, festivalId),
-      eq(programmeTable.status, "PUBLISHED"),
+      eq(programmeTable.status, "ANNOUNCED"),
     ),
     with: { category: { columns: { name: true } } },
     orderBy: [asc(programmeTable.resultNumber)],
@@ -464,9 +466,19 @@ export type TeamStandingRow = {
 
 export async function computeStandings(
   festivalId: string,
-  scope: "all" | "published",
+  scope: "all" | "published" | "general",
   upToResultNumber?: number
 ): Promise<TeamStandingRow[]> {
+  if (scope === "general") {
+    const generalRows = await computeGeneralEntryStandings(festivalId);
+    return generalRows
+      .sort((a, b) => b.points - a.points)
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+      }));
+  }
+
   const publishedFilter =
     scope === "published" ? eq(resultTable.isPublished, true) : undefined;
   const resultNumberFilter = upToResultNumber 
@@ -563,8 +575,10 @@ export async function getStandingsContext(festivalId: string) {
     where: eq(festivalTable.id, festivalId),
     columns: {
       teamStandings: true,
+      queuedTeamStandings: true,
       standingsPublishedAtResultNumber: true,
       standingsPublishedAt: true,
+      standingsAnnouncedAt: true,
     },
   });
 
@@ -580,9 +594,11 @@ export async function getStandingsContext(festivalId: string) {
 
   return {
     publishedStandings: (festival?.teamStandings as TeamStandingRow[]) ?? [],
+    queuedTeamStandings: (festival?.queuedTeamStandings as TeamStandingRow[]) ?? [],
     standingsPublishedAtResultNumber:
       festival?.standingsPublishedAtResultNumber ?? null,
     standingsPublishedAt: festival?.standingsPublishedAt ?? null,
+    standingsAnnouncedAt: festival?.standingsAnnouncedAt ?? null,
     highestPublishedResultNumber: highestPublishedResult[0]?.maxNum ?? null,
   };
 }

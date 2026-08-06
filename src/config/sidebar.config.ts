@@ -1,4 +1,5 @@
 import {
+  Award,
   BarChart3,
   BookOpen,
   Building2,
@@ -238,6 +239,12 @@ export const getFestivalDashboardSidebarConfig = (
           icon: ListChecks,
           allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
           disabled: !canUseResultsPage,
+        },
+        {
+          title: "General Entries",
+          href: `${basePath}/event-works/general-entries`,
+          icon: Award,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
         {
           title: "Top Scorers",

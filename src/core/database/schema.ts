@@ -476,10 +476,12 @@ export const festival = pgTable(
     programmesCount: integer().default(0).notNull(),
     chestNumberSettings: jsonb(),
     teamStandings: jsonb(),
+    queuedTeamStandings: jsonb("queued_team_standings"),
     standingsPublishedAtResultNumber: integer(
       "standings_published_at_result_number",
     ),
     standingsPublishedAt: tzTimestampNamed("standings_published_at"),
+    standingsAnnouncedAt: tzTimestampNamed("standings_announced_at"),
     scoringSystem: scoringSystem().default("SCORE_BASED").notNull(),
     status: festivalStatus().default("READY").notNull(),
     resultPdfUrl: text(),
@@ -2358,6 +2360,134 @@ export const festivalExport = pgTable(
       columns: [table.createdBy],
       foreignColumns: [user.id],
       name: "festival_export_createdBy_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+// ─── general_entries (depends on: festival, group) ───────────────────────────
+
+export const generalEntryCategory = pgTable(
+  "general_entry_category",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    name: text().notNull(),
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
+      .notNull(),
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
+      .notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
+  },
+  (table) => [
+    uniqueIndex("general_entry_category_festivalId_name_key").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.name.asc().nullsLast(),
+    ),
+    index("general_entry_category_festivalId_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "general_entry_category_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
+export const generalEntry = pgTable(
+  "general_entry",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    name: text().notNull(),
+    categoryId: text("category_id"),
+    type: text().notNull().default("GENERAL"),
+    remarks: text(),
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
+      .notNull(),
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
+      .notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
+  },
+  (table) => [
+    index("general_entry_festivalId_createdAt_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "general_entry_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.categoryId],
+      foreignColumns: [generalEntryCategory.id],
+      name: "general_entry_categoryId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
+  ],
+);
+
+export const generalEntryAward = pgTable(
+  "general_entry_award",
+  {
+    id: text().primaryKey().notNull(),
+    generalEntryId: text("general_entry_id").notNull(),
+    groupId: text("group_id").notNull(),
+    points: integer().notNull(),
+    isPublished: boolean("is_published").default(false).notNull(),
+    publishedAt: tzTimestampNamed("published_at"),
+    publishedByName: text("published_by_name"),
+    publishedByEmail: text("published_by_email"),
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
+      .notNull(),
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("general_entry_award_generalEntryId_groupId_key").using(
+      "btree",
+      table.generalEntryId.asc().nullsLast(),
+      table.groupId.asc().nullsLast(),
+    ),
+    index("general_entry_award_groupId_isPublished_idx").using(
+      "btree",
+      table.groupId.asc().nullsLast(),
+      table.isPublished.asc().nullsLast(),
+    ),
+    index("general_entry_award_generalEntryId_idx").using(
+      "btree",
+      table.generalEntryId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.generalEntryId],
+      foreignColumns: [generalEntry.id],
+      name: "general_entry_award_generalEntryId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.groupId],
+      foreignColumns: [group.id],
+      name: "general_entry_award_groupId_fkey",
     })
       .onUpdate("cascade")
       .onDelete("cascade"),
