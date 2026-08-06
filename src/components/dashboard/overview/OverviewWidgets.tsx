@@ -154,9 +154,9 @@ export default async function OverviewWidgets({
       condition: canUseExternalJudging && planFeature(features, "results"),
     },
     {
-      label: "Leaderboard",
+      label: "Top Scorers",
       icon: Trophy,
-      href: `/dashboard/${slug}/event-works/leaderboard`,
+      href: `/dashboard/${slug}/event-works/top-scorers`,
       condition: planFeature(features, "liveScoreboard"),
     },
     {

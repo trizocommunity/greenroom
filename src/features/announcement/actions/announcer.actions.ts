@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, isNotNull, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
@@ -13,16 +13,16 @@ import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
 import { assertAnnouncerAccess } from "@/features/announcement/actions/announcement-access";
-import { computeStandings } from "@/features/announcement/services/announcer.service";
+import { computeStandings, type TeamStandingRow } from "@/features/announcement/services/announcer.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
 import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 
 function revalidateAnnouncerPaths(slug: string) {
   revalidatePath(`/dashboard/${slug}`);
-  revalidatePath(`/dashboard/${slug}/event-works/announcer`);
+  revalidatePath(`/dashboard/${slug}/event-works/announcement`);
   revalidatePath(`/dashboard/${slug}/event-works/results`);
-  revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
+  revalidatePath(`/dashboard/${slug}/event-works/top-scorers`);
   revalidatePath(`/${slug}`);
   revalidatePath(`/${slug}/results`);
 }
@@ -241,32 +241,32 @@ export async function unpublishResult(
 
 export async function swapResultNumbers(
   festivalId: string,
-  programmeIdA: string,
-  programmeIdB: string,
+  programmeIdA: string, // the dragged item
+  programmeIdB: string, // the dropped over item
 ): Promise<ActionResponse<void>> {
   try {
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
 
-    const [progA, progB] = await Promise.all([
-      db.query.programme.findFirst({
-        where: and(
-          eq(programmeTable.id, programmeIdA),
-          eq(programmeTable.festivalId, festivalId),
-        ),
-        columns: { id: true, resultNumber: true, status: true },
-      }),
-      db.query.programme.findFirst({
-        where: and(
-          eq(programmeTable.id, programmeIdB),
-          eq(programmeTable.festivalId, festivalId),
-        ),
-        columns: { id: true, resultNumber: true, status: true },
-      }),
-    ]);
+    // Fetch all programmes that have a resultNumber for this festival, sorted
+    const programmes = await db.query.programme.findMany({
+      where: and(
+        eq(programmeTable.festivalId, festivalId),
+        isNotNull(programmeTable.resultNumber)
+      ),
+      columns: { id: true, resultNumber: true, status: true },
+      orderBy: [asc(programmeTable.resultNumber)],
+    });
 
-    if (!progA || !progB)
-      return { success: false, error: "Programme not found" };
+    const activeIndex = programmes.findIndex((p) => p.id === programmeIdA);
+    const overIndex = programmes.findIndex((p) => p.id === programmeIdB);
+
+    if (activeIndex === -1 || overIndex === -1) {
+      return { success: false, error: "Programme not found or missing result number" };
+    }
+
+    const progA = programmes[activeIndex];
+    const progB = programmes[overIndex];
 
     try {
       assertProgrammePrePublishing(progA.status);
@@ -275,22 +275,45 @@ export async function swapResultNumbers(
       return { success: false, error: e.message };
     }
 
-    if (progA.resultNumber == null || progB.resultNumber == null)
-      return {
-        success: false,
-        error: "Both programmes must have result numbers to swap.",
-      };
+    // Perform array move
+    const newOrder = programmes.slice();
+    newOrder.splice(overIndex < 0 ? newOrder.length + overIndex : overIndex, 0, newOrder.splice(activeIndex, 1)[0]);
 
-    const now = serverNowIso();
-    await db.execute(sql`
-      UPDATE "programme"
-      SET "result_number" = CASE
-        WHEN "id" = ${programmeIdA} THEN ${progB.resultNumber}
-        WHEN "id" = ${programmeIdB} THEN ${progA.resultNumber}
-      END,
-      "updatedAt" = ${now}
-      WHERE "id" IN (${programmeIdA}, ${programmeIdB})
-    `);
+    // Find which IDs need their result_number updated
+    const updates: { id: string; newResultNumber: number }[] = [];
+    for (let i = 0; i < newOrder.length; i++) {
+      if (newOrder[i].resultNumber !== programmes[i].resultNumber) {
+        updates.push({
+          id: newOrder[i].id,
+          newResultNumber: programmes[i].resultNumber!,
+        });
+      }
+    }
+
+    if (updates.length > 0) {
+      const now = serverNowIso();
+      await db.transaction(async (tx) => {
+        // 1. Temporarily set to a negative value to avoid unique constraint violation
+        for (let i = 0; i < updates.length; i++) {
+          await tx.execute(sql`
+            UPDATE "programme"
+            SET "result_number" = ${-1000 - i},
+                "updatedAt" = ${now}
+            WHERE "id" = ${updates[i].id}
+          `);
+        }
+        
+        // 2. Set to the new correct resultNumber
+        for (let i = 0; i < updates.length; i++) {
+          await tx.execute(sql`
+            UPDATE "programme"
+            SET "result_number" = ${updates[i].newResultNumber},
+                "updatedAt" = ${now}
+            WHERE "id" = ${updates[i].id}
+          `);
+        }
+      });
+    }
 
     const slug = await getFestivalSlug(festivalId);
     if (slug) revalidateAnnouncerPaths(slug);
@@ -303,12 +326,13 @@ export async function swapResultNumbers(
 
 export async function publishStandings(
   festivalId: string,
+  upToResultNumber?: number
 ): Promise<ActionResponse<void>> {
   try {
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
 
-    const standings = await computeStandings(festivalId, "published");
+    const standings = await computeStandings(festivalId, "published", upToResultNumber);
 
     const highestResult = await db.query.programme.findFirst({
       where: and(
@@ -334,6 +358,20 @@ export async function publishStandings(
     if (slug) revalidateAnnouncerPaths(slug);
 
     return { success: true, data: undefined };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function fetchStandingsAction(
+  festivalId: string,
+  scope: "all" | "published",
+  upToResultNumber?: number
+): Promise<ActionResponse<TeamStandingRow[]>> {
+  try {
+    await assertAnnouncerAccess(festivalId);
+    const standings = await computeStandings(festivalId, scope, upToResultNumber);
+    return { success: true, data: standings };
   } catch (error) {
     return handleActionError(error);
   }

@@ -1704,7 +1704,7 @@ async function recomputeConfigResults(
   if (festival) {
     revalidatePath(`/dashboard/${festival.slug}/event-works/judgement`);
     revalidatePath(`/dashboard/${festival.slug}/event-works/results`);
-    revalidatePath(`/dashboard/${festival.slug}/event-works/leaderboard`);
+    revalidatePath(`/dashboard/${festival.slug}/event-works/top-scorers`);
     revalidatePath(`/${festival.slug}/results`);
   }
 }

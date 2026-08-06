@@ -6,7 +6,7 @@ import type { Tier } from "@/core/types/app-enums";
 import {
   computeStandings,
   getProgrammeStatusCounts,
-  getPublishedResults,
+  getResultsConsoleProgrammes,
   getStandingsContext,
 } from "@/features/announcement/services/announcer.service";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
@@ -48,9 +48,9 @@ export default async function ResultsConsolePage({
   );
   if (!canUse) notFound();
 
-  const [published, standingsContext, liveStandings, statusCounts] =
+  const [programmes, standingsContext, liveStandings, statusCounts] =
     await Promise.all([
-      getPublishedResults(festival.id),
+      getResultsConsoleProgrammes(festival.id),
       getStandingsContext(festival.id),
       computeStandings(festival.id, "published"),
       getProgrammeStatusCounts(festival.id),
@@ -74,7 +74,7 @@ export default async function ResultsConsolePage({
       <ResultsConsoleClient
         festivalId={festival.id}
         festivalSlug={festival.slug}
-        published={published}
+        programmes={programmes}
         liveStandings={liveStandings}
         standingsContext={standingsContext}
         canUnpublish={canUnpublish}

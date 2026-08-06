@@ -3,6 +3,7 @@
 import {
   ArrowDownUp,
   Eye,
+  GripVertical,
   Loader2,
   Megaphone,
   MoreVertical,
@@ -12,18 +13,24 @@ import {
   Undo2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  useCallback,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,20 +56,38 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
 import {
+  announceResult,
   publishStandings,
   swapResultNumbers,
   unpublishResult,
+  fetchStandingsAction,
 } from "@/features/announcement/actions/announcer.actions";
 import type {
-  PublishedResultProgramme,
+  AnnouncerQueueProgramme,
   TeamStandingRow,
 } from "@/features/announcement/services/announcer.service";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "@/lib/toast";
 
 interface ResultsConsoleClientProps {
   festivalId: string;
   festivalSlug: string;
-  published: PublishedResultProgramme[];
+  programmes: AnnouncerQueueProgramme[];
   liveStandings: TeamStandingRow[];
   standingsContext: {
     publishedStandings: TeamStandingRow[];
@@ -75,19 +100,6 @@ interface ResultsConsoleClientProps {
 }
 
 const STATUS_PILLS = [
-  {
-    label: "Pending",
-    key: "PENDING_JUDGMENT",
-    dot: "bg-slate-400",
-    active:
-      "bg-slate-500/10 text-slate-600 dark:text-slate-400 ring-slate-500/20",
-  },
-  {
-    label: "In Progress",
-    key: "JUDGING",
-    dot: "bg-sky-500",
-    active: "bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-sky-500/20",
-  },
   {
     label: "Submitted",
     key: "PENDING_PUBLICATION",
@@ -125,10 +137,118 @@ function PlaceLabel({ rank }: { rank: number }) {
   return <span className="pl-6 text-muted-foreground">{rank}th</span>;
 }
 
+interface SortableProgrammeRowProps {
+  p: AnnouncerQueueProgramme;
+  setActiveProgramme: (p: AnnouncerQueueProgramme) => void;
+  handleUnpublish: (id: string) => void;
+  canUnpublish: boolean;
+}
+
+function SortableProgrammeRow({
+  p,
+  setActiveProgramme,
+  handleUnpublish,
+  canUnpublish,
+}: SortableProgrammeRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: p.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "hover:bg-muted/50 transition-colors bg-background",
+        isDragging && "opacity-80 shadow-md relative",
+      )}
+    >
+      <TableCell
+        className="cursor-move text-muted-foreground text-center"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4 inline-block" />
+      </TableCell>
+      <TableCell>
+        <span className="inline-flex items-center justify-center rounded-lg bg-violet-500/10 px-2 py-1 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
+          {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
+        </span>
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-col">
+          <span className="font-medium">{p.name}</span>
+          <span className="text-muted-foreground text-xs">
+            {p.categoryName}
+          </span>
+        </div>
+      </TableCell>
+      <TableCell>
+        {p.status === "PUBLISHED" || p.status === "ANNOUNCED" ? (
+          <Badge
+            variant="secondary"
+            className="bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/25 border-0 shadow-none font-medium"
+          >
+            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
+            {p.status}
+          </Badge>
+        ) : (
+          <Badge
+            variant="secondary"
+            className="bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/25 border-0 shadow-none font-medium"
+          >
+            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
+            Submitted
+          </Badge>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setActiveProgramme(p)}>
+              <Eye className="h-4 w-4 mr-2" />
+              Open Result
+            </DropdownMenuItem>
+            {canUnpublish && p.status === "PUBLISHED" && (
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => handleUnpublish(p.id)}
+              >
+                <Undo2 className="h-4 w-4 mr-2" />
+                Unpublish
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export function ResultsConsoleClient({
   festivalId,
   festivalSlug,
-  published,
+  programmes,
   liveStandings,
   standingsContext,
   canUnpublish,
@@ -137,47 +257,85 @@ export function ResultsConsoleClient({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeProgramme, setActiveProgramme] =
-    useState<PublishedResultProgramme | null>(null);
+    useState<AnnouncerQueueProgramme | null>(null);
+
+  // Section 2 filters
   const [standingsScope, setStandingsScope] = useState<"published" | "all">(
     "published",
   );
+  const [upToResultNumber, setUpToResultNumber] = useState<string>("");
+  const [dynamicStandings, setDynamicStandings] =
+    useState<TeamStandingRow[]>(liveStandings);
+  const [isFetchingStandings, setIsFetchingStandings] = useState(false);
+
   const [swapTarget, setSwapTarget] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   useEffect(() => {
     const interval = setInterval(() => router.refresh(), 15_000);
     return () => clearInterval(interval);
   }, [router]);
 
+  // Handle dynamic standings fetch
+  const fetchStandings = useCallback(async () => {
+    setIsFetchingStandings(true);
+    const resultNum = upToResultNumber
+      ? parseInt(upToResultNumber, 10)
+      : undefined;
+    const res = await fetchStandingsAction(
+      festivalId,
+      standingsScope,
+      isNaN(resultNum!) ? undefined : resultNum,
+    );
+    if (res.success && res.data) {
+      setDynamicStandings(res.data);
+    } else if (!res.success) {
+      toast.error(res.error);
+    }
+    setIsFetchingStandings(false);
+  }, [festivalId, standingsScope, upToResultNumber]);
+
+  useEffect(() => {
+    fetchStandings();
+  }, [fetchStandings]);
+
   const sorted = useMemo(
     () =>
-      [...published].sort((a, b) => {
+      [...programmes].sort((a, b) => {
         if (a.resultNumber == null && b.resultNumber == null) return 0;
         if (a.resultNumber == null) return 1;
         if (b.resultNumber == null) return -1;
-        return b.resultNumber - a.resultNumber;
+        return a.resultNumber - b.resultNumber;
       }),
-    [published],
+    [programmes],
   );
 
   const filteredSorted = useMemo(() => {
-    if (!searchQuery) return sorted;
-    const lower = searchQuery.toLowerCase();
-    return sorted.filter(
-      (p) =>
-        p.name.toLowerCase().includes(lower) ||
-        (p.categoryName ?? "").toLowerCase().includes(lower),
-    );
+    let list = sorted;
+    if (searchQuery) {
+      const lower = searchQuery.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(lower) ||
+          (p.categoryName ?? "").toLowerCase().includes(lower),
+      );
+    }
+    return list;
   }, [sorted, searchQuery]);
-
-  const displayStandings =
-    standingsScope === "published" ? liveStandings : liveStandings;
 
   const newResultsSinceStandings =
     standingsContext.highestPublishedResultNumber != null &&
     standingsContext.standingsPublishedAtResultNumber != null
-      ? published.filter(
+      ? programmes.filter(
           (p) =>
+            p.status === "PUBLISHED" &&
             p.resultNumber != null &&
             p.resultNumber > standingsContext.standingsPublishedAtResultNumber!,
         ).length
@@ -196,7 +354,21 @@ export function ResultsConsoleClient({
     });
   }
 
+  function handlePublish(programmeId: string) {
+    startTransition(async () => {
+      const res = await announceResult(festivalId, programmeId);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Result published successfully.");
+      setActiveProgramme(null);
+      router.refresh();
+    });
+  }
+
   function handleSwapNumbers(programmeIdA: string, programmeIdB: string) {
+    if (programmeIdA === programmeIdB) return;
     startTransition(async () => {
       const res = await swapResultNumbers(
         festivalId,
@@ -214,9 +386,23 @@ export function ResultsConsoleClient({
     });
   }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      handleSwapNumbers(active.id as string, over.id as string);
+    }
+  }
+
   function handlePublishStandings() {
     startTransition(async () => {
-      const res = await publishStandings(festivalId);
+      const resultNum = upToResultNumber
+        ? parseInt(upToResultNumber, 10)
+        : undefined;
+      const res = await publishStandings(
+        festivalId,
+        isNaN(resultNum!) ? undefined : resultNum,
+      );
       if (!res.success) {
         toast.error(res.error);
         return;
@@ -227,228 +413,204 @@ export function ResultsConsoleClient({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Top Toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        {/* Status Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto max-w-full">
-          {STATUS_PILLS.map((pill) => (
-            <div
-              key={pill.label}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ring-1 whitespace-nowrap",
-                pill.active,
-              )}
-            >
-              <span className={cn("h-2 w-2 rounded-full", pill.dot)} />
-              <span>{pill.label}</span>
-              <span className="text-xs font-bold opacity-70">
-                {statusCounts[pill.key] ?? 0}
-              </span>
-            </div>
-          ))}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ring-1 whitespace-nowrap bg-green-500/10 text-green-600 dark:text-green-400 ring-green-500/25">
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            <span>Published</span>
-            <span className="rounded-full bg-green-500/20 px-1.5 text-xs font-bold">
-              {published.length}
-            </span>
-          </div>
-        </div>
-
-        {/* Right Toolbar Actions */}
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground whitespace-nowrap font-medium">
-            After {standingsContext.standingsPublishedAtResultNumber ?? 0}
-          </span>
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white shadow-md shadow-rose-500/25"
-            disabled={isPending || standingsScope === "all"}
-            onClick={handlePublishStandings}
-          >
-            {isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Megaphone className="h-4 w-4 mr-2" />
-            )}
-            Publish Group Points
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-        {/* Section 1 — Published Results Table */}
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+        {/* Section 1 — Results Table */}
         <div className="lg:col-span-3 space-y-4 flex flex-col">
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
+          {/* Inline Search and Status */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="relative flex-1 w-full max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search results..."
+                placeholder="Search programmes..."
                 className="pl-9 h-9 bg-background"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            {newResultsSinceStandings != null &&
-              newResultsSinceStandings > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/25">
-                  <Sparkles className="h-3 w-3" />
-                  {newResultsSinceStandings} new result
-                  {newResultsSinceStandings > 1 ? "s" : ""}
+            <div className="flex items-center gap-2 overflow-x-auto max-w-full">
+              {STATUS_PILLS.map((pill) => (
+                <div
+                  key={pill.label}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ring-1 whitespace-nowrap",
+                    pill.active,
+                  )}
+                >
+                  <span className={cn("h-2 w-2 rounded-full", pill.dot)} />
+                  <span>{pill.label}</span>
+                  <span className="text-xs font-bold opacity-70">
+                    {statusCounts[pill.key] ?? 0}
+                  </span>
+                </div>
+              ))}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ring-1 whitespace-nowrap bg-green-500/10 text-green-600 dark:text-green-400 ring-green-500/25">
+                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                <span>Published</span>
+                <span className="rounded-full bg-green-500/20 px-1.5 text-xs font-bold">
+                  {statusCounts["PUBLISHED"] ?? 0}
                 </span>
-              )}
+              </div>
+            </div>
           </div>
+
+          {newResultsSinceStandings != null && newResultsSinceStandings > 0 && (
+            <div className="flex justify-end">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/25">
+                <Sparkles className="h-3 w-3" />
+                {newResultsSinceStandings} new result
+                {newResultsSinceStandings > 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
 
           {filteredSorted.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="py-12 text-center text-muted-foreground">
-                <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/15 to-fuchsia-500/15">
-                  <Trophy className="h-7 w-7 text-violet-500/60" />
+                <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                  <Trophy className="h-7 w-7 text-muted-foreground/60" />
                 </span>
                 <p className="font-medium">No results found</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="border-0 ring-1 ring-border rounded-xl bg-card flex-1 overflow-hidden shadow-lg shadow-black/[0.03]">
-              <Table>
-                <TableHeader className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/5">
-                  <TableRow>
-                    <TableHead className="w-16 font-semibold text-foreground">
-                      #
-                    </TableHead>
-                    <TableHead className="font-semibold text-foreground">
-                      Competition
-                    </TableHead>
-                    <TableHead className="w-28 font-semibold text-foreground">
-                      Status
-                    </TableHead>
-                    <TableHead className="w-16 text-right font-semibold text-foreground">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSorted.map((p) => (
-                    <TableRow key={p.id} className="hover:bg-violet-500/[0.04]">
-                      <TableCell>
-                        <span className="inline-flex items-center justify-center rounded-lg bg-violet-500/10 px-2 py-1 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
-                          {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{p.name}</span>
-                          <span className="text-muted-foreground text-xs">
-                            {p.categoryName}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className="bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/25 border-0 shadow-none font-medium"
-                        >
-                          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
-                          Published
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => setActiveProgramme(p)}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            {canUnpublish && (
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => handleUnpublish(p.id)}
-                              >
-                                <Undo2 className="h-4 w-4 mr-2" />
-                                Unpublish
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="border rounded-xl bg-card flex-1 overflow-hidden">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={filteredSorted.map((p) => p.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <Table>
+                    <TableHeader className="bg-muted/30">
+                      <TableRow>
+                        <TableHead className="w-12"></TableHead>
+                        <TableHead className="w-20 font-semibold text-foreground">
+                          Result #
+                        </TableHead>
+                        <TableHead className="font-semibold text-foreground">
+                          Competition
+                        </TableHead>
+                        <TableHead className="w-28 font-semibold text-foreground">
+                          Status
+                        </TableHead>
+                        <TableHead className="w-16 text-right font-semibold text-foreground">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSorted.map((p) => (
+                        <SortableProgrammeRow
+                          key={p.id}
+                          p={p}
+                          setActiveProgramme={setActiveProgramme}
+                          handleUnpublish={handleUnpublish}
+                          canUnpublish={canUnpublish}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </SortableContext>
+              </DndContext>
             </div>
           )}
         </div>
 
-        {/* Section 2 — Leaderboard Sidebar */}
-        <div className="lg:col-span-2">
-          <div
-            className="border-0 ring-1 ring-emerald-500/20 rounded-xl bg-card overflow-hidden flex flex-col shadow-lg shadow-emerald-500/5"
-            style={{ maxHeight: "calc(100vh - 200px)" }}
-          >
-            <div className="p-3 border-b border-emerald-500/10 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 to-teal-500/5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-sm">
-                  <Trophy className="h-3.5 w-3.5" />
-                </span>
-                <Select
-                  value={standingsScope}
-                  onValueChange={(v) =>
-                    setStandingsScope(v as "published" | "all")
-                  }
-                >
-                  <SelectTrigger className="h-8 w-fit min-w-[160px] font-semibold border-none shadow-none focus:ring-0 px-2 hover:bg-accent/50 transition-colors">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="published">Published Results</SelectItem>
-                    <SelectItem value="all">All Results</SelectItem>
-                  </SelectContent>
-                </Select>
+        {/* Section 2 — Team Standings */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <div className="relative w-32">
+                <Input
+                  placeholder="After #"
+                  className="h-9 pl-3 text-sm font-medium"
+                  value={upToResultNumber}
+                  onChange={(e) => setUpToResultNumber(e.target.value)}
+                />
               </div>
             </div>
+            <div className="flex items-center justify-between gap-2">
+              <Select
+                value={standingsScope}
+                onValueChange={(v) =>
+                  setStandingsScope(v as "published" | "all")
+                }
+              >
+                <SelectTrigger className="h-9 w-40 bg-background text-sm font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="published">Published Results</SelectItem>
+                  <SelectItem value="all">All Results</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <ScrollArea className="flex-1 overflow-auto">
-              {displayStandings.length === 0 ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-700 text-white shadow-sm h-9"
+                  disabled={isPending}
+                  onClick={handlePublishStandings}
+                >
+                  {isPending && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  )}
+                  Publish Team Points
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="border rounded-xl bg-card overflow-hidden"
+            style={{ maxHeight: "calc(100vh - 200px)" }}
+          >
+            <ScrollArea className="h-full relative">
+              {isFetchingStandings && (
+                <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-20 flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {dynamicStandings.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   No standings data yet.
                 </p>
               ) : (
                 <Table>
-                  <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/75 border-b shadow-sm">
+                  <TableHeader className="sticky top-0 z-10 bg-muted/30 backdrop-blur supports-[backdrop-filter]:bg-card/75 border-b shadow-sm">
                     <TableRow>
-                      <TableHead className="w-24 pl-4">Place</TableHead>
-                      <TableHead>Group</TableHead>
-                      <TableHead className="w-24 text-right pr-4">
+                      <TableHead className="w-20 pl-4 font-semibold text-foreground">
+                        Place
+                      </TableHead>
+                      <TableHead className="font-semibold text-foreground">
+                        Team
+                      </TableHead>
+                      <TableHead className="w-24 text-right pr-4 font-semibold text-foreground">
                         Points
                       </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {displayStandings.map((s) => (
+                    {dynamicStandings.map((s) => (
                       <TableRow
                         key={s.name}
-                        className={cn(MEDAL_ROWS[s.rank - 1])}
+                        className={cn(
+                          "hover:bg-muted/50 transition-colors",
+                          MEDAL_ROWS[s.rank - 1],
+                        )}
                       >
-                        <TableCell className="pl-4">
+                        <TableCell className="pl-4 font-medium">
                           <PlaceLabel rank={s.rank} />
                         </TableCell>
-                        <TableCell className="font-semibold">
+                        <TableCell className="font-medium text-[15px]">
                           {s.name}
                         </TableCell>
-                        <TableCell className="text-right font-mono font-bold pr-4">
+                        <TableCell className="text-right font-mono font-bold pr-4 text-[15px]">
                           {s.points}
                         </TableCell>
                       </TableRow>
@@ -462,7 +624,7 @@ export function ResultsConsoleClient({
       </div>
 
       {/* Result detail drawer */}
-      <Dialog
+      <Drawer
         open={!!activeProgramme}
         onOpenChange={(open) => {
           if (!open) {
@@ -471,169 +633,155 @@ export function ResultsConsoleClient({
           }
         }}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          {activeProgramme && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  {activeProgramme.resultNumber != null && (
-                    <span className="inline-flex items-center justify-center rounded-lg bg-violet-500/10 px-2 py-0.5 font-mono text-sm font-bold text-violet-600 dark:text-violet-400">
-                      #{activeProgramme.resultNumber}
-                    </span>
-                  )}
-                  <span>{activeProgramme.name}</span>
-                </DialogTitle>
-                <DialogDescription asChild>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {activeProgramme.categoryName}
-                    <Badge variant="outline" className="text-[10px]">
-                      {activeProgramme.type}
-                    </Badge>
-                  </div>
-                </DialogDescription>
-              </DialogHeader>
-
-              {/* Published info */}
-              <p className="text-xs text-muted-foreground">
-                Published
-                {activeProgramme.publishedByName
-                  ? ` by ${activeProgramme.publishedByName}`
-                  : ""}
-                {activeProgramme.publishedAt
-                  ? ` on ${new Date(activeProgramme.publishedAt).toLocaleString()}`
-                  : ""}
-              </p>
-
-              {/* Result roster */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Result Roster</p>
-                <div className="border rounded-md overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-muted/30">
-                      <TableRow>
-                        <TableHead className="w-12">SI</TableHead>
-                        <TableHead className="w-16">Code</TableHead>
-                        <TableHead>Participant</TableHead>
-                        <TableHead>Group</TableHead>
-                        <TableHead className="w-16">Grade</TableHead>
-                        <TableHead className="w-16">Prize</TableHead>
-                        <TableHead className="w-16 text-right">
-                          Points
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {activeProgramme.results
-                        .sort(
-                          (a, b) => (a.position ?? 999) - (b.position ?? 999),
-                        )
-                        .map((r, idx) => (
-                          <TableRow
-                            key={r.id}
-                            className={cn(
-                              r.position != null && MEDAL_ROWS[r.position - 1],
-                            )}
-                          >
-                            <TableCell className="text-muted-foreground">
-                              {idx + 1}
-                            </TableCell>
-                            <TableCell className="font-mono">
-                              {r.codeLetter ?? "—"}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {r.participantName ?? "—"}
-                              {r.chestNumber && (
-                                <span className="text-xs text-muted-foreground ml-1">
-                                  ({r.chestNumber})
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {r.groupName ?? "—"}
-                            </TableCell>
-                            <TableCell>{r.grade ?? "—"}</TableCell>
-                            <TableCell>
-                              {r.position === 1
-                                ? "🥇 1st"
-                                : r.position === 2
-                                  ? "🥈 2nd"
-                                  : r.position === 3
-                                    ? "🥉 3rd"
-                                    : "—"}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {r.points}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
-              {/* Swap result number */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium flex items-center gap-1">
-                  <ArrowDownUp className="h-3.5 w-3.5" />
-                  Swap Result Number
-                </p>
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={swapTarget ?? ""}
-                    onValueChange={(v) => setSwapTarget(v || null)}
-                  >
-                    <SelectTrigger className="h-8 w-60 text-xs">
-                      <SelectValue placeholder="Select a result to swap with" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {published
-                        .filter(
-                          (p) =>
-                            p.id !== activeProgramme.id &&
-                            p.resultNumber != null,
-                        )
-                        .map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            #{p.resultNumber} — {p.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!swapTarget || isPending}
-                    onClick={() =>
-                      swapTarget &&
-                      handleSwapNumbers(activeProgramme.id, swapTarget)
-                    }
-                  >
-                    Swap
-                  </Button>
-                </div>
-              </div>
-
-              <DialogFooter>
-                {canUnpublish && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleUnpublish(activeProgramme.id)}
-                  >
-                    {isPending ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                    ) : (
-                      <Undo2 className="h-3.5 w-3.5 mr-1" />
+        <DrawerContent>
+          <div className="max-w-4xl mx-auto w-full p-4 overflow-y-auto">
+            {activeProgramme && (
+              <>
+                <DrawerHeader className="px-0 pt-0">
+                  <DrawerTitle className="flex items-center gap-2">
+                    {activeProgramme.resultNumber != null && (
+                      <span className="inline-flex items-center justify-center rounded-lg bg-violet-500/10 px-2 py-0.5 font-mono text-sm font-bold text-violet-600 dark:text-violet-400">
+                        #{activeProgramme.resultNumber}
+                      </span>
                     )}
-                    Unpublish
-                  </Button>
-                )}
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+                    <span>{activeProgramme.name}</span>
+                  </DrawerTitle>
+                  <DrawerDescription asChild>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                      {activeProgramme.categoryName}
+                      <Badge variant="outline" className="text-[10px]">
+                        {activeProgramme.type}
+                      </Badge>
+                    </div>
+                  </DrawerDescription>
+                </DrawerHeader>
+
+                {/* Result roster */}
+                <div className="space-y-3 mt-2">
+                  <p className="text-sm font-semibold">Result Roster</p>
+                  <div className="border rounded-xl overflow-x-auto shadow-sm">
+                    <Table>
+                      <TableHeader className="bg-muted/30">
+                        <TableRow>
+                          <TableHead className="w-12">SI</TableHead>
+                          <TableHead className="w-16">Code</TableHead>
+                          <TableHead>Participant</TableHead>
+                          <TableHead>Group</TableHead>
+                          <TableHead className="w-16">Grade</TableHead>
+                          <TableHead className="w-20">Prize</TableHead>
+                          <TableHead className="w-16 text-right">
+                            Points
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activeProgramme.results
+                          .sort(
+                            (a, b) => (a.position ?? 999) - (b.position ?? 999),
+                          )
+                          .map((r, idx) => (
+                            <TableRow
+                              key={r.id}
+                              className={cn(
+                                r.position != null &&
+                                  MEDAL_ROWS[r.position - 1],
+                              )}
+                            >
+                              <TableCell className="text-muted-foreground font-mono">
+                                {idx + 1}
+                              </TableCell>
+                              <TableCell className="font-mono">
+                                {r.codeLetter ?? "—"}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {r.participantName ?? "—"}
+                                {r.chestNumber && (
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    ({r.chestNumber})
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {r.groupName ?? "—"}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {r.grade ?? "—"}
+                              </TableCell>
+                              <TableCell>
+                                {r.position === 1
+                                  ? "🥇 1st"
+                                  : r.position === 2
+                                    ? "🥈 2nd"
+                                    : r.position === 3
+                                      ? "🥉 3rd"
+                                      : "—"}
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-bold">
+                                {r.points}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                {/* Swap result number */}
+                <div className="space-y-3 mt-4 bg-muted/30 p-4 rounded-xl border border-muted">
+                  <p className="text-sm font-semibold flex items-center gap-1.5">
+                    <ArrowDownUp className="h-4 w-4" />
+                    Swap Result Number
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Select
+                      value={swapTarget ?? ""}
+                      onValueChange={(v) => setSwapTarget(v || null)}
+                    >
+                      <SelectTrigger className="h-9 w-64 text-sm font-medium bg-background">
+                        <SelectValue placeholder="Select a result to swap with" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {programmes
+                          .filter(
+                            (p) =>
+                              p.id !== activeProgramme.id &&
+                              p.resultNumber != null,
+                          )
+                          .map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              #{p.resultNumber} — {p.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      className="h-9 font-medium"
+                      disabled={!swapTarget || isPending}
+                      onClick={() =>
+                        swapTarget &&
+                        handleSwapNumbers(activeProgramme.id, swapTarget)
+                      }
+                    >
+                      Swap
+                    </Button>
+                  </div>
+                </div>
+
+                <DrawerFooter className="mt-4 px-0 pb-0 flex-row justify-end gap-2">
+                  {activeProgramme.status !== "PUBLISHED" && (
+                    <Button
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => handlePublish(activeProgramme.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      ) : (
+                        <Megaphone className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      Publish
+                    </Button>
+                  )}
+                  {canUnpublish && activeProgramme.status === 

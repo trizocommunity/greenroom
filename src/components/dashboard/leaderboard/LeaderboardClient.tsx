@@ -1,12 +1,8 @@
 "use client";
 
 import {
-  Crown,
   Flame,
-  Medal,
   Search,
-  Sparkles,
-  Trophy,
   Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -29,6 +25,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
@@ -36,6 +40,7 @@ import {
   getParticipantLeaderboardView,
   isResultVisibleForLeaderboard,
 } from "@/features/results/services/leaderboard-visibility.service";
+import { Badge } from "@/components/ui/badge";
 
 function assignmentOf(r: any) {
   return r.programmeAssignment ?? r.assignment;
@@ -50,7 +55,7 @@ const RANK_STYLES = [
     ring: "ring-amber-400/60",
     bg: "bg-gradient-to-br from-amber-400 to-yellow-500",
     text: "text-amber-950",
-    row: "bg-amber-500/10 hover:bg-amber-500/15",
+    row: "bg-amber-500/10 hover:bg-amber-500/15 cursor-pointer",
     badge:
       "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
   },
@@ -58,7 +63,7 @@ const RANK_STYLES = [
     ring: "ring-slate-300/60",
     bg: "bg-gradient-to-br from-slate-300 to-slate-400",
     text: "text-slate-900",
-    row: "bg-slate-400/10 hover:bg-slate-400/15",
+    row: "bg-slate-400/10 hover:bg-slate-400/15 cursor-pointer",
     badge:
       "bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300",
   },
@@ -66,7 +71,7 @@ const RANK_STYLES = [
     ring: "ring-orange-400/60",
     bg: "bg-gradient-to-br from-orange-400 to-amber-600",
     text: "text-orange-950",
-    row: "bg-orange-500/10 hover:bg-orange-500/15",
+    row: "bg-orange-500/10 hover:bg-orange-500/15 cursor-pointer",
     badge:
       "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
   },
@@ -116,6 +121,26 @@ interface LeaderboardClientProps {
   children?: React.ReactNode;
 }
 
+type ParticipantRow = {
+  participantId: string;
+  rank: number;
+  name: string;
+  gender: string | null;
+  groupName: string | null;
+  groupColor: string | null;
+  categoryName: string | null;
+  offstage: number;
+  stage: number;
+  points: number;
+  programmes: {
+    id: string;
+    name: string;
+    type: string;
+    stageType: string;
+    points: number;
+  }[];
+};
+
 export function LeaderboardClient({
   festival,
   results,
@@ -135,49 +160,14 @@ export function LeaderboardClient({
     defaultParticipantFilterGroup ?? "all",
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedParticipant, setSelectedParticipant] = useState<ParticipantRow | null>(null);
 
   const festivalContext = useFestival();
   const tier = getResolvedTier(tierProp ?? festivalContext.tier);
 
-  // Published team standings (filtered by group if selected).
-  const publishedStandingsFiltered = useMemo(() => {
-    let standingsToUse = publishedStandings ?? [];
-
-    if (groups?.length) {
-      const standingsMap = new Map(standingsToUse.map((t: any) => [t.name, t]));
-      for (const g of groups) {
-        if (!standingsMap.has(g.name)) {
-          standingsMap.set(g.name, { name: g.name, points: 0, rank: 999 });
-        }
-      }
-      standingsToUse = Array.from(standingsMap.values())
-        .sort((a, b) => b.points - a.points)
-        .map((row, index) => ({ ...row, rank: index + 1 }));
-    }
-
-    if (!groups?.length) return standingsToUse;
-    if (participantFilterGroup === "all") return standingsToUse;
-    const groupName = groups.find((g) => g.id === participantFilterGroup)?.name;
-    if (!groupName) return [];
-    return standingsToUse.filter((t: any) => t?.name === groupName);
-  }, [groups, publishedStandings, participantFilterGroup]);
-
   // Top participants by points (individual programmes only).
   const participantStandings = useMemo(() => {
-    const byParticipant: Record<
-      string,
-      {
-        participantId: string;
-        name: string;
-        gender: string | null;
-        groupName: string | null;
-        groupColor: string | null;
-        categoryName: string | null;
-        offstage: number;
-        stage: number;
-        points: number;
-      }
-    > = {};
+    const byParticipant: Record<string, Omit<ParticipantRow, 'rank'>> = {};
 
     const participantView = getParticipantLeaderboardView(tier);
 
@@ -218,6 +208,7 @@ export function LeaderboardClient({
           offstage: 0,
           stage: 0,
           points: 0,
+          programmes: [],
         };
       }
 
@@ -228,6 +219,14 @@ export function LeaderboardClient({
       } else {
         byParticipant[sid].stage += p;
       }
+      
+      byParticipant[sid].programmes.push({
+        id: r.programme?.id ?? "unknown",
+        name: r.programme?.name ?? "Unknown Programme",
+        type: r.programme?.type ?? "INDIVIDUAL",
+        stageType: r.programme?.stageType ?? "STAGE",
+        points: p,
+      });
     });
 
     return Object.values(byParticipant)
@@ -253,101 +252,9 @@ export function LeaderboardClient({
     return () => window.clearInterval(id);
   }, [router]);
 
-  const topThreeTeams = publishedStandingsFiltered.slice(0, 3);
-  const restTeams = publishedStandingsFiltered.slice(3);
-
   return (
     <div className="space-y-6">
-      {/* Hero: title + podium */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-fuchsia-600 to-rose-500 p-5 sm:p-7 text-white shadow-xl shadow-violet-500/20">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-amber-300/20 blur-2xl" />
-
-        <div className="relative flex flex-col gap-6">
-          {children ?? (
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-2.5">
-                <Trophy className="h-7 w-7 text-amber-300" />
-                Leaderboard
-              </h1>
-              <p className="text-sm sm:text-base text-white/80 mt-1">
-                Group and participant standings from published results.
-              </p>
-            </div>
-          )}
-
-          {/* Podium: top 3 groups */}
-          {topThreeTeams.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:items-end">
-              {/* 2nd */}
-              <div className="order-2 sm:order-1 rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20 p-4 text-center">
-                <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-slate-200 to-slate-400 text-sm font-black text-slate-800 shadow">
-                  2
-                </span>
-                <p className="mt-2 font-semibold truncate">
-                  {topThreeTeams[1]?.name ?? "—"}
-                </p>
-                <p className="text-2xl font-black tabular-nums text-slate-100">
-                  {topThreeTeams[1]?.points ?? 0}
-                </p>
-              </div>
-              {/* 1st */}
-              <div className="order-1 sm:order-2 rounded-xl bg-white/15 backdrop-blur-sm ring-2 ring-amber-300/60 p-5 text-center sm:pb-8">
-                <Crown className="mx-auto h-6 w-6 text-amber-300 mb-1" />
-                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-yellow-500 text-base font-black text-amber-950 shadow-lg">
-                  1
-                </span>
-                <p className="mt-2 text-lg font-bold truncate">
-                  {topThreeTeams[0]?.name ?? "—"}
-                </p>
-                <p className="text-3xl font-black tabular-nums text-amber-200">
-                  {topThreeTeams[0]?.points ?? 0}
-                </p>
-              </div>
-              {/* 3rd */}
-              <div className="order-3 rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20 p-4 text-center">
-                <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-orange-300 to-amber-600 text-sm font-black text-orange-950 shadow">
-                  3
-                </span>
-                <p className="mt-2 font-semibold truncate">
-                  {topThreeTeams[2]?.name ?? "—"}
-                </p>
-                <p className="text-2xl font-black tabular-nums text-orange-100">
-                  {topThreeTeams[2]?.points ?? 0}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20 py-8 text-center">
-              <Medal className="mx-auto h-8 w-8 mb-2 text-white/40" />
-              <p className="text-sm text-white/70">
-                No published standings yet.
-              </p>
-            </div>
-          )}
-
-          {/* Remaining groups: chip strip */}
-          {restTeams.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {restTeams.map((team: any, idx: number) => (
-                <div
-                  key={team.name}
-                  className="flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm ring-1 ring-white/15 px-3 py-1.5 text-sm"
-                >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-bold">
-                    {idx + 4}
-                  </span>
-                  <span className="font-medium">{team.name}</span>
-                  <span className="font-black tabular-nums text-amber-200">
-                    {team.points}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
+      {children}
       {/* Top Scorers — full width */}
       <Card className="p-0 overflow-hidden border-0 shadow-lg shadow-violet-500/5 ring-1 ring-violet-500/20">
         <div className="p-4 border-b border-violet-500/10 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/5 to-transparent">
@@ -446,7 +353,8 @@ export function LeaderboardClient({
                 participantStandings.map((row) => (
                   <TableRow
                     key={row.participantId}
-                    className={cn(RANK_STYLES[row.rank - 1]?.row)}
+                    className={cn("cursor-pointer hover:bg-muted/50 transition-colors", RANK_STYLES[row.rank - 1]?.row)}
+                    onClick={() => setSelectedParticipant(row)}
                   >
                     <TableCell className="text-center">
                       <RankBadge rank={row.rank} />
@@ -517,8 +425,9 @@ export function LeaderboardClient({
             participantStandings.map((row) => (
               <div
                 key={row.participantId}
+                onClick={() => setSelectedParticipant(row)}
                 className={cn(
-                  "flex items-start justify-between gap-3 rounded-xl border px-3 py-2.5",
+                  "flex items-start justify-between gap-3 rounded-xl border px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors",
                   RANK_STYLES[row.rank - 1]
                     ? cn("border-transparent", RANK_STYLES[row.rank - 1].row)
                     : "border-border/70 bg-background",
@@ -582,6 +491,97 @@ export function LeaderboardClient({
           )}
         </div>
       </Card>
+      
+      {/* Participant Breakdown Drawer */}
+      <Drawer open={!!selectedParticipant} onOpenChange={(open) => !open && setSelectedParticipant(null)}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-2xl max-h-[85vh] flex flex-col">
+            {selectedParticipant && (
+              <>
+                <DrawerHeader className="border-b">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <DrawerTitle className="text-2xl flex items-center gap-3">
+                        <RankBadge rank={selectedParticipant.rank} />
+                        {selectedParticipant.name}
+                      </DrawerTitle>
+                      <DrawerDescription className="mt-2 flex items-center gap-2">
+                        {selectedParticipant.groupName && (
+                          <span className="inline-flex items-center gap-1.5 font-medium">
+                            <span
+                              className="h-2 w-2 rounded-full shadow-sm"
+                              style={{ backgroundColor: selectedParticipant.groupColor ?? "#94a3b8" }}
+                              aria-hidden
+                            />
+                            {selectedParticipant.groupName}
+                          </span>
+                        )}
+                        <span>&bull;</span>
+                        <span>{selectedParticipant.categoryName}</span>
+                      </DrawerDescription>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-black text-violet-600 dark:text-violet-400">{selectedParticipant.points}</div>
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Total Pts</div>
+                    </div>
+                  </div>
+                </DrawerHeader>
+                <ScrollArea className="flex-1 p-4">
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="rounded-xl border bg-sky-500/5 p-4 text-center">
+                      <div className="text-sm font-medium text-sky-600 dark:text-sky-400 mb-1">Offstage</div>
+                      <div className="text-2xl font-bold">{selectedParticipant.offstage}</div>
+                    </div>
+                    <div className="rounded-xl border bg-rose-500/5 p-4 text-center">
+                      <div className="text-sm font-medium text-rose-600 dark:text-rose-400 mb-1">Stage</div>
+                      <div className="text-2xl font-bold">{selectedParticipant.stage}</div>
+                    </div>
+                  </div>
+
+                  <h4 className="font-semibold text-lg mb-3">Scoring Breakdown</h4>
+                  <div className="border rounded-xl overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead>Programme</TableHead>
+                          <TableHead className="w-24">Type</TableHead>
+                          <TableHead className="w-20 text-right">Points</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedParticipant.programmes.length > 0 ? (
+                          selectedParticipant.programmes.map((prog, i) => (
+                            <TableRow key={`${prog.id}-${i}`}>
+                              <TableCell className="font-medium">{prog.name}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={cn(
+                                  "font-normal text-[10px]",
+                                  prog.stageType === "NON_STAGE" ? "text-sky-600 border-sky-200 bg-sky-500/10" : "text-rose-600 border-rose-200 bg-rose-500/10"
+                                )}>
+                                  {prog.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-bold tabular-nums">
+                                {prog.points}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground py-6">
+                              No programmes found.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ScrollArea>
+              </>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

@@ -6,6 +6,9 @@ import {
   getAnnouncerQueue,
   getNextResultNumber,
   getPublishedResults,
+  getVocalOfTheFest,
+  getPenOfTheFest,
+  computeStandings,
 } from "@/features/announcement/services/announcer.service";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
@@ -41,10 +44,13 @@ export default async function AnnouncerPage({
   );
   if (!canUse) notFound();
 
-  const [queue, nextNumber, publishedResults] = await Promise.all([
+  const [queue, nextNumber, publishedResults, vocalOfTheFest, penOfTheFest, liveStandings] = await Promise.all([
     getAnnouncerQueue(festival.id),
     getNextResultNumber(festival.id),
     getPublishedResults(festival.id),
+    getVocalOfTheFest(festival.id),
+    getPenOfTheFest(festival.id),
+    computeStandings(festival.id, "published"),
   ]);
 
   return (
@@ -63,6 +69,9 @@ export default async function AnnouncerPage({
         queue={queue}
         nextResultNumber={nextNumber}
         publishedResults={publishedResults}
+        vocalOfTheFest={vocalOfTheFest}
+        penOfTheFest={penOfTheFest}
+        liveStandings={liveStandings}
       />
     </div>
   );
