@@ -89,7 +89,7 @@ export async function recordFoodEntry(
       id: crypto.randomUUID(),
       sessionId,
       participantId: p.id,
-      chestNumber: p.chestNumber,
+      chestNumber: chestNumber,
       scannedByUserId,
       scannedByName: scannedByName || "Unknown",
       scannedByEmail,
