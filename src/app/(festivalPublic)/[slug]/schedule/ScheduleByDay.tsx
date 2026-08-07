@@ -185,7 +185,7 @@ export function ScheduleByDay({
                     <PaginationContent>
                       <PaginationItem>
                         <PaginationPrevious
-                          href="#"
+                          
                           onClick={(e) => {
                             e.preventDefault();
                             setPageIndex((p) => Math.max(0, p - 1));
@@ -203,7 +203,7 @@ export function ScheduleByDay({
                           return (
                             <PaginationItem key={i}>
                               <PaginationLink
-                                href="#"
+                                
                                 isActive={pageIndex === i}
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -229,7 +229,7 @@ export function ScheduleByDay({
 
                       <PaginationItem>
                         <PaginationNext
-                          href="#"
+                          
                           onClick={(e) => {
                             e.preventDefault();
                             setPageIndex((p) => Math.min(totalPages - 1, p + 1));

@@ -20,7 +20,10 @@ import type { BulkAssignmentInput } from "@/features/assignments/services/assign
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { resolveDeadlineWindow } from "@/features/festivals/services/deadline-window";
+import {
+  isTeamLeaderActionWindowOpen,
+  resolveDeadlineWindow,
+} from "@/features/festivals/services/deadline-window";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 
 function auditActorForContext(actorContext: AssignmentActorContext) {
@@ -89,6 +92,17 @@ function assertAssignmentWindowOpen(
   }
   if (state === "UPCOMING") {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_WINDOW_NOT_OPEN);
+  }
+  if (state === "UNCONFIGURED") {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_WINDOW_NOT_CONFIGURED);
+  }
+  if (
+    !isTeamLeaderActionWindowOpen({
+      start: festival?.programmeAssignmentStartDate,
+      end: festival?.programmeAssignmentDeadline,
+    })
+  ) {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_WINDOW_NOT_CONFIGURED);
   }
 }
 

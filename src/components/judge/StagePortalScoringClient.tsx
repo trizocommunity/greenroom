@@ -294,18 +294,10 @@ function SubmissionReviewView({
                 <div className="flex items-center gap-3 text-right">
                   <div>
                     <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Normalised
+                      Average
                     </p>
                     <p className="text-sm font-bold tabular-nums text-primary">
                       {policy?.points ?? "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Points
-                    </p>
-                    <p className="text-sm font-bold tabular-nums text-heading">
-                      {policy?.awardPoints ?? "—"}
                     </p>
                   </div>
                 </div>
@@ -450,10 +442,12 @@ export function StagePortalScoringClient({
   stageName,
   payload,
   onDone,
+  onSubmitted,
 }: {
   stageName: string;
   payload: StagePortalLivePayload;
   onDone: () => void;
+  onSubmitted?: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [submissionPhase, setSubmissionPhase] =
@@ -802,6 +796,7 @@ export function StagePortalScoringClient({
           });
           setSummaryVariant("complete");
         }
+        onSubmitted?.();
         setSubmissionPhase("summary");
       } catch (error: any) {
         const message =

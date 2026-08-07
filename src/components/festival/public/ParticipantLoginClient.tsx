@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useRequestAccess, useVerifyParticipantOtp } from "@/api/client";
 import { ErrorScopeProvider, InlineError } from "@/components/errors";
 import { Button } from "@/components/ui/button";
-import { DateOfBirthPicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,7 +23,7 @@ export function ParticipantLoginClient({
   const verifyOtpMutation = useVerifyParticipantOtp();
 
   const [chestNumber, setChestNumber] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [otpStage, setOtpStage] = useState<{
     participantSlug: string;
     devOtp: string | null;
@@ -45,14 +44,11 @@ export function ParticipantLoginClient({
       return;
     }
     if (!dateOfBirth) {
-      setFieldError("Please select your date of birth.");
+      setFieldError("Please enter your date of birth.");
       return;
     }
 
-    const yyyy = dateOfBirth.getFullYear();
-    const mm = String(dateOfBirth.getMonth() + 1).padStart(2, "0");
-    const dd = String(dateOfBirth.getDate()).padStart(2, "0");
-    const identifierValue = `${yyyy}-${mm}-${dd}`;
+    const identifierValue = dateOfBirth;
 
     requestAccess.mutate(
       { festivalSlug, chestNumber, identifierKind: "DOB", identifierValue },
@@ -187,12 +183,13 @@ export function ParticipantLoginClient({
 
             <div className="space-y-2">
               <Label htmlFor="dateOfBirth">Date of Birth</Label>
-              <DateOfBirthPicker
+              <Input
                 id="dateOfBirth"
-                date={dateOfBirth}
-                onChange={setDateOfBirth}
-                placeholder="Select your birth date"
-                className="h-10 rounded-xl"
+                type="date"
+                value={dateOfBirth}
+                max={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                className="h-9 text-sm"
               />
             </div>
 

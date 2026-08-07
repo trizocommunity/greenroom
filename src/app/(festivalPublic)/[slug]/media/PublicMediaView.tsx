@@ -190,7 +190,7 @@ export function PublicMediaView({
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious
-                      href="#"
+                      
                       onClick={(e) => {
                         e.preventDefault();
                         if (page > 1) goToPage(page - 1);
@@ -211,7 +211,7 @@ export function PublicMediaView({
                       return (
                         <PaginationItem key={i}>
                           <PaginationLink
-                            href="#"
+                            
                             isActive={page === targetPage}
                             onClick={(e) => {
                               e.preventDefault();
@@ -237,7 +237,7 @@ export function PublicMediaView({
 
                   <PaginationItem>
                     <PaginationNext
-                      href="#"
+                      
                       onClick={(e) => {
                         e.preventDefault();
                         if (page < Math.ceil(total / pageSize)) goToPage(page + 1);

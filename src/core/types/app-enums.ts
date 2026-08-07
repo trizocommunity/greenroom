@@ -110,6 +110,7 @@ export const ProgrammeJudgementStatus = {
   SCORING_IN_PROGRESS: "SCORING_IN_PROGRESS",
   AWAITING_JUDGES: "AWAITING_JUDGES",
   COMPLETED: "COMPLETED",
+  CANCELLED: "CANCELLED",
 } as const;
 export type ProgrammeJudgementStatus =
   (typeof ProgrammeJudgementStatus)[keyof typeof ProgrammeJudgementStatus];

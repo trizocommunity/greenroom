@@ -182,7 +182,7 @@ export function StandingsBoard({
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  href="#"
+                  
                   onClick={(e) => {
                     e.preventDefault();
                     setPageIndex((p) => Math.max(0, p - 1));
@@ -201,7 +201,7 @@ export function StandingsBoard({
                   return (
                     <PaginationItem key={i}>
                       <PaginationLink
-                        href="#"
+                        
                         isActive={pageIndex === i}
                         onClick={(e) => {
                           e.preventDefault();
@@ -228,7 +228,7 @@ export function StandingsBoard({
 
               <PaginationItem>
                 <PaginationNext
-                  href="#"
+                  
                   onClick={(e) => {
                     e.preventDefault();
                     setPageIndex((p) => Math.min(totalPages - 1, p + 1));

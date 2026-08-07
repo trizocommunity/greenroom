@@ -130,7 +130,7 @@ export function ProgrammeNotificationsClient({
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    href="#"
+                    
                     onClick={(e) => {
                       e.preventDefault();
                       if (pageIndex > 0) setPageIndex((p) => p - 1);
@@ -155,7 +155,7 @@ export function ProgrammeNotificationsClient({
                     return (
                       <PaginationItem key={i}>
                         <PaginationLink
-                          href="#"
+                          
                           isActive={pageIndex === targetPage}
                           onClick={(e) => {
                             e.preventDefault();
@@ -181,7 +181,7 @@ export function ProgrammeNotificationsClient({
 
                 <PaginationItem>
                   <PaginationNext
-                    href="#"
+                    
                     onClick={(e) => {
                       e.preventDefault();
                       if ((pageIndex + 1) * pageSize < notifications.length)

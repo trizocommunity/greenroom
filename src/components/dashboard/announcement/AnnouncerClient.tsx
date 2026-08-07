@@ -16,15 +16,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
-} from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +27,15 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -208,63 +208,66 @@ export function AnnouncerClient({
                   </h2>
                   <div className="grid gap-3">
                     {sorted
-                      .slice(queuePageIndex * pageSize, (queuePageIndex + 1) * pageSize)
+                      .slice(
+                        queuePageIndex * pageSize,
+                        (queuePageIndex + 1) * pageSize,
+                      )
                       .map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-violet-500/[0.02]"
-                      >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <span className="inline-flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
-                            {p.resultNumber != null
-                              ? `#${p.resultNumber}`
-                              : "—"}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{p.name}</p>
-                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                              <span className="text-muted-foreground text-xs">
-                                {p.categoryName}
-                              </span>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] h-5 px-1.5 font-normal"
-                              >
-                                {p.type === "GROUP" ? "Group" : "Individual"}
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] h-5 px-1.5 font-normal"
-                              >
-                                {p.stageType === "NON_STAGE"
-                                  ? "Offstage"
-                                  : "Stage"}
-                              </Badge>
+                        <div
+                          key={p.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-violet-500/[0.02]"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <span className="inline-flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
+                              {p.resultNumber != null
+                                ? `#${p.resultNumber}`
+                                : "—"}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{p.name}</p>
+                              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                <span className="text-muted-foreground text-xs">
+                                  {p.categoryName}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-5 px-1.5 font-normal"
+                                >
+                                  {p.type === "GROUP" ? "Group" : "Individual"}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-5 px-1.5 font-normal"
+                                >
+                                  {p.stageType === "NON_STAGE"
+                                    ? "Offstage"
+                                    : "Stage"}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2 shrink-0 sm:justify-end">
+                            <Badge
+                              variant="secondary"
+                              className="bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/25 border-0 font-medium"
+                            >
+                              Ready
+                            </Badge>
+                            <QueueActionButton
+                              variant="outline"
+                              onClick={() => setActiveProgramme(p)}
+                            >
+                              Open
+                            </QueueActionButton>
+                            <QueueActionButton
+                              onClick={() => handleAnnounce(p)}
+                              disabled={isPending || p.resultNumber == null}
+                            >
+                              Announce
+                            </QueueActionButton>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0 sm:justify-end">
-                          <Badge
-                            variant="secondary"
-                            className="bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/25 border-0 font-medium"
-                          >
-                            Ready
-                          </Badge>
-                          <QueueActionButton
-                            variant="outline"
-                            onClick={() => setActiveProgramme(p)}
-                          >
-                            Open
-                          </QueueActionButton>
-                          <QueueActionButton
-                            onClick={() => handleAnnounce(p)}
-                            disabled={isPending || p.resultNumber == null}
-                          >
-                            Announce
-                          </QueueActionButton>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
 
                   {sorted.length > pageSize && (
@@ -272,59 +275,77 @@ export function AnnouncerClient({
                       <PaginationContent>
                         <PaginationItem>
                           <PaginationPrevious
-                            href="#"
                             onClick={(e) => {
                               e.preventDefault();
-                              if (queuePageIndex > 0) setQueuePageIndex(p => p - 1);
+                              if (queuePageIndex > 0)
+                                setQueuePageIndex((p) => p - 1);
                             }}
-                            className={queuePageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                            className={
+                              queuePageIndex === 0
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
                           />
                         </PaginationItem>
 
-                        {[...Array(Math.ceil(sorted.length / pageSize))].map((_, i) => {
-                          const targetPage = i;
-                          const totalPages = Math.ceil(sorted.length / pageSize);
-                          
-                          if (
-                            targetPage === 0 ||
-                            targetPage === totalPages - 1 ||
-                            (targetPage >= queuePageIndex - 1 && targetPage <= queuePageIndex + 1)
-                          ) {
-                            return (
-                              <PaginationItem key={i}>
-                                <PaginationLink
-                                  href="#"
-                                  isActive={queuePageIndex === targetPage}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setQueuePageIndex(targetPage);
-                                  }}
-                                >
-                                  {targetPage + 1}
-                                </PaginationLink>
-                              </PaginationItem>
+                        {[...Array(Math.ceil(sorted.length / pageSize))].map(
+                          (_, i) => {
+                            const targetPage = i;
+                            const totalPages = Math.ceil(
+                              sorted.length / pageSize,
                             );
-                          }
-                          
-                          if (targetPage === queuePageIndex - 2 || targetPage === queuePageIndex + 2) {
-                            return (
-                              <PaginationItem key={i}>
-                                <PaginationEllipsis />
-                              </PaginationItem>
-                            );
-                          }
-                          
-                          return null;
-                        })}
+
+                            if (
+                              targetPage === 0 ||
+                              targetPage === totalPages - 1 ||
+                              (targetPage >= queuePageIndex - 1 &&
+                                targetPage <= queuePageIndex + 1)
+                            ) {
+                              return (
+                                <PaginationItem key={i}>
+                                  <PaginationLink
+                                    isActive={queuePageIndex === targetPage}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setQueuePageIndex(targetPage);
+                                    }}
+                                  >
+                                    {targetPage + 1}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              );
+                            }
+
+                            if (
+                              targetPage === queuePageIndex - 2 ||
+                              targetPage === queuePageIndex + 2
+                            ) {
+                              return (
+                                <PaginationItem key={i}>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              );
+                            }
+
+                            return null;
+                          },
+                        )}
 
                         <PaginationItem>
                           <PaginationNext
-                            href="#"
                             onClick={(e) => {
                               e.preventDefault();
-                              if ((queuePageIndex + 1) * pageSize < sorted.length) setQueuePageIndex(p => p + 1);
+                              if (
+                                (queuePageIndex + 1) * pageSize <
+                                sorted.length
+                              )
+                                setQueuePageIndex((p) => p + 1);
                             }}
-                            className={(queuePageIndex + 1) * pageSize >= sorted.length ? "pointer-events-none opacity-50" : ""}
+                            className={
+                              (queuePageIndex + 1) * pageSize >= sorted.length
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
                           />
                         </PaginationItem>
                       </PaginationContent>
@@ -341,74 +362,87 @@ export function AnnouncerClient({
                   </h2>
                   <div className="grid gap-2">
                     {publishedResults
-                      .slice(publishedPageIndex * pageSize, (publishedPageIndex + 1) * pageSize)
+                      .slice(
+                        publishedPageIndex * pageSize,
+                        (publishedPageIndex + 1) * pageSize,
+                      )
                       .map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center justify-between gap-4 rounded-lg border bg-card/50 p-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="font-mono text-xs font-bold text-muted-foreground w-10 shrink-0">
-                            {p.resultNumber != null
-                              ? `#${p.resultNumber}`
-                              : "—"}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-muted-foreground truncate">
-                              {p.name}
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-muted-foreground text-xs opacity-80">
-                                {p.categoryName}
-                              </span>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] h-4 px-1.5 font-normal opacity-70"
-                              >
-                                {p.type === "GROUP" ? "Group" : "Individual"}
-                              </Badge>
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between gap-4 rounded-lg border bg-card/50 p-3"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="font-mono text-xs font-bold text-muted-foreground w-10 shrink-0">
+                              {p.resultNumber != null
+                                ? `#${p.resultNumber}`
+                                : "—"}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-muted-foreground truncate">
+                                {p.name}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-muted-foreground text-xs opacity-80">
+                                  {p.categoryName}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-4 px-1.5 font-normal opacity-70"
+                                >
+                                  {p.type === "GROUP" ? "Group" : "Individual"}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <Badge
+                              variant="outline"
+                              className="text-muted-foreground opacity-80 text-[10px]"
+                            >
+                              Announced
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <Badge
-                            variant="outline"
-                            className="text-muted-foreground opacity-80 text-[10px]"
-                          >
-                            Announced
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
-                  
+
                   {publishedResults.length > pageSize && (
                     <Pagination className="mt-4">
                       <PaginationContent>
                         <PaginationItem>
                           <PaginationPrevious
-                            href="#"
                             onClick={(e) => {
                               e.preventDefault();
-                              if (publishedPageIndex > 0) setPublishedPageIndex(p => p - 1);
+                              if (publishedPageIndex > 0)
+                                setPublishedPageIndex((p) => p - 1);
                             }}
-                            className={publishedPageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                            className={
+                              publishedPageIndex === 0
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
                           />
                         </PaginationItem>
 
-                        {[...Array(Math.ceil(publishedResults.length / pageSize))].map((_, i) => {
+                        {[
+                          ...Array(
+                            Math.ceil(publishedResults.length / pageSize),
+                          ),
+                        ].map((_, i) => {
                           const targetPage = i;
-                          const totalPages = Math.ceil(publishedResults.length / pageSize);
-                          
+                          const totalPages = Math.ceil(
+                            publishedResults.length / pageSize,
+                          );
+
                           if (
                             targetPage === 0 ||
                             targetPage === totalPages - 1 ||
-                            (targetPage >= publishedPageIndex - 1 && targetPage <= publishedPageIndex + 1)
+                            (targetPage >= publishedPageIndex - 1 &&
+                              targetPage <= publishedPageIndex + 1)
                           ) {
                             return (
                               <PaginationItem key={i}>
                                 <PaginationLink
-                                  href="#"
                                   isActive={publishedPageIndex === targetPage}
                                   onClick={(e) => {
                                     e.preventDefault();
@@ -420,26 +454,37 @@ export function AnnouncerClient({
                               </PaginationItem>
                             );
                           }
-                          
-                          if (targetPage === publishedPageIndex - 2 || targetPage === publishedPageIndex + 2) {
+
+                          if (
+                            targetPage === publishedPageIndex - 2 ||
+                            targetPage === publishedPageIndex + 2
+                          ) {
                             return (
                               <PaginationItem key={i}>
                                 <PaginationEllipsis />
                               </PaginationItem>
                             );
                           }
-                          
+
                           return null;
                         })}
 
                         <PaginationItem>
                           <PaginationNext
-                            href="#"
                             onClick={(e) => {
                               e.preventDefault();
-                              if ((publishedPageIndex + 1) * pageSize < publishedResults.length) setPublishedPageIndex(p => p + 1);
+                              if (
+                                (publishedPageIndex + 1) * pageSize <
+                                publishedResults.length
+                              )
+                                setPublishedPageIndex((p) => p + 1);
                             }}
-                            className={(publishedPageIndex + 1) * pageSize >= publishedResults.length ? "pointer-events-none opacity-50" : ""}
+                            className={
+                              (publishedPageIndex + 1) * pageSize >=
+                              publishedResults.length
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
                           />
                         </PaginationItem>
                       </PaginationContent>
@@ -598,8 +643,8 @@ export function AnnouncerClient({
                           <TableHead>Group</TableHead>
                           <TableHead className="w-16">Grade</TableHead>
                           <TableHead className="w-20">Prize</TableHead>
-                          <TableHead className="w-16 text-right">
-                            Points
+                          <TableHead className="w-20 text-right">
+                            Award Pts
                           </TableHead>
                         </TableRow>
                       </TableHeader>
@@ -646,7 +691,7 @@ export function AnnouncerClient({
                                       : "—"}
                               </TableCell>
                               <TableCell className="text-right font-mono font-bold">
-                                {r.points}
+                                {r.awardPoints}
                               </TableCell>
                             </TableRow>
                           ))}

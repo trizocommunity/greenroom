@@ -181,7 +181,7 @@ export function PublicNewsView({
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  href="#"
+                  
                   onClick={(e) => {
                     e.preventDefault();
                     if (page > 1) goToPage(page - 1);
@@ -202,7 +202,7 @@ export function PublicNewsView({
                   return (
                     <PaginationItem key={i}>
                       <PaginationLink
-                        href="#"
+                        
                         isActive={page === targetPage}
                         onClick={(e) => {
                           e.preventDefault();
@@ -228,7 +228,7 @@ export function PublicNewsView({
 
               <PaginationItem>
                 <PaginationNext
-                  href="#"
+                  
                   onClick={(e) => {
                     e.preventDefault();
                     if (page < Math.ceil(total / pageSize)) goToPage(page + 1);

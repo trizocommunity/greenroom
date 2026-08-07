@@ -6,15 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PublicResultPosterSection } from "@/components/festival/posters/PublicResultPosterSection";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
   EmptyState,
   PublicSection,
 } from "@/components/festival/public/PublicSection";
@@ -26,6 +17,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/core/utils/cn";
 import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
@@ -45,6 +45,7 @@ export interface Result {
   team: string; // This is the group name
   position: number;
   points: number;
+  awardPoints: number;
   grade?: string | null;
   codeLetter?: string | null;
   chestNo?: string | null;
@@ -381,59 +382,68 @@ export function ResultsList({
                       <PaginationContent>
                         <PaginationItem>
                           <PaginationPrevious
-                            href="#"
                             onClick={(e) => {
                               e.preventDefault();
                               if (page > 1) goToPage(page - 1);
                             }}
-                            className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                            className={
+                              page <= 1 ? "pointer-events-none opacity-50" : ""
+                            }
                           />
                         </PaginationItem>
 
-                        {[...Array(Math.ceil(total / PAGE_SIZE))].map((_, i) => {
-                          const targetPage = i + 1;
-                          const totalPages = Math.ceil(total / PAGE_SIZE);
-                          
-                          if (
-                            targetPage === 1 ||
-                            targetPage === totalPages ||
-                            (targetPage >= page - 1 && targetPage <= page + 1)
-                          ) {
-                            return (
-                              <PaginationItem key={i}>
-                                <PaginationLink
-                                  href="#"
-                                  isActive={page === targetPage}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    goToPage(targetPage);
-                                  }}
-                                >
-                                  {targetPage}
-                                </PaginationLink>
-                              </PaginationItem>
-                            );
-                          }
-                          
-                          if (targetPage === page - 2 || targetPage === page + 2) {
-                            return (
-                              <PaginationItem key={i}>
-                                <PaginationEllipsis />
-                              </PaginationItem>
-                            );
-                          }
-                          
-                          return null;
-                        })}
+                        {[...Array(Math.ceil(total / PAGE_SIZE))].map(
+                          (_, i) => {
+                            const targetPage = i + 1;
+                            const totalPages = Math.ceil(total / PAGE_SIZE);
+
+                            if (
+                              targetPage === 1 ||
+                              targetPage === totalPages ||
+                              (targetPage >= page - 1 && targetPage <= page + 1)
+                            ) {
+                              return (
+                                <PaginationItem key={i}>
+                                  <PaginationLink
+                                    isActive={page === targetPage}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      goToPage(targetPage);
+                                    }}
+                                  >
+                                    {targetPage}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              );
+                            }
+
+                            if (
+                              targetPage === page - 2 ||
+                              targetPage === page + 2
+                            ) {
+                              return (
+                                <PaginationItem key={i}>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              );
+                            }
+
+                            return null;
+                          },
+                        )}
 
                         <PaginationItem>
                           <PaginationNext
-                            href="#"
                             onClick={(e) => {
                               e.preventDefault();
-                              if (page < Math.ceil(total / PAGE_SIZE)) goToPage(page + 1);
+                              if (page < Math.ceil(total / PAGE_SIZE))
+                                goToPage(page + 1);
                             }}
-                            className={page >= Math.ceil(total / PAGE_SIZE) ? "pointer-events-none opacity-50" : ""}
+                            className={
+                              page >= Math.ceil(total / PAGE_SIZE)
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
                           />
                         </PaginationItem>
                       </PaginationContent>
@@ -534,11 +544,6 @@ export function ResultsList({
                               )}
                             >
                               {result.winner}
-                              {result.chestNo && (
-                                <span className="ml-1.5 text-muted-foreground font-normal text-xs">
-                                  #{result.chestNo}
-                                </span>
-                              )}
                             </p>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {[
@@ -550,20 +555,6 @@ export function ResultsList({
                                 .filter(Boolean)
                                 .join(" · ")}
                             </p>
-                          </div>
-
-                          <div className="shrink-0 text-right">
-                            <p className="text-sm font-semibold tabular-nums text-foreground">
-                              {result.points}
-                              <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                pts
-                              </span>
-                            </p>
-                            {result.grade && (
-                              <p className="mt-0.5 text-[11px] font-medium text-success">
-                                Grade {result.grade}
-                              </p>
-                            )}
                           </div>
                         </li>
                       );

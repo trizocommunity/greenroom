@@ -92,6 +92,8 @@ export const ERROR_MESSAGES = {
   ASSIGNMENT_DEADLINE_PASSED_ADMIN: "Deadline passed. Assignments are closed.",
   ASSIGNMENT_WINDOW_NOT_OPEN:
     "Assignments haven't opened yet. Please wait for the start date.",
+  ASSIGNMENT_WINDOW_NOT_CONFIGURED:
+    "The festival manager hasn't set an assignment window yet. Contact them to enable assignments.",
   ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT:
     "INDIVIDUAL programme assignments must reference a participant, not a group.",
   ASSIGNMENT_GROUP_REQUIRES_GROUP:
@@ -110,6 +112,8 @@ export const ERROR_MESSAGES = {
     "Deadline passed. Adding new participants is closed.",
   PARTICIPANT_CREATION_WINDOW_NOT_OPEN:
     "Participant registration hasn't opened yet. Please wait for the start date.",
+  PARTICIPANT_CREATION_WINDOW_NOT_CONFIGURED:
+    "The festival manager hasn't set a participant registration window yet. Contact them to add new participants.",
 
   // ─── Usage / Limits ───────────────────────────────────────────────────────
   USAGE_LIMIT_EXCEEDED:

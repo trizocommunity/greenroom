@@ -481,7 +481,7 @@ export async function getActiveJudgementConfigsAction(festivalId: string) {
   const configs = await db.query.judgementConfig.findMany({
     where: and(
       eq(judgementConfigTable.festivalId, festivalId),
-      eq(judgementConfigTable.status, "LIVE"),
+      inArray(judgementConfigTable.status, ["LIVE", "SUBMITTED"]),
       configScope,
     ),
     orderBy: [desc(judgementConfigTable.createdAt)],
@@ -510,9 +510,11 @@ export async function getActiveJudgementConfigsAction(festivalId: string) {
     judges: c.judges.map((j) => ({ id: j.judge.id, name: j.judge.name })),
     startedAt: c.startedAt,
     startedBy: c.startedBy,
-    judgementStatus: (c.scores.length > 0
-      ? "SCORING_IN_PROGRESS"
-      : "LIVE") as ProgrammeJudgementStatus,
+    judgementStatus: (c.status === "SUBMITTED"
+      ? "COMPLETED"
+      : c.scores.length > 0
+        ? "SCORING_IN_PROGRESS"
+        : "LIVE") as ProgrammeJudgementStatus,
   }));
 }
 
@@ -528,7 +530,11 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
     buildJudgementConfigReportingSessionStageScope(accessibleStageIds);
 
   const configs = await db.query.judgementConfig.findMany({
-    where: and(eq(judgementConfigTable.festivalId, festivalId), configScope),
+    where: and(
+      eq(judgementConfigTable.festivalId, festivalId),
+      configScope,
+      inArray(judgementConfigTable.status, ["SUBMITTED", "COMPLETED"]),
+    ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
       programme: {
@@ -576,6 +582,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
             code: true,
             isAbsent: true,
             reportingSessionId: true,
+            programmeId: true,
           },
           with: {
             programmeCodeLetterRecipients: {
@@ -600,7 +607,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
     assignmentIds.length > 0
       ? await db.query.programmeAssignmentMember.findMany({
           where: inArray(assignmentMemberTable.assignmentId, assignmentIds),
-          columns: { id: true, assignmentId: true },
+          columns: { id: true, assignmentId: true, participantId: true },
         })
       : [];
 
@@ -617,33 +624,61 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         })
       : [];
 
+  // Build a lookup from (programmeId, participantId) -> assignmentId.
+  // This mirrors the logic in recomputeConfigResults so the completed-judgement
+  // drawer maps code letters to the same results shown in the result roster.
+  const assignmentIdByParticipant = new Map<string, string>();
+  for (const a of allAssignments) {
+    if (a.participantId) {
+      assignmentIdByParticipant.set(
+        `${a.programmeId}:${a.participantId}`,
+        a.id,
+      );
+    }
+  }
+  for (const m of allAssignmentMembers) {
+    const assignment = allAssignments.find((a) => a.id === m.assignmentId);
+    if (assignment && m.participantId) {
+      assignmentIdByParticipant.set(
+        `${assignment.programmeId}:${m.participantId}`,
+        assignment.id,
+      );
+    }
+  }
+
   const resultByCodeLetterId = new Map<
     string,
     { grade: string | null; awardPoints: number }
   >();
   for (const cl of allCodeLetters) {
-    const recipient = cl.programmeCodeLetterRecipients[0];
-    if (recipient) {
+    const assignmentIds = new Set<string>();
+    for (const recipient of cl.programmeCodeLetterRecipients) {
+      if (!recipient.participantId) continue;
+
       let assignmentId: string | undefined;
       if (recipient.assignmentMemberId) {
         assignmentId = allAssignmentMembers.find(
           (m) => m.id === recipient.assignmentMemberId,
         )?.assignmentId;
       }
-      if (!assignmentId && recipient.participantId) {
-        assignmentId = allAssignments.find(
-          (a) => a.participantId === recipient.participantId,
-        )?.id;
+      if (!assignmentId) {
+        assignmentId = assignmentIdByParticipant.get(
+          `${cl.programmeId}:${recipient.participantId}`,
+        );
       }
-      
-      if (assignmentId) {
-        const result = allResults.find((r) => r.assignmentId === assignmentId);
-        if (result) {
-          resultByCodeLetterId.set(cl.id, {
-            grade: result.grade,
-            awardPoints: result.awardPoints ?? 0,
-          });
-        }
+
+      if (assignmentId) assignmentIds.add(assignmentId);
+    }
+
+    // A code letter should map to exactly one assignment under the XOR invariant.
+    if (assignmentIds.size === 1) {
+      const assignmentId = Array.from(assignmentIds)[0]!;
+      const result = allResults.find((r) => r.assignmentId === assignmentId);
+      if (result) {
+        resultByCodeLetterId.set(cl.id, {
+          grade: result.grade,
+          awardPoints: result.awardPoints ?? 0,
+        });
       }
     }
   }
@@ -745,7 +780,8 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         (j) => j.isComplete,
       ).length;
       const isSingle = (config.judgingMode as "SINGLE" | "GROUP") === "SINGLE";
-      const isJudgementComplete = config.status === "SUBMITTED";
+      const isJudgementComplete =
+        config.status === "SUBMITTED" || config.status === "COMPLETED";
       const judgementStatus: ProgrammeJudgementStatus = isJudgementComplete
         ? "COMPLETED"
         : isSingle
@@ -2186,8 +2222,8 @@ export async function forceCompleteJudgementAction(configId: string) {
     requireWritable: true,
   });
 
-  if (config.status !== "LIVE") {
-    throw new AppError("Judgement is not in a live state.");
+  if (config.status !== "LIVE" && config.status !== "SUBMITTED") {
+    throw new AppError("Judgement is not in a live or submitted state.");
   }
 
   const now = serverNowIso();
@@ -2195,9 +2231,9 @@ export async function forceCompleteJudgementAction(configId: string) {
   await db
     .update(judgementConfigTable)
     .set({
-      status: "SUBMITTED",
-      endedAt: now,
-      endedBy: session.userId,
+      status: "COMPLETED",
+      endedAt: config.endedAt ?? now,
+      endedBy: config.endedBy ?? session.userId,
       updatedAt: now,
     } as any)
     .where(eq(judgementConfigTable.id, config.id));

@@ -1,6 +1,22 @@
 "use client";
 
 import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   ArrowDownUp,
   Eye,
   GripVertical,
@@ -14,21 +30,12 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
   useTransition,
-  useCallback,
 } from "react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
-} from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,6 +54,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -65,32 +81,16 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
 import {
+  fetchStandingsAction,
   publishResult,
   publishStandings,
   swapResultNumbers,
   unpublishResult,
-  fetchStandingsAction,
 } from "@/features/announcement/actions/announcer.actions";
 import type {
   AnnouncerQueueProgramme,
   TeamStandingRow,
 } from "@/features/announcement/services/announcer.service";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { toast } from "@/lib/toast";
 
 interface ResultsConsoleClientProps {
@@ -117,6 +117,21 @@ const STATUS_PILLS = [
       "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20",
   },
 ] as const;
+
+// PUBLISHED and ANNOUNCED are both "done", but they are different stages —
+// published to the public site vs. read out by the announcer — so they get
+// distinct tones instead of a shared green.
+const DONE_STATUS_STYLES = {
+  PUBLISHED: {
+    badge:
+      "bg-green-500/10 text-green-600 dark:text-green-400 ring-green-500/25",
+    dot: "bg-green-500",
+  },
+  ANNOUNCED: {
+    badge: "bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-sky-500/25",
+    dot: "bg-sky-500",
+  },
+} as const;
 
 const MEDAL_ROWS = [
   "bg-amber-500/10",
@@ -166,7 +181,10 @@ function SortableProgrammeRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: p.id, disabled: p.status === "PUBLISHED" || p.status === "ANNOUNCED" });
+  } = useSortable({
+    id: p.id,
+    disabled: p.status === "PUBLISHED" || p.status === "ANNOUNCED",
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -186,7 +204,9 @@ function SortableProgrammeRow({
       <TableCell
         className={cn(
           "text-center",
-        p.status === "PUBLISHED" || p.status === "ANNOUNCED" ? "text-muted-foreground/30 cursor-not-allowed" : "cursor-move text-muted-foreground"
+          p.status === "PUBLISHED" || p.status === "ANNOUNCED"
+            ? "text-muted-foreground/30 cursor-not-allowed"
+            : "cursor-move text-muted-foreground",
         )}
         {...attributes}
         {...listeners}
@@ -210,9 +230,17 @@ function SortableProgrammeRow({
         {p.status === "PUBLISHED" || p.status === "ANNOUNCED" ? (
           <Badge
             variant="secondary"
-            className="bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/25 border-0 shadow-none font-medium"
+            className={cn(
+              "ring-1 border-0 shadow-none font-medium",
+              DONE_STATUS_STYLES[p.status].badge,
+            )}
           >
-            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
+            <span
+              className={cn(
+                "mr-1.5 h-1.5 w-1.5 rounded-full",
+                DONE_STATUS_STYLES[p.status].dot,
+              )}
+            />
             {p.status}
           </Badge>
         ) : (
@@ -241,15 +269,16 @@ function SortableProgrammeRow({
               <Eye className="h-4 w-4 mr-2" />
               Open Result
             </DropdownMenuItem>
-            {canUnpublish && (p.status === "PUBLISHED" || p.status === "ANNOUNCED") && (
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => handleUnpublish(p.id)}
-              >
-                <Undo2 className="h-4 w-4 mr-2" />
-                Unpublish
-              </DropdownMenuItem>
-            )}
+            {canUnpublish &&
+              (p.status === "PUBLISHED" || p.status === "ANNOUNCED") && (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => handleUnpublish(p.id)}
+                >
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Unpublish
+                </DropdownMenuItem>
+              )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -272,9 +301,9 @@ export function ResultsConsoleClient({
     useState<AnnouncerQueueProgramme | null>(null);
 
   // Section 2 filters
-  const [standingsScope, setStandingsScope] = useState<"published" | "all" | "general">(
-    "published",
-  );
+  const [standingsScope, setStandingsScope] = useState<
+    "published" | "all" | "general"
+  >("published");
   const [upToResultNumber, setUpToResultNumber] = useState<string>("");
   const [dynamicStandings, setDynamicStandings] =
     useState<TeamStandingRow[]>(liveStandings);
@@ -531,16 +560,19 @@ export function ResultsConsoleClient({
                     </TableHeader>
                     <TableBody>
                       {filteredSorted
-                        .slice(resultsPageIndex * pageSize, (resultsPageIndex + 1) * pageSize)
+                        .slice(
+                          resultsPageIndex * pageSize,
+                          (resultsPageIndex + 1) * pageSize,
+                        )
                         .map((p) => (
-                        <SortableProgrammeRow
-                          key={p.id}
-                          p={p}
-                          setActiveProgramme={setActiveProgramme}
-                          handleUnpublish={handleUnpublish}
-                          canUnpublish={canUnpublish}
-                        />
-                      ))}
+                          <SortableProgrammeRow
+                            key={p.id}
+                            p={p}
+                            setActiveProgramme={setActiveProgramme}
+                            handleUnpublish={handleUnpublish}
+                            canUnpublish={canUnpublish}
+                          />
+                        ))}
                     </TableBody>
                   </Table>
                 </SortableContext>
@@ -553,59 +585,77 @@ export function ResultsConsoleClient({
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      if (resultsPageIndex > 0) setResultsPageIndex(p => p - 1);
+                      if (resultsPageIndex > 0)
+                        setResultsPageIndex((p) => p - 1);
                     }}
-                    className={resultsPageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      resultsPageIndex === 0
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
 
-                {[...Array(Math.ceil(filteredSorted.length / pageSize))].map((_, i) => {
-                  const targetPage = i;
-                  const totalPages = Math.ceil(filteredSorted.length / pageSize);
-                  
-                  if (
-                    targetPage === 0 ||
-                    targetPage === totalPages - 1 ||
-                    (targetPage >= resultsPageIndex - 1 && targetPage <= resultsPageIndex + 1)
-                  ) {
-                    return (
-                      <PaginationItem key={i}>
-                        <PaginationLink
-                          href="#"
-                          isActive={resultsPageIndex === targetPage}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setResultsPageIndex(targetPage);
-                          }}
-                        >
-                          {targetPage + 1}
-                        </PaginationLink>
-                      </PaginationItem>
+                {[...Array(Math.ceil(filteredSorted.length / pageSize))].map(
+                  (_, i) => {
+                    const targetPage = i;
+                    const totalPages = Math.ceil(
+                      filteredSorted.length / pageSize,
                     );
-                  }
-                  
-                  if (targetPage === resultsPageIndex - 2 || targetPage === resultsPageIndex + 2) {
-                    return (
-                      <PaginationItem key={i}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    );
-                  }
-                  
-                  return null;
-                })}
+
+                    if (
+                      targetPage === 0 ||
+                      targetPage === totalPages - 1 ||
+                      (targetPage >= resultsPageIndex - 1 &&
+                        targetPage <= resultsPageIndex + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationLink
+                            isActive={resultsPageIndex === targetPage}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setResultsPageIndex(targetPage);
+                            }}
+                          >
+                            {targetPage + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+
+                    if (
+                      targetPage === resultsPageIndex - 2 ||
+                      targetPage === resultsPageIndex + 2
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+
+                    return null;
+                  },
+                )}
 
                 <PaginationItem>
                   <PaginationNext
-                    href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      if ((resultsPageIndex + 1) * pageSize < filteredSorted.length) setResultsPageIndex(p => p + 1);
+                      if (
+                        (resultsPageIndex + 1) * pageSize <
+                        filteredSorted.length
+                      )
+                        setResultsPageIndex((p) => p + 1);
                     }}
-                    className={(resultsPageIndex + 1) * pageSize >= filteredSorted.length ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      (resultsPageIndex + 1) * pageSize >= filteredSorted.length
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -686,26 +736,29 @@ export function ResultsConsoleClient({
                   </TableHeader>
                   <TableBody>
                     {dynamicStandings
-                      .slice(standingsPageIndex * pageSize, (standingsPageIndex + 1) * pageSize)
+                      .slice(
+                        standingsPageIndex * pageSize,
+                        (standingsPageIndex + 1) * pageSize,
+                      )
                       .map((s) => (
-                      <TableRow
-                        key={s.name}
-                        className={cn(
-                          "hover:bg-muted/50 transition-colors",
-                          MEDAL_ROWS[s.rank - 1],
-                        )}
-                      >
-                        <TableCell className="pl-4 font-medium">
-                          <PlaceLabel rank={s.rank} />
-                        </TableCell>
-                        <TableCell className="font-medium text-[15px]">
-                          {s.name}
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-bold pr-4 text-[15px]">
-                          {s.points}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                        <TableRow
+                          key={s.name}
+                          className={cn(
+                            "hover:bg-muted/50 transition-colors",
+                            MEDAL_ROWS[s.rank - 1],
+                          )}
+                        >
+                          <TableCell className="pl-4 font-medium">
+                            <PlaceLabel rank={s.rank} />
+                          </TableCell>
+                          <TableCell className="font-medium text-[15px]">
+                            {s.name}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-bold pr-4 text-[15px]">
+                            {s.points}
+                          </TableCell>
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
               )}
@@ -715,28 +768,36 @@ export function ResultsConsoleClient({
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious
-                      href="#"
                       onClick={(e) => {
                         e.preventDefault();
-                        if (standingsPageIndex > 0) setStandingsPageIndex(p => p - 1);
+                        if (standingsPageIndex > 0)
+                          setStandingsPageIndex((p) => p - 1);
                       }}
-                      className={standingsPageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                      className={
+                        standingsPageIndex === 0
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
                     />
                   </PaginationItem>
 
-                  {[...Array(Math.ceil(dynamicStandings.length / pageSize))].map((_, i) => {
+                  {[
+                    ...Array(Math.ceil(dynamicStandings.length / pageSize)),
+                  ].map((_, i) => {
                     const targetPage = i;
-                    const totalPages = Math.ceil(dynamicStandings.length / pageSize);
-                    
+                    const totalPages = Math.ceil(
+                      dynamicStandings.length / pageSize,
+                    );
+
                     if (
                       targetPage === 0 ||
                       targetPage === totalPages - 1 ||
-                      (targetPage >= standingsPageIndex - 1 && targetPage <= standingsPageIndex + 1)
+                      (targetPage >= standingsPageIndex - 1 &&
+                        targetPage <= standingsPageIndex + 1)
                     ) {
                       return (
                         <PaginationItem key={i}>
                           <PaginationLink
-                            href="#"
                             isActive={standingsPageIndex === targetPage}
                             onClick={(e) => {
                               e.preventDefault();
@@ -748,26 +809,37 @@ export function ResultsConsoleClient({
                         </PaginationItem>
                       );
                     }
-                    
-                    if (targetPage === standingsPageIndex - 2 || targetPage === standingsPageIndex + 2) {
+
+                    if (
+                      targetPage === standingsPageIndex - 2 ||
+                      targetPage === standingsPageIndex + 2
+                    ) {
                       return (
                         <PaginationItem key={i}>
                           <PaginationEllipsis />
                         </PaginationItem>
                       );
                     }
-                    
+
                     return null;
                   })}
 
                   <PaginationItem>
                     <PaginationNext
-                      href="#"
                       onClick={(e) => {
                         e.preventDefault();
-                        if ((standingsPageIndex + 1) * pageSize < dynamicStandings.length) setStandingsPageIndex(p => p + 1);
+                        if (
+                          (standingsPageIndex + 1) * pageSize <
+                          dynamicStandings.length
+                        )
+                          setStandingsPageIndex((p) => p + 1);
                       }}
-                      className={(standingsPageIndex + 1) * pageSize >= dynamicStandings.length ? "pointer-events-none opacity-50" : ""}
+                      className={
+                        (standingsPageIndex + 1) * pageSize >=
+                        dynamicStandings.length
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
                     />
                   </PaginationItem>
                 </PaginationContent>
@@ -823,8 +895,8 @@ export function ResultsConsoleClient({
                           <TableHead>Group</TableHead>
                           <TableHead className="w-16">Grade</TableHead>
                           <TableHead className="w-20">Prize</TableHead>
-                          <TableHead className="w-16 text-right">
-                            Points
+                          <TableHead className="w-20 text-right">
+                            Award Pts
                           </TableHead>
                         </TableRow>
                       </TableHeader>
@@ -871,7 +943,7 @@ export function ResultsConsoleClient({
                                       : "—"}
                               </TableCell>
                               <TableCell className="text-right font-mono font-bold">
-                                {r.points}
+                                {r.awardPoints}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -890,17 +962,28 @@ export function ResultsConsoleClient({
                     <Select
                       value={swapTarget ?? ""}
                       onValueChange={(v) => setSwapTarget(v || null)}
-                      disabled={activeProgramme.status === "PUBLISHED" || activeProgramme.status === "ANNOUNCED"}
+                      disabled={
+                        activeProgramme.status === "PUBLISHED" ||
+                        activeProgramme.status === "ANNOUNCED"
+                      }
                     >
                       <SelectTrigger className="h-9 w-64 text-sm font-medium bg-background">
-                        <SelectValue placeholder={activeProgramme.status === "PUBLISHED" || activeProgramme.status === "ANNOUNCED" ? "Swap disabled for published results" : "Select a result to swap with"} />
+                        <SelectValue
+                          placeholder={
+                            activeProgramme.status === "PUBLISHED" ||
+                            activeProgramme.status === "ANNOUNCED"
+                              ? "Swap disabled for published results"
+                              : "Select a result to swap with"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {programmes
                           .filter(
                             (p) =>
                               p.id !== activeProgramme.id &&
-                              p.status !== "PUBLISHED" && p.status !== "ANNOUNCED",
+                              p.status !== "PUBLISHED" &&
+                              p.status !== "ANNOUNCED",
                           )
                           .map((p) => (
                             <SelectItem key={p.id} value={p.id}>
@@ -912,7 +995,12 @@ export function ResultsConsoleClient({
                     <Button
                       size="sm"
                       className="h-9 font-medium"
-                      disabled={!swapTarget || isPending || activeProgramme.status === "PUBLISHED" || activeProgramme.status === "ANNOUNCED"}
+                      disabled={
+                        !swapTarget ||
+                        isPending ||
+                        activeProgramme.status === "PUBLISHED" ||
+                        activeProgramme.status === "ANNOUNCED"
+                      }
                       onClick={() =>
                         swapTarget &&
                         handleSwapNumbers(activeProgramme.id, swapTarget)
@@ -924,36 +1012,39 @@ export function ResultsConsoleClient({
                 </div>
 
                 <DrawerFooter className="mt-4 px-0 pb-0 gap-2">
-                  {activeProgramme.status !== "PUBLISHED" && activeProgramme.status !== "ANNOUNCED" && (
-                    <Button
-                      size="lg"
-                      disabled={isPending}
-                      onClick={() => handlePublish(activeProgramme.id)}
-                      // className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      ) : (
-                        <Megaphone className="h-3.5 w-3.5 mr-1" />
-                      )}
-                      Publish
-                    </Button>
-                  )}
-                  {canUnpublish && (activeProgramme.status === "PUBLISHED" || activeProgramme.status === "ANNOUNCED") && (
-                    <Button
-                      variant="destructive"
-                      size="lg"
-                      disabled={isPending}
-                      onClick={() => handleUnpublish(activeProgramme.id)}
-                    >
-                      {isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      ) : (
-                        <Undo2 className="h-3.5 w-3.5 mr-1" />
-                      )}
-                      Unpublish
-                    </Button>
-                  )}
+                  {activeProgramme.status !== "PUBLISHED" &&
+                    activeProgramme.status !== "ANNOUNCED" && (
+                      <Button
+                        size="lg"
+                        disabled={isPending}
+                        onClick={() => handlePublish(activeProgramme.id)}
+                        // className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                        ) : (
+                          <Megaphone className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Publish
+                      </Button>
+                    )}
+                  {canUnpublish &&
+                    (activeProgramme.status === "PUBLISHED" ||
+                      activeProgramme.status === "ANNOUNCED") && (
+                      <Button
+                        variant="destructive"
+                        size="lg"
+                        disabled={isPending}
+                        onClick={() => handleUnpublish(activeProgramme.id)}
+                      >
+                        {isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                        ) : (
+                          <Undo2 className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Unpublish
+                      </Button>
+                    )}
                 </DrawerFooter>
               </>
             )}

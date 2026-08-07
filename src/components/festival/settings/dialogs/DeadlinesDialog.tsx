@@ -81,6 +81,24 @@ export function DeadlinesDialog({
 
   const handleSave = async () => {
     if (
+      isFeatureEnabled &&
+      (!programmeAssignment.start || !programmeAssignment.end)
+    ) {
+      toast.error(
+        "Pick both an open and a close date for the programme assignment window.",
+      );
+      return;
+    }
+    if (
+      isParticipantDeadlineFeatureEnabled &&
+      (!participantCreation.start || !participantCreation.end)
+    ) {
+      toast.error(
+        "Pick both an open and a close date for the participant registration window.",
+      );
+      return;
+    }
+    if (
       programmeAssignment.start &&
       programmeAssignment.end &&
       programmeAssignment.start >= programmeAssignment.end
@@ -148,7 +166,8 @@ export function DeadlinesDialog({
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="programmeAssignmentRange">
-                  Programme Assignment Window
+                  Programme Assignment Window{" "}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <DateRangePicker
                   id="programmeAssignmentRange"
@@ -157,7 +176,7 @@ export function DeadlinesDialog({
                     if (festivalHasStarted) return;
                     setProgrammeAssignment(value);
                   }}
-                  placeholder="Pick open → close (optional start)"
+                  placeholder="Pick open and close dates"
                   from={durationStart}
                   to={festivalStartDate ?? undefined}
                   disabled={festivalHasStarted}
@@ -166,7 +185,7 @@ export function DeadlinesDialog({
               </div>
               <p className="text-sm text-muted-foreground">
                 Team Leaders can assign participants to programmes only inside
-                this window. Leave the start empty to open it immediately.
+                this window. Both an open and close date are required.
               </p>
             </div>
           )}
@@ -174,7 +193,8 @@ export function DeadlinesDialog({
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="participantCreationRange">
-                  Participant Registration Window
+                  Participant Registration Window{" "}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <DateRangePicker
                   id="participantCreationRange"
@@ -183,7 +203,7 @@ export function DeadlinesDialog({
                     if (festivalHasStarted) return;
                     setParticipantCreation(value);
                   }}
-                  placeholder="Pick open → close (optional start)"
+                  placeholder="Pick open and close dates"
                   from={durationStart}
                   to={festivalStartDate ?? undefined}
                   disabled={festivalHasStarted}
@@ -192,7 +212,7 @@ export function DeadlinesDialog({
               </div>
               <p className="text-sm text-muted-foreground">
                 Team Leaders can add new participants only inside this window.
-                Leave the start empty to open it immediately.
+                Both an open and close date are required.
               </p>
             </div>
           )}

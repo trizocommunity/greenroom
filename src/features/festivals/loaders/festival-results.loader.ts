@@ -20,6 +20,7 @@ export interface PublicResult {
   team: string;
   position: number;
   points: number;
+  awardPoints: number;
   grade?: string | null;
   codeLetter?: string | null;
   chestNo?: string | null;
@@ -59,11 +60,6 @@ export interface PublicResultsQuery {
 
 export const PUBLIC_RESULTS_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
-
-const getResultPoints = (result: {
-  points?: number;
-  awardPoints?: number | null;
-}) => result.awardPoints ?? result.points ?? 0;
 
 const EMPTY_PAGE = (page: number, pageSize: number): PublicResultsPage => ({
   programmes: [],
@@ -179,7 +175,10 @@ export async function getPublicProgrammeResults(
     ),
     with: {
       programmeAssignment: {
-        with: { participant: true, group: true },
+        with: {
+          participant: { with: { group: true } },
+          group: true,
+        },
       },
     },
   });
@@ -232,14 +231,22 @@ export async function getPublicTopResults(
       eq(resultTable.position, 1),
       inArray(
         resultTable.programmeId,
-        db.select({ id: programmeTable.id }).from(programmeTable).where(eq(programmeTable.status, "ANNOUNCED"))
-      )
+        db
+          .select({ id: programmeTable.id })
+          .from(programmeTable)
+          .where(eq(programmeTable.status, "ANNOUNCED")),
+      ),
     ),
     orderBy: [sql`${resultTable.updatedAt} DESC NULLS LAST`],
     limit: limit * 4, // headroom: GROUP programmes yield one row per member
     with: {
       programme: { with: { category: true } },
-      programmeAssignment: { with: { participant: true, group: true } },
+      programmeAssignment: {
+        with: {
+          participant: { with: { group: true } },
+          group: true,
+        },
+      },
     },
   });
 
@@ -325,9 +332,12 @@ function toProgrammeResults(
       programmeType: programme.type,
       category: programme.category,
       winner,
-      team: assignment?.group?.name || "N/A",
+      team: isGroup
+        ? (assignment?.group?.name ?? "")
+        : (assignment?.participant?.group?.name ?? ""),
       position: row.position || 999,
-      points: getResultPoints(row),
+      points: row.points ?? 0,
+      awardPoints: row.awardPoints ?? 0,
       grade: row.grade,
       codeLetter: null,
       chestNo: chestNo,
@@ -336,13 +346,14 @@ function toProgrammeResults(
   }
 
   results.sort((a, b) => a.position - b.position);
+  const cappedResults = results.slice(0, 3);
   return {
     id: programme.id,
     name: programme.name,
     category: programme.category,
     type: programme.type,
     resultNumber: programme.resultNumber,
-    results,
+    results: cappedResults,
   };
 }
 

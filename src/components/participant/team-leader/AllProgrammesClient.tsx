@@ -144,7 +144,7 @@ export function AllProgrammesClient({
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    href="#"
+                    
                     onClick={(e) => {
                       e.preventDefault();
                       if (pageIndex > 0) setPageIndex(p => p - 1);
@@ -165,7 +165,7 @@ export function AllProgrammesClient({
                     return (
                       <PaginationItem key={i}>
                         <PaginationLink
-                          href="#"
+                          
                           isActive={pageIndex === targetPage}
                           onClick={(e) => {
                             e.preventDefault();
@@ -191,7 +191,7 @@ export function AllProgrammesClient({
 
                 <PaginationItem>
                   <PaginationNext
-                    href="#"
+                    
                     onClick={(e) => {
                       e.preventDefault();
                       if ((pageIndex + 1) * pageSize < visibleItems.length) setPageIndex(p => p + 1);

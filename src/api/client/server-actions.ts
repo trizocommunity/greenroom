@@ -1,3 +1,5 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteTeamAssignmentAction,
@@ -226,7 +228,7 @@ export function useForceCompleteJudgement() {
     onSuccess: (_, configId) => {
       qc.invalidateQueries({ queryKey: ["judgement"] });
       qc.invalidateQueries({ queryKey: ["programmes"] });
-      toast.success("Judgement forcefully completed");
+      toast.success("Submitted to completed programmes");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -248,6 +250,7 @@ export function useStagePortalScorePayload(configId: string) {
     queryFn: async () => getStagePortalScorePayloadAction(configId),
     enabled: !!configId,
     refetchInterval: 3000,
+    retry: false,
   });
 }
 

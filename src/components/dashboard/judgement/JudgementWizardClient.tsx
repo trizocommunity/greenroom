@@ -691,14 +691,24 @@ export function JudgementWizardClient({
                     ) : null}
                     {active ? (
                       <>
-                        <div className="flex flex-col gap-1.5 rounded-md border border-primary/25 bg-primary/[0.06] px-2 py-1.5 text-[10px] text-primary">
+                        <div className={`flex flex-col gap-1.5 rounded-md border px-2 py-1.5 text-[10px] ${
+                          active.judgementStatus === "COMPLETED"
+                            ? "border-green-500/25 bg-green-500/[0.06] text-green-700 dark:text-green-400"
+                            : "border-primary/25 bg-primary/[0.06] text-primary"
+                        }`}>
                           <div className="flex items-center gap-1.5 font-medium">
-                            <span className="relative flex h-1.5 w-1.5 shrink-0">
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
-                              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-                            </span>
+                            {active.judgementStatus === "COMPLETED" ? (
+                              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                              </span>
+                            ) : (
+                              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
+                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                              </span>
+                            )}
                             <span>
-                              Live · {active.judges.length} judge
+                              {active.judgementStatus === "COMPLETED" ? "Submitted" : "Live"} · {active.judges.length} judge
                               {active.judges.length !== 1 ? "s" : ""} ·{" "}
                               {active.judgingMode}
                             </span>
@@ -746,28 +756,41 @@ export function JudgementWizardClient({
                               </Button>
                             );
                           })()}
-                          <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="default"
-                              className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
-                              disabled={isCompleting}
-                              onClick={() => {
-                                completeJudgement(active.id);
-                              }}
-                            >
-                              Complete
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
-                              onClick={() => setCancelProgrammeId(p.id)}
-                            >
-                              Cancel
-                            </Button>
+                          <div className="flex w-full">
+                            {active.judgementStatus === "COMPLETED" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="default"
+                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs bg-green-600 hover:bg-green-700 text-white"
+                                disabled={isCompleting}
+                                onClick={() => {
+                                  completeJudgement(active.id);
+                                }}
+                              >
+                                Submit
+                              </Button>
+                            ) : active.judgementStatus === "CANCELLED" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs text-green-600 border-green-600 hover:bg-green-50"
+                                onClick={() => openWizardForProgramme(p.id, "rejudge")}
+                              >
+                                Restart
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+                                onClick={() => setCancelProgrammeId(p.id)}
+                              >
+                                Cancel
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </>
@@ -1518,7 +1541,7 @@ export function JudgementWizardClient({
             <AlertDialogDescription>
               This will abort the active judgement round and lock out all judges
               instantly. Any partial scores that have not been submitted will be
-              lost. The programme will return to 'Pending Judgment' status.
+              lost. The programme will remain as Cancelled and can be restarted later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

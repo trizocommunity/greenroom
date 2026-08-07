@@ -297,7 +297,7 @@ export function StagePortalHomeClient() {
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
-                        href="#"
+                        
                         onClick={(e) => {
                           e.preventDefault();
                           setPageIndex((p) => Math.max(0, p - 1));
@@ -319,7 +319,7 @@ export function StagePortalHomeClient() {
                         return (
                           <PaginationItem key={i}>
                             <PaginationLink
-                              href="#"
+                              
                               isActive={pageIndex === i}
                               onClick={(e) => {
                                 e.preventDefault();
@@ -345,7 +345,7 @@ export function StagePortalHomeClient() {
 
                     <PaginationItem>
                       <PaginationNext
-                        href="#"
+                        
                         onClick={(e) => {
                           e.preventDefault();
                           setPageIndex((p) => Math.min(totalPages - 1, p + 1));

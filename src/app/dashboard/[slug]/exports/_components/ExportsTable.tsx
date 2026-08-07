@@ -334,7 +334,7 @@ export function ExportsTable({
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                href="#"
+                
                 onClick={(e) => {
                   e.preventDefault();
                   if (pageIndex > 0) setPageIndex(p => p - 1);
@@ -355,7 +355,7 @@ export function ExportsTable({
                 return (
                   <PaginationItem key={i}>
                     <PaginationLink
-                      href="#"
+                      
                       isActive={pageIndex === targetPage}
                       onClick={(e) => {
                         e.preventDefault();
@@ -381,7 +381,7 @@ export function ExportsTable({
 
             <PaginationItem>
               <PaginationNext
-                href="#"
+                
                 onClick={(e) => {
                   e.preventDefault();
                   if ((pageIndex + 1) * pageSize < exports.length) setPageIndex(p => p + 1);

@@ -3,8 +3,8 @@ import { db } from "@/core/database/client";
 import {
   group as groupTable,
   participant as participantTable,
-  programme as programmeTable,
   programmeAssignment,
+  programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
 import {
@@ -129,11 +129,15 @@ export async function getPublishedResults(
       results: finalResults.map((r) => ({
         id: r.id,
         position: r.position,
-        points: r.awardPoints ?? r.points ?? 0,
+        points: r.points ?? 0,
         grade: r.grade,
         isPublished: true,
-        participantName: formatParticipantLabel(p.type, displayByAssignment.get(r.assignmentId)),
-        chestNumber: displayByAssignment.get(r.assignmentId)?.chestNumber ?? null,
+        participantName: formatParticipantLabel(
+          p.type,
+          displayByAssignment.get(r.assignmentId),
+        ),
+        chestNumber:
+          displayByAssignment.get(r.assignmentId)?.chestNumber ?? null,
         groupName: r.groupName,
         teamNumber: r.teamNumber,
         codeLetter: null,

@@ -10,7 +10,7 @@ import {
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
 } from "@/core/database/schema";
-import { isDeadlineWindowOpen } from "@/features/festivals/services/deadline-window";
+import { isTeamLeaderActionWindowOpen } from "@/features/festivals/services/deadline-window";
 import { getTeamLeaderGroupParticipantsForSelection } from "@/features/participants/services/my-team";
 import { isProTier } from "@/features/plan-features/services/tier";
 
@@ -28,7 +28,7 @@ export default async function AssignProgrammesPage({
 
   const windowStart = festival.programmeAssignmentStartDate;
   const deadline = festival.programmeAssignmentDeadline;
-  const isReadOnly = !isDeadlineWindowOpen({
+  const isReadOnly = !isTeamLeaderActionWindowOpen({
     start: windowStart,
     end: deadline,
   });

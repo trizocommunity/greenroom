@@ -32,6 +32,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useReactTable, getCoreRowModel } from "@tanstack/react-table";
+import { StatusPill } from "@/components/app/AppSection";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -133,7 +134,7 @@ export function ParticipantsClient({
     festivalId,
     {
       page: 1,
-      pageSize: teamLeaderLimit || 100,
+      pageSize: 100,
       isTeamLeader: true,
     },
   );
@@ -148,7 +149,6 @@ export function ParticipantsClient({
       search: searchQuery,
       groupId: selectedGroup,
       categoryId: selectedCategory,
-      isTeamLeader: false,
     });
 
   const filteredParticipants = paginatedData?.data ?? [];
@@ -542,6 +542,11 @@ export function ParticipantsClient({
                     <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-1">
                       {participant.name}
                     </h3>
+                    {participant.isTeamLeader && (
+                      <StatusPill tone="warning" icon={Crown}>
+                        Leader
+                      </StatusPill>
+                    )}
                   </div>
                   <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -701,8 +706,13 @@ export function ParticipantsClient({
                       {index + 1}
                     </TableCell>
                     <TableCell className="font-medium">
-                      <div className="flex items-start flex-col gap-1">
+                      <div className="flex items-center gap-2">
                         <span>{participant.name}</span>
+                        {participant.isTeamLeader && (
+                          <StatusPill tone="warning" icon={Crown}>
+                            Leader
+                          </StatusPill>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
