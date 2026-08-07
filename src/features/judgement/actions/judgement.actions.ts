@@ -533,7 +533,7 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
     where: and(
       eq(judgementConfigTable.festivalId, festivalId),
       configScope,
-      inArray(judgementConfigTable.status, ["SUBMITTED", "COMPLETED"]),
+      inArray(judgementConfigTable.status, ["COMPLETED"]),
     ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
@@ -1568,8 +1568,11 @@ export async function getStagePortalScorePayloadAction(configId: string) {
 async function recomputeConfigResults(
   config: { id: string; programmeId: string; reportingSessionId: string },
   now: string,
+  parentTx?: typeof db,
 ): Promise<void> {
-  const codeLetters = await db.query.programmeCodeLetter.findMany({
+  const exec = parentTx ?? db;
+
+  const codeLetters = await exec.query.programmeCodeLetter.findMany({
     where: and(
       eq(codeLetterTable.programmeId, config.programmeId),
       eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
@@ -1578,7 +1581,7 @@ async function recomputeConfigResults(
   });
   const activeCodeLetters = codeLetters.filter((c) => !c.isAbsent);
 
-  const allScores = await db.query.judgementScore.findMany({
+  const allScores = await exec.query.judgementScore.findMany({
     where: eq(judgementScoreTable.configId, config.id),
     columns: { codeLetterId: true, score: true },
   });
@@ -1601,7 +1604,7 @@ async function recomputeConfigResults(
     Math.round(v),
   );
   const assignmentPoints = new Map<string, number>();
-  const programmeRow = await db.query.programme.findFirst({
+  const programmeRow = await exec.query.programme.findFirst({
     where: eq(programmeTable.id, config.programmeId),
     columns: { festivalId: true, categoryId: true, type: true },
   });
@@ -1613,7 +1616,7 @@ async function recomputeConfigResults(
       let assignmentId: string | undefined;
 
       if (programmeRow.type === "INDIVIDUAL") {
-        const assignment = await db.query.programmeAssignment.findFirst({
+        const assignment = await exec.query.programmeAssignment.findFirst({
           where: and(
             eq(assignmentTable.programmeId, config.programmeId),
             eq(assignmentTable.participantId, recipient.participantId),
@@ -1622,7 +1625,7 @@ async function recomputeConfigResults(
         });
         assignmentId = assignment?.id;
       } else {
-        const member = await db.query.programmeAssignmentMember.findFirst({
+        const member = await exec.query.programmeAssignmentMember.findFirst({
           where: eq(
             assignmentMemberTable.participantId,
             recipient.participantId,
@@ -1646,7 +1649,7 @@ async function recomputeConfigResults(
   }
 
   const judgedAssignmentIds: string[] = [];
-  await db.transaction(async (tx) => {
+  const runWrites = async (tx: typeof db) => {
     for (const [assignmentId, pts] of assignmentPoints.entries()) {
       judgedAssignmentIds.push(assignmentId);
 
@@ -1729,11 +1732,26 @@ async function recomputeConfigResults(
         .delete(resultTable)
         .where(eq(resultTable.programmeId, config.programmeId));
     }
-  });
 
-  await updateProgrammeStatus(config.programmeId, config.reportingSessionId);
+    // Recompute programme status in the SAME transaction so the
+    // status-update read of `resultTable` sees the rows we just wrote.
+    // Running this on a separate connection would miss them under Postgres
+    // READ COMMITTED isolation and the programme status would never advance
+    // past PENDING_JUDGMENT.
+    await updateProgrammeStatus(
+      config.programmeId,
+      config.reportingSessionId,
+      tx,
+    );
+  };
 
-  const festival = await db.query.festival.findFirst({
+  if (parentTx) {
+    await runWrites(parentTx);
+  } else {
+    await db.transaction(runWrites);
+  }
+
+  const festival = await exec.query.festival.findFirst({
     where: eq(festivalTable.id, programmeRow.festivalId),
     columns: { slug: true },
   });
@@ -1792,6 +1810,19 @@ export async function markCodeLetterAbsenceAction(input: {
           ),
         );
     }
+
+    // Recompute inside the same transaction so a missing scoring-policy rule
+    // rolls back the absence flag (and the score delete) instead of leaving
+    // the round in a half-updated state.
+    await recomputeConfigResults(
+      {
+        id: config.id,
+        programmeId: config.programmeId,
+        reportingSessionId: config.reportingSessionId,
+      },
+      now,
+      tx,
+    );
   });
 
   await createAuditLog({
@@ -1805,15 +1836,6 @@ export async function markCodeLetterAbsenceAction(input: {
     },
     actor: { actorId: "stage-portal", actorRole: "JUDGE" },
   }).catch((err) => console.error("[AuditLog] MARK_ABSENT failed", err));
-
-  await recomputeConfigResults(
-    {
-      id: config.id,
-      programmeId: config.programmeId,
-      reportingSessionId: config.reportingSessionId,
-    },
-    now,
-  );
 
   return { success: true as const };
 }
@@ -1939,14 +1961,10 @@ export async function submitJudgeScoresAction(
       } as any)
       .where(eq(judgementConfigTable.id, config.id));
 
-    await recomputeConfigResults(
-      {
-        id: config.id,
-        programmeId: config.programmeId,
-        reportingSessionId: config.reportingSessionId,
-      },
-      now,
-    );
+    // recomputeConfigResults intentionally NOT called here — result rows are
+    // computed only when the admin force-completes the round. This keeps a
+    // missing/incomplete scoring policy from blocking the judge's submit, and
+    // lets the admin fix the policy before the round is finalised.
   }
 
   return { success: true as const, judgementComplete: shouldComplete };
@@ -2228,24 +2246,31 @@ export async function forceCompleteJudgementAction(configId: string) {
 
   const now = serverNowIso();
 
-  await db
-    .update(judgementConfigTable)
-    .set({
-      status: "COMPLETED",
-      endedAt: config.endedAt ?? now,
-      endedBy: config.endedBy ?? session.userId,
-      updatedAt: now,
-    } as any)
-    .where(eq(judgementConfigTable.id, config.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(judgementConfigTable)
+      .set({
+        status: "COMPLETED",
+        endedAt: config.endedAt ?? now,
+        endedBy: config.endedBy ?? session.userId,
+        updatedAt: now,
+      } as any)
+      .where(eq(judgementConfigTable.id, config.id));
 
-  await recomputeConfigResults(
-    {
-      id: config.id,
-      programmeId: config.programmeId,
-      reportingSessionId: config.reportingSessionId,
-    },
-    now,
-  );
+    // Recompute inside the same transaction so a missing scoring-policy rule
+    // rolls status back to SUBMITTED instead of leaving the round stuck in
+    // COMPLETED with no result rows. The admin can then fix the policy and
+    // click Complete again.
+    await recomputeConfigResults(
+      {
+        id: config.id,
+        programmeId: config.programmeId,
+        reportingSessionId: config.reportingSessionId,
+      },
+      now,
+      tx,
+    );
+  });
 
   return { success: true as const };
 }

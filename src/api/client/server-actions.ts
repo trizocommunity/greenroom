@@ -119,6 +119,7 @@ export function useSubmitJudgeScores() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["results"] });
+      qc.invalidateQueries({ queryKey: ["stage-portal"] });
     },
   });
 }
@@ -140,6 +141,7 @@ export function useSubmitGroupJudgeScores() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["results"] });
+      qc.invalidateQueries({ queryKey: ["stage-portal"] });
     },
   });
 }

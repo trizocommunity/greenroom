@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { AlertCircle, Loader2, Lock, ScanLine, UserCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { QrScanner } from "@/components/festival/event-works/programme-reporting/QrScanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,20 +31,21 @@ import {
 import {
   getFilteredEntriesAction,
   scanFoodEntryAction,
-  toggleSessionStatusAction,
 } from "../actions/food-entry.actions";
 
 interface FoodEntryScannerProps {
   festivalId: string;
-  session: {
+  todayString: string;
+  slot: {
     id: string;
-    slotName: string;
+    name: string;
     windowStartMin: number;
     windowEndMin: number;
-    status: "OPEN" | "CLOSED";
+    sessionId: string | null;
+    sessionStatus: "OPEN" | "CLOSED";
     scannedCount: number;
   };
-  activeSessionId: string | null;
+  activeSlotId: string | null;
   filters: {
     groups: { id: string; name: string }[];
     categories: { id: string; name: string }[];
@@ -74,32 +75,37 @@ function formatScannedAt(value: string | Date) {
 
 export function FoodEntryScanner({
   festivalId,
-  session,
-  activeSessionId,
+  todayString,
+  slot,
+  activeSlotId,
   filters,
 }: FoodEntryScannerProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [entries, setEntries] = useState<any[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [groupId, setGroupId] = useState<string>("all");
   const [categoryId, setCategoryId] = useState<string>("all");
-  const [date, setDate] = useState<Date>(new Date());
+  const [date, setDate] = useState<Date>(
+    () => new Date(`${todayString}T12:00:00`),
+  );
   const [sessionStatus, setSessionStatus] = useState<"OPEN" | "CLOSED">(
-    session.status,
+    slot.sessionStatus,
   );
 
-  const isScannable = session.id === activeSessionId;
+  const isScannable =
+    slot.id === activeSlotId &&
+    slot.sessionId !== null &&
+    sessionStatus === "OPEN";
 
   useEffect(() => {
-    setSessionStatus(session.status);
-  }, [session.status]);
+    setSessionStatus(slot.sessionStatus);
+  }, [slot.sessionStatus]);
 
   const fetchEntries = useCallback(async () => {
     setLoadingEntries(true);
     const res = await getFilteredEntriesAction({
       festivalId,
-      sessionId: session.id,
+      slotId: slot.id,
       date: format(date, "yyyy-MM-dd"),
       groupId: groupId !== "all" ? groupId : undefined,
       categoryId: categoryId !== "all" ? categoryId : undefined,
@@ -108,16 +114,23 @@ export function FoodEntryScanner({
       setEntries(res.entries);
     }
     setLoadingEntries(false);
-  }, [festivalId, session.id, date, groupId, categoryId]);
+  }, [festivalId, slot.id, date, groupId, categoryId]);
 
   useEffect(() => {
     void fetchEntries();
   }, [fetchEntries]);
 
   const handleProcessScan = async (chestNumber: string) => {
+    if (!slot.sessionId || !isScannable) {
+      return {
+        success: false,
+        error: "Scanning is unavailable for this food slot.",
+      };
+    }
+
     const res = await scanFoodEntryAction({
       festivalId,
-      sessionId: session.id,
+      sessionId: slot.sessionId,
       chestNumber: chestNumber.trim(),
     });
 
@@ -143,17 +156,6 @@ export function FoodEntryScanner({
     }
   };
 
-  const handleOpenSession = () => {
-    startTransition(async () => {
-      const res = await toggleSessionStatusAction(session.id, "OPEN");
-      if (res.success) {
-        setSessionStatus("OPEN");
-        router.refresh();
-        void fetchEntries();
-      }
-    });
-  };
-
   const clearFilters = () => {
     setGroupId("all");
     setCategoryId("all");
@@ -164,17 +166,17 @@ export function FoodEntryScanner({
       <DrawerHeader className="shrink-0 text-left items-start">
         <DrawerTitle className="flex items-center gap-2">
           <ScanLine className="h-5 w-5" />
-          {session.slotName}
+          {slot.name}
         </DrawerTitle>
         <DrawerDescription>
-          {formatWindow(session.windowStartMin, session.windowEndMin)} ·{" "}
+          {formatWindow(slot.windowStartMin, slot.windowEndMin)} ·{" "}
           <Badge
             variant={sessionStatus === "OPEN" ? "default" : "secondary"}
             className="text-[10px]"
           >
             {sessionStatus}
           </Badge>
-          {session.id === activeSessionId && (
+          {slot.id === activeSlotId && (
             <Badge variant="outline" className="text-[10px] ml-2">
               Active
             </Badge>
@@ -190,27 +192,16 @@ export function FoodEntryScanner({
             </div>
             <h3 className="text-base font-medium">Scanner Locked</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-              Scanning is available only when this session is active. Use the
-              date picker below to review scanned participants.
+              Scanning is available only during this slot&apos;s active time.
+              Use the filters below to review scanned participants.
             </p>
-            {sessionStatus !== "OPEN" && (
-              <Button
-                className="mt-4 h-9"
-                size="sm"
-                onClick={handleOpenSession}
-                disabled={isPending}
-              >
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Open Session
-              </Button>
-            )}
           </div>
         ) : (
           <div className="space-y-2">
             <div className="space-y-1">
               <h3 className="text-base font-semibold">Scan Participant</h3>
               <p className="text-sm text-muted-foreground">
-                {session.scannedCount || 0} scanned · camera opens automatically
+                {slot.scannedCount} scanned today · camera opens automatically
               </p>
             </div>
             <QrScanner
@@ -218,6 +209,7 @@ export function FoodEntryScanner({
               processAction={handleProcessScan}
               mode="camera"
               variant="embedded"
+              autoStart
             />
           </div>
         )}

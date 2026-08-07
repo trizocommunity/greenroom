@@ -149,8 +149,11 @@ function computePreWorksStatus(input: PreWorksStatusInput): ProgrammeStatus {
 export async function updateProgrammeStatus(
   programmeId: string,
   reportingSessionId?: string,
+  parentTx?: typeof db,
 ): Promise<ProgrammeStatus> {
-  const programme = await db.query.programme.findFirst({
+  const exec = parentTx ?? db;
+
+  const programme = await exec.query.programme.findFirst({
     where: eq(programmeTable.id, programmeId),
     with: {
       festival: {
@@ -162,14 +165,14 @@ export async function updateProgrammeStatus(
   if (!programme) return "DRAFT";
 
   const latestClosedReportingSession = reportingSessionId
-    ? await db.query.programmeReportingSession.findFirst({
+    ? await exec.query.programmeReportingSession.findFirst({
         where: and(
           eq(reportingSessionTable.id, reportingSessionId),
           eq(reportingSessionTable.programmeId, programmeId),
           eq(reportingSessionTable.status, "CLOSED"),
         ),
       })
-    : await db.query.programmeReportingSession.findFirst({
+    : await exec.query.programmeReportingSession.findFirst({
         where: and(
           eq(reportingSessionTable.programmeId, programmeId),
           eq(reportingSessionTable.status, "CLOSED"),
@@ -179,7 +182,7 @@ export async function updateProgrammeStatus(
 
   if (latestClosedReportingSession) {
     const programmeReportedParticipants =
-      await db.query.programmeReportedParticipant.findMany({
+      await exec.query.programmeReportedParticipant.findMany({
         where: eq(
           programmeReportedParticipant.reportingSessionId,
           latestClosedReportingSession.id,
@@ -191,7 +194,7 @@ export async function updateProgrammeStatus(
     // scored and never get a result row — they must be excluded from the
     // "expected results" total, otherwise the programme can never reach
     // ENDED/PUBLISHED/ANNOUNCED once anyone is marked absent.
-    const absentRecipients = await db
+    const absentRecipients = await exec
       .select({ participantId: codeLetterRecipientTable.participantId })
       .from(codeLetterRecipientTable)
       .innerJoin(
@@ -211,18 +214,24 @@ export async function updateProgrammeStatus(
       absentRecipients.map((r) => r.participantId),
     );
 
-    const expectedAssignmentIds = programmeReportedParticipants
-      .filter(
-        (r) => !(r.participantId && absentParticipantIds.has(r.participantId)),
-      )
-      .map((r) => r.assignmentId);
+    const expectedAssignmentIds = Array.from(
+      new Set(
+        programmeReportedParticipants
+          .filter(
+            (r) =>
+              r.assignmentId &&
+              !(r.participantId && absentParticipantIds.has(r.participantId)),
+          )
+          .map((r) => r.assignmentId!),
+      ),
+    );
     const reportedTotal = expectedAssignmentIds.length;
 
     let reportedScored = 0;
     let reportedPublished = 0;
 
     if (reportedTotal > 0) {
-      const scoredCount = await db
+      const scoredCount = await exec
         .select({ c: count() })
         .from(resultTable)
         .where(
@@ -233,7 +242,7 @@ export async function updateProgrammeStatus(
         );
       reportedScored = scoredCount[0].c;
 
-      const publishedCount = await db
+      const publishedCount = await exec
         .select({ c: count() })
         .from(resultTable)
         .where(
@@ -258,14 +267,14 @@ export async function updateProgrammeStatus(
       ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(status) &&
       finalResultNumber === null
     ) {
-      const nextNumRes = await db
+      const nextNumRes = await exec
         .select({ maxNum: max(programmeTable.resultNumber) })
         .from(programmeTable)
         .where(eq(programmeTable.festivalId, programme.festivalId));
       finalResultNumber = (nextNumRes[0]?.maxNum ?? 0) + 1;
     }
 
-    await db
+    await exec
       .update(programmeTable)
       .set({
         status,
@@ -285,11 +294,11 @@ export async function updateProgrammeStatus(
     publishedResultCount,
     groupCountResult,
   ] = await Promise.all([
-    db
+    exec
       .select({ c: count() })
       .from(programmeAssignment)
       .where(eq(programmeAssignment.programmeId, programmeId)),
-    db
+    exec
       .select({ c: count() })
       .from(scheduleEntryTable)
       .where(
@@ -298,11 +307,11 @@ export async function updateProgrammeStatus(
           eq(scheduleEntryTable.type, "PROGRAMME"),
         ),
       ),
-    db
+    exec
       .select({ c: count() })
       .from(resultTable)
       .where(eq(resultTable.programmeId, programmeId)),
-    db
+    exec
       .select({ c: count() })
       .from(resultTable)
       .where(
@@ -311,7 +320,7 @@ export async function updateProgrammeStatus(
           eq(resultTable.isPublished, true),
         ),
       ),
-    db
+    exec
       .select({ c: count() })
       .from(groupTable)
       .where(eq(groupTable.festivalId, programme.festivalId)),
@@ -352,7 +361,7 @@ export async function updateProgrammeStatus(
     }
   } else {
     const activeReportingSession =
-      await db.query.programmeReportingSession.findFirst({
+      await exec.query.programmeReportingSession.findFirst({
         where: and(
           eq(reportingSessionTable.programmeId, programmeId),
           or(
@@ -386,14 +395,14 @@ export async function updateProgrammeStatus(
     ["PENDING_PUBLICATION", "PUBLISHED", "ANNOUNCED"].includes(status) &&
     finalResultNumber === null
   ) {
-    const nextNumRes = await db
+    const nextNumRes = await exec
       .select({ maxNum: max(programmeTable.resultNumber) })
       .from(programmeTable)
       .where(eq(programmeTable.festivalId, programme.festivalId));
     finalResultNumber = (nextNumRes[0]?.maxNum ?? 0) + 1;
   }
 
-  await db
+  await exec
     .update(programmeTable)
     .set({
       status,

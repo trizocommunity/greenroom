@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { AnnouncerOverview } from "@/components/dashboard/overview/AnnouncerOverview";
 import { MediaOverview } from "@/components/dashboard/overview/MediaOverview";
 import { OverviewSkeleton } from "@/components/dashboard/overview/OverviewSkeleton";
+import { VolunteerOverview } from "@/components/dashboard/overview/VolunteerOverview";
+import { DashboardGreeting } from "@/components/dashboard/overview/DashboardGreeting";
 import OverviewWidgets from "@/components/dashboard/overview/OverviewWidgets";
 import { StageManagerOverview } from "@/components/dashboard/overview/StageManagerOverview";
 import { getSession } from "@/core/auth/session";
@@ -39,36 +41,35 @@ export default async function FestivalDashboardPage({
   );
   const effectiveRole = activeRoleCookie ?? context.role;
 
-  if (effectiveRole === "STAGE_MANAGER") {
-    return (
-      <Suspense fallback={<OverviewSkeleton />}>
-        <StageManagerOverview
-          festivalSlug={slug}
-          userId={session?.userId ?? ""}
-        />
-      </Suspense>
-    );
-  }
-
-  if (effectiveRole === "ANNOUNCER") {
-    return (
-      <Suspense fallback={<OverviewSkeleton />}>
-        <AnnouncerOverview festivalSlug={slug} />
-      </Suspense>
-    );
-  }
-
-  if (effectiveRole === "MEDIA") {
-    return (
-      <Suspense fallback={<OverviewSkeleton />}>
-        <MediaOverview festivalSlug={slug} />
-      </Suspense>
-    );
-  }
+  const greetingName = session?.name || "there";
 
   return (
-    <Suspense fallback={<OverviewSkeleton />}>
-      <OverviewWidgets festival={festival} />
-    </Suspense>
+    <div className="flex flex-col gap-5 pt-4 sm:pt-6 pb-12">
+      <DashboardGreeting name={greetingName} />
+      {effectiveRole === "STAGE_MANAGER" ? (
+        <Suspense fallback={<OverviewSkeleton />}>
+          <StageManagerOverview
+            festivalSlug={slug}
+            userId={session?.userId ?? ""}
+          />
+        </Suspense>
+      ) : effectiveRole === "ANNOUNCER" ? (
+        <Suspense fallback={<OverviewSkeleton />}>
+          <AnnouncerOverview festivalSlug={slug} />
+        </Suspense>
+      ) : effectiveRole === "MEDIA" ? (
+        <Suspense fallback={<OverviewSkeleton />}>
+          <MediaOverview festivalSlug={slug} />
+        </Suspense>
+      ) : effectiveRole === "VOLUNTEER" ? (
+        <Suspense fallback={<OverviewSkeleton />}>
+          <VolunteerOverview festivalSlug={slug} />
+        </Suspense>
+      ) : (
+        <Suspense fallback={<OverviewSkeleton />}>
+          <OverviewWidgets festival={festival} effectiveRole={effectiveRole} />
+        </Suspense>
+      )}
+    </div>
   );
 }

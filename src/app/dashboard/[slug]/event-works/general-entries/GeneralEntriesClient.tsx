@@ -605,101 +605,190 @@ export function GeneralEntriesClient({
         </SheetContent>
       </Sheet>
 
-      <Card className="overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Points Awarded To</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entries.length === 0 ? (
+      <div className="border rounded-xl shadow-sm overflow-hidden bg-card">
+        {/* Desktop View */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center">
-                  <div className="flex flex-col items-center justify-center text-muted-foreground">
-                    <Award className="w-8 h-8 mb-2 opacity-20" />
-                    <p>No general entries found.</p>
-                  </div>
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Points Awarded To</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              entries.map((entry) => {
-                const isPublished = entry.awards.some((a) => a.isPublished);
-                const categoryName = entry.type === "PROGRAMME" ? "Programme" : categories.find((c) => c.id === entry.categoryId)?.name || "Uncategorized";
-                const pointsCount = entry.awards.length;
-                
-                return (
-                  <TableRow 
-                    key={entry.id} 
-                    className="cursor-pointer hover:bg-muted/30 transition-colors"
-                    onClick={() => openViewEntry(entry)}
-                  >
-                    <TableCell className="font-medium">{entry.name}</TableCell>
-                    <TableCell>{categoryName}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-normal text-xs">
-                        {entry.type === "PROGRAMME" ? "Programme" : "General"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {pointsCount > 0 ? (
-                        <span className="text-muted-foreground text-sm">{pointsCount} group(s)</span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs italic opacity-60">None</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isPublished ? (
-                        <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0 shadow-none">
-                          <ShieldCheck className="w-3 h-3 mr-1" /> Published
+            </TableHeader>
+            <TableBody>
+              {entries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-32 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Award className="w-8 h-8 mb-2 opacity-20" />
+                      <p>No general entries found.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                entries.map((entry) => {
+                  const isPublished = entry.awards.some((a) => a.isPublished);
+                  const categoryName = entry.type === "PROGRAMME" ? "Programme" : categories.find((c) => c.id === entry.categoryId)?.name || "Uncategorized";
+                  const pointsCount = entry.awards.length;
+                  
+                  return (
+                    <TableRow 
+                      key={entry.id} 
+                      className="cursor-pointer hover:bg-muted/30 transition-colors"
+                      onClick={() => openViewEntry(entry)}
+                    >
+                      <TableCell className="font-medium">{entry.name}</TableCell>
+                      <TableCell>{categoryName}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-normal text-xs">
+                          {entry.type === "PROGRAMME" ? "Programme" : "General"}
                         </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-0 shadow-none">
-                          <ShieldAlert className="w-3 h-3 mr-1" /> Draft
+                      </TableCell>
+                      <TableCell>
+                        {pointsCount > 0 ? (
+                          <span className="text-muted-foreground text-sm">{pointsCount} group(s)</span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs italic opacity-60">None</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isPublished ? (
+                          <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0 shadow-none">
+                            <ShieldCheck className="w-3 h-3 mr-1" /> Published
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-0 shadow-none">
+                            <ShieldAlert className="w-3 h-3 mr-1" /> Draft
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={isPending || isPublished}
+                            onClick={() => openEditEntry(entry)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <DeleteDialog
+                            title="Delete Entry"
+                            description={`Are you sure you want to delete the entry "${entry.name}"? This action cannot be undone.`}
+                            onDelete={() => handleDeleteEntry(entry.id)}
+                            isDeleting={isPending}
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                disabled={isPending || isPublished}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            }
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        {/* Mobile Cards View */}
+        <div className="block sm:hidden divide-y divide-border">
+          {entries.length === 0 ? (
+            <div className="p-8 text-center flex flex-col items-center justify-center text-muted-foreground">
+              <Award className="w-8 h-8 mb-2 opacity-20" />
+              <p>No general entries found.</p>
+            </div>
+          ) : (
+            entries.map((entry) => {
+              const isPublished = entry.awards.some((a) => a.isPublished);
+              const categoryName = entry.type === "PROGRAMME" ? "Programme" : categories.find((c) => c.id === entry.categoryId)?.name || "Uncategorized";
+              const pointsCount = entry.awards.length;
+              
+              return (
+                <div 
+                  key={entry.id} 
+                  className="flex flex-col gap-3 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
+                  onClick={() => openViewEntry(entry)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col min-w-0 gap-1">
+                      <span className="font-semibold truncate">{entry.name}</span>
+                      <div className="flex items-center flex-wrap gap-2 text-xs mt-0.5">
+                        <span className="text-muted-foreground">{categoryName}</span>
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                        <Badge variant="outline" className="font-normal text-[10px] px-1.5 h-4">
+                          {entry.type === "PROGRAMME" ? "Programme" : "General"}
                         </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={isPending || isPublished}
-                          onClick={() => openEditEntry(entry)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <DeleteDialog
-                          title="Delete Entry"
-                          description={`Are you sure you want to delete the entry "${entry.name}"? This action cannot be undone.`}
-                          onDelete={() => handleDeleteEntry(entry.id)}
-                          isDeleting={isPending}
-                          trigger={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              disabled={isPending || isPublished}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          }
-                        />
                       </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+                    </div>
+                    <div className="flex items-center shrink-0">
+                      {isPublished ? (
+                        <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0 shadow-none px-2 h-5 text-[10px]">
+                          Published
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-0 shadow-none px-2 h-5 text-[10px]">
+                          Draft
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-1 pt-1 border-t border-border/40">
+                    <div className="text-xs">
+                      {pointsCount > 0 ? (
+                        <span className="text-muted-foreground font-medium">{pointsCount} group(s) awarded</span>
+                      ) : (
+                        <span className="text-muted-foreground italic opacity-60">No points awarded</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        disabled={isPending || isPublished}
+                        onClick={() => openEditEntry(entry)}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <DeleteDialog
+                        title="Delete Entry"
+                        description={`Are you sure you want to delete the entry "${entry.name}"? This action cannot be undone.`}
+                        onDelete={() => handleDeleteEntry(entry.id)}
+                        isDeleting={isPending}
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive"
+                            disabled={isPending || isPublished}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
     </div>
   );
 }

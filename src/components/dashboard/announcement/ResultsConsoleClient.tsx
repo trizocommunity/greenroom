@@ -33,6 +33,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -82,6 +83,7 @@ import {
 import { cn } from "@/core/utils/cn";
 import {
   fetchStandingsAction,
+  publishGeneralStandings,
   publishResult,
   publishStandings,
   swapResultNumbers,
@@ -286,6 +288,81 @@ function SortableProgrammeRow({
   );
 }
 
+function MobileProgrammeCard({
+  p,
+  setActiveProgramme,
+  handleUnpublish,
+  canUnpublish,
+}: SortableProgrammeRowProps) {
+  return (
+    <Card className="flex flex-col gap-3 p-4 bg-card">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center rounded-lg bg-violet-500/10 px-2 py-1 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
+            {p.resultNumber != null ? `#${p.resultNumber}` : "—"}
+          </span>
+          {p.status === "PUBLISHED" || p.status === "ANNOUNCED" ? (
+            <Badge
+              variant="secondary"
+              className={cn(
+                "ring-1 border-0 shadow-none font-medium text-[10px] px-1.5 py-0",
+                DONE_STATUS_STYLES[p.status].badge,
+              )}
+            >
+              <span
+                className={cn(
+                  "mr-1 h-1.5 w-1.5 rounded-full",
+                  DONE_STATUS_STYLES[p.status].dot,
+                )}
+              />
+              {p.status}
+            </Badge>
+          ) : (
+            <Badge
+              variant="secondary"
+              className="bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/25 border-0 shadow-none font-medium text-[10px] px-1.5 py-0"
+            >
+              <span className="mr-1 h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Submitted
+            </Badge>
+          )}
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 -mr-2 -mt-2 text-muted-foreground"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setActiveProgramme(p)}>
+              <Eye className="h-4 w-4 mr-2" />
+              Open Result
+            </DropdownMenuItem>
+            {canUnpublish &&
+              (p.status === "PUBLISHED" || p.status === "ANNOUNCED") && (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => handleUnpublish(p.id)}
+                >
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Unpublish
+                </DropdownMenuItem>
+              )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div>
+        <div className="font-semibold text-sm">{p.name}</div>
+        <div className="text-muted-foreground text-xs">{p.categoryName}</div>
+      </div>
+    </Card>
+  );
+}
+
 export function ResultsConsoleClient({
   festivalId,
   festivalSlug,
@@ -315,6 +392,77 @@ export function ResultsConsoleClient({
   const [resultsPageIndex, setResultsPageIndex] = useState(0);
   const [standingsPageIndex, setStandingsPageIndex] = useState(0);
   const pageSize = 15;
+
+  const basePublishedResultsCount = useMemo(
+    () =>
+      programmes.filter(
+        (p) =>
+          (p.status === "PUBLISHED" || p.status === "ANNOUNCED") &&
+          p.resultNumber != null,
+      ).length,
+    [programmes],
+  );
+
+  // Optimistic delta bumped by +1 on publish and -1 on unpublish so the
+  // "After #" input updates immediately, without waiting for the next
+  // router.refresh / poll cycle to round-trip.
+  const [pendingDelta, setPendingDelta] = useState(0);
+  const publishedResultsCount = Math.max(
+    0,
+    basePublishedResultsCount + pendingDelta,
+  );
+
+  // When the server's programmes data reflects our optimistic increment,
+  // trim the pending delta so it doesn't double-count.
+  const lastBaseCountRef = useRef<number>(basePublishedResultsCount);
+  useEffect(() => {
+    const changed = basePublishedResultsCount - lastBaseCountRef.current;
+    lastBaseCountRef.current = basePublishedResultsCount;
+    if (changed !== 0) {
+      setPendingDelta((d) => {
+        if (Math.sign(d) === Math.sign(changed)) {
+          return Math.abs(d) > Math.abs(changed) ? d - changed : 0;
+        }
+        return d;
+      });
+    }
+  }, [basePublishedResultsCount, pendingDelta]);
+
+  const lastAutoWrittenRef = useRef<string | null>(null);
+
+  // Keep the "After #" input synced with the live count of published results.
+  // We ensure it never remains empty; if it's cleared, we reset to the default.
+  useEffect(() => {
+    const next = String(publishedResultsCount);
+    setUpToResultNumber((current) => {
+      const isStillAutoSynced =
+        current === "" || current === lastAutoWrittenRef.current;
+      if (!isStillAutoSynced && current !== "") return current;
+      lastAutoWrittenRef.current = next;
+      return next;
+    });
+  }, [publishedResultsCount]);
+
+  function bumpOptimisticCount(delta: number) {
+    setPendingDelta((d) => d + delta);
+  }
+
+  // Reject any typed "0". If empty, let it be temporarily empty until blur or next effect,
+  // but practically the effect resets it if empty. Let's just handle changes.
+  function handleAfterNumberChange(value: string) {
+    if (value === "0") return;
+    lastAutoWrittenRef.current = null;
+
+    // If the user clears the input, reset it immediately to the default count.
+    if (value === "") {
+      const defaultCount = String(publishedResultsCount);
+      lastAutoWrittenRef.current = defaultCount;
+      setUpToResultNumber(defaultCount);
+      return;
+    }
+
+    setUpToResultNumber(value);
+  }
 
   useEffect(() => {
     setResultsPageIndex(0);
@@ -403,6 +551,7 @@ export function ResultsConsoleClient({
       }
       toast.success("Result unpublished — moved back to Announcer.");
       setActiveProgramme(null);
+      bumpOptimisticCount(-1);
       fetchStandings();
       router.refresh();
     });
@@ -417,6 +566,7 @@ export function ResultsConsoleClient({
       }
       toast.success("Result published successfully.");
       setActiveProgramme(null);
+      bumpOptimisticCount(1);
       fetchStandings();
       router.refresh();
     });
@@ -450,14 +600,30 @@ export function ResultsConsoleClient({
   }
 
   function handlePublishStandings() {
-    startTransition(async () => {
-      const resultNum = upToResultNumber
-        ? parseInt(upToResultNumber, 10)
-        : undefined;
-      const res = await publishStandings(
-        festivalId,
-        isNaN(resultNum!) ? undefined : resultNum,
+    if (standingsScope === "general") {
+      startTransition(async () => {
+        const res = await publishGeneralStandings(festivalId);
+        if (!res.success) {
+          toast.error(res.error);
+          return;
+        }
+        toast.success("Standings published live with general entries.");
+        fetchStandings();
+        router.refresh();
+      });
+      return;
+    }
+
+    const parsedNum = upToResultNumber ? parseInt(upToResultNumber, 10) : NaN;
+    if (!upToResultNumber || isNaN(parsedNum) || parsedNum <= 0) {
+      toast.error(
+        "Enter an After # greater than 0 before sending to the announcer.",
       );
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await publishStandings(festivalId, parsedNum);
       if (!res.success) {
         toast.error(res.error);
         return;
@@ -471,15 +637,15 @@ export function ResultsConsoleClient({
     <>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
         {/* Section 1 — Results Table */}
-        <div className="lg:col-span-3 space-y-4 flex flex-col">
+        <div className="lg:col-span-3 space-y-4 flex flex-col order-2 lg:order-1">
           {/* Inline Search and Status */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="relative flex-1 w-full max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="relative flex-1 w-full md:max-w-[250px]">
+              <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search programmes..."
-                className="pl-9 h-9 bg-background"
+                className="pl-9 h-8 bg-background"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -507,6 +673,13 @@ export function ResultsConsoleClient({
                   {statusCounts["PUBLISHED"] ?? 0}
                 </span>
               </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ring-1 whitespace-nowrap bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-sky-500/25">
+                <span className="h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
+                <span>Announced</span>
+                <span className="rounded-full bg-sky-500/20 px-1.5 text-xs font-bold">
+                  {statusCounts["ANNOUNCED"] ?? 0}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -530,54 +703,75 @@ export function ResultsConsoleClient({
               </CardContent>
             </Card>
           ) : (
-            <div className="border rounded-xl bg-card flex-1 overflow-hidden">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={filteredSorted.map((p) => p.id)}
-                  strategy={verticalListSortingStrategy}
+            <>
+              {/* Desktop View */}
+              <div className="hidden sm:block border rounded-xl bg-card flex-1 overflow-hidden">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  <Table>
-                    <TableHeader className="bg-muted/30">
-                      <TableRow>
-                        <TableHead className="w-12"></TableHead>
-                        <TableHead className="w-20 font-semibold text-foreground">
-                          Result #
-                        </TableHead>
-                        <TableHead className="font-semibold text-foreground">
-                          Competition
-                        </TableHead>
-                        <TableHead className="w-28 font-semibold text-foreground">
-                          Status
-                        </TableHead>
-                        <TableHead className="w-16 text-right font-semibold text-foreground">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredSorted
-                        .slice(
-                          resultsPageIndex * pageSize,
-                          (resultsPageIndex + 1) * pageSize,
-                        )
-                        .map((p) => (
-                          <SortableProgrammeRow
-                            key={p.id}
-                            p={p}
-                            setActiveProgramme={setActiveProgramme}
-                            handleUnpublish={handleUnpublish}
-                            canUnpublish={canUnpublish}
-                          />
-                        ))}
-                    </TableBody>
-                  </Table>
-                </SortableContext>
-              </DndContext>
-            </div>
+                  <SortableContext
+                    items={filteredSorted.map((p) => p.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <Table>
+                      <TableHeader className="bg-muted/30">
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead className="w-20 font-semibold text-foreground">
+                            Result #
+                          </TableHead>
+                          <TableHead className="font-semibold text-foreground">
+                            Competition
+                          </TableHead>
+                          <TableHead className="w-28 font-semibold text-foreground">
+                            Status
+                          </TableHead>
+                          <TableHead className="w-16 text-right font-semibold text-foreground">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredSorted
+                          .slice(
+                            resultsPageIndex * pageSize,
+                            (resultsPageIndex + 1) * pageSize,
+                          )
+                          .map((p) => (
+                            <SortableProgrammeRow
+                              key={p.id}
+                              p={p}
+                              setActiveProgramme={setActiveProgramme}
+                              handleUnpublish={handleUnpublish}
+                              canUnpublish={canUnpublish}
+                            />
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </SortableContext>
+                </DndContext>
+              </div>
+
+              {/* Mobile View */}
+              <div className="flex sm:hidden flex-col gap-3">
+                {filteredSorted
+                  .slice(
+                    resultsPageIndex * pageSize,
+                    (resultsPageIndex + 1) * pageSize,
+                  )
+                  .map((p) => (
+                    <MobileProgrammeCard
+                      key={p.id}
+                      p={p}
+                      setActiveProgramme={setActiveProgramme}
+                      handleUnpublish={handleUnpublish}
+                      canUnpublish={canUnpublish}
+                    />
+                  ))}
+              </div>
+            </>
           )}
 
           {filteredSorted.length > pageSize && (
@@ -664,15 +858,17 @@ export function ResultsConsoleClient({
         </div>
 
         {/* Section 2 — Team Standings */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <div className="relative w-24">
+        <div className="lg:col-span-2 space-y-4 lg:sticky lg:top-6 lg:self-start order-1 lg:order-2">
+          <div className="flex items-center lg:flex-row justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 w-full sm:w-fit">
+              <div className="relative w-1/3 md:w-24">
                 <Input
+                  type="number"
+                  min={1}
                   placeholder="After #"
-                  className="h-9 pl-3 text-sm font-medium"
+                  className="h-8 pl-3 text-sm font-medium"
                   value={upToResultNumber}
-                  onChange={(e) => setUpToResultNumber(e.target.value)}
+                  onChange={(e) => handleAfterNumberChange(e.target.value)}
                 />
               </div>
               <Select
@@ -681,7 +877,7 @@ export function ResultsConsoleClient({
                   setStandingsScope(v as "published" | "all" | "general")
                 }
               >
-                <SelectTrigger className="h-9 w-[150px] bg-background text-sm font-medium">
+                <SelectTrigger className="h-8 bg-background w-2/3 md:w-fit text-sm font-medium">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -694,22 +890,25 @@ export function ResultsConsoleClient({
 
             <Button
               size="sm"
-              className="bg-red-600 hover:bg-red-700 text-white shadow-sm h-9"
-              disabled={isPending}
+              className="bg-red-600 hover:bg-red-700 w-full md:w-fit text-white shadow-sm h-8"
+              disabled={
+                isPending ||
+                (standingsScope !== "general" &&
+                  (!upToResultNumber || parseInt(upToResultNumber, 10) <= 0))
+              }
               onClick={handlePublishStandings}
             >
               {isPending && (
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
               )}
-              Send to Announcer
+              {standingsScope === "general"
+                ? "Publish General"
+                : "Send to Announcer"}
             </Button>
           </div>
 
-          <div
-            className="border rounded-xl bg-card overflow-hidden flex flex-col"
-            style={{ maxHeight: "calc(100vh - 200px)" }}
-          >
-            <ScrollArea className="flex-1 relative">
+          <div className="border rounded-xl bg-card overflow-hidden flex flex-col">
+            <ScrollArea className="max-h-[400px] relative">
               {isFetchingStandings && (
                 <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-20 flex items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -885,70 +1084,165 @@ export function ResultsConsoleClient({
                 {/* Result roster */}
                 <div className="space-y-3 mt-2">
                   <p className="text-sm font-semibold">Result Roster</p>
-                  <div className="border rounded-xl overflow-x-auto shadow-sm">
-                    <Table>
-                      <TableHeader className="bg-muted/30">
-                        <TableRow>
-                          <TableHead className="w-12">SI</TableHead>
-                          <TableHead className="w-16">Code</TableHead>
-                          <TableHead>Participant</TableHead>
-                          <TableHead>Group</TableHead>
-                          <TableHead className="w-16">Grade</TableHead>
-                          <TableHead className="w-20">Prize</TableHead>
-                          <TableHead className="w-20 text-right">
-                            Award Pts
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {activeProgramme.results
-                          .sort(
-                            (a, b) => (a.position ?? 999) - (b.position ?? 999),
-                          )
-                          .map((r, idx) => (
-                            <TableRow
-                              key={r.id}
-                              className={cn(
-                                r.position != null &&
-                                  MEDAL_ROWS[r.position - 1],
-                              )}
-                            >
-                              <TableCell className="text-muted-foreground font-mono">
-                                {idx + 1}
-                              </TableCell>
-                              <TableCell className="font-mono">
-                                {r.codeLetter ?? "—"}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                {r.participantName ?? "—"}
-                                {r.chestNumber && (
-                                  <span className="text-xs text-muted-foreground ml-1">
-                                    ({r.chestNumber})
-                                  </span>
+                  <div className="border rounded-xl shadow-sm overflow-hidden bg-card">
+                    <div className="hidden sm:block overflow-x-auto">
+                      <Table>
+                        <TableHeader className="bg-muted/30">
+                          <TableRow>
+                            <TableHead className="w-12">SI</TableHead>
+                            <TableHead className="w-16">Code</TableHead>
+                            <TableHead>Participant</TableHead>
+                            <TableHead>Group</TableHead>
+                            <TableHead className="w-16">Grade</TableHead>
+                            <TableHead className="w-20">Prize</TableHead>
+                            <TableHead className="w-20 text-right">
+                              Award Pts
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {activeProgramme.results
+                            .sort(
+                              (a, b) =>
+                                (a.position ?? 999) - (b.position ?? 999),
+                            )
+                            .map((r, idx) => (
+                              <TableRow
+                                key={r.id}
+                                className={cn(
+                                  r.position != null &&
+                                    MEDAL_ROWS[r.position - 1],
                                 )}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {r.groupName ?? "—"}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                {r.grade ?? "—"}
-                              </TableCell>
-                              <TableCell>
-                                {r.position === 1
-                                  ? "🥇 1st"
-                                  : r.position === 2
-                                    ? "🥈 2nd"
-                                    : r.position === 3
-                                      ? "🥉 3rd"
-                                      : "—"}
-                              </TableCell>
-                              <TableCell className="text-right font-mono font-bold">
-                                {r.awardPoints}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
+                              >
+                                <TableCell className="text-muted-foreground font-mono">
+                                  {idx + 1}
+                                </TableCell>
+                                <TableCell className="font-mono">
+                                  {r.codeLetter ?? "—"}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {r.participantName ?? "—"}
+                                  {r.chestNumber && (
+                                    <span className="text-xs text-muted-foreground ml-1">
+                                      ({r.chestNumber})
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {r.groupName ?? "—"}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {r.grade ?? "—"}
+                                </TableCell>
+                                <TableCell>
+                                  {r.position === 1
+                                    ? "🥇 1st"
+                                    : r.position === 2
+                                      ? "🥈 2nd"
+                                      : r.position === 3
+                                        ? "🥉 3rd"
+                                        : "—"}
+                                </TableCell>
+                                <TableCell className="text-right font-mono font-bold">
+                                  {r.awardPoints}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {/* Mobile Cards View */}
+                    <div className="block sm:hidden divide-y divide-border">
+                      {activeProgramme.results
+                        .sort(
+                          (a, b) => (a.position ?? 999) - (b.position ?? 999),
+                        )
+                        .map((r, idx) => (
+                          <div
+                            key={r.id}
+                            className={cn(
+                              "p-4 flex flex-col gap-3",
+                              r.position != null && MEDAL_ROWS[r.position - 1],
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2">
+                                <span className="text-muted-foreground font-mono text-xs mt-0.5 w-4 shrink-0">
+                                  {idx + 1}.
+                                </span>
+                                <span className="font-semibold text-sm">
+                                  {r.participantName ?? "—"}
+                                  {r.chestNumber && (
+                                    <span className="text-xs text-muted-foreground ml-1 font-normal">
+                                      ({r.chestNumber})
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {r.position != null && r.position <= 3 ? (
+                                  <span className="font-bold text-sm flex items-center gap-1">
+                                    {r.position === 1
+                                      ? "🥇"
+                                      : r.position === 2
+                                        ? "🥈"
+                                        : "🥉"}
+                                    <span
+                                      className={
+                                        r.position === 1
+                                          ? "text-amber-600 dark:text-amber-400"
+                                          : r.position === 2
+                                            ? "text-slate-500 dark:text-slate-300"
+                                            : "text-orange-600 dark:text-orange-400"
+                                      }
+                                    >
+                                      {r.position === 1
+                                        ? "1st"
+                                        : r.position === 2
+                                          ? "2nd"
+                                          : "3rd"}
+                                    </span>
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-6 text-xs text-muted-foreground">
+                              {r.codeLetter && (
+                                <div className="flex items-center gap-1">
+                                  <span className="opacity-70">Code:</span>
+                                  <span className="font-mono text-foreground font-medium">
+                                    {r.codeLetter}
+                                  </span>
+                                </div>
+                              )}
+                              {r.groupName && (
+                                <div className="flex items-center gap-1">
+                                  <span className="opacity-70">Group:</span>
+                                  <span className="font-medium text-foreground">
+                                    {r.groupName}
+                                  </span>
+                                </div>
+                              )}
+                              {r.grade && (
+                                <div className="flex items-center gap-1">
+                                  <span className="opacity-70">Grade:</span>
+                                  <span className="font-medium text-foreground">
+                                    {r.grade}
+                                  </span>
+                                </div>
+                              )}
+                              {r.awardPoints != null && r.awardPoints > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <span className="opacity-70">Points:</span>
+                                  <span className="font-mono font-bold text-foreground">
+                                    {r.awardPoints}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </div>
 

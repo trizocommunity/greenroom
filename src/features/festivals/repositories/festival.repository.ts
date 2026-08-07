@@ -11,6 +11,8 @@ import {
   programme as programmes,
   result as results,
   stage as stages,
+  festivalScoringPolicy as scoringPolicies,
+  festivalMember as members,
 } from "@/core/database/schema";
 import { isAfter, parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
@@ -278,6 +280,10 @@ export async function getDashboardOverviewData(festivalId: string) {
     participantsByTeamRaw,
     participantsByCategoryRaw,
     jCount,
+    scoringPoliciesCount,
+    chestNumbersCount,
+    offStageCount,
+    staffCount,
   ] = await Promise.all([
     db
       .select({ c: count() })
@@ -344,6 +350,22 @@ export async function getDashboardOverviewData(festivalId: string) {
       .select({ c: count() })
       .from(judges)
       .where(eq(judges.festivalId, festivalId)),
+    db
+      .select({ c: count() })
+      .from(scoringPolicies)
+      .where(eq(scoringPolicies.festivalId, festivalId)),
+    db
+      .select({ c: count() })
+      .from(participants)
+      .where(and(eq(participants.festivalId, festivalId), sql`${participants.chestNumber} IS NOT NULL`)),
+    db
+      .select({ c: count() })
+      .from(stages)
+      .where(and(eq(stages.festivalId, festivalId), eq(stages.isOffStage, true))),
+    db
+      .select({ c: count() })
+      .from(members)
+      .where(eq(members.festivalId, festivalId)),
   ]);
 
   return {
@@ -358,6 +380,15 @@ export async function getDashboardOverviewData(festivalId: string) {
     participantsByTeam: participantsByTeamRaw,
     participantsByCategory: participantsByCategoryRaw,
     teamStandings: fest?.teamStandings,
+    
+    // Fest Setup Flags
+    hasProgrammes: tp[0].c > 0,
+    hasScoringPolicy: scoringPoliciesCount[0].c > 0,
+    hasParticipants: ts[0].c > 0,
+    hasChestNumbers: chestNumbersCount[0].c > 0,
+    hasSchedule: tst[0].c > 0, // A stage is required for scheduling
+    hasOffStageTasks: offStageCount[0].c > 0,
+    hasStaff: staffCount[0].c > 0,
   };
 }
 

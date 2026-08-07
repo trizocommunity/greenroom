@@ -160,6 +160,42 @@ const DEFAULT_AWARD_RULES: AwardRule[] = [
     awardPoints: 3,
     priority: 100,
   },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "4-6",
+    grade: "A+",
+    minParticipants: 4,
+    maxParticipants: 6,
+    awardPoints: 20,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "4-6",
+    grade: "A",
+    minParticipants: 4,
+    maxParticipants: 6,
+    awardPoints: 16,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "4-6",
+    grade: "B",
+    minParticipants: 4,
+    maxParticipants: 6,
+    awardPoints: 12,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "4-6",
+    grade: "C",
+    minParticipants: 4,
+    maxParticipants: 6,
+    awardPoints: 8,
+    priority: 100,
+  },
 ];
 
 const defaultScoringPolicyData = (): ScoringPolicyData => ({

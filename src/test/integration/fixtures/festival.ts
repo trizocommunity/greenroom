@@ -46,6 +46,10 @@ export async function buildFestivalWithBothShapes(
         slug: `test-${randomUUID().slice(0, 8)}`,
         tier,
         status: "READY",
+        isLocked: false,
+        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        publicSiteEnabled: false,
+        scoringSystem: "SCORE_BASED",
       })
       .returning()
   )[0];

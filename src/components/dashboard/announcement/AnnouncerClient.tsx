@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Award,
-  CheckCircle2,
-  Loader2,
-  Megaphone,
-  Star,
-  Trophy,
-} from "lucide-react";
+import { ChevronRight, Loader2, Megaphone, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type ReactNode,
@@ -181,7 +174,7 @@ export function AnnouncerClient({
     <>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         {/* Left Column (3/4) */}
-        <div className="lg:col-span-3 space-y-8">
+        <div className="lg:col-span-3 space-y-8 order-2 lg:order-1">
           {!hasQueue && !hasPublished ? (
             <Card className="border-dashed shadow-none">
               <CardContent className="py-12 text-center text-muted-foreground">
@@ -215,56 +208,40 @@ export function AnnouncerClient({
                       .map((p) => (
                         <div
                           key={p.id}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-violet-500/[0.02]"
+                          onClick={() => setActiveProgramme(p)}
+                          className="group flex flex-row items-center justify-between gap-4 rounded-xl border bg-gradient-to-b from-card to-muted/20 p-4 shadow-sm transition-all hover:shadow-md hover:border-violet-500/30 overflow-hidden cursor-pointer"
                         >
-                          <div className="flex items-start gap-3 min-w-0">
-                            <span className="inline-flex h-8 w-12 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
-                              {p.resultNumber != null
-                                ? `#${p.resultNumber}`
-                                : "—"}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="font-medium truncate">{p.name}</p>
+                          <div className="flex items-center gap-4 min-w-0 pl-1">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-500/10 shadow-inner">
+                              <span className="font-mono text-sm font-bold text-violet-600 dark:text-violet-400">
+                                {p.resultNumber != null
+                                  ? `#${p.resultNumber}`
+                                  : "—"}
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex flex-col justify-center">
+                              <p className="font-semibold text-foreground truncate text-base">
+                                {p.name}
+                              </p>
                               <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                <span className="text-muted-foreground text-xs">
+                                <span className="text-muted-foreground text-xs font-medium">
                                   {p.categoryName}
                                 </span>
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] h-5 px-1.5 font-normal"
-                                >
+                                <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/70">
                                   {p.type === "GROUP" ? "Group" : "Individual"}
-                                </Badge>
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] h-5 px-1.5 font-normal"
-                                >
+                                </span>
+                                <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/70">
                                   {p.stageType === "NON_STAGE"
                                     ? "Offstage"
                                     : "Stage"}
-                                </Badge>
+                                </span>
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0 sm:justify-end">
-                            <Badge
-                              variant="secondary"
-                              className="bg-green-500/10 text-green-600 dark:text-green-400 ring-1 ring-green-500/25 border-0 font-medium"
-                            >
-                              Ready
-                            </Badge>
-                            <QueueActionButton
-                              variant="outline"
-                              onClick={() => setActiveProgramme(p)}
-                            >
-                              Open
-                            </QueueActionButton>
-                            <QueueActionButton
-                              onClick={() => handleAnnounce(p)}
-                              disabled={isPending || p.resultNumber == null}
-                            >
-                              Announce
-                            </QueueActionButton>
+                          <div className="flex items-center shrink-0 pr-1">
+                            <ChevronRight className="w-5 h-5 text-muted-foreground opacity-50 transition-opacity group-hover:opacity-100" />
                           </div>
                         </div>
                       ))}
@@ -497,7 +474,7 @@ export function AnnouncerClient({
         </div>
 
         {/* Right Column (1/4) */}
-        <div className="space-y-6 lg:col-span-1">
+        <div className="space-y-6 lg:col-span-1 order-1 lg:order-2">
           {standingsContext.queuedTeamStandings.length > 0 && (
             <Card className="border-violet-500/20 bg-violet-500/5 shadow-sm">
               <CardHeader className="py-4 border-b border-violet-500/10">
@@ -556,7 +533,7 @@ export function AnnouncerClient({
               )}
             </div>
 
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="max-h-[400px]">
               {standingsContext.publishedStandings.length === 0 ? (
                 <p className="text-sm text-muted-foreground p-6 text-center">
                   No standings published yet.
@@ -631,72 +608,146 @@ export function AnnouncerClient({
                 </DrawerHeader>
 
                 {/* Result roster */}
-                <div className="space-y-2 py-2 px-4">
+                <div className="space-y-2 py-4">
                   <p className="text-sm font-medium">Result Roster</p>
-                  <div className="border rounded-xl overflow-x-auto shadow-sm">
-                    <Table>
-                      <TableHeader className="bg-muted/30">
-                        <TableRow>
-                          <TableHead className="w-12">SI</TableHead>
-                          <TableHead className="w-16">Code</TableHead>
-                          <TableHead>Participant</TableHead>
-                          <TableHead>Group</TableHead>
-                          <TableHead className="w-16">Grade</TableHead>
-                          <TableHead className="w-20">Prize</TableHead>
-                          <TableHead className="w-20 text-right">
-                            Award Pts
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {activeProgramme.results
-                          .sort(
-                            (a, b) => (a.position ?? 999) - (b.position ?? 999),
-                          )
-                          .map((r, idx) => (
-                            <TableRow
-                              key={r.id}
-                              className={cn(
-                                r.position != null &&
-                                  MEDAL_ROWS[r.position - 1],
-                              )}
-                            >
-                              <TableCell className="text-muted-foreground font-mono">
-                                {idx + 1}
-                              </TableCell>
-                              <TableCell className="font-mono">
-                                {r.codeLetter ?? "—"}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                {r.participantName ?? "—"}
-                                {r.chestNumber && (
-                                  <span className="text-xs text-muted-foreground ml-1">
-                                    ({r.chestNumber})
-                                  </span>
+                  <div className="border rounded-xl shadow-sm overflow-hidden bg-card">
+                    <div className="hidden sm:block overflow-x-auto">
+                      <Table>
+                        <TableHeader className="bg-muted/30">
+                          <TableRow>
+                            <TableHead className="w-12">SI</TableHead>
+                            <TableHead className="w-16">Code</TableHead>
+                            <TableHead>Participant</TableHead>
+                            <TableHead>Group</TableHead>
+                            <TableHead className="w-16">Grade</TableHead>
+                            <TableHead className="w-20">Prize</TableHead>
+                            <TableHead className="w-20 text-right">
+                              Award Pts
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {activeProgramme.results
+                            .sort(
+                              (a, b) => (a.position ?? 999) - (b.position ?? 999),
+                            )
+                            .map((r, idx) => (
+                              <TableRow
+                                key={r.id}
+                                className={cn(
+                                  r.position != null &&
+                                    MEDAL_ROWS[r.position - 1],
                                 )}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {r.groupName ?? "—"}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                {r.grade ?? "—"}
-                              </TableCell>
-                              <TableCell>
-                                {r.position === 1
-                                  ? "🥇 1st"
-                                  : r.position === 2
-                                    ? "🥈 2nd"
-                                    : r.position === 3
-                                      ? "🥉 3rd"
-                                      : "—"}
-                              </TableCell>
-                              <TableCell className="text-right font-mono font-bold">
-                                {r.awardPoints}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
+                              >
+                                <TableCell className="text-muted-foreground font-mono">
+                                  {idx + 1}
+                                </TableCell>
+                                <TableCell className="font-mono">
+                                  {r.codeLetter ?? "—"}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {r.participantName ?? "—"}
+                                  {r.chestNumber && (
+                                    <span className="text-xs text-muted-foreground ml-1">
+                                      ({r.chestNumber})
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {r.groupName ?? "—"}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {r.grade ?? "—"}
+                                </TableCell>
+                                <TableCell>
+                                  {r.position === 1
+                                    ? "🥇 1st"
+                                    : r.position === 2
+                                      ? "🥈 2nd"
+                                      : r.position === 3
+                                        ? "🥉 3rd"
+                                        : "—"}
+                                </TableCell>
+                                <TableCell className="text-right font-mono font-bold">
+                                  {r.awardPoints}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {/* Mobile Cards View */}
+                    <div className="block sm:hidden divide-y divide-border">
+                      {activeProgramme.results
+                        .sort(
+                          (a, b) => (a.position ?? 999) - (b.position ?? 999),
+                        )
+                        .map((r, idx) => (
+                          <div
+                            key={r.id}
+                            className={cn(
+                              "p-4 flex flex-col gap-3",
+                              r.position != null && MEDAL_ROWS[r.position - 1]
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2">
+                                <span className="text-muted-foreground font-mono text-xs mt-0.5 w-4 shrink-0">
+                                  {idx + 1}.
+                                </span>
+                                <span className="font-semibold text-sm">
+                                  {r.participantName ?? "—"}
+                                  {r.chestNumber && (
+                                    <span className="text-xs text-muted-foreground ml-1 font-normal">
+                                      ({r.chestNumber})
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {r.position != null && r.position <= 3 ? (
+                                  <span className="font-bold text-sm flex items-center gap-1">
+                                    {r.position === 1 ? "🥇" : r.position === 2 ? "🥈" : "🥉"}
+                                    <span className={
+                                      r.position === 1 ? "text-amber-600 dark:text-amber-400" :
+                                      r.position === 2 ? "text-slate-500 dark:text-slate-300" :
+                                      "text-orange-600 dark:text-orange-400"
+                                    }>
+                                      {r.position === 1 ? "1st" : r.position === 2 ? "2nd" : "3rd"}
+                                    </span>
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-6 text-xs text-muted-foreground">
+                              {r.codeLetter && (
+                                <div className="flex items-center gap-1">
+                                  <span className="opacity-70">Code:</span>
+                                  <span className="font-mono text-foreground font-medium">{r.codeLetter}</span>
+                                </div>
+                              )}
+                              {r.groupName && (
+                                <div className="flex items-center gap-1">
+                                  <span className="opacity-70">Group:</span>
+                                  <span className="font-medium text-foreground">{r.groupName}</span>
+                                </div>
+                              )}
+                              {r.grade && (
+                                <div className="flex items-center gap-1">
+                                  <span className="opacity-70">Grade:</span>
+                                  <span className="font-medium text-foreground">{r.grade}</span>
+                                </div>
+                              )}
+                              {r.awardPoints != null && r.awardPoints > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <span className="opacity-70">Points:</span>
+                                  <span className="font-mono font-bold text-foreground">{r.awardPoints}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </div>
 

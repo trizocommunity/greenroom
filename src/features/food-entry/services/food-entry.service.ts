@@ -1,52 +1,58 @@
-import { eq, and } from "drizzle-orm";
+import { formatInTimeZone } from "date-fns-tz";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { participant } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { formatInTimeZone } from "date-fns-tz";
 import * as repo from "../repositories/food-entry.repository";
-import {
-  determineActiveSession,
-  FoodSlot,
-  FoodSessionRow,
-} from "./food-entry.active";
 
 export async function getFoodHallDashboardData(
   festivalId: string,
   timezone: string,
 ) {
-  // Get all slots for this festival
   const slots = await repo.getFoodSlots(festivalId);
-  // Get today's date in festival timezone
   const today = new Date();
   const todayString = formatInTimeZone(today, timezone, "yyyy-MM-dd");
-
-  // Get today's sessions
-  const sessions = await repo.getFoodSessionsWithStats(
+  let sessions = await repo.getFoodSessionsWithStats(
     festivalId,
     todayString,
     todayString,
   );
 
-  // Ensure sessions exist for today's slots
-  const sessionRows = sessions.map((s) => ({
-    id: s.id,
-    slotId: s.slotId,
-    sessionDate: s.sessionDate,
-    status: s.status,
-  }));
+  const sessionSlotIds = new Set(sessions.map((session) => session.slotId));
+  const missingSessions = slots
+    .filter((slot) => !sessionSlotIds.has(slot.id))
+    .map((slot) => ({
+      id: crypto.randomUUID(),
+      festivalId,
+      slotId: slot.id,
+      sessionDate: todayString,
+      status: "OPEN" as const,
+    }));
 
-  const activeSession = determineActiveSession(
-    today,
-    timezone,
-    slots as FoodSlot[],
-    sessionRows,
+  if (missingSessions.length > 0) {
+    await repo.insertSessions(missingSessions);
+    sessions = await repo.getFoodSessionsWithStats(
+      festivalId,
+      todayString,
+      todayString,
+    );
+  }
+
+  const todaySessionsBySlotId = Object.fromEntries(
+    sessions.map((session) => [
+      session.slotId,
+      {
+        sessionId: session.id,
+        status: session.status,
+        scannedCount: session.scannedCount,
+      },
+    ]),
   );
-
   return {
     slots,
-    sessions,
-    activeSessionId: activeSession?.id || null,
+    todaySessionsBySlotId,
     todayString,
+    timezone,
   };
 }
 

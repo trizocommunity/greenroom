@@ -543,9 +543,6 @@ export function AssignmentModal({
     if (newItems.length === 0) return;
     setQueue((prev) => [...prev, ...newItems]);
     if (ids === selectedParticipantIds) setSelectedParticipantIds(new Set()); // Clear selection only for the manual path
-    toast.success(
-      `Added ${newItems.length} ${newItems.length === 1 ? "person" : "people"} to the list`,
-    );
   };
 
   // "Add everyone" quick action — selects every eligible (unassigned,

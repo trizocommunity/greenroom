@@ -44,6 +44,18 @@ export const upsertFoodSlotsSchema = z
 export type UpsertFoodSlotsInput = z.infer<typeof upsertFoodSlotsSchema>;
 export type FoodSlotInput = z.infer<typeof foodSlotSchema>;
 
+const foodEntryFiltersSchema = z.object({
+  festivalId: z.string().uuid(),
+  slotId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  groupId: z.string().uuid().optional(),
+  categoryId: z.string().uuid().optional(),
+});
+
+export const getFilteredEntriesSchema = foodEntryFiltersSchema;
+
+export type GetFilteredEntriesInput = z.infer<typeof getFilteredEntriesSchema>;
+
 export const scanFoodEntrySchema = z.object({
   festivalId: z.string().uuid(),
   sessionId: z.string().uuid(),

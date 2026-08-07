@@ -107,6 +107,7 @@ type ProgrammeCardRow = {
 
 function ProgrammeCard({
   programmeName,
+  programmeType,
   categoryName,
   status,
   assignedAt,
@@ -116,6 +117,7 @@ function ProgrammeCard({
   onViewDetails,
 }: {
   programmeName: string;
+  programmeType: "INDIVIDUAL" | "GROUP";
   categoryName: string | null;
   status: string | null;
   assignedAt: string | null;
@@ -136,15 +138,10 @@ function ProgrammeCard({
           <span className="block font-semibold truncate text-sm">
             {programmeName}
           </span>
-          {categoryName ? (
-            <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
-              {categoryName}
-            </span>
-          ) : (
-            <span className="block text-[11px] text-muted-foreground mt-0.5">
-              Uncategorized
-            </span>
-          )}
+          <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
+            {categoryName || "Uncategorized"}
+            {programmeType === "GROUP" ? " · Group" : " · Individual"}
+          </span>
         </div>
         {status && (
           <ProgrammeStatusBadge
@@ -778,6 +775,7 @@ export function AssignmentsClient({
             <ProgrammeCard
               key={card.programmeId}
               programmeName={card.programmeName}
+              programmeType={card.programmeType}
               categoryName={card.categoryName}
               status={card.status}
               assignedAt={card.assignedAt}

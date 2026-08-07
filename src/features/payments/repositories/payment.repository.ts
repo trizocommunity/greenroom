@@ -12,7 +12,7 @@ export type CreatePaymentInput = {
   amount: number;
   currency?: string;
   razorpayOrderId?: string;
-  tier?: Tier;
+  tier: Tier;
 };
 
 export async function createPayment(
@@ -32,6 +32,7 @@ export async function createPayment(
       currency,
       status: "PENDING",
       providerId: razorpayOrderId ?? "",
+      tier,
     })
     .returning();
   return result[0];

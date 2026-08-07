@@ -74,6 +74,7 @@ export async function createFestival(
     startDate: FESTIVAL.startDate,
     endDate: FESTIVAL.endDate,
     expiresAt,
+    publicSiteEnabled: false,
     chestNumberSettings: FESTIVAL.chestNumberSettings,
     createdAt,
     updatedAt: createdAt,

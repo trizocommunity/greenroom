@@ -453,11 +453,11 @@ export const festival = pgTable(
     rules: jsonb(),
     structure: jsonb(),
     foodHallSettings: jsonb(),
-    isLocked: boolean().default(true).notNull(),
+    isLocked: boolean().notNull(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     maxResultScore: integer(),
-    expiresAt: tzTimestamp(),
+    expiresAt: tzTimestamp().notNull(),
     institutionName: text(),
     festivalExpiringSoonEmailSentAt: tzTimestamp(),
     institutionType: institutionType(),
@@ -466,13 +466,13 @@ export const festival = pgTable(
     programmeAssignmentStartDate: tzTimestamp(),
     programmeAssignmentDeadline: tzTimestamp(),
     storageUsedMb: integer().default(0).notNull(),
-    tier: tier().default("STANDARD").notNull(),
+    tier: tier().notNull(),
     tierLabel: text().default("Standard").notNull(),
     participantCreationStartDate: tzTimestamp(),
     participantCreationDeadline: tzTimestamp(),
     teamLeaderLimit: integer().default(2).notNull(),
     participantsCount: integer().default(0).notNull(),
-    publicSiteEnabled: boolean().default(false).notNull(),
+    publicSiteEnabled: boolean().notNull(),
     stagesCount: integer().default(0).notNull(),
     startDate: tzTimestamp(),
     endDate: tzTimestamp(),
@@ -485,8 +485,8 @@ export const festival = pgTable(
     ),
     standingsPublishedAt: tzTimestampNamed("standings_published_at"),
     standingsAnnouncedAt: tzTimestampNamed("standings_announced_at"),
-    scoringSystem: scoringSystem().default("SCORE_BASED").notNull(),
-    status: festivalStatus().default("READY").notNull(),
+    scoringSystem: scoringSystem().notNull(),
+    status: festivalStatus().notNull(),
     resultPdfUrl: text(),
     expiredAt: tzTimestamp(),
     institutionId: text(),
@@ -1725,7 +1725,7 @@ export const festivalMember = pgTable(
     id: text().primaryKey().notNull(),
     festivalId: text().notNull(),
     userId: text().notNull(),
-    role: festivalRole().default("ANNOUNCER").notNull(),
+    role: festivalRole().default("VOLUNTEER").notNull(),
     isActive: boolean().default(true).notNull(),
     metadata: jsonb(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
@@ -1847,7 +1847,7 @@ export const payment = pgTable(
     purpose: paymentPurpose().default("FESTIVAL_CREATION").notNull(),
     used: boolean().default(false).notNull(),
     status: paymentStatus().default("PENDING").notNull(),
-    tier: tier(),
+    tier: tier().notNull(),
   },
   (table) => [
     index("payment_festivalId_idx").using(
@@ -2533,9 +2533,9 @@ export const foodHallSlot = pgTable(
   (table) => [
     uniqueIndex("food_hall_slot_festival_order_idx").on(
       table.festivalId,
-      table.slotOrder
+      table.slotOrder,
     ),
-  ]
+  ],
 );
 
 export const foodHallSession = pgTable(
@@ -2557,13 +2557,13 @@ export const foodHallSession = pgTable(
     uniqueIndex("food_hall_session_unique_idx").on(
       table.festivalId,
       table.slotId,
-      table.sessionDate
+      table.sessionDate,
     ),
     index("food_hall_session_festival_date_idx").on(
       table.festivalId,
-      table.sessionDate
+      table.sessionDate,
     ),
-  ]
+  ],
 );
 
 export const foodHallEntry = pgTable(
@@ -2586,9 +2586,9 @@ export const foodHallEntry = pgTable(
   (table) => [
     uniqueIndex("food_hall_entry_unique_idx").on(
       table.sessionId,
-      table.participantId
+      table.participantId,
     ),
     index("food_hall_entry_participant_idx").on(table.participantId),
-    index("food_hall_entry_scanned_at_idx").on(table.scannedAt), 
-  ]
+    index("food_hall_entry_scanned_at_idx").on(table.scannedAt),
+  ],
 );

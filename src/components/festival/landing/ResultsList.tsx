@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronRight, Loader2, Search, Trophy, Medal } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PublicResultPosterSection } from "@/components/festival/posters/PublicResultPosterSection";
@@ -12,7 +12,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -485,24 +484,24 @@ export function ResultsList({
             }
           }}
         >
-          <DialogContent className="flex max-h-[88vh] max-w-md flex-col gap-0 overflow-hidden p-0 md:max-w-2xl">
+          <DialogContent className="flex max-h-[88vh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
             {selectedProgram ? (
               <>
-                <DialogHeader className="border-b border-border p-6 pb-5 text-left">
-                  <div className="flex gap-4">
+                <DialogHeader className="bg-muted/30 border-b border-border p-6 pb-5 text-left">
+                  <div className="flex items-center gap-4">
                     {selectedProgram.resultNumber && (
-                      <div className="text-5xl font-bold tracking-widest text-primary">
+                      <div className="text-4xl font-black tracking-tighter text-primary">
                         #{selectedProgram.resultNumber}
                       </div>
                     )}
-                    <div className="space-y-1 min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                         {selectedProgram.category} ·{" "}
                         {selectedProgram.type === "GROUP"
                           ? "Team"
                           : "Individual"}
                       </p>
-                      <DialogTitle className="text-xl font-semibold tracking-tight text-heading md:text-2xl">
+                      <DialogTitle className="text-lg font-semibold tracking-tight text-heading sm:text-xl">
                         {selectedProgram.name}
                       </DialogTitle>
                     </div>
@@ -510,55 +509,118 @@ export function ResultsList({
                 </DialogHeader>
 
                 <ScrollArea className="flex-1 overflow-y-auto px-6 py-5">
-                  <ol className="divide-y divide-border border-y border-border">
-                    {selectedProgram.results.map((result) => {
-                      const isWinner = result.position === 1;
-                      return (
-                        <li
-                          key={result.id}
-                          className="flex items-center gap-4 py-3.5"
-                        >
-                          <span
-                            className={cn(
-                              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-                              isWinner
-                                ? "text-primary-foreground"
-                                : "bg-muted text-muted-foreground",
-                            )}
-                            style={
-                              isWinner
-                                ? { backgroundColor: accentColor }
-                                : undefined
-                            }
-                          >
-                            {result.position}
-                          </span>
+                  <ol className="flex flex-col gap-2.5">
+                    {selectedProgram.results
+                      .filter((r) => r.position >= 1 && r.position <= 3)
+                      .sort((a, b) => a.position - b.position)
+                      .map((result) => {
+                        let badgeClass = "";
+                        let rowClass = "";
+                        let nameClass = "";
+                        let teamClass = "";
+                        let icon = null;
+                        let placeLabel = "";
 
-                          <div className="min-w-0 flex-1">
-                            <p
+                        switch (result.position) {
+                          case 1:
+                            badgeClass =
+                              "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400";
+                            rowClass =
+                              "bg-amber-50/40 dark:bg-amber-900/10 border-amber-200/60 dark:border-amber-900/30";
+                            nameClass =
+                              "text-amber-950 dark:text-amber-100 font-semibold";
+                            teamClass =
+                              "text-amber-700/80 dark:text-amber-400/70";
+                            icon = <Trophy className="h-4 w-4" />;
+                            placeLabel = "1st Place";
+                            break;
+                          case 2:
+                            badgeClass =
+                              "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+                            rowClass =
+                              "bg-slate-50/50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800";
+                            nameClass =
+                              "text-slate-900 dark:text-slate-100 font-medium";
+                            teamClass = "text-slate-500 dark:text-slate-400";
+                            icon = <Medal className="h-4 w-4" />;
+                            placeLabel = "2nd Place";
+                            break;
+                          case 3:
+                            badgeClass =
+                              "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400";
+                            rowClass =
+                              "bg-orange-50/40 dark:bg-orange-900/10 border-orange-200/60 dark:border-orange-900/30";
+                            nameClass =
+                              "text-orange-950 dark:text-orange-100 font-medium";
+                            teamClass =
+                              "text-orange-700/80 dark:text-orange-400/70";
+                            icon = <Medal className="h-4 w-4" />;
+                            placeLabel = "3rd Place";
+                            break;
+                          default:
+                            badgeClass = "bg-muted text-muted-foreground";
+                            rowClass = "bg-transparent border-border";
+                            nameClass = "text-heading font-medium text-sm";
+                            teamClass = "text-muted-foreground";
+                            icon = (
+                              <span className="text-sm font-bold">
+                                {result.position}
+                              </span>
+                            );
+                            placeLabel = `${result.position}th Place`;
+                        }
+
+                        return (
+                          <li
+                            key={result.id}
+                            className={cn(
+                              "flex items-center gap-3.5 rounded-xl border px-4 py-3 transition-colors",
+                              rowClass,
+                            )}
+                          >
+                            <div
                               className={cn(
-                                "truncate text-heading",
-                                isWinner
-                                  ? "text-[15px] font-semibold"
-                                  : "text-sm font-medium",
+                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                                badgeClass,
                               )}
                             >
-                              {result.winner}
-                            </p>
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {[
-                                result.team,
-                                result.codeLetter
-                                  ? `Code ${result.codeLetter}`
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
-                          </div>
-                        </li>
-                      );
-                    })}
+                              {icon}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className={cn("truncate text-[15px]", nameClass)}>
+                                {result.winner}
+                              </p>
+                              <p
+                                className={cn(
+                                  "mt-0.5 truncate text-xs",
+                                  teamClass,
+                                )}
+                              >
+                                {[
+                                  result.team,
+                                  result.codeLetter
+                                    ? `Code ${result.codeLetter}`
+                                    : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0 text-right">
+                              <div
+                                className={cn(
+                                  "text-[10px] font-bold uppercase tracking-widest",
+                                  teamClass,
+                                )}
+                              >
+                                {placeLabel}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
                   </ol>
                   <div className="mt-5">
                     <PublicResultPosterSection

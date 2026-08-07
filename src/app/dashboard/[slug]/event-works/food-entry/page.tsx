@@ -3,10 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { FoodEntryDashboard } from "@/features/food-entry/components/FoodEntryDashboard";
-import {
-  getGroupsAndCategoriesForFestival,
-  getSessionEntries,
-} from "@/features/food-entry/repositories/food-entry.repository";
+import { getGroupsAndCategoriesForFestival } from "@/features/food-entry/repositories/food-entry.repository";
 import { getFoodHallDashboardData } from "@/features/food-entry/services/food-entry.service";
 
 export const metadata: Metadata = {
@@ -47,16 +44,11 @@ export default async function FoodEntryPage({
   );
   const filters = await getGroupsAndCategoriesForFestival(context.festival.id);
 
-  let recentEntries: any[] = [];
-  if (data.activeSessionId) {
-    recentEntries = await getSessionEntries(data.activeSessionId);
-  }
-
   return (
     <div className="pt-4 sm:pt-6 space-y-4">
       <FoodEntryDashboard
         festivalId={context.festival.id}
-        initialData={{ ...data, recentEntries, filters }}
+        initialData={{ ...data, filters }}
         role={context.role as any}
       />
     </div>

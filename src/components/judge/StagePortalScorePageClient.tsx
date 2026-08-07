@@ -63,6 +63,7 @@ export function StagePortalScorePageClient({
               <AlertDialogAction
                 onClick={(e) => {
                   e.preventDefault();
+                  router.refresh();
                   router.push(`/${festivalSlug}/stage-portal`);
                 }}
               >
@@ -81,6 +82,7 @@ export function StagePortalScorePageClient({
         stageName={data?.stageName ?? ""}
         payload={payload ?? ({} as any)}
         onDone={() => {
+          router.refresh();
           router.push(`/${festivalSlug}/stage-portal`);
         }}
         onSubmitted={() => setSubmitted(true)}

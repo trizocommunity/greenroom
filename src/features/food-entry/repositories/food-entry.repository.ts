@@ -116,9 +116,9 @@ export async function getSessionEntries(sessionId: string) {
     .orderBy(desc(foodHallEntry.scannedAt));
 }
 
-export async function getEntriesByFilters(
+export async function getEntriesBySlotAndDate(
   festivalId: string,
-  sessionId: string,
+  slotId: string,
   date: string,
   timezone: string,
   groupId?: string,
@@ -129,7 +129,7 @@ export async function getEntriesByFilters(
 
   const conditions = [
     eq(foodHallSession.festivalId, festivalId),
-    eq(foodHallEntry.sessionId, sessionId),
+    eq(foodHallSession.slotId, slotId),
     gte(foodHallEntry.scannedAt, dayStart.toISOString()),
     lte(foodHallEntry.scannedAt, dayEnd.toISOString()),
   ];
@@ -208,15 +208,6 @@ export async function upsertFoodSlot(data: typeof foodHallSlot.$inferInsert) {
     })
     .returning();
   return slot;
-}
-
-export async function ensureSessionsForDateRange(
-  festivalId: string,
-  slotIds: string[],
-  startDate: Date,
-  endDate: Date,
-) {
-  // We'll generate sessions in the service layer and insert them using insertSession
 }
 
 export async function insertSessions(

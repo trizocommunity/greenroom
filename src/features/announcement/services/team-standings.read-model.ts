@@ -38,7 +38,7 @@ export async function computeStandings(
     ? sql`${programmeTable.resultNumber} <= ${upToResultNumber}`
     : undefined;
 
-  const [results, groups] = await Promise.all([
+  const [results, groups, generalRows] = await Promise.all([
     db
       .select({
         id: resultTable.id,
@@ -79,6 +79,7 @@ export async function computeStandings(
       where: eq(groupTable.festivalId, festivalId),
       columns: { name: true },
     }),
+    computeGeneralEntryStandings(festivalId),
   ]);
 
   const standings: Record<
@@ -105,6 +106,15 @@ export async function computeStandings(
       standings[groupName] = { name: groupName, points: 0, isGroup: true };
     }
     standings[groupName].points += r.awardPoints ?? r.points ?? 0;
+  }
+
+  // General-entry points are always on once published — merge them into
+  // programme standings so announcer + results views show the true total.
+  for (const g of generalRows) {
+    if (!standings[g.name]) {
+      standings[g.name] = { name: g.name, points: 0, isGroup: true };
+    }
+    standings[g.name].points += g.points;
   }
 
   return Object.values(standings)

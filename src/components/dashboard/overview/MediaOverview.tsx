@@ -36,10 +36,7 @@ export async function MediaOverview({ festivalSlug }: MediaOverviewProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Media Overview
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <p className="text-sm text-muted-foreground">
           Manage poster templates and export festival assets.
         </p>
       </div>

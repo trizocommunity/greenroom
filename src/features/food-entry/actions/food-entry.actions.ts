@@ -1,23 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { getSession } from "@/core/auth/session";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import * as repo from "../repositories/food-entry.repository";
 import {
+  getFilteredEntriesSchema,
   scanFoodEntrySchema,
   upsertFoodSlotsSchema,
 } from "../schemas/food-entry.schema";
 import * as service from "../services/food-entry.service";
-
-const getFilteredEntriesSchema = z.object({
-  festivalId: z.string().uuid(),
-  sessionId: z.string().uuid(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  groupId: z.string().uuid().optional(),
-  categoryId: z.string().uuid().optional(),
-});
 
 export async function getFilteredEntriesAction(data: unknown) {
   const session = await getSession();
@@ -25,9 +17,9 @@ export async function getFilteredEntriesAction(data: unknown) {
 
   const parsed = getFilteredEntriesSchema.parse(data);
   const timezone = await repo.getFestivalTimezone(parsed.festivalId);
-  const entries = await repo.getEntriesByFilters(
+  const entries = await repo.getEntriesBySlotAndDate(
     parsed.festivalId,
-    parsed.sessionId,
+    parsed.slotId,
     parsed.date,
     timezone,
     parsed.groupId,

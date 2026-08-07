@@ -162,6 +162,7 @@ export function FestivalSetupForm({
           .replace(/^-+|-+$/g, "");
       try {
         const festival = await createFestival.mutateAsync({
+          paymentId,
           name: data.festivalName,
           slug,
           location: data.location || undefined,

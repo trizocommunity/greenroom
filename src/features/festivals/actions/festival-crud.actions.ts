@@ -3,7 +3,7 @@
 import { randomUUID } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getFestivalDurationDays, TIER_CONFIG } from "@/config/pricing";
+import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
@@ -106,6 +106,8 @@ export async function createFestival(input: CreateFestivalInput) {
           isLocked: false,
           tier: tier,
           tierLabel: tierConfig?.label || "Standard",
+          publicSiteEnabled: false,
+          scoringSystem: "SCORE_BASED",
           createdAt: now,
           updatedAt: now,
         })
@@ -519,7 +521,7 @@ export async function relaunchFestival(input: {
       } as const;
     }
 
-    const expiresAt = fromNow(getFestivalDurationDays() * MS.day);
+    const expiresAt = fromNow(tierConfig.festivalDurationDays * MS.day);
     const finalSlug = input.festivalName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -542,6 +544,8 @@ export async function relaunchFestival(input: {
           tierLabel: tierConfig?.label || "Standard",
           isLocked: false,
           expiresAt,
+          publicSiteEnabled: false,
+          scoringSystem: "SCORE_BASED",
           createdAt: now,
           updatedAt: now,
         })

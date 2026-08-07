@@ -457,6 +457,65 @@ export async function publishStandings(
   }
 }
 
+export async function publishGeneralStandings(
+  festivalId: string,
+): Promise<ActionResponse<void>> {
+  try {
+    await assertAnnouncerAccess(festivalId);
+    await ensureFestivalWritable(festivalId);
+
+    const programmeStandings = await computeStandings(festivalId, "published");
+    const generalStandings = await computeGeneralEntryStandings(festivalId);
+
+    const mergedMap = new Map<string, TeamStandingRow>();
+    for (const r of programmeStandings) {
+      mergedMap.set(r.name, { ...r });
+    }
+    for (const r of generalStandings) {
+      if (!mergedMap.has(r.name)) {
+        mergedMap.set(r.name, { name: r.name, points: 0, rank: 0, isGroup: true });
+      }
+      mergedMap.get(r.name)!.points += r.points;
+    }
+
+    const standings = Array.from(mergedMap.values())
+      .sort((a, b) => b.points - a.points)
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+      }));
+
+    const highestResult = await db.query.programme.findFirst({
+      where: and(
+        eq(programmeTable.festivalId, festivalId),
+        eq(programmeTable.status, "PUBLISHED"),
+      ),
+      columns: { resultNumber: true },
+      orderBy: (p, { desc }) => [desc(p.resultNumber)],
+    });
+
+    const now = serverNowIso();
+    await db
+      .update(festivalTable)
+      .set({
+        teamStandings: standings,
+        queuedTeamStandings: null,
+        standingsPublishedAtResultNumber: highestResult?.resultNumber ?? null,
+        standingsPublishedAt: now,
+        standingsAnnouncedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(festivalTable.id, festivalId));
+
+    const slug = await getFestivalSlug(festivalId);
+    if (slug) revalidateAnnouncerPaths(slug);
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
 export async function fetchStandingsAction(
   festivalId: string,
   scope: "all" | "published" | "general",

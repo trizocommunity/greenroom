@@ -1,7 +1,7 @@
 "use client";
 
 import { QrCode, Settings } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,17 +19,41 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  type FoodSlotStatus,
+  getFoodSlotStatus,
+} from "../services/food-entry.active";
 import { FoodEntryConfig } from "./FoodEntryConfig";
 import { FoodEntryScanner } from "./FoodEntryScanner";
+
+type FoodSlot = {
+  id: string;
+  name: string;
+  slotOrder: number;
+  windowStartMin: number;
+  windowEndMin: number;
+};
+
+type TodaySession = {
+  sessionId: string;
+  status: "OPEN" | "CLOSED";
+  scannedCount: number;
+};
+
+type SlotRow = FoodSlot & {
+  sessionId: string | null;
+  sessionStatus: "OPEN" | "CLOSED";
+  scannedCount: number;
+  status: FoodSlotStatus;
+};
 
 interface FoodEntryDashboardProps {
   festivalId: string;
   initialData: {
-    slots: any[];
-    sessions: any[];
-    activeSessionId: string | null;
+    slots: FoodSlot[];
+    todaySessionsBySlotId: Record<string, TodaySession>;
     todayString: string;
-    recentEntries?: any[];
+    timezone: string;
     filters: {
       groups: { id: string; name: string }[];
       categories: { id: string; name: string }[];
@@ -49,87 +73,100 @@ function formatWindow(startMin: number, endMin: number) {
   return `${fmt(startMin)} - ${fmt(endMin)}`;
 }
 
+function statusVariant(status: FoodSlotStatus) {
+  if (status === "ACTIVE") return "default" as const;
+  if (status === "UPCOMING") return "outline" as const;
+  return "secondary" as const;
+}
+
 export function FoodEntryDashboard({
   festivalId,
   initialData,
   role,
 }: FoodEntryDashboardProps) {
   const isAdmin = ["ADMIN", "OWNER", "SUPER_ADMIN"].includes(role);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    null,
-  );
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
 
-  const selectedSession = initialData.sessions.find(
-    (s) => s.id === selectedSessionId,
-  );
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const slotRows: SlotRow[] = initialData.slots.map((slot) => {
+    const todaySession = initialData.todaySessionsBySlotId[slot.id];
+    return {
+      ...slot,
+      sessionId: todaySession?.sessionId ?? null,
+      sessionStatus: todaySession?.status ?? "OPEN",
+      scannedCount: todaySession?.scannedCount ?? 0,
+      status: getFoodSlotStatus(now, initialData.timezone, slot),
+    };
+  });
+  const activeSlotId =
+    slotRows.find((slot) => slot.status === "ACTIVE")?.id ?? null;
+  const selectedSlot = slotRows.find((slot) => slot.id === selectedSlotId);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold tracking-tight">Food Hall Entry</h2>
         {isAdmin && (
-          <Button variant="outline" onClick={() => setConfigOpen(true)}>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setConfigOpen(true)}
+          >
             <Settings className="w-4 h-4 mr-2" />
             Configure
           </Button>
         )}
       </div>
 
-      {/* Slots table */}
       <div className="space-y-3 pt-4">
         <h3 className="text-lg font-semibold tracking-tight flex items-center gap-2">
           <QrCode className="h-5 w-5" />
-          Today&apos;s Sessions
+          Food Slots
         </h3>
 
-        {initialData.sessions.length === 0 ? (
+        {slotRows.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            <p>No food sessions configured for today.</p>
+            <p>No food slots configured.</p>
           </div>
         ) : (
           <>
-            {/* Desktop table */}
             <div className="hidden md:block rounded-lg border overflow-x-auto bg-card">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Session</TableHead>
+                    <TableHead>Slot</TableHead>
                     <TableHead>Time Window</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Scanned</TableHead>
+                    <TableHead className="text-right">Scanned Today</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {initialData.sessions.map((s) => (
+                  {slotRows.map((slot) => (
                     <TableRow
-                      key={s.id}
+                      key={slot.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSelectedSessionId(s.id)}
+                      onClick={() => setSelectedSlotId(slot.id)}
                     >
-                      <TableCell className="font-medium">
-                        {s.slotName}
-                      </TableCell>
+                      <TableCell className="font-medium">{slot.name}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatWindow(s.windowStartMin, s.windowEndMin)}
+                        {formatWindow(slot.windowStartMin, slot.windowEndMin)}
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={
-                            s.status === "OPEN" ? "default" : "secondary"
-                          }
+                          variant={statusVariant(slot.status)}
                           className="text-[10px]"
                         >
-                          {s.status}
+                          {slot.status}
                         </Badge>
-                        {s.id === initialData.activeSessionId && (
-                          <Badge variant="outline" className="text-[10px] ml-2">
-                            Active
-                          </Badge>
-                        )}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">
-                        {s.scannedCount ?? 0}
+                        {slot.scannedCount}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -137,60 +174,51 @@ export function FoodEntryDashboard({
               </Table>
             </div>
 
-            {/* Mobile cards */}
             <div className="md:hidden space-y-3">
-              {initialData.sessions.map((s) => (
-                <div
-                  key={s.id}
-                  className="rounded-lg border p-4 space-y-3 cursor-pointer hover:bg-muted/50 active:bg-muted/70"
-                  onClick={() => setSelectedSessionId(s.id)}
+              {slotRows.map((slot) => (
+                <button
+                  type="button"
+                  key={slot.id}
+                  className="w-full bg-card rounded-lg border p-4 space-y-3 cursor-pointer text-left hover:bg-muted/50 active:bg-muted/70"
+                  onClick={() => setSelectedSlotId(slot.id)}
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium">{s.slotName}</p>
+                      <p className="font-medium">{slot.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatWindow(s.windowStartMin, s.windowEndMin)}
+                        {formatWindow(slot.windowStartMin, slot.windowEndMin)}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge
-                        variant={s.status === "OPEN" ? "default" : "secondary"}
-                        className="text-[10px]"
-                      >
-                        {s.status}
-                      </Badge>
-                      {s.id === initialData.activeSessionId && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Active
-                        </Badge>
-                      )}
-                    </div>
+                    <Badge
+                      variant={statusVariant(slot.status)}
+                      className="text-[10px]"
+                    >
+                      {slot.status}
+                    </Badge>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Scanned:{" "}
-                      <span className="font-mono">{s.scannedCount ?? 0}</span>
-                    </span>
+                  <div className="text-sm text-muted-foreground">
+                    Scanned today:{" "}
+                    <span className="font-mono">{slot.scannedCount}</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </>
         )}
       </div>
 
-      {/* Session drawer */}
       <Drawer
-        open={!!selectedSessionId}
-        onOpenChange={(open) => !open && setSelectedSessionId(null)}
+        open={!!selectedSlotId}
+        onOpenChange={(open) => !open && setSelectedSlotId(null)}
       >
         <DrawerContent>
-          {selectedSession && (
+          {selectedSlot && (
             <div className="flex flex-col h-full overflow-hidden">
               <FoodEntryScanner
                 festivalId={festivalId}
-                session={selectedSession}
-                activeSessionId={initialData.activeSessionId}
+                todayString={initialData.todayString}
+                slot={selectedSlot}
+                activeSlotId={activeSlotId}
                 filters={initialData.filters}
               />
             </div>
@@ -198,7 +226,6 @@ export function FoodEntryDashboard({
         </DrawerContent>
       </Drawer>
 
-      {/* Config drawer */}
       <Drawer open={configOpen} onOpenChange={setConfigOpen}>
         <DrawerContent>
           <div className="flex flex-col h-full overflow-hidden">

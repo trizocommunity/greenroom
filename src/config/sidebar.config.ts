@@ -298,7 +298,7 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Documentation",
           href: `${basePath}/support/docs`,
           icon: BookOpen,
-          allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER", "MEDIA"] as FestivalRole[],
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
       ],
     },

@@ -92,10 +92,7 @@ export async function StageManagerOverview({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Stage Manager Overview
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground">
             View the schedule, sessions, and programme reporting for your
             assigned stages.
           </p>
@@ -121,10 +118,7 @@ export async function StageManagerOverview({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Stage Manager Overview
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <p className="text-sm text-muted-foreground">
           {assignedStages.length} assigned stage
           {assignedStages.length !== 1 ? "s" : ""}:{" "}
           {assignedStages.map((s) => s.name).join(", ")}
