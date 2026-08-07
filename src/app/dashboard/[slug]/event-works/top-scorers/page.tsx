@@ -1,20 +1,21 @@
-import { Calendar, Trophy, Star, Award } from "lucide-react";
+import { Award, Calendar, Star, Trophy } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/common/EmptyState";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LeaderboardClient } from "@/components/dashboard/leaderboard/LeaderboardClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Tier } from "@/core/types/app-enums";
-import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import {
-  loadFeatureOverrides,
-} from "@/features/plan-features/services/plan-features.service";
+  getPenOfTheFest,
+  getVocalOfTheFest,
+} from "@/features/announcement/services/announcer.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import {
   getResolvedTier,
   isBasicTier,
 } from "@/features/plan-features/services/tier";
 import { filterProgrammesForEventWorks } from "@/features/programmes/services/programme-status.service";
 import { getFestivalLeaderboardDataBySlug } from "@/features/results/services/leaderboard.service";
-import { getVocalOfTheFest, getPenOfTheFest } from "@/features/announcement/services/announcer.service";
 
 export default async function TopScorersPage({
   params,
@@ -96,7 +97,9 @@ export default async function TopScorersPage({
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-bold text-lg">{vocalOfTheFest.name}</p>
-                    <p className="text-sm text-muted-foreground">{vocalOfTheFest.groupName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {vocalOfTheFest.groupName}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="font-mono font-bold text-lg text-violet-600 dark:text-violet-400">
@@ -120,7 +123,9 @@ export default async function TopScorersPage({
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-bold text-lg">{penOfTheFest.name}</p>
-                    <p className="text-sm text-muted-foreground">{penOfTheFest.groupName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {penOfTheFest.groupName}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="font-mono font-bold text-lg text-blue-600 dark:text-blue-400">

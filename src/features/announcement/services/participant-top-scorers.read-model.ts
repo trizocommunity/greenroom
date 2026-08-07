@@ -2,9 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   participant as participantTable,
-  programme as programmeTable,
   programmeAssignment,
   programmeAssignmentMember,
+  programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
 
@@ -53,7 +53,10 @@ export async function getParticipantTopScorers(
           assignmentId: resultTable.assignmentId,
         })
         .from(resultTable)
-        .innerJoin(programmeTable, eq(resultTable.programmeId, programmeTable.id))
+        .innerJoin(
+          programmeTable,
+          eq(resultTable.programmeId, programmeTable.id),
+        )
         .where(
           and(
             eq(resultTable.festivalId, festivalId),

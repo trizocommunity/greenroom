@@ -22,17 +22,8 @@ import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/participants/ParticipantDetailsDialog";
 import { AddParticipantDialog } from "@/components/participant/team-leader/AddParticipantDialog";
-import { Button } from "@/components/ui/button";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
-} from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -46,18 +37,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/core/utils/cn";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
 import {
   getParticipantProfilePath,
   getQrCodeContent,
 } from "@/features/participants/services/participant-profile-url";
-import { cn } from "@/core/utils/cn";
 
 type ParticipantForMyParticipants = {
   id: string;
@@ -275,75 +275,78 @@ export function MyParticipantsClient({
             {visibleParticipants
               .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
               .map((s) => (
-            <li key={s.id} className="flex items-center gap-4 py-3.5">
-              <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-                {s.chestNumber ?? "—"}
-              </span>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-[15px] font-medium text-heading">
-                    {s.name}
+                <li key={s.id} className="flex items-center gap-4 py-3.5">
+                  <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                    {s.chestNumber ?? "—"}
                   </span>
-                  {s.isTeamLeader && (
-                    <StatusPill tone="warning" icon={Crown}>
-                      Leader
-                    </StatusPill>
-                  )}
-                </div>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {s.category?.name ?? "No category"}
-                </p>
-              </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
-                    aria-label={`Actions for ${s.name}`}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setDetailsParticipant(s)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    View details
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setQrParticipant(s)}>
-                    <QrCode className="mr-2 h-4 w-4" />
-                    Chest number QR
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </li>
-          ))}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-[15px] font-medium text-heading">
+                        {s.name}
+                      </span>
+                      {s.isTeamLeader && (
+                        <StatusPill tone="warning" icon={Crown}>
+                          Leader
+                        </StatusPill>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {s.category?.name ?? "No category"}
+                    </p>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                        aria-label={`Actions for ${s.name}`}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() => setDetailsParticipant(s)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setQrParticipant(s)}>
+                        <QrCode className="mr-2 h-4 w-4" />
+                        Chest number QR
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </li>
+              ))}
           </ul>
-          
+
           {visibleParticipants.length > pageSize && (
             <Pagination className="mt-4">
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    
                     onClick={(e) => {
                       e.preventDefault();
                       if (pageIndex > 0) setPageIndex((p) => p - 1);
                     }}
                     className={
-                      pageIndex === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
+                      pageIndex === 0 ? "pointer-events-none opacity-50" : ""
                     }
                   />
                 </PaginationItem>
 
-                {[...Array(Math.ceil(visibleParticipants.length / pageSize))].map((_, i) => {
+                {[
+                  ...Array(Math.ceil(visibleParticipants.length / pageSize)),
+                ].map((_, i) => {
                   const targetPage = i;
-                  const totalPages = Math.ceil(visibleParticipants.length / pageSize);
-                  
+                  const totalPages = Math.ceil(
+                    visibleParticipants.length / pageSize,
+                  );
+
                   if (
                     targetPage === 0 ||
                     targetPage === totalPages - 1 ||
@@ -352,7 +355,6 @@ export function MyParticipantsClient({
                     return (
                       <PaginationItem key={i}>
                         <PaginationLink
-                          
                           isActive={pageIndex === targetPage}
                           onClick={(e) => {
                             e.preventDefault();
@@ -364,24 +366,29 @@ export function MyParticipantsClient({
                       </PaginationItem>
                     );
                   }
-                  
-                  if (targetPage === pageIndex - 2 || targetPage === pageIndex + 2) {
+
+                  if (
+                    targetPage === pageIndex - 2 ||
+                    targetPage === pageIndex + 2
+                  ) {
                     return (
                       <PaginationItem key={i}>
                         <PaginationEllipsis />
                       </PaginationItem>
                     );
                   }
-                  
+
                   return null;
                 })}
 
                 <PaginationItem>
                   <PaginationNext
-                    
                     onClick={(e) => {
                       e.preventDefault();
-                      if ((pageIndex + 1) * pageSize < visibleParticipants.length)
+                      if (
+                        (pageIndex + 1) * pageSize <
+                        visibleParticipants.length
+                      )
                         setPageIndex((p) => p + 1);
                     }}
                     className={

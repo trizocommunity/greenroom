@@ -118,14 +118,29 @@ export async function findParticipantsByFestivalPaginated(
     isTeamLeader?: boolean;
   },
 ) {
-  const { page, pageSize, sort = "CREATED", order = "desc", groupId, categoryId, search, isTeamLeader } = options;
+  const {
+    page,
+    pageSize,
+    sort = "CREATED",
+    order = "desc",
+    groupId,
+    categoryId,
+    search,
+    isTeamLeader,
+  } = options;
   const offset = (page - 1) * pageSize;
 
   const where = and(
     eq(participants.festivalId, festivalId),
-    isTeamLeader !== undefined ? eq(participants.isTeamLeader, isTeamLeader) : undefined,
-    groupId && groupId !== "ALL" ? eq(participants.groupId, groupId) : undefined,
-    categoryId && categoryId !== "ALL" ? eq(participants.categoryId, categoryId) : undefined,
+    isTeamLeader !== undefined
+      ? eq(participants.isTeamLeader, isTeamLeader)
+      : undefined,
+    groupId && groupId !== "ALL"
+      ? eq(participants.groupId, groupId)
+      : undefined,
+    categoryId && categoryId !== "ALL"
+      ? eq(participants.categoryId, categoryId)
+      : undefined,
     search
       ? or(
           ilike(participants.name, `%${search}%`),
@@ -136,8 +151,9 @@ export async function findParticipantsByFestivalPaginated(
 
   let sortColumn;
   if (sort === "NAME" || sort === "name") sortColumn = participants.name;
-  else if (sort === "NUMERIC" || sort === "numeric" || sort === "chestNumber") sortColumn = participants.chestNumber;
-  else sortColumn = participants.createdAt; 
+  else if (sort === "NUMERIC" || sort === "numeric" || sort === "chestNumber")
+    sortColumn = participants.chestNumber;
+  else sortColumn = participants.createdAt;
 
   const orderByClause = order === "asc" ? asc(sortColumn) : desc(sortColumn);
 

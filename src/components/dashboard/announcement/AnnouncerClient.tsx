@@ -629,7 +629,8 @@ export function AnnouncerClient({
                         <TableBody>
                           {activeProgramme.results
                             .sort(
-                              (a, b) => (a.position ?? 999) - (b.position ?? 999),
+                              (a, b) =>
+                                (a.position ?? 999) - (b.position ?? 999),
                             )
                             .map((r, idx) => (
                               <TableRow
@@ -687,7 +688,7 @@ export function AnnouncerClient({
                             key={r.id}
                             className={cn(
                               "p-4 flex flex-col gap-3",
-                              r.position != null && MEDAL_ROWS[r.position - 1]
+                              r.position != null && MEDAL_ROWS[r.position - 1],
                             )}
                           >
                             <div className="flex items-start justify-between gap-2">
@@ -707,13 +708,25 @@ export function AnnouncerClient({
                               <div className="flex items-center gap-2 shrink-0">
                                 {r.position != null && r.position <= 3 ? (
                                   <span className="font-bold text-sm flex items-center gap-1">
-                                    {r.position === 1 ? "🥇" : r.position === 2 ? "🥈" : "🥉"}
-                                    <span className={
-                                      r.position === 1 ? "text-amber-600 dark:text-amber-400" :
-                                      r.position === 2 ? "text-slate-500 dark:text-slate-300" :
-                                      "text-orange-600 dark:text-orange-400"
-                                    }>
-                                      {r.position === 1 ? "1st" : r.position === 2 ? "2nd" : "3rd"}
+                                    {r.position === 1
+                                      ? "🥇"
+                                      : r.position === 2
+                                        ? "🥈"
+                                        : "🥉"}
+                                    <span
+                                      className={
+                                        r.position === 1
+                                          ? "text-amber-600 dark:text-amber-400"
+                                          : r.position === 2
+                                            ? "text-slate-500 dark:text-slate-300"
+                                            : "text-orange-600 dark:text-orange-400"
+                                      }
+                                    >
+                                      {r.position === 1
+                                        ? "1st"
+                                        : r.position === 2
+                                          ? "2nd"
+                                          : "3rd"}
                                     </span>
                                   </span>
                                 ) : null}
@@ -723,25 +736,33 @@ export function AnnouncerClient({
                               {r.codeLetter && (
                                 <div className="flex items-center gap-1">
                                   <span className="opacity-70">Code:</span>
-                                  <span className="font-mono text-foreground font-medium">{r.codeLetter}</span>
+                                  <span className="font-mono text-foreground font-medium">
+                                    {r.codeLetter}
+                                  </span>
                                 </div>
                               )}
                               {r.groupName && (
                                 <div className="flex items-center gap-1">
                                   <span className="opacity-70">Group:</span>
-                                  <span className="font-medium text-foreground">{r.groupName}</span>
+                                  <span className="font-medium text-foreground">
+                                    {r.groupName}
+                                  </span>
                                 </div>
                               )}
                               {r.grade && (
                                 <div className="flex items-center gap-1">
                                   <span className="opacity-70">Grade:</span>
-                                  <span className="font-medium text-foreground">{r.grade}</span>
+                                  <span className="font-medium text-foreground">
+                                    {r.grade}
+                                  </span>
                                 </div>
                               )}
                               {r.awardPoints != null && r.awardPoints > 0 && (
                                 <div className="flex items-center gap-1">
                                   <span className="opacity-70">Points:</span>
-                                  <span className="font-mono font-bold text-foreground">{r.awardPoints}</span>
+                                  <span className="font-mono font-bold text-foreground">
+                                    {r.awardPoints}
+                                  </span>
                                 </div>
                               )}
                             </div>

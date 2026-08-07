@@ -12,9 +12,7 @@ import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import type { Tier } from "@/core/types/app-enums";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
-import {
-  loadFeatureOverrides,
-} from "@/features/plan-features/services/plan-features.service";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 async function getFestivalWithReportingAccess(festivalId: string) {

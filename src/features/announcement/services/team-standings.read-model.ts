@@ -4,8 +4,8 @@ import {
   festival as festivalTable,
   group as groupTable,
   participant as participantTable,
-  programme as programmeTable,
   programmeAssignment,
+  programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
 import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";

@@ -1,13 +1,7 @@
 "use client";
 
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
-import {
-  ArrowRight,
-  Loader2,
-  Mail,
-  RotateCw,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, Loader2, Mail, RotateCw, ShieldCheck } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -301,7 +295,9 @@ export function EmailOtpSignInForm() {
               ) : (
                 <RotateCw className="mr-1 h-3 w-3" />
               )}
-              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+              {resendCooldown > 0
+                ? `Resend in ${resendCooldown}s`
+                : "Resend code"}
             </Button>
           </div>
 
@@ -322,7 +318,10 @@ export function EmailOtpSignInForm() {
   return (
     <ErrorScopeProvider scope="email-otp">
       <InlineError className="mb-2" />
-      <form onSubmit={handleSubmit(onSubmitEmail)} className="space-y-3.5 text-left">
+      <form
+        onSubmit={handleSubmit(onSubmitEmail)}
+        className="space-y-3.5 text-left"
+      >
         <div className="space-y-1.5 text-left">
           <Label
             htmlFor="email"

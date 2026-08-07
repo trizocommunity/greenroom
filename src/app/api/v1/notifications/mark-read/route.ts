@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { markReadInput } from "@/api/contracts/notifications";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
@@ -26,8 +26,8 @@ const handler = createProtectedHandler({
       .where(
         and(
           eq(programmeNotification.recipientParticipantId, participantId),
-          eq(programmeNotification.id, notificationId)
-        )
+          eq(programmeNotification.id, notificationId),
+        ),
       );
 
     return ok({ success: true });

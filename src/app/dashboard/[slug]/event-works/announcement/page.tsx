@@ -42,12 +42,13 @@ export default async function AnnouncerPage({
   );
   if (!canUse) notFound();
 
-  const [queue, nextNumber, publishedResults, standingsContext] = await Promise.all([
-    getAnnouncerQueue(festival.id),
-    getNextResultNumber(festival.id),
-    getPublishedResults(festival.id),
-    getStandingsContext(festival.id),
-  ]);
+  const [queue, nextNumber, publishedResults, standingsContext] =
+    await Promise.all([
+      getAnnouncerQueue(festival.id),
+      getNextResultNumber(festival.id),
+      getPublishedResults(festival.id),
+      getStandingsContext(festival.id),
+    ]);
 
   return (
     <div className="pt-4 sm:pt-6 space-y-6">

@@ -1,6 +1,14 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
+import {
+  EmptyState,
+  PublicSection,
+  SectionHeader,
+} from "@/components/festival/public/PublicSection";
 import {
   Pagination,
   PaginationContent,
@@ -10,14 +18,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
-import Link from "next/link";
-import {
-  EmptyState,
-  PublicSection,
-  SectionHeader,
-} from "@/components/festival/public/PublicSection";
 import { cn } from "@/core/utils/cn";
 import type { TeamStanding } from "./ResultsList";
 
@@ -92,7 +92,7 @@ export function StandingsBoard({
   const totalPages = Math.ceil(standings.length / pageSize);
   const rows = standings.slice(
     pageIndex * pageSize,
-    pageIndex * pageSize + pageSize
+    pageIndex * pageSize + pageSize,
   );
 
   // Bars are proportional to the leader, so the top team always reads as full.
@@ -182,12 +182,13 @@ export function StandingsBoard({
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  
                   onClick={(e) => {
                     e.preventDefault();
                     setPageIndex((p) => Math.max(0, p - 1));
                   }}
-                  className={pageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                  className={
+                    pageIndex === 0 ? "pointer-events-none opacity-50" : ""
+                  }
                 />
               </PaginationItem>
 
@@ -201,7 +202,6 @@ export function StandingsBoard({
                   return (
                     <PaginationItem key={i}>
                       <PaginationLink
-                        
                         isActive={pageIndex === i}
                         onClick={(e) => {
                           e.preventDefault();
@@ -213,7 +213,7 @@ export function StandingsBoard({
                     </PaginationItem>
                   );
                 }
-                
+
                 // Show ellipsis if there's a gap
                 if (i === pageIndex - 2 || i === pageIndex + 2) {
                   return (
@@ -222,18 +222,21 @@ export function StandingsBoard({
                     </PaginationItem>
                   );
                 }
-                
+
                 return null;
               })}
 
               <PaginationItem>
                 <PaginationNext
-                  
                   onClick={(e) => {
                     e.preventDefault();
                     setPageIndex((p) => Math.min(totalPages - 1, p + 1));
                   }}
-                  className={pageIndex === totalPages - 1 ? "pointer-events-none opacity-50" : ""}
+                  className={
+                    pageIndex === totalPages - 1
+                      ? "pointer-events-none opacity-50"
+                      : ""
+                  }
                 />
               </PaginationItem>
             </PaginationContent>

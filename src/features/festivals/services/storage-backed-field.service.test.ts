@@ -15,7 +15,8 @@ vi.mock("@/features/festivals/services/storage-usage.service", () => ({
 }));
 
 vi.mock("@/features/festivals/services/resource-mutation.service", () => ({
-  mutateWithAccounting: (...args: unknown[]) => mockMutateWithAccounting(...args),
+  mutateWithAccounting: (...args: unknown[]) =>
+    mockMutateWithAccounting(...args),
 }));
 
 import { StorageBackedFieldService } from "./storage-backed-field.service";
@@ -28,7 +29,9 @@ describe("StorageBackedFieldService", () => {
     vi.clearAllMocks();
     mockOperation.mockResolvedValue("ok");
     mockMutateWithAccounting.mockImplementation(async ({ operation }) =>
-      operation(externalTx as unknown as typeof import("@/core/database/client").db),
+      operation(
+        externalTx as unknown as typeof import("@/core/database/client").db,
+      ),
     );
   });
 
@@ -36,7 +39,8 @@ describe("StorageBackedFieldService", () => {
     it("computes the delta from added and removed URLs and delegates to mutateWithAccounting", async () => {
       mockGetUrlsSizeMB.mockImplementation((urls) => {
         const arr = urls as Array<string | null | undefined>;
-        if (arr.includes("added-1") && arr.includes("added-2")) return Promise.resolve(12);
+        if (arr.includes("added-1") && arr.includes("added-2"))
+          return Promise.resolve(12);
         if (arr.includes("removed-1")) return Promise.resolve(5);
         return Promise.resolve(0);
       });

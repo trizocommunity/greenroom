@@ -15,13 +15,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { useCloudinaryUpload } from "@/api/client";
 import {
   useCreateMediaItem,
@@ -42,6 +35,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/core/utils/cn";
@@ -74,7 +74,7 @@ export function MediaClient({
   const { isReadOnly } = useFestivalReadOnly();
   const [images, setImages] = useState<ImageRecord[]>(initialImages);
   const [videos, setVideos] = useState<VideoRecord[]>(initialVideos);
-  
+
   const [photosPageIndex, setPhotosPageIndex] = useState(0);
   const [videosPageIndex, setVideosPageIndex] = useState(0);
   const pageSize = 10;
@@ -462,71 +462,76 @@ export function MediaClient({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {images.slice(photosPageIndex * pageSize, (photosPageIndex + 1) * pageSize).map((img, index) => {
-                const isSelected = img.id ? selectedIds.has(img.id) : false;
-                return (
-                  <div
-                    key={img.id || img.url}
-                    className={cn(
-                      "group relative aspect-square rounded-xl overflow-hidden bg-muted border",
-                      index % 5 === 0 && "sm:col-span-2 sm:row-span-2",
-                      isSelected && "ring-2 ring-primary ring-offset-2",
-                    )}
-                  >
-                    <button
-                      type="button"
-                      className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 ring-primary ring-inset"
-                      onClick={() => openLightbox(index)}
+              {images
+                .slice(
+                  photosPageIndex * pageSize,
+                  (photosPageIndex + 1) * pageSize,
+                )
+                .map((img, index) => {
+                  const isSelected = img.id ? selectedIds.has(img.id) : false;
+                  return (
+                    <div
+                      key={img.id || img.url}
+                      className={cn(
+                        "group relative aspect-square rounded-xl overflow-hidden bg-muted border",
+                        index % 5 === 0 && "sm:col-span-2 sm:row-span-2",
+                        isSelected && "ring-2 ring-primary ring-offset-2",
+                      )}
                     >
-                      <Image
-                        src={img.url}
-                        alt="Media image"
-                        fill
-                        className="object-cover transition group-hover:scale-105"
-                      />
-                    </button>
-                    {img.id && (
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSelect(img.id);
-                        }}
-                        disabled={isReadOnly}
-                        className={cn(
-                          "absolute top-2 left-2 z-10 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition",
-                          isSelected && "bg-primary text-primary-foreground",
-                        )}
-                        aria-label={isSelected ? "Deselect" : "Select"}
+                        className="absolute inset-0 w-full h-full focus:outline-none focus:ring-2 ring-primary ring-inset"
+                        onClick={() => openLightbox(index)}
                       >
-                        {isSelected ? (
-                          <CheckSquare className="h-5 w-5" />
-                        ) : (
-                          <Square className="h-5 w-5 opacity-80" />
-                        )}
+                        <Image
+                          src={img.url}
+                          alt="Media image"
+                          fill
+                          className="object-cover transition group-hover:scale-105"
+                        />
                       </button>
-                    )}
-                    <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition flex gap-1">
-                      <DeleteDialog
-                        title="Remove photo"
-                        description="This photo will be removed from the media."
-                        onDelete={() => handleDelete(img.id)}
-                        isDeleting={false}
-                        trigger={
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8 rounded-full shadow"
-                            disabled={isReadOnly}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        }
-                      />
+                      {img.id && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelect(img.id);
+                          }}
+                          disabled={isReadOnly}
+                          className={cn(
+                            "absolute top-2 left-2 z-10 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition",
+                            isSelected && "bg-primary text-primary-foreground",
+                          )}
+                          aria-label={isSelected ? "Deselect" : "Select"}
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="h-5 w-5" />
+                          ) : (
+                            <Square className="h-5 w-5 opacity-80" />
+                          )}
+                        </button>
+                      )}
+                      <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition flex gap-1">
+                        <DeleteDialog
+                          title="Remove photo"
+                          description="This photo will be removed from the media."
+                          onDelete={() => handleDelete(img.id)}
+                          isDeleting={false}
+                          trigger={
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="h-8 w-8 rounded-full shadow"
+                              disabled={isReadOnly}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
 
@@ -537,18 +542,27 @@ export function MediaClient({
                   <PaginationPrevious
                     onClick={(e) => {
                       e.preventDefault();
-                      if (photosPageIndex > 0) setPhotosPageIndex(p => p - 1);
+                      if (photosPageIndex > 0) setPhotosPageIndex((p) => p - 1);
                     }}
-                    className={photosPageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    className={
+                      photosPageIndex === 0
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
                   />
                 </PaginationItem>
                 <PaginationItem>
                   <PaginationNext
                     onClick={(e) => {
                       e.preventDefault();
-                      if ((photosPageIndex + 1) * pageSize < images.length) setPhotosPageIndex(p => p + 1);
+                      if ((photosPageIndex + 1) * pageSize < images.length)
+                        setPhotosPageIndex((p) => p + 1);
                     }}
-                    className={(photosPageIndex + 1) * pageSize >= images.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    className={
+                      (photosPageIndex + 1) * pageSize >= images.length
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -596,56 +610,61 @@ export function MediaClient({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {videos.slice(videosPageIndex * pageSize, (videosPageIndex + 1) * pageSize).map((video) => {
-                const videoId = extractYouTubeId(video.url);
-                return (
-                  <div
-                    key={video.id}
-                    className="group relative aspect-video rounded-xl overflow-hidden bg-muted border"
-                  >
-                    <a
-                      href={video.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute inset-0"
+              {videos
+                .slice(
+                  videosPageIndex * pageSize,
+                  (videosPageIndex + 1) * pageSize,
+                )
+                .map((video) => {
+                  const videoId = extractYouTubeId(video.url);
+                  return (
+                    <div
+                      key={video.id}
+                      className="group relative aspect-video rounded-xl overflow-hidden bg-muted border"
                     >
-                      {videoId ? (
-                        <Image
-                          src={getYouTubeThumbnail(videoId)}
-                          alt="YouTube video thumbnail"
-                          fill
-                          className="object-cover transition group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <Youtube className="h-8 w-8 text-muted-foreground" />
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0"
+                      >
+                        {videoId ? (
+                          <Image
+                            src={getYouTubeThumbnail(videoId)}
+                            alt="YouTube video thumbnail"
+                            fill
+                            className="object-cover transition group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Youtube className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition">
+                          <Youtube className="h-8 w-8 text-white" />
                         </div>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition">
-                        <Youtube className="h-8 w-8 text-white" />
+                      </a>
+                      <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition">
+                        <DeleteDialog
+                          title="Remove video"
+                          description="This video will be removed from the media."
+                          onDelete={() => handleDeleteVideo(video.id)}
+                          isDeleting={false}
+                          trigger={
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="h-8 w-8 rounded-full shadow"
+                              disabled={isReadOnly}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          }
+                        />
                       </div>
-                    </a>
-                    <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition">
-                      <DeleteDialog
-                        title="Remove video"
-                        description="This video will be removed from the media."
-                        onDelete={() => handleDeleteVideo(video.id)}
-                        isDeleting={false}
-                        trigger={
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8 rounded-full shadow"
-                            disabled={isReadOnly}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        }
-                      />
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
 
@@ -656,18 +675,27 @@ export function MediaClient({
                   <PaginationPrevious
                     onClick={(e) => {
                       e.preventDefault();
-                      if (videosPageIndex > 0) setVideosPageIndex(p => p - 1);
+                      if (videosPageIndex > 0) setVideosPageIndex((p) => p - 1);
                     }}
-                    className={videosPageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    className={
+                      videosPageIndex === 0
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
                   />
                 </PaginationItem>
                 <PaginationItem>
                   <PaginationNext
                     onClick={(e) => {
                       e.preventDefault();
-                      if ((videosPageIndex + 1) * pageSize < videos.length) setVideosPageIndex(p => p + 1);
+                      if ((videosPageIndex + 1) * pageSize < videos.length)
+                        setVideosPageIndex((p) => p + 1);
                     }}
-                    className={(videosPageIndex + 1) * pageSize >= videos.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    className={
+                      (videosPageIndex + 1) * pageSize >= videos.length
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>

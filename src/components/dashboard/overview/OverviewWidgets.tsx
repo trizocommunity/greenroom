@@ -28,9 +28,7 @@ import type { festival as festivalSchema } from "@/core/database/schema";
 import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
 import type { BooleanFeaturePath } from "@/features/plan-features/services/feature-gate";
 import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
-import {
-  loadAllFeatureOverrides,
-} from "@/features/plan-features/services/plan-features.service";
+import { loadAllFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 import { DashboardCharts } from "./DashboardCharts";
 import { FestSetupWidget } from "./FestSetupWidget";

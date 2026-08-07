@@ -62,7 +62,8 @@ export const ReportingEventAdapter = {
       }
 
       case "REPORTING_CLOSED": {
-        const participantCodes = await CodeLetterAdapter.onReportingClosed(event);
+        const participantCodes =
+          await CodeLetterAdapter.onReportingClosed(event);
 
         await NotificationService.dispatch({
           eventType: "REPORTING_CLOSED",
@@ -266,7 +267,8 @@ export const ReportingEventAdapter = {
       }
 
       case "SPIN_CODES_ASSIGNED": {
-        const participantCodes = await CodeLetterAdapter.onSpinCodesAssigned(event);
+        const participantCodes =
+          await CodeLetterAdapter.onSpinCodesAssigned(event);
 
         for (const { participantId, code } of participantCodes) {
           await NotificationService.dispatch({

@@ -48,90 +48,82 @@ afterAll(async () => {
 });
 
 describe("Better Auth email-OTP (ISSUE-42 PR A)", () => {
-  it(
-    "send → verify creates user + session against real Postgres",
-    async () => {
-      const db = getDb();
+  it("send → verify creates user + session against real Postgres", async () => {
+    const db = getDb();
 
-      // 1. Send OTP. Better Auth's `createVerificationOTP` returns the
-      // OTP string directly in the response, so we can verify without
-      // inspecting the verification table for the value.
-      const otp = await auth.api.createVerificationOTP({
-        body: { email: TEST_EMAIL, type: "sign-in" },
+    // 1. Send OTP. Better Auth's `createVerificationOTP` returns the
+    // OTP string directly in the response, so we can verify without
+    // inspecting the verification table for the value.
+    const otp = await auth.api.createVerificationOTP({
+      body: { email: TEST_EMAIL, type: "sign-in" },
+      headers: new Headers({ origin: TEST_ORIGIN }),
+      asResponse: false,
+    });
+    expect(typeof otp).toBe("string");
+    // ISSUE-42 PR A: 4-digit OTP (Locked Decision #1).
+    expect(otp).toMatch(/^\d{4}$/);
+
+    // The verification row was written — read it for sanity.
+    const verificationRows = await db
+      .select()
+      .from(verification)
+      .orderBy(verification.createdAt);
+    const ours = verificationRows
+      .filter((r) => r.identifier.includes(TEST_EMAIL.toLowerCase()))
+      .at(-1);
+    expect(ours).toBeDefined();
+    // Better Auth stores `${otp}:${attemptCount}` in `value`.
+    expect(ours?.value.startsWith(`${otp}:`)).toBe(true);
+
+    // 2. Verify the OTP. `signInEmailOTP` mints the session and writes
+    // the cookie via nextCookies. We avoid `callbackURL` to dodge the
+    // `ctx.redirect(...)` throw pattern.
+    const verifyResult = await auth.api.signInEmailOTP({
+      body: { email: TEST_EMAIL, otp },
+      headers: new Headers({ origin: TEST_ORIGIN }),
+      asResponse: false,
+    });
+
+    // User row exists, email is verified.
+    const userRows = await db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.email, TEST_EMAIL))
+      .limit(1);
+    expect(userRows).toHaveLength(1);
+    const createdUser = userRows[0]!;
+    expect(createdUser.emailVerified).toBe(true);
+    expect(createdUser.name).toBeDefined();
+
+    // Session row exists and is not expired.
+    const sessionRows = await db
+      .select()
+      .from(sessionTable)
+      .where(eq(sessionTable.userId, createdUser.id))
+      .limit(1);
+    expect(sessionRows).toHaveLength(1);
+    expect(new Date(sessionRows[0]!.expiresAt).getTime()).toBeGreaterThan(
+      Date.now(),
+    );
+
+    // No account row — OTP sign-in doesn't create one.
+    const accountRows = await db
+      .select()
+      .from(account)
+      .where(eq(account.userId, createdUser.id));
+    expect(accountRows).toHaveLength(0);
+
+    // verifyResult carries the session token (or redirect target).
+    expect(verifyResult).toBeDefined();
+  }, 60_000);
+
+  it("rejects a wrong OTP with an INVALID_OTP-style error", async () => {
+    await expect(
+      auth.api.signInEmailOTP({
+        body: { email: "unknown-" + TEST_EMAIL, otp: "0000" },
         headers: new Headers({ origin: TEST_ORIGIN }),
         asResponse: false,
-      });
-      expect(typeof otp).toBe("string");
-      // ISSUE-42 PR A: 4-digit OTP (Locked Decision #1).
-      expect(otp).toMatch(/^\d{4}$/);
-
-      // The verification row was written — read it for sanity.
-      const verificationRows = await db
-        .select()
-        .from(verification)
-        .orderBy(verification.createdAt);
-      const ours = verificationRows
-        .filter((r) => r.identifier.includes(TEST_EMAIL.toLowerCase()))
-        .at(-1);
-      expect(ours).toBeDefined();
-      // Better Auth stores `${otp}:${attemptCount}` in `value`.
-      expect(ours?.value.startsWith(`${otp}:`)).toBe(true);
-
-      // 2. Verify the OTP. `signInEmailOTP` mints the session and writes
-      // the cookie via nextCookies. We avoid `callbackURL` to dodge the
-      // `ctx.redirect(...)` throw pattern.
-      const verifyResult = await auth.api.signInEmailOTP({
-        body: { email: TEST_EMAIL, otp },
-        headers: new Headers({ origin: TEST_ORIGIN }),
-        asResponse: false,
-      });
-
-      // User row exists, email is verified.
-      const userRows = await db
-        .select()
-        .from(userTable)
-        .where(eq(userTable.email, TEST_EMAIL))
-        .limit(1);
-      expect(userRows).toHaveLength(1);
-      const createdUser = userRows[0]!;
-      expect(createdUser.emailVerified).toBe(true);
-      expect(createdUser.name).toBeDefined();
-
-      // Session row exists and is not expired.
-      const sessionRows = await db
-        .select()
-        .from(sessionTable)
-        .where(eq(sessionTable.userId, createdUser.id))
-        .limit(1);
-      expect(sessionRows).toHaveLength(1);
-      expect(new Date(sessionRows[0]!.expiresAt).getTime()).toBeGreaterThan(
-        Date.now(),
-      );
-
-      // No account row — OTP sign-in doesn't create one.
-      const accountRows = await db
-        .select()
-        .from(account)
-        .where(eq(account.userId, createdUser.id));
-      expect(accountRows).toHaveLength(0);
-
-      // verifyResult carries the session token (or redirect target).
-      expect(verifyResult).toBeDefined();
-    },
-    60_000,
-  );
-
-  it(
-    "rejects a wrong OTP with an INVALID_OTP-style error",
-    async () => {
-      await expect(
-        auth.api.signInEmailOTP({
-          body: { email: "unknown-" + TEST_EMAIL, otp: "0000" },
-          headers: new Headers({ origin: TEST_ORIGIN }),
-          asResponse: false,
-        }),
-      ).rejects.toBeDefined();
-    },
-    60_000,
-  );
+      }),
+    ).rejects.toBeDefined();
+  }, 60_000);
 });

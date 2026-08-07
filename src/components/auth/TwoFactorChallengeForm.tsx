@@ -1,6 +1,13 @@
 "use client";
 
-import { AlertCircle, ArrowRight, KeyRound, Loader2, Mail, ShieldCheck } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  KeyRound,
+  Loader2,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { z } from "zod";
@@ -8,12 +15,7 @@ import { ErrorScopeProvider, InlineError } from "@/components/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { twoFactor } from "@/core/auth/better-auth/client";
 import { toast } from "@/lib/toast";
 
@@ -81,9 +83,7 @@ export function TwoFactorChallengeForm({
     event.preventDefault();
     const parsed = codeSchema.safeParse({ code });
     if (!parsed.success) {
-      setErrorMessage(
-        parsed.error.issues[0]?.message ?? "Enter a valid code",
-      );
+      setErrorMessage(parsed.error.issues[0]?.message ?? "Enter a valid code");
       return;
     }
     setErrorMessage(null);
@@ -150,10 +150,7 @@ export function TwoFactorChallengeForm({
         className="w-full"
       >
         <TabsList className="grid w-full grid-cols-3 rounded-lg bg-card border border-border/60 p-0.5 h-9">
-          <TabsTrigger
-            value="totp"
-            className="text-[11px] sm:text-xs gap-1.5"
-          >
+          <TabsTrigger value="totp" className="text-[11px] sm:text-xs gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5" />
             App
           </TabsTrigger>
@@ -182,9 +179,7 @@ export function TwoFactorChallengeForm({
               ref={codeInputRef}
               id="two-factor-code"
               type="text"
-              inputMode={
-                method === "backup" ? "text" : "numeric"
-              }
+              inputMode={method === "backup" ? "text" : "numeric"}
               autoComplete="one-time-code"
               value={code}
               onChange={(event) => {
@@ -195,9 +190,7 @@ export function TwoFactorChallengeForm({
                 setCode(raw);
                 setErrorMessage(null);
               }}
-              placeholder={
-                method === "backup" ? "ABCD-12345" : "123 456"
-              }
+              placeholder={method === "backup" ? "ABCD-12345" : "123 456"}
               disabled={isPending}
               className="rounded-lg sm:rounded-xl border-border/60 bg-card text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent transition-all h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full text-left font-mono tracking-[0.4em]"
             />
@@ -250,8 +243,8 @@ export function TwoFactorChallengeForm({
 
           <TabsContent value="backup" className="mt-0">
             <p className="text-[11px] text-muted-foreground leading-normal">
-              Enter one of the backup codes you saved when you turned 2FA
-              on. Each code works once.
+              Enter one of the backup codes you saved when you turned 2FA on.
+              Each code works once.
             </p>
           </TabsContent>
 

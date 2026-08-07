@@ -1,7 +1,9 @@
 "use client";
 
-import { Loader2, ListTodo, Plus, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ListTodo, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
+import { useProvisionOffStage } from "@/api/client/server-actions";
+import { useStages } from "@/api/client/stages";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -10,8 +12,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useStages } from "@/api/client/stages";
-import { useProvisionOffStage } from "@/api/client/server-actions";
 
 interface OffStageProvisionDrawerProps {
   festivalId: string;
@@ -90,7 +90,9 @@ export function OffStageProvisionDrawer({
 
           <div className="flex flex-col gap-3">
             <Button asChild>
-              <Link href={`/dashboard/${festivalSlug}/pre-event-works/schedule`}>
+              <Link
+                href={`/dashboard/${festivalSlug}/pre-event-works/schedule`}
+              >
                 Go to Schedule
               </Link>
             </Button>

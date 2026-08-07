@@ -6,13 +6,13 @@ import {
   festival as festivals,
   group as groups,
   judge as judges,
+  festivalMember as members,
   participant as participants,
   programmeAssignment,
   programme as programmes,
   result as results,
-  stage as stages,
   festivalScoringPolicy as scoringPolicies,
-  festivalMember as members,
+  stage as stages,
 } from "@/core/database/schema";
 import { isAfter, parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
@@ -357,11 +357,18 @@ export async function getDashboardOverviewData(festivalId: string) {
     db
       .select({ c: count() })
       .from(participants)
-      .where(and(eq(participants.festivalId, festivalId), sql`${participants.chestNumber} IS NOT NULL`)),
+      .where(
+        and(
+          eq(participants.festivalId, festivalId),
+          sql`${participants.chestNumber} IS NOT NULL`,
+        ),
+      ),
     db
       .select({ c: count() })
       .from(stages)
-      .where(and(eq(stages.festivalId, festivalId), eq(stages.isOffStage, true))),
+      .where(
+        and(eq(stages.festivalId, festivalId), eq(stages.isOffStage, true)),
+      ),
     db
       .select({ c: count() })
       .from(members)
@@ -380,7 +387,7 @@ export async function getDashboardOverviewData(festivalId: string) {
     participantsByTeam: participantsByTeamRaw,
     participantsByCategory: participantsByCategoryRaw,
     teamStandings: fest?.teamStandings,
-    
+
     // Fest Setup Flags
     hasProgrammes: tp[0].c > 0,
     hasScoringPolicy: scoringPoliciesCount[0].c > 0,

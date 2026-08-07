@@ -2,28 +2,28 @@ import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
+  programmeCodeLetterRecipient as codeLetterRecipientTable,
+  programmeCodeLetter as codeLetterTable,
   participant as participantTable,
   programme as programmeTable,
-  programmeCodeLetter as codeLetterTable,
-  programmeCodeLetterRecipient as codeLetterRecipientTable,
-  programmeReportedParticipant as reportedParticipantTable,
   programmeReportingSession as prsTable,
+  programmeReportedParticipant as reportedParticipantTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+import type { ReportingDomainEvent } from "@/features/programmes/domain/reporting-events";
 import {
-  ReportingSession,
   type Assignment,
   type AssignmentMember,
   type CodeLetter,
   type ProgrammeType,
   type ReportedParticipant,
+  ReportingSession,
   type ReportingSessionState,
   type ReportingStatus,
 } from "@/features/programmes/domain/reporting-session.aggregate";
-import type { ReportingDomainEvent } from "@/features/programmes/domain/reporting-events";
 
 function mapDbSessionToState(
   session: Record<string, unknown>,
@@ -53,7 +53,9 @@ function mapDbSessionToState(
   };
 }
 
-function mapReportedParticipant(row: Record<string, unknown>): ReportedParticipant {
+function mapReportedParticipant(
+  row: Record<string, unknown>,
+): ReportedParticipant {
   return {
     id: row.id as string,
     reportingSessionId: row.reportingSessionId as string,
@@ -110,7 +112,9 @@ export const ReportingSessionRepository = {
     const session = await db.query.programmeReportingSession.findFirst({
       where: eq(prsTable.id, id),
       with: {
-        programme: { columns: { id: true, type: true, status: true, name: true } },
+        programme: {
+          columns: { id: true, type: true, status: true, name: true },
+        },
         programmeReportedParticipants: true,
         programmeCodeLetters: {
           with: {
@@ -130,7 +134,12 @@ export const ReportingSessionRepository = {
 
     const state = mapDbSessionToState(
       session,
-      session.programme as { id: string; type: ProgrammeType; status: string; name: string },
+      session.programme as {
+        id: string;
+        type: ProgrammeType;
+        status: string;
+        name: string;
+      },
       session.programmeReportedParticipants.map(mapReportedParticipant),
       session.programmeCodeLetters.map(mapCodeLetter),
       assignments,
@@ -149,7 +158,9 @@ export const ReportingSessionRepository = {
         eq(prsTable.programmeId, programmeId),
       ),
       with: {
-        programme: { columns: { id: true, type: true, status: true, name: true } },
+        programme: {
+          columns: { id: true, type: true, status: true, name: true },
+        },
         programmeReportedParticipants: true,
         programmeCodeLetters: {
           with: {
@@ -165,7 +176,12 @@ export const ReportingSessionRepository = {
       const assignments = await fetchAssignments(programmeId);
       const state = mapDbSessionToState(
         session,
-        session.programme as { id: string; type: ProgrammeType; status: string; name: string },
+        session.programme as {
+          id: string;
+          type: ProgrammeType;
+          status: string;
+          name: string;
+        },
         session.programmeReportedParticipants.map(mapReportedParticipant),
         session.programmeCodeLetters.map(mapCodeLetter),
         assignments,
@@ -175,7 +191,13 @@ export const ReportingSessionRepository = {
 
     const programme = await db.query.programme.findFirst({
       where: eq(programmeTable.id, programmeId),
-      columns: { id: true, festivalId: true, type: true, status: true, name: true },
+      columns: {
+        id: true,
+        festivalId: true,
+        type: true,
+        status: true,
+        name: true,
+      },
     });
     if (!programme || programme.festivalId !== festivalId) {
       throw new Error("Programme not found for this festival");
@@ -219,7 +241,11 @@ export const ReportingSessionRepository = {
   async findAssignmentByChestNumber(
     reportingSessionId: string,
     chestNumber: string,
-  ): Promise<{ assignmentId: string; participantId: string; teamNumber: number | null } | null> {
+  ): Promise<{
+    assignmentId: string;
+    participantId: string;
+    teamNumber: number | null;
+  } | null> {
     const normalizedChestNumber = chestNumber.trim().toUpperCase();
     if (!normalizedChestNumber) return null;
 
@@ -309,7 +335,10 @@ export const ReportingSessionRepository = {
       };
 
       if (existing) {
-        await tx.update(prsTable).set(sessionValues).where(eq(prsTable.id, state.id));
+        await tx
+          .update(prsTable)
+          .set(sessionValues)
+          .where(eq(prsTable.id, state.id));
       } else {
         await tx.insert(prsTable).values(sessionValues as any);
       }

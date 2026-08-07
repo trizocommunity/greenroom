@@ -21,17 +21,17 @@ import {
 import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { AssignmentModal } from "@/components/festival/pre-event-works/assignments/AssignmentModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
+  PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
 } from "@/components/ui/pagination";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -1140,190 +1140,194 @@ export function AssignProgrammesClient({
         {/* ── Assign: pick a programme, assign inside the drawer ─────── */}
         {tlHasAccess && (
           <TabsContent value="ASSIGN" className="mt-5">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
-              <Select
-                value={selectedProgrammeCategoryId}
-                onValueChange={setSelectedProgrammeCategoryId}
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm sm:w-[190px]">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {programmeCategoryOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
+                <Select
+                  value={selectedProgrammeCategoryId}
+                  onValueChange={setSelectedProgrammeCategoryId}
+                >
+                  <SelectTrigger className="h-9 rounded-full text-sm sm:w-[190px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {programmeCategoryOptions.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Select
-                value={selectedProgrammeType}
-                onValueChange={(v) =>
-                  setSelectedProgrammeType(v as "ALL" | "GROUP" | "INDIVIDUAL")
-                }
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm sm:w-[160px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All types</SelectItem>
-                  <SelectItem value="GROUP">Group</SelectItem>
-                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select
+                  value={selectedProgrammeType}
+                  onValueChange={(v) =>
+                    setSelectedProgrammeType(
+                      v as "ALL" | "GROUP" | "INDIVIDUAL",
+                    )
+                  }
+                >
+                  <SelectTrigger className="h-9 rounded-full text-sm sm:w-[160px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All types</SelectItem>
+                    <SelectItem value="GROUP">Group</SelectItem>
+                    <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {eligibleProgrammes.length} programme
+                {eligibleProgrammes.length === 1 ? "" : "s"}
+              </span>
             </div>
 
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {eligibleProgrammes.length} programme
-              {eligibleProgrammes.length === 1 ? "" : "s"}
-            </span>
-          </div>
+            {eligibleProgrammes.length === 0 ? (
+              <AppEmptyState
+                title="No programmes"
+                description="Nothing matches these filters."
+              />
+            ) : (
+              <>
+                <ul className="divide-y divide-border border-y border-border">
+                  {eligibleProgrammes
+                    .slice(
+                      assignPageIndex * pageSize,
+                      (assignPageIndex + 1) * pageSize,
+                    )
+                    .map((p) => {
+                      const capacity = groupCapacityByProgrammeId.get(p.id);
+                      const isFull = capacity?.isFull ?? false;
 
-          {eligibleProgrammes.length === 0 ? (
-            <AppEmptyState
-              title="No programmes"
-              description="Nothing matches these filters."
-            />
-          ) : (
-            <>
-              <ul className="divide-y divide-border border-y border-border">
-                {eligibleProgrammes
-                  .slice(
-                    assignPageIndex * pageSize,
-                    (assignPageIndex + 1) * pageSize,
-                  )
-                  .map((p) => {
-                    const capacity = groupCapacityByProgrammeId.get(p.id);
-                    const isFull = capacity?.isFull ?? false;
-
-                    return (
-                      <li key={p.id}>
-                        <button
-                          type="button"
-                          onClick={() => openAssignDrawer(p.id)}
-                          className="group flex w-full items-center gap-4 py-4 text-left transition-opacity hover:opacity-80"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate text-[15px] font-medium text-heading">
-                                {p.name}
-                              </span>
-                              <ProgrammeStatusBadge
-                                status={getUiProgrammeStatus(p)}
-                              />
-                            </div>
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {p.category.name} ·{" "}
-                              {p.type === "GROUP"
-                                ? `Team · ${p.maxTeamsPerGroup} teams of ${p.maxParticipantsPerTeam}`
-                                : `Individual · max ${p.maxParticipantsPerGroup}`}
-                              {p.category.type === "GENERAL"
-                                ? " · open to all categories"
-                                : ""}
-                            </p>
-                          </div>
-
-                          <StatusPill
-                            tone={isFull ? "live" : "muted"}
-                            className="shrink-0 tabular-nums"
+                      return (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            onClick={() => openAssignDrawer(p.id)}
+                            className="group flex w-full items-center gap-4 py-4 text-left transition-opacity hover:opacity-80"
                           >
-                            {capacity
-                              ? `${capacity.used}/${capacity.total}`
-                              : "—"}
-                          </StatusPill>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                        </button>
-                      </li>
-                    );
-                  })}
-              </ul>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate text-[15px] font-medium text-heading">
+                                  {p.name}
+                                </span>
+                                <ProgrammeStatusBadge
+                                  status={getUiProgrammeStatus(p)}
+                                />
+                              </div>
+                              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                                {p.category.name} ·{" "}
+                                {p.type === "GROUP"
+                                  ? `Team · ${p.maxTeamsPerGroup} teams of ${p.maxParticipantsPerTeam}`
+                                  : `Individual · max ${p.maxParticipantsPerGroup}`}
+                                {p.category.type === "GENERAL"
+                                  ? " · open to all categories"
+                                  : ""}
+                              </p>
+                            </div>
 
-              {eligibleProgrammes.length > pageSize && (
-                <Pagination className="mt-4">
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (assignPageIndex > 0)
-                            setAssignPageIndex((p) => p - 1);
-                        }}
-                        className={
-                          assignPageIndex === 0
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
-
-                    {[
-                      ...Array(Math.ceil(eligibleProgrammes.length / pageSize)),
-                    ].map((_, i) => {
-                      const targetPage = i;
-                      const totalPages = Math.ceil(
-                        eligibleProgrammes.length / pageSize,
-                      );
-
-                      if (
-                        targetPage === 0 ||
-                        targetPage === totalPages - 1 ||
-                        (targetPage >= assignPageIndex - 1 &&
-                          targetPage <= assignPageIndex + 1)
-                      ) {
-                        return (
-                          <PaginationItem key={i}>
-                            <PaginationLink
-                              isActive={assignPageIndex === targetPage}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setAssignPageIndex(targetPage);
-                              }}
+                            <StatusPill
+                              tone={isFull ? "live" : "muted"}
+                              className="shrink-0 tabular-nums"
                             >
-                              {targetPage + 1}
-                            </PaginationLink>
-                          </PaginationItem>
-                        );
-                      }
-
-                      if (
-                        targetPage === assignPageIndex - 2 ||
-                        targetPage === assignPageIndex + 2
-                      ) {
-                        return (
-                          <PaginationItem key={i}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        );
-                      }
-
-                      return null;
+                              {capacity
+                                ? `${capacity.used}/${capacity.total}`
+                                : "—"}
+                            </StatusPill>
+                            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                          </button>
+                        </li>
+                      );
                     })}
+                </ul>
 
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (
-                            (assignPageIndex + 1) * pageSize <
-                            eligibleProgrammes.length
-                          )
-                            setAssignPageIndex((p) => p + 1);
-                        }}
-                        className={
-                          (assignPageIndex + 1) * pageSize >=
-                          eligibleProgrammes.length
-                            ? "pointer-events-none opacity-50"
-                            : ""
+                {eligibleProgrammes.length > pageSize && (
+                  <Pagination className="mt-4">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (assignPageIndex > 0)
+                              setAssignPageIndex((p) => p - 1);
+                          }}
+                          className={
+                            assignPageIndex === 0
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+
+                      {[
+                        ...Array(
+                          Math.ceil(eligibleProgrammes.length / pageSize),
+                        ),
+                      ].map((_, i) => {
+                        const targetPage = i;
+                        const totalPages = Math.ceil(
+                          eligibleProgrammes.length / pageSize,
+                        );
+
+                        if (
+                          targetPage === 0 ||
+                          targetPage === totalPages - 1 ||
+                          (targetPage >= assignPageIndex - 1 &&
+                            targetPage <= assignPageIndex + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                isActive={assignPageIndex === targetPage}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setAssignPageIndex(targetPage);
+                                }}
+                              >
+                                {targetPage + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
                         }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              )}
-            </>
-          )}
+
+                        if (
+                          targetPage === assignPageIndex - 2 ||
+                          targetPage === assignPageIndex + 2
+                        ) {
+                          return (
+                            <PaginationItem key={i}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          );
+                        }
+
+                        return null;
+                      })}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (
+                              (assignPageIndex + 1) * pageSize <
+                              eligibleProgrammes.length
+                            )
+                              setAssignPageIndex((p) => p + 1);
+                          }}
+                          className={
+                            (assignPageIndex + 1) * pageSize >=
+                            eligibleProgrammes.length
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </>
+            )}
           </TabsContent>
         )}
 

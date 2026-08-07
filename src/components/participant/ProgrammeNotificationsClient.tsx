@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { Bell } from "lucide-react";
+import { useMemo, useState } from "react";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -9,18 +10,17 @@ import {
 } from "@/api/client";
 import { AppEmptyState, AppPageHeader } from "@/components/app/AppSection";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
+  PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
 } from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/core/utils/cn";
-import { useState, useMemo } from "react";
 
 export function ProgrammeNotificationsClient({
   participantId,
@@ -82,106 +82,109 @@ export function ProgrammeNotificationsClient({
             {notifications
               .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
               .map((n) => (
-              <li key={n.id}>
-              <button
-                type="button"
-                onClick={() =>
-                  markOneReadMutation.mutate({
-                    participantId,
-                    notificationId: n.id,
-                  })
-                }
-                className={cn(
-                  "flex w-full gap-3 border-b border-l-2 border-border px-4 py-4 text-left transition-opacity last:border-b-0 hover:opacity-80",
-                  n.isRead
-                    ? "border-l-transparent"
-                    : "border-l-primary bg-primary/[0.04]",
-                )}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-medium text-heading">
-                    {n.title}
-                  </p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
-                    {n.body}
-                  </p>
-                  <p className="mt-1.5 text-xs text-muted-foreground/70">
-                    {formatDistanceToNow(new Date(n.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </p>
-                </div>
-                {!n.isRead && (
-                  <>
-                    <span className="sr-only">Unread</span>
-                    <span
-                      aria-hidden
-                      className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
-                    />
-                  </>
-                )}
-              </button>
-            </li>
-          ))}
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      markOneReadMutation.mutate({
+                        participantId,
+                        notificationId: n.id,
+                      })
+                    }
+                    className={cn(
+                      "flex w-full gap-3 border-b border-l-2 border-border px-4 py-4 text-left transition-opacity last:border-b-0 hover:opacity-80",
+                      n.isRead
+                        ? "border-l-transparent"
+                        : "border-l-primary bg-primary/[0.04]",
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-medium text-heading">
+                        {n.title}
+                      </p>
+                      <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                        {n.body}
+                      </p>
+                      <p className="mt-1.5 text-xs text-muted-foreground/70">
+                        {formatDistanceToNow(new Date(n.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </p>
+                    </div>
+                    {!n.isRead && (
+                      <>
+                        <span className="sr-only">Unread</span>
+                        <span
+                          aria-hidden
+                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                        />
+                      </>
+                    )}
+                  </button>
+                </li>
+              ))}
           </ul>
-          
+
           {notifications.length > pageSize && (
             <Pagination className="mt-4">
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    
                     onClick={(e) => {
                       e.preventDefault();
                       if (pageIndex > 0) setPageIndex((p) => p - 1);
                     }}
                     className={
-                      pageIndex === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
+                      pageIndex === 0 ? "pointer-events-none opacity-50" : ""
                     }
                   />
                 </PaginationItem>
 
-                {[...Array(Math.ceil(notifications.length / pageSize))].map((_, i) => {
-                  const targetPage = i;
-                  const totalPages = Math.ceil(notifications.length / pageSize);
-                  
-                  if (
-                    targetPage === 0 ||
-                    targetPage === totalPages - 1 ||
-                    (targetPage >= pageIndex - 1 && targetPage <= pageIndex + 1)
-                  ) {
-                    return (
-                      <PaginationItem key={i}>
-                        <PaginationLink
-                          
-                          isActive={pageIndex === targetPage}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setPageIndex(targetPage);
-                          }}
-                        >
-                          {targetPage + 1}
-                        </PaginationLink>
-                      </PaginationItem>
+                {[...Array(Math.ceil(notifications.length / pageSize))].map(
+                  (_, i) => {
+                    const targetPage = i;
+                    const totalPages = Math.ceil(
+                      notifications.length / pageSize,
                     );
-                  }
-                  
-                  if (targetPage === pageIndex - 2 || targetPage === pageIndex + 2) {
-                    return (
-                      <PaginationItem key={i}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    );
-                  }
-                  
-                  return null;
-                })}
+
+                    if (
+                      targetPage === 0 ||
+                      targetPage === totalPages - 1 ||
+                      (targetPage >= pageIndex - 1 &&
+                        targetPage <= pageIndex + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationLink
+                            isActive={pageIndex === targetPage}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPageIndex(targetPage);
+                            }}
+                          >
+                            {targetPage + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+
+                    if (
+                      targetPage === pageIndex - 2 ||
+                      targetPage === pageIndex + 2
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+
+                    return null;
+                  },
+                )}
 
                 <PaginationItem>
                   <PaginationNext
-                    
                     onClick={(e) => {
                       e.preventDefault();
                       if ((pageIndex + 1) * pageSize < notifications.length)

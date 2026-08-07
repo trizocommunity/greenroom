@@ -1,6 +1,6 @@
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { generalEntryAward, group as groupTable } from "@/core/database/schema";
-import { and, eq, sql } from "drizzle-orm";
 
 export type GeneralEntryStandingRow = {
   name: string;
@@ -9,7 +9,7 @@ export type GeneralEntryStandingRow = {
 };
 
 export async function computeGeneralEntryStandings(
-  festivalId: string
+  festivalId: string,
 ): Promise<GeneralEntryStandingRow[]> {
   const results = await db
     .select({
@@ -21,8 +21,8 @@ export async function computeGeneralEntryStandings(
     .where(
       and(
         eq(groupTable.festivalId, festivalId),
-        eq(generalEntryAward.isPublished, true)
-      )
+        eq(generalEntryAward.isPublished, true),
+      ),
     )
     .groupBy(groupTable.name);
 

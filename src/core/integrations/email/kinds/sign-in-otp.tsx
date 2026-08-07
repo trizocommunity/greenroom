@@ -44,7 +44,9 @@ export function SignInOtpEmail({
       <Text className="m-0 mb-6 font-sans text-15 text-fg-2">
         Enter this code on the sign-in page to continue as{" "}
         <span className="text-fg font-semibold">{email}</span>. It expires in{" "}
-        <span className="text-fg font-semibold">{expiresInMinutes} minutes</span>
+        <span className="text-fg font-semibold">
+          {expiresInMinutes} minutes
+        </span>
         .
       </Text>
       <Text className="bg-brand text-fg-inverted rounded-md px-4 py-2.5 font-sans font-bold text-20 tracking-[0.25em] inline-block">

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronRight, Loader2, Search, Trophy, Medal } from "lucide-react";
+import { ChevronRight, Loader2, Medal, Search, Trophy } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PublicResultPosterSection } from "@/components/festival/posters/PublicResultPosterSection";
@@ -588,7 +588,12 @@ export function ResultsList({
                             </div>
 
                             <div className="min-w-0 flex-1">
-                              <p className={cn("truncate text-[15px]", nameClass)}>
+                              <p
+                                className={cn(
+                                  "truncate text-[15px]",
+                                  nameClass,
+                                )}
+                              >
                                 {result.winner}
                               </p>
                               <p

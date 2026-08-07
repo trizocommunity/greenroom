@@ -1,13 +1,13 @@
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
+import { generateId } from "@/core/database/ids";
 import {
   generalEntry,
   generalEntryAward,
   generalEntryCategory,
 } from "@/core/database/schema";
-import { and, eq, inArray } from "drizzle-orm";
-import { generateId } from "@/core/database/ids";
-import { AppError } from "@/core/errors/errors";
 import { currentTimestampSql } from "@/core/datetime";
+import { AppError } from "@/core/errors/errors";
 
 export async function assertNotPublished(generalEntryId: string) {
   const publishedAwards = await db
@@ -16,12 +16,14 @@ export async function assertNotPublished(generalEntryId: string) {
     .where(
       and(
         eq(generalEntryAward.generalEntryId, generalEntryId),
-        eq(generalEntryAward.isPublished, true)
-      )
+        eq(generalEntryAward.isPublished, true),
+      ),
     );
 
   if (publishedAwards.length > 0) {
-    throw new AppError("Cannot modify a general entry that has published awards.");
+    throw new AppError(
+      "Cannot modify a general entry that has published awards.",
+    );
   }
 }
 
@@ -60,7 +62,9 @@ export async function deleteGeneralEntryCategory(id: string) {
     .limit(1);
 
   if (entriesUsingCategory.length > 0) {
-    throw new AppError("Cannot delete category because it contains general entries.");
+    throw new AppError(
+      "Cannot delete category because it contains general entries.",
+    );
   }
 
   await db.delete(generalEntryCategory).where(eq(generalEntryCategory.id, id));
@@ -150,7 +154,7 @@ export async function deleteGeneralEntry(id: string) {
 export async function setGeneralEntryPublished(
   generalEntryId: string,
   isPublished: boolean,
-  sessionInfo?: { name?: string | null; email?: string | null }
+  sessionInfo?: { name?: string | null; email?: string | null },
 ) {
   await db
     .update(generalEntryAward)

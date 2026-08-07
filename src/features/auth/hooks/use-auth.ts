@@ -1,12 +1,13 @@
 import "client-only";
 
-import {
-  QueryClientContext,
-  useMutation,
-} from "@tanstack/react-query";
+import { QueryClientContext, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useContext } from "react";
-import { signIn, signOut, useSession as useBetterAuthSession } from "@/core/auth/better-auth/client";
+import {
+  signIn,
+  signOut,
+  useSession as useBetterAuthSession,
+} from "@/core/auth/better-auth/client";
 import { getPostAuthRoute } from "@/core/auth/routing";
 import { api } from "@/lib/api-client";
 import { toast } from "@/lib/toast";
@@ -67,23 +68,18 @@ export function useCurrentUser() {
           (data.user as { twoFactorEnabled?: boolean }).twoFactorEnabled ??
           false,
         globalRole:
-          ((data.user as { globalRole?: "USER" | "SUPER_ADMIN" })
-            .globalRole ?? "USER"),
-        fullName:
-          (data.user as { fullName?: string | null }).fullName ?? null,
+          (data.user as { globalRole?: "USER" | "SUPER_ADMIN" }).globalRole ??
+          "USER",
+        fullName: (data.user as { fullName?: string | null }).fullName ?? null,
         displayName:
-          (data.user as { displayName?: string | null }).displayName ??
-          null,
+          (data.user as { displayName?: string | null }).displayName ?? null,
         accountType:
-          (data.user as { accountType?: string | null }).accountType ??
-          null,
+          (data.user as { accountType?: string | null }).accountType ?? null,
         institutionId:
           (data.user as { institutionId?: string | null }).institutionId ??
           null,
-        isActive:
-          (data.user as { isActive?: boolean }).isActive ?? true,
-        timezone:
-          (data.user as { timezone?: string | null }).timezone ?? null,
+        isActive: (data.user as { isActive?: boolean }).isActive ?? true,
+        timezone: (data.user as { timezone?: string | null }).timezone ?? null,
       } satisfies CurrentUser)
     : null;
 
@@ -110,9 +106,7 @@ export const useLogout = () => {
     },
     onError: (error: unknown) => {
       console.error("Logout error:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Logout failed",
-      );
+      toast.error(error instanceof Error ? error.message : "Logout failed");
     },
   });
 };

@@ -50,100 +50,96 @@ afterAll(async () => {
 });
 
 describe("Better Auth 2FA schema (ISSUE-41 PR 4)", () => {
-  it(
-    "twoFactor table round-trips through enable against real Postgres",
-    async () => {
-      const db = getDb();
+  it("twoFactor table round-trips through enable against real Postgres", async () => {
+    const db = getDb();
 
-      // 1. Sign the user up via email-OTP. Better Auth's
-      // `sendVerificationOTP` hook honours `GREENROOM_SILENT_AUTH` —
-      // same env Better Auth reads for invitation-accept, so no email
-      // leaves the test process. `createVerificationOTP` returns the
-      // OTP string in the response (no DB read-back needed, unlike
-      // the prior magic-link bootstrap).
-      process.env.GREENROOM_SILENT_AUTH = "1";
-      let otp: string;
-      try {
-        otp = await auth.api.createVerificationOTP({
-          body: { email: TEST_EMAIL, type: "sign-in" },
-          headers: new Headers({ origin: TEST_ORIGIN }),
-          asResponse: false,
-        });
-      } finally {
-        delete process.env.GREENROOM_SILENT_AUTH;
-      }
-      expect(typeof otp).toBe("string");
-
-      // 2. Consume the OTP to materialise the user row.
-      await auth.api.signInEmailOTP({
-        body: { email: TEST_EMAIL, otp },
+    // 1. Sign the user up via email-OTP. Better Auth's
+    // `sendVerificationOTP` hook honours `GREENROOM_SILENT_AUTH` —
+    // same env Better Auth reads for invitation-accept, so no email
+    // leaves the test process. `createVerificationOTP` returns the
+    // OTP string in the response (no DB read-back needed, unlike
+    // the prior magic-link bootstrap).
+    process.env.GREENROOM_SILENT_AUTH = "1";
+    let otp: string;
+    try {
+      otp = await auth.api.createVerificationOTP({
+        body: { email: TEST_EMAIL, type: "sign-in" },
         headers: new Headers({ origin: TEST_ORIGIN }),
         asResponse: false,
       });
+    } finally {
+      delete process.env.GREENROOM_SILENT_AUTH;
+    }
+    expect(typeof otp).toBe("string");
 
-      const userRows = await db
-        .select()
-        .from(userTable)
-        .where(eq(userTable.email, TEST_EMAIL))
-        .limit(1);
-      expect(userRows).toHaveLength(1);
-      createdUserId = userRows[0]!.id;
-      expect(userRows[0]!.twoFactorEnabled).toBe(false);
+    // 2. Consume the OTP to materialise the user row.
+    await auth.api.signInEmailOTP({
+      body: { email: TEST_EMAIL, otp },
+      headers: new Headers({ origin: TEST_ORIGIN }),
+      asResponse: false,
+    });
 
-      // 3. Write a `twoFactor` row directly to confirm the schema
-      // accepts what Better Auth's plugin will write. We can't drive
-      // `enableTwoFactor` from the test without a session cookie,
-      // but we can verify the schema accepts the same shape.
-      const testId = "test-twofactor-id-12345";
-      await db.insert(twoFactorTable).values({
-        id: testId,
-        secret: "A".repeat(32),
-        backupCodes: JSON.stringify(["CODE1", "CODE2"]),
-        userId: createdUserId,
-        verified: false,
-        failedVerificationCount: 0,
-      });
+    const userRows = await db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.email, TEST_EMAIL))
+      .limit(1);
+    expect(userRows).toHaveLength(1);
+    createdUserId = userRows[0]!.id;
+    expect(userRows[0]!.twoFactorEnabled).toBe(false);
 
-      const written = await db
-        .select()
-        .from(twoFactorTable)
-        .where(eq(twoFactorTable.id, testId))
-        .limit(1);
-      expect(written).toHaveLength(1);
-      expect(written[0]!.secret.length).toBeGreaterThan(20);
-      expect(written[0]!.backupCodes).toContain("CODE1");
-      expect(written[0]!.verified).toBe(false);
-      expect(written[0]!.failedVerificationCount).toBe(0);
+    // 3. Write a `twoFactor` row directly to confirm the schema
+    // accepts what Better Auth's plugin will write. We can't drive
+    // `enableTwoFactor` from the test without a session cookie,
+    // but we can verify the schema accepts the same shape.
+    const testId = "test-twofactor-id-12345";
+    await db.insert(twoFactorTable).values({
+      id: testId,
+      secret: "A".repeat(32),
+      backupCodes: JSON.stringify(["CODE1", "CODE2"]),
+      userId: createdUserId,
+      verified: false,
+      failedVerificationCount: 0,
+    });
 
-      // 4. The user row is still there with twoFactorEnabled = false.
-      const refreshedUser = await db
-        .select()
-        .from(userTable)
-        .where(eq(userTable.id, createdUserId))
-        .limit(1);
-      expect(refreshedUser[0]!.twoFactorEnabled).toBe(false);
+    const written = await db
+      .select()
+      .from(twoFactorTable)
+      .where(eq(twoFactorTable.id, testId))
+      .limit(1);
+    expect(written).toHaveLength(1);
+    expect(written[0]!.secret.length).toBeGreaterThan(20);
+    expect(written[0]!.backupCodes).toContain("CODE1");
+    expect(written[0]!.verified).toBe(false);
+    expect(written[0]!.failedVerificationCount).toBe(0);
 
-      // 5. `accountLockout` columns work — bump the counter and
-      // simulate a lockout window.
-      await db
-        .update(twoFactorTable)
-        .set({
-          failedVerificationCount: 11,
-          lockedUntil: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        })
-        .where(eq(twoFactorTable.id, testId));
+    // 4. The user row is still there with twoFactorEnabled = false.
+    const refreshedUser = await db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.id, createdUserId))
+      .limit(1);
+    expect(refreshedUser[0]!.twoFactorEnabled).toBe(false);
 
-      const locked = await db
-        .select()
-        .from(twoFactorTable)
-        .where(eq(twoFactorTable.id, testId))
-        .limit(1);
-      expect(locked[0]!.failedVerificationCount).toBe(11);
-      expect(locked[0]!.lockedUntil).not.toBeNull();
+    // 5. `accountLockout` columns work — bump the counter and
+    // simulate a lockout window.
+    await db
+      .update(twoFactorTable)
+      .set({
+        failedVerificationCount: 11,
+        lockedUntil: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      })
+      .where(eq(twoFactorTable.id, testId));
 
-      // 6. Clean up the row we wrote.
-      await db.delete(twoFactorTable).where(eq(twoFactorTable.id, testId));
-    },
-    60_000,
-  );
+    const locked = await db
+      .select()
+      .from(twoFactorTable)
+      .where(eq(twoFactorTable.id, testId))
+      .limit(1);
+    expect(locked[0]!.failedVerificationCount).toBe(11);
+    expect(locked[0]!.lockedUntil).not.toBeNull();
+
+    // 6. Clean up the row we wrote.
+    await db.delete(twoFactorTable).where(eq(twoFactorTable.id, testId));
+  }, 60_000);
 });

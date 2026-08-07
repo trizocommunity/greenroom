@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { errorStore, type ErrorEntry } from "./error-store";
+import { type ErrorEntry, errorStore } from "./error-store";
 
 beforeEach(() => {
   errorStore.clear();

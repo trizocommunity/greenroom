@@ -27,9 +27,7 @@ import { MS, serverNowMs } from "@/core/datetime/server";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { getInAppBannerState } from "@/features/notifications/services/in-app-banner.service";
-import {
-  loadFeatureOverrides,
-} from "@/features/plan-features/services/plan-features.service";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 import {
   ALL_FESTIVAL_ROLES,

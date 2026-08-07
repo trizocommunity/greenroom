@@ -27,15 +27,13 @@ describe("better-auth config (ISSUE-41 PR 1 + PR 2 + PR 4)", () => {
   // adds the `twoFactor` plugin (TOTP, OTP, backup codes, account
   // lockout) which adds another couple of seconds on a cold import.
   // 30s leaves headroom for parallel-runner contention.
-  it(
-    "instantiates without throwing and exposes the Better Auth API surface",
-    async () => {
-      const { auth } = await import("@/core/auth/better-auth/auth");
+  it("instantiates without throwing and exposes the Better Auth API surface", async () => {
+    const { auth } = await import("@/core/auth/better-auth/auth");
 
-      expect(auth).toBeDefined();
-      expect(typeof auth.api).toBe("object");
-      expect(typeof auth.handler).toBe("function");
-      expect(typeof auth.options).toBe("object");
+    expect(auth).toBeDefined();
+    expect(typeof auth.api).toBe("object");
+    expect(typeof auth.handler).toBe("function");
+    expect(typeof auth.options).toBe("object");
 
     // Better Auth surface we depend on across PRs. Failing this list
     // catches upstream breaking changes during `npm upgrade better-auth`.
@@ -56,29 +54,24 @@ describe("better-auth config (ISSUE-41 PR 1 + PR 2 + PR 4)", () => {
     expect(typeof auth.api.verifyBackupCode).toBe("function");
     expect(typeof auth.api.sendTwoFactorOTP).toBe("function");
     expect(typeof auth.api.generateBackupCodes).toBe("function");
-  },
-    30_000,
-  );
+  }, 30_000);
 
   // PR 2 (Google OAuth + auto-link). Regression guard: putting `google`
   // in `plugins` is silently ignored by Better Auth, and the request to
   // `/api/auth/sign-in/social` then fails with "Provider not found". The
   // provider must live on the top-level `socialProviders` option.
-  it(
-    "registers Google as a social provider with auto-link trusted providers",
-    async () => {
-      const { auth } = await import("@/core/auth/better-auth/auth");
-      const ctx = await auth.$context;
-      const list = (
-        ctx as { socialProviders?: { id: string }[] }
-      ).socialProviders;
-      expect(list?.some((p) => p.id === "google")).toBe(true);
-      expect(
-        (auth.options as {
+  it("registers Google as a social provider with auto-link trusted providers", async () => {
+    const { auth } = await import("@/core/auth/better-auth/auth");
+    const ctx = await auth.$context;
+    const list = (ctx as { socialProviders?: { id: string }[] })
+      .socialProviders;
+    expect(list?.some((p) => p.id === "google")).toBe(true);
+    expect(
+      (
+        auth.options as {
           account?: { accountLinking?: { trustedProviders?: string[] } };
-        }).account?.accountLinking?.trustedProviders,
-      ).toContain("google");
-    },
-    15_000,
-  );
+        }
+      ).account?.accountLinking?.trustedProviders,
+    ).toContain("google");
+  }, 15_000);
 });

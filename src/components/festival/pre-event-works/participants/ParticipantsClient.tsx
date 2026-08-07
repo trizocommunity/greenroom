@@ -1,5 +1,6 @@
 "use client";
 
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   Binary,
@@ -24,14 +25,6 @@ import {
   useDeleteParticipant,
   useParticipantsPaginated,
 } from "@/api/client/participants";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { useReactTable, getCoreRowModel } from "@tanstack/react-table";
 import { StatusPill } from "@/components/app/AppSection";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
@@ -51,13 +44,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,

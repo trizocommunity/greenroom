@@ -7,14 +7,28 @@ import {
 
 describe("buildAssignmentDisplays", () => {
   const rows: ResultDisplayRow[] = [
-    { assignmentId: "a1", individualParticipantName: "Alice", individualChestNumber: "101" },
-    { assignmentId: "a2", individualParticipantName: null, individualChestNumber: null },
-    { assignmentId: "a3", individualParticipantName: "Charlie", individualChestNumber: "103" },
+    {
+      assignmentId: "a1",
+      individualParticipantName: "Alice",
+      individualChestNumber: "101",
+    },
+    {
+      assignmentId: "a2",
+      individualParticipantName: null,
+      individualChestNumber: null,
+    },
+    {
+      assignmentId: "a3",
+      individualParticipantName: "Charlie",
+      individualChestNumber: "103",
+    },
   ];
 
   it("prefers the team lead over individual and member fallbacks", () => {
     const leads = new Map([["a3", { name: "Team Lead", chestNumber: "999" }]]);
-    const members = new Map([["a2", { name: "Member Bob", chestNumber: "202" }]]);
+    const members = new Map([
+      ["a2", { name: "Member Bob", chestNumber: "202" }],
+    ]);
 
     const displays = buildAssignmentDisplays(rows, leads, members);
 
@@ -46,7 +60,9 @@ describe("buildAssignmentDisplays", () => {
   });
 
   it("falls back to the first member when there is no lead or individual", () => {
-    const members = new Map([["a2", { name: "Member Bob", chestNumber: "202" }]]);
+    const members = new Map([
+      ["a2", { name: "Member Bob", chestNumber: "202" }],
+    ]);
     const displays = buildAssignmentDisplays(rows, new Map(), members);
 
     expect(displays.get("a2")).toEqual({

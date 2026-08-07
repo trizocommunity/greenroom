@@ -93,12 +93,12 @@ describe("isDeadlineWindowOpen", () => {
 
   it("keeps the legacy 'no deadline = open' semantics", () => {
     expect(isDeadlineWindowOpen({}, at(START))).toBe(true);
-    expect(isDeadlineWindowOpen({ start: START }, at("2027-01-01T00:00:00.000Z"))).toBe(
-      true,
-    );
-    expect(isDeadlineWindowOpen({ end: END }, at("2020-01-01T00:00:00.000Z"))).toBe(
-      true,
-    );
+    expect(
+      isDeadlineWindowOpen({ start: START }, at("2027-01-01T00:00:00.000Z")),
+    ).toBe(true);
+    expect(
+      isDeadlineWindowOpen({ end: END }, at("2020-01-01T00:00:00.000Z")),
+    ).toBe(true);
   });
 });
 
@@ -185,9 +185,7 @@ describe("nextDeadlineWindowTransition", () => {
   });
 
   it("is null when unconfigured — no scheduled flip until bounds are set", () => {
-    expect(
-      nextDeadlineWindowTransition(null, null, at(END)),
-    ).toBeNull();
+    expect(nextDeadlineWindowTransition(null, null, at(END))).toBeNull();
   });
 });
 

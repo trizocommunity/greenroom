@@ -1,5 +1,5 @@
-import { createParticipantInput } from "@/api/contracts/participants";
 import { paginationSchema, sortingSchema } from "@/api/contracts/_shared";
+import { createParticipantInput } from "@/api/contracts/participants";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";

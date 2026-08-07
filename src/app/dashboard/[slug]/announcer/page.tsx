@@ -1,12 +1,12 @@
+import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AnnouncerConsoleClient } from "@/components/dashboard/announcement/AnnouncerConsoleClient";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
-import { eq } from "drizzle-orm";
-import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { AnnouncerConsoleClient } from "@/components/dashboard/announcement/AnnouncerConsoleClient";
 import type { TeamStandingRow } from "@/features/announcement/services/announcer.service";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 
 export const metadata: Metadata = {
   title: "Announcer",
@@ -35,15 +35,16 @@ export default async function AnnouncerPage({
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.slug, slug),
-    columns: { 
-      id: true, 
-      queuedTeamStandings: true, 
-      standingsPublishedAtResultNumber: true 
+    columns: {
+      id: true,
+      queuedTeamStandings: true,
+      standingsPublishedAtResultNumber: true,
     },
   });
   if (!festival) notFound();
 
-  const queuedStandings = (festival.queuedTeamStandings as TeamStandingRow[] | null) ?? [];
+  const queuedStandings =
+    (festival.queuedTeamStandings as TeamStandingRow[] | null) ?? [];
 
   return (
     <div className="pt-4 sm:pt-6 space-y-6">

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  ReportingSession,
   type Assignment,
   type AssignmentMember,
+  ReportingSession,
   type ReportingSessionState,
 } from "./reporting-session.aggregate";
 
@@ -42,7 +42,9 @@ function makeAssignment(overrides: Partial<Assignment> = {}): Assignment {
   };
 }
 
-function makeMember(overrides: Partial<AssignmentMember> = {}): AssignmentMember {
+function makeMember(
+  overrides: Partial<AssignmentMember> = {},
+): AssignmentMember {
   return {
     id: "member-1",
     assignmentId: "assign-1",
@@ -85,7 +87,9 @@ describe("ReportingSession aggregate", () => {
     });
 
     it("throws when reporting is not in progress", () => {
-      const session = new ReportingSession(makeState({ status: "NOT_STARTED" }));
+      const session = new ReportingSession(
+        makeState({ status: "NOT_STARTED" }),
+      );
       expect(() =>
         session.markParticipant(makeAssignment(), [], "Stage Manager"),
       ).toThrow(/must be in progress/i);
@@ -135,10 +139,9 @@ describe("ReportingSession aggregate", () => {
       expect(session.reportedParticipants).toHaveLength(2);
       expect(session.reportedParticipants[0]?.groupId).toBe("group-1");
       expect(session.reportedParticipants[0]?.teamNumber).toBe(1);
-      expect(session.reportedParticipants.map((p) => p.participantId).sort()).toEqual([
-        "p1",
-        "p2",
-      ]);
+      expect(
+        session.reportedParticipants.map((p) => p.participantId).sort(),
+      ).toEqual(["p1", "p2"]);
     });
 
     it("throws when a group team is already reported", () => {
@@ -247,7 +250,9 @@ describe("ReportingSession aggregate", () => {
               code: "A",
               issuedAt: new Date().toISOString(),
               issuedBy: "Stage Manager",
-              recipients: [{ participantId: "part-1", assignmentMemberId: null }],
+              recipients: [
+                { participantId: "part-1", assignmentMemberId: null },
+              ],
             },
           ],
         }),
@@ -293,7 +298,9 @@ describe("ReportingSession aggregate", () => {
               code: "A",
               issuedAt: new Date().toISOString(),
               issuedBy: "Stage Manager",
-              recipients: [{ participantId: "part-1", assignmentMemberId: null }],
+              recipients: [
+                { participantId: "part-1", assignmentMemberId: null },
+              ],
             },
           ],
         }),
@@ -352,7 +359,9 @@ describe("ReportingSession aggregate", () => {
               code: "A",
               issuedAt: new Date().toISOString(),
               issuedBy: "Stage Manager",
-              recipients: [{ participantId: "part-1", assignmentMemberId: null }],
+              recipients: [
+                { participantId: "part-1", assignmentMemberId: null },
+              ],
             },
           ],
         }),
@@ -379,14 +388,25 @@ describe("ReportingSession aggregate", () => {
         makeState({ status: "IN_PROGRESS" }),
       );
       session.assignCodesWithSpin(
-        [{ teamNumber: null, groupId: null, participantId: "part-1", code: "X" }],
+        [
+          {
+            teamNumber: null,
+            groupId: null,
+            participantId: "part-1",
+            code: "X",
+          },
+        ],
         "Stage Manager",
       );
       const event = session.getEvents()[0];
       expect(event?.type).toBe("SPIN_CODES_ASSIGNED");
-      expect(event && "codeAssignments" in event && event.codeAssignments).toHaveLength(1);
+      expect(
+        event && "codeAssignments" in event && event.codeAssignments,
+      ).toHaveLength(1);
       expect(session.codeLetters).toHaveLength(1);
-      expect(session.codeLetters[0]?.recipients[0]?.participantId).toBe("part-1");
+      expect(session.codeLetters[0]?.recipients[0]?.participantId).toBe(
+        "part-1",
+      );
     });
 
     it("allows close after spin-assigned codes cover all reported participants", () => {
@@ -411,7 +431,14 @@ describe("ReportingSession aggregate", () => {
       );
       session.markParticipant(assignment, [], "Stage Manager");
       session.assignCodesWithSpin(
-        [{ teamNumber: null, groupId: null, participantId: assignment.participantId!, code: "A" }],
+        [
+          {
+            teamNumber: null,
+            groupId: null,
+            participantId: assignment.participantId!,
+            code: "A",
+          },
+        ],
         "Stage Manager",
       );
       session.close("Stage Manager");
@@ -424,7 +451,14 @@ describe("ReportingSession aggregate", () => {
       );
       expect(() =>
         session.assignCodesWithSpin(
-          [{ teamNumber: null, groupId: null, participantId: "part-1", code: "X" }],
+          [
+            {
+              teamNumber: null,
+              groupId: null,
+              participantId: "part-1",
+              code: "X",
+            },
+          ],
           "Stage Manager",
         ),
       ).toThrow(/locked/i);

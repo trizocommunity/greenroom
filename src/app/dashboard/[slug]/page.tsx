@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AnnouncerOverview } from "@/components/dashboard/overview/AnnouncerOverview";
+import { DashboardGreeting } from "@/components/dashboard/overview/DashboardGreeting";
 import { MediaOverview } from "@/components/dashboard/overview/MediaOverview";
 import { OverviewSkeleton } from "@/components/dashboard/overview/OverviewSkeleton";
-import { VolunteerOverview } from "@/components/dashboard/overview/VolunteerOverview";
-import { DashboardGreeting } from "@/components/dashboard/overview/DashboardGreeting";
 import OverviewWidgets from "@/components/dashboard/overview/OverviewWidgets";
 import { StageManagerOverview } from "@/components/dashboard/overview/StageManagerOverview";
+import { VolunteerOverview } from "@/components/dashboard/overview/VolunteerOverview";
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";

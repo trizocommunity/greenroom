@@ -14,6 +14,9 @@ import {
   festivalScoringPolicy,
   festivalTemplateAssignment,
   festivalTypeEnum,
+  generalEntry,
+  generalEntryAward,
+  generalEntryCategory,
   group,
   institution,
   judge,
@@ -43,9 +46,6 @@ import {
   user,
   userLoginEvent,
   userPurchaseSummary,
-  generalEntryCategory,
-  generalEntry,
-  generalEntryAward,
 } from "./schema";
 
 export const userRelations = relations(user, ({ one, many }) => ({
@@ -743,7 +743,7 @@ export const generalEntryAwardRelations = relations(
 
 // ─── Food Hall Entry Relations ─────────────────────────────────────────────────────────
 
-import { foodHallSlot, foodHallSession, foodHallEntry } from "./schema";
+import { foodHallEntry, foodHallSession, foodHallSlot } from "./schema";
 
 export const foodHallSlotRelations = relations(
   foodHallSlot,
@@ -753,7 +753,7 @@ export const foodHallSlotRelations = relations(
       references: [festival.id],
     }),
     sessions: many(foodHallSession),
-  })
+  }),
 );
 
 export const foodHallSessionRelations = relations(
@@ -768,19 +768,16 @@ export const foodHallSessionRelations = relations(
       references: [foodHallSlot.id],
     }),
     entries: many(foodHallEntry),
-  })
+  }),
 );
 
-export const foodHallEntryRelations = relations(
-  foodHallEntry,
-  ({ one }) => ({
-    session: one(foodHallSession, {
-      fields: [foodHallEntry.sessionId],
-      references: [foodHallSession.id],
-    }),
-    participant: one(participant, {
-      fields: [foodHallEntry.participantId],
-      references: [participant.id],
-    }),
-  })
-);
+export const foodHallEntryRelations = relations(foodHallEntry, ({ one }) => ({
+  session: one(foodHallSession, {
+    fields: [foodHallEntry.sessionId],
+    references: [foodHallSession.id],
+  }),
+  participant: one(participant, {
+    fields: [foodHallEntry.participantId],
+    references: [participant.id],
+  }),
+}));

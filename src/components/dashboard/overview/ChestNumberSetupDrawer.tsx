@@ -40,13 +40,15 @@ export function ChestNumberSetupDrawer({
             <h4 className="text-sm font-semibold mb-2">How it works</h4>
             <p className="text-sm text-muted-foreground">
               Chest numbers are typically auto-generated once all participants
-              are registered. You can configure prefixes or grouping rules before
-              generation.
+              are registered. You can configure prefixes or grouping rules
+              before generation.
             </p>
           </div>
           <div className="flex flex-col gap-3">
             <Button asChild>
-              <Link href={`/dashboard/${festivalSlug}/pre-event-works/participants`}>
+              <Link
+                href={`/dashboard/${festivalSlug}/pre-event-works/participants`}
+              >
                 Go to Participants
               </Link>
             </Button>

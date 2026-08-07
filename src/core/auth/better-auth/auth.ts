@@ -1,11 +1,11 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
-import { emailOTP, twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
-import { randomUUID } from "node:crypto";
+import { emailOTP, twoFactor } from "better-auth/plugins";
 import { db } from "@/core/database/client";
 import {
   account,
@@ -204,9 +204,7 @@ export const auth = betterAuth({
         // user — we want an email.
         async sendOTP({ otp, user: u }) {
           if (process.env.GREENROOM_SILENT_AUTH === "1") return;
-          const { sendEmail } = await import(
-            "@/core/integrations/email/send"
-          );
+          const { sendEmail } = await import("@/core/integrations/email/send");
           await sendEmail({
             to: u.email,
             kind: { kind: "two_factor_otp", otp, email: u.email },
@@ -268,8 +266,7 @@ export const auth = betterAuth({
       // session — `newSession` is also populated.
       const isTwoFactorEnable = path === "/two-factor/enable";
       const isTwoFactorDisable = path === "/two-factor/disable";
-      const isBackupCodeRegen =
-        path === "/two-factor/generate-backup-codes";
+      const isBackupCodeRegen = path === "/two-factor/generate-backup-codes";
       const isTwoFactorVerify =
         path === "/two-factor/verify-totp" ||
         path === "/two-factor/verify-otp" ||
@@ -289,10 +286,8 @@ export const auth = betterAuth({
       const userId = newSession.user.id;
       const actorRole =
         (newSession.user as { globalRole?: string }).globalRole ?? "USER";
-      const ip =
-        ctx.request?.headers.get("x-forwarded-for") ?? null;
-      const userAgent =
-        ctx.request?.headers.get("user-agent") ?? null;
+      const ip = ctx.request?.headers.get("x-forwarded-for") ?? null;
+      const userAgent = ctx.request?.headers.get("user-agent") ?? null;
 
       // Sign-in analytics + audit-log entries only apply to the
       // sign-in flows. 2FA management doesn't change the
@@ -346,14 +341,11 @@ export const auth = betterAuth({
               and(eq(a.userId, userId), eq(a.providerId, "google")),
           });
           if (justLinked) {
-            const ageMs =
-              Date.now() - new Date(justLinked.createdAt).getTime();
+            const ageMs = Date.now() - new Date(justLinked.createdAt).getTime();
             if (ageMs < 60_000) {
-              const existingAccountsForUser = await db.query.account.findMany(
-                {
-                  where: (a, { eq }) => eq(a.userId, userId),
-                },
-              );
+              const existingAccountsForUser = await db.query.account.findMany({
+                where: (a, { eq }) => eq(a.userId, userId),
+              });
               const isLinkNotNew =
                 existingAccountsForUser.length > 1 ||
                 // Account-link path: the user already existed before

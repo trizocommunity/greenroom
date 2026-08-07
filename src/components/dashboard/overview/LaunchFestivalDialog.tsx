@@ -52,8 +52,8 @@ export function LaunchFestivalDialog({
         <div className="bg-muted p-4 rounded-md my-2">
           <p className="text-sm text-muted-foreground">
             Ensure you have completed all previous setup steps before launching.
-            Once launched, you can enable the public site for participants to view
-            schedules and results.
+            Once launched, you can enable the public site for participants to
+            view schedules and results.
           </p>
         </div>
         <DialogFooter className="sm:justify-end">

@@ -3,13 +3,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
@@ -34,6 +27,13 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -58,8 +58,8 @@ import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-rea
 import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
 import { toast } from "@/lib/toast";
-import { AssignmentModal } from "./AssignmentModal";
 import { ProgrammeActivityTimeline } from "../programmes/ProgrammeActivityTimeline";
+import { AssignmentModal } from "./AssignmentModal";
 
 type IndividualAssignmentRow = {
   kind: "individual";
@@ -772,22 +772,22 @@ export function AssignmentsClient({
           {programmeCards
             .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
             .map((card) => (
-            <ProgrammeCard
-              key={card.programmeId}
-              programmeName={card.programmeName}
-              programmeType={card.programmeType}
-              categoryName={card.categoryName}
-              status={card.status}
-              assignedAt={card.assignedAt}
-              progress={card.progress}
-              progressLabel={card.progressLabel}
-              groupBreakdown={card.groupBreakdown}
-              onViewDetails={() => {
-                setDetailsSearch("");
-                setSelectedProgrammeCard(card);
-              }}
-            />
-          ))}
+              <ProgrammeCard
+                key={card.programmeId}
+                programmeName={card.programmeName}
+                programmeType={card.programmeType}
+                categoryName={card.categoryName}
+                status={card.status}
+                assignedAt={card.assignedAt}
+                progress={card.progress}
+                progressLabel={card.progressLabel}
+                groupBreakdown={card.groupBreakdown}
+                onViewDetails={() => {
+                  setDetailsSearch("");
+                  setSelectedProgrammeCard(card);
+                }}
+              />
+            ))}
         </div>
       )}
 
@@ -798,18 +798,27 @@ export function AssignmentsClient({
               <PaginationPrevious
                 onClick={(e) => {
                   e.preventDefault();
-                  if (pageIndex > 0) setPageIndex(p => p - 1);
+                  if (pageIndex > 0) setPageIndex((p) => p - 1);
                 }}
-                className={pageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                className={
+                  pageIndex === 0
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
               />
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
                 onClick={(e) => {
                   e.preventDefault();
-                  if ((pageIndex + 1) * pageSize < programmeCards.length) setPageIndex(p => p + 1);
+                  if ((pageIndex + 1) * pageSize < programmeCards.length)
+                    setPageIndex((p) => p + 1);
                 }}
-                className={(pageIndex + 1) * pageSize >= programmeCards.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                className={
+                  (pageIndex + 1) * pageSize >= programmeCards.length
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
               />
             </PaginationItem>
           </PaginationContent>

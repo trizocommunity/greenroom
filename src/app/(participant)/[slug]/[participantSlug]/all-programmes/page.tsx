@@ -230,8 +230,8 @@ export default async function AllProgrammesPage({
               db
                 .select({ id: participantTable.id })
                 .from(participantTable)
-                .where(eq(participantTable.groupId, participant.groupId))
-            )
+                .where(eq(participantTable.groupId, participant.groupId)),
+            ),
           ),
           with: {
             participant: {

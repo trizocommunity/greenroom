@@ -62,9 +62,7 @@ export interface BulkUploadFlowProps<T> {
     index: number,
   ) => ParsedItem<T> | Promise<ParsedItem<T>>;
   validateRows?: (items: ParsedItem<T>[]) => Promise<ParsedItem<T>[]>; // Optional batch validation
-  onCommit: (
-    validItems: T[],
-  ) => Promise<{
+  onCommit: (validItems: T[]) => Promise<{
     success: boolean;
     count?: number;
     successCount?: number;
@@ -311,7 +309,9 @@ export function BulkUploadFlow<T>({
                   <div className="mx-auto w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-3 shadow-sm">
                     <CloudUpload className="h-6 w-6" />
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                    {title}
+                  </h2>
                   <p className="text-muted-foreground text-base max-w-md mx-auto">
                     {description ||
                       "Upload your spreadsheet to easily import multiple records at once."}
@@ -408,14 +408,16 @@ export function BulkUploadFlow<T>({
                     variant="outline"
                     className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm gap-1 sm:gap-2 border-emerald-500/20 bg-emerald-500/10 text-emerald-500 whitespace-nowrap flex items-center"
                   >
-                    <Check className="h-3 w-3 sm:h-4 sm:w-4" /> {validCount} Valid
+                    <Check className="h-3 w-3 sm:h-4 sm:w-4" /> {validCount}{" "}
+                    Valid
                   </Badge>
                   {errorCount > 0 && (
                     <Badge
                       variant="outline"
                       className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm gap-1 sm:gap-2 border-red-500/20 bg-red-500/10 text-red-500 whitespace-nowrap flex items-center"
                     >
-                      <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" /> {errorCount} Errors
+                      <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />{" "}
+                      {errorCount} Errors
                     </Badge>
                   )}
                   {warningCount > 0 && (
@@ -423,7 +425,8 @@ export function BulkUploadFlow<T>({
                       variant="outline"
                       className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm gap-1 sm:gap-2 border-amber-500/20 bg-amber-500/10 text-amber-600 whitespace-nowrap flex items-center"
                     >
-                      <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" /> {warningCount} Warnings
+                      <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />{" "}
+                      {warningCount} Warnings
                     </Badge>
                   )}
                 </div>
@@ -491,7 +494,7 @@ export function BulkUploadFlow<T>({
                                     {col.cell(row.data)}
                                   </TableCell>
                                 ))}
-                                
+
                                 <TableCell className="w-[150px] py-2">
                                   <div className="flex flex-col gap-1.5">
                                     {row.isValid && (
@@ -585,10 +588,13 @@ export function BulkUploadFlow<T>({
                                 </Button>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                               {columns.map((col, cIdx) => (
-                                <div key={cIdx} className="flex flex-col gap-0.5">
+                                <div
+                                  key={cIdx}
+                                  className="flex flex-col gap-0.5"
+                                >
                                   <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                                     {col.header}
                                   </span>

@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useCallback, useState } from "react";
+import { NewsImage } from "@/components/festival/public/NewsImage";
+import { EmptyState } from "@/components/festival/public/PublicSection";
 import {
   Pagination,
   PaginationContent,
@@ -13,8 +15,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { NewsImage } from "@/components/festival/public/NewsImage";
-import { EmptyState } from "@/components/festival/public/PublicSection";
 import { cn } from "@/core/utils/cn";
 import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
 
@@ -181,7 +181,6 @@ export function PublicNewsView({
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  
                   onClick={(e) => {
                     e.preventDefault();
                     if (page > 1) goToPage(page - 1);
@@ -193,7 +192,7 @@ export function PublicNewsView({
               {[...Array(Math.ceil(total / pageSize))].map((_, i) => {
                 const targetPage = i + 1;
                 const totalPages = Math.ceil(total / pageSize);
-                
+
                 if (
                   targetPage === 1 ||
                   targetPage === totalPages ||
@@ -202,7 +201,6 @@ export function PublicNewsView({
                   return (
                     <PaginationItem key={i}>
                       <PaginationLink
-                        
                         isActive={page === targetPage}
                         onClick={(e) => {
                           e.preventDefault();
@@ -214,7 +212,7 @@ export function PublicNewsView({
                     </PaginationItem>
                   );
                 }
-                
+
                 if (targetPage === page - 2 || targetPage === page + 2) {
                   return (
                     <PaginationItem key={i}>
@@ -222,18 +220,21 @@ export function PublicNewsView({
                     </PaginationItem>
                   );
                 }
-                
+
                 return null;
               })}
 
               <PaginationItem>
                 <PaginationNext
-                  
                   onClick={(e) => {
                     e.preventDefault();
                     if (page < Math.ceil(total / pageSize)) goToPage(page + 1);
                   }}
-                  className={page >= Math.ceil(total / pageSize) ? "pointer-events-none opacity-50" : ""}
+                  className={
+                    page >= Math.ceil(total / pageSize)
+                      ? "pointer-events-none opacity-50"
+                      : ""
+                  }
                 />
               </PaginationItem>
             </PaginationContent>

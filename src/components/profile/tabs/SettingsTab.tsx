@@ -9,8 +9,8 @@ import {
   AppSectionHeading,
   DataRow,
 } from "@/components/app/AppSection";
-import { TimezoneField } from "@/components/profile/TimezoneField";
 import { TwoFactorSetup } from "@/components/auth/TwoFactorSetup";
+import { TimezoneField } from "@/components/profile/TimezoneField";
 import { Label } from "@/components/ui/label";
 import {
   Select,

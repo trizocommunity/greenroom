@@ -9,8 +9,8 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  festival as festivals,
   festivalLifecycleEvent,
+  festival as festivals,
   user as users,
 } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";

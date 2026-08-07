@@ -10,10 +10,7 @@ import {
   TeamLeaderOtpEmail,
   teamLeaderOtpSubject,
 } from "./kinds/team-leader-otp";
-import {
-  TwoFactorOTPEmail,
-  twoFactorOTPSubject,
-} from "./kinds/two-factor-otp";
+import { TwoFactorOTPEmail, twoFactorOTPSubject } from "./kinds/two-factor-otp";
 import type { EmailKind, EmailTheme } from "./types";
 
 /**

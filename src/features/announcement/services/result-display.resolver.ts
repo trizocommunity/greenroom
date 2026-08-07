@@ -48,13 +48,23 @@ export async function resolveAssignmentDisplays(
   const leadByAssignment = await loadTeamLeadsForAssignments(assignmentIds);
   const memberDisplayByAssignment = await loadFirstMemberDisplay(assignmentIds);
 
-  return buildAssignmentDisplays(rows, leadByAssignment, memberDisplayByAssignment);
+  return buildAssignmentDisplays(
+    rows,
+    leadByAssignment,
+    memberDisplayByAssignment,
+  );
 }
 
 export function buildAssignmentDisplays(
   rows: ResultDisplayRow[],
-  leadByAssignment: Map<string, { name: string | null; chestNumber: string | null }>,
-  memberDisplayByAssignment: Map<string, { name: string | null; chestNumber: string | null }>,
+  leadByAssignment: Map<
+    string,
+    { name: string | null; chestNumber: string | null }
+  >,
+  memberDisplayByAssignment: Map<
+    string,
+    { name: string | null; chestNumber: string | null }
+  >,
 ): Map<string, DisplayInfo> {
   const displayByAssignment = new Map<string, DisplayInfo>();
   for (const r of rows) {

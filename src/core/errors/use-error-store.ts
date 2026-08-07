@@ -23,11 +23,7 @@ function useFilteredSnapshot(
     return filtered;
   };
 
-  return useSyncExternalStore(
-    errorStore.subscribe,
-    getFiltered,
-    () => EMPTY,
-  );
+  return useSyncExternalStore(errorStore.subscribe, getFiltered, () => EMPTY);
 }
 
 const EMPTY: ErrorEntry[] = [];
@@ -46,9 +42,7 @@ export interface ErrorDispatcher {
   clear: () => void;
 }
 
-export function useErrorDispatcher(
-  defaultScope?: ErrorScope,
-): ErrorDispatcher {
+export function useErrorDispatcher(defaultScope?: ErrorScope): ErrorDispatcher {
   return {
     push: useCallback(
       (input: string | PushInput) => {

@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  createGeneralEntryCategoryAction,
   createGeneralEntryAction,
-  updateGeneralEntryAction,
+  createGeneralEntryCategoryAction,
   deleteGeneralEntryAction,
   publishGeneralEntryAction,
+  updateGeneralEntryAction,
 } from "../actions/general-entries.actions";
 
 vi.mock("next/cache", () => ({
@@ -17,7 +17,8 @@ vi.mock("@/core/auth/assert-festival-access", () => ({
 
 vi.mock("@/core/auth/session", () => ({
   getSession: vi.fn().mockResolvedValue({
-    userId: "user-1", role: "SUPER_ADMIN" 
+    userId: "user-1",
+    role: "SUPER_ADMIN",
   }),
 }));
 
@@ -25,7 +26,9 @@ vi.mock("@/core/database/client", () => ({
   db: {
     query: {
       user: {
-        findFirst: vi.fn().mockResolvedValue({ name: "User 1", email: "user1@example.com" }),
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ name: "User 1", email: "user1@example.com" }),
       },
     },
   },
@@ -75,15 +78,19 @@ describe("general-entries.actions", () => {
         categoryId: null,
         type: "GENERAL",
         awards: [{ groupId: "g-1", points: 20 }],
-      })
+      }),
     ).resolves.not.toThrow();
   });
 
   it("deleteGeneralEntryAction calls service", async () => {
-    await expect(deleteGeneralEntryAction("f-1", "entry-1")).resolves.not.toThrow();
+    await expect(
+      deleteGeneralEntryAction("f-1", "entry-1"),
+    ).resolves.not.toThrow();
   });
 
   it("publishGeneralEntryAction calls service", async () => {
-    await expect(publishGeneralEntryAction("f-1", "entry-1")).resolves.not.toThrow();
+    await expect(
+      publishGeneralEntryAction("f-1", "entry-1"),
+    ).resolves.not.toThrow();
   });
 });

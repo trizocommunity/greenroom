@@ -34,8 +34,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCurrentUser } from "@/features/auth/hooks/use-auth";
 import { twoFactor, useSession } from "@/core/auth/better-auth/client";
+import { useCurrentUser } from "@/features/auth/hooks/use-auth";
 import { toast } from "@/lib/toast";
 
 /**
@@ -76,8 +76,7 @@ export function TwoFactorSetup() {
 
   const isEnabled =
     (session?.user as { twoFactorEnabled?: boolean } | undefined)
-      ?.twoFactorEnabled === true ||
-    currentUser?.twoFactorEnabled === true;
+      ?.twoFactorEnabled === true || currentUser?.twoFactorEnabled === true;
 
   const onStartSetup = () => {
     setSetupData(null);
@@ -199,8 +198,8 @@ export function TwoFactorSetup() {
           <DialogHeader>
             <DialogTitle>Set up two-factor authentication</DialogTitle>
             <DialogDescription>
-              Scan this code with your authenticator app, then enter the
-              6-digit code it shows to confirm.
+              Scan this code with your authenticator app, then enter the 6-digit
+              code it shows to confirm.
             </DialogDescription>
           </DialogHeader>
 
@@ -279,10 +278,12 @@ export function TwoFactorSetup() {
       <AlertDialog open={disableOpen} onOpenChange={setDisableOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Disable two-factor authentication?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Anyone with your password will be able to sign in without a
-              second factor. Existing backup codes will stop working.
+              Anyone with your password will be able to sign in without a second
+              factor. Existing backup codes will stop working.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -352,8 +353,7 @@ function DisabledState({
           <p className="text-xs text-muted-foreground leading-relaxed">
             Add a second factor to protect your account. After enabling,
             you&apos;ll sign in with a 6-digit code from an authenticator app
-            (Google Authenticator, 1Password, Authy…) or a one-time email
-            code.
+            (Google Authenticator, 1Password, Authy…) or a one-time email code.
           </p>
           <Button
             type="button"
@@ -401,8 +401,8 @@ function EnabledState({
               Two-factor authentication is on
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Every sign-in will require a 6-digit code from your
-              authenticator app (or a backup code).
+              Every sign-in will require a 6-digit code from your authenticator
+              app (or a backup code).
             </p>
           </div>
         </div>
@@ -482,8 +482,8 @@ function TotpUriDisplay({ uri }: { uri: string }) {
         </Button>
       </div>
       <p className="text-[11px] text-muted-foreground leading-relaxed">
-        Paste this into your authenticator app, or scan the QR code if your
-        app supports it (most apps accept the URI directly).
+        Paste this into your authenticator app, or scan the QR code if your app
+        supports it (most apps accept the URI directly).
       </p>
     </div>
   );
@@ -519,8 +519,8 @@ function BackupCodesList({ codes }: { codes: string[] }) {
       </div>
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
         <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed mb-2">
-          Each code works once. We can&apos;t show them again — store them in
-          a password manager or print this page.
+          Each code works once. We can&apos;t show them again — store them in a
+          password manager or print this page.
         </p>
         <div className="grid grid-cols-2 gap-1.5 font-mono text-[12px] text-foreground">
           {codes.map((code) => (

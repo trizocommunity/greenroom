@@ -15,38 +15,33 @@
  */
 
 export {
+  type AnnouncerQueueProgramme,
+  getAnnouncerQueue,
+  getResultsConsoleProgrammes,
+} from "@/features/announcement/services/announcer-queue.read-model";
+export {
+  getPenOfTheFest,
+  getVocalOfTheFest,
+} from "@/features/announcement/services/awards.read-model";
+export {
+  getParticipantTopScorers,
+  type ParticipantTopScorerRow,
+} from "@/features/announcement/services/participant-top-scorers.read-model";
+export {
+  getPublishedResults,
+  type PublishedResultProgramme,
+} from "@/features/announcement/services/published-results.read-model";
+export {
   type DisplayInfo,
   formatParticipantLabel,
   type ProgrammeResultRow,
   type ResultDisplayRow,
   resolveAssignmentDisplays,
 } from "@/features/announcement/services/result-display.resolver";
-
 export {
-  type AnnouncerQueueProgramme,
-  getAnnouncerQueue,
-  getResultsConsoleProgrammes,
-} from "@/features/announcement/services/announcer-queue.read-model";
-
-export {
-  type PublishedResultProgramme,
-  getPublishedResults,
-} from "@/features/announcement/services/published-results.read-model";
-
-export {
-  type TeamStandingRow,
   computeStandings,
   getNextResultNumber,
   getProgrammeStatusCounts,
   getStandingsContext,
+  type TeamStandingRow,
 } from "@/features/announcement/services/team-standings.read-model";
-
-export {
-  type ParticipantTopScorerRow,
-  getParticipantTopScorers,
-} from "@/features/announcement/services/participant-top-scorers.read-model";
-
-export {
-  getPenOfTheFest,
-  getVocalOfTheFest,
-} from "@/features/announcement/services/awards.read-model";

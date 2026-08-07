@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import type { Tier } from "@/core/types/app-enums";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import {
   getMediaImagesAction,
   getMediaVideosAction,

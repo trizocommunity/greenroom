@@ -37,24 +37,20 @@ describe("sendEmail — global toggle", () => {
   // The default 5s vitest timeout is too tight under parallel-runner
   // load (the auth.test.ts better-auth constructor also slows things
   // down). Bump the timeout to 15s for the whole suite.
-  it(
-    "returns kindDisabled result when toggle is off",
-    async () => {
-      mockIsEnabled.mockResolvedValue(false);
-      const { sendEmail } = await import("../send");
+  it("returns kindDisabled result when toggle is off", async () => {
+    mockIsEnabled.mockResolvedValue(false);
+    const { sendEmail } = await import("../send");
 
-      const result = await sendEmail({
-        to: "x@example.com",
-        kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
-      });
+    const result = await sendEmail({
+      to: "x@example.com",
+      kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
+    });
 
-      expect("kindDisabled" in result).toBe(true);
-      if ("kindDisabled" in result) {
-        expect(result.id).toBe("skipped-sign_in_otp");
-      }
-    },
-    15_000,
-  );
+    expect("kindDisabled" in result).toBe(true);
+    if ("kindDisabled" in result) {
+      expect(result.id).toBe("skipped-sign_in_otp");
+    }
+  }, 15_000);
 
   it("proceeds to Resend when toggle is on", async () => {
     mockIsEnabled.mockResolvedValue(true);

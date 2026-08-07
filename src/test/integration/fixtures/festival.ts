@@ -47,7 +47,9 @@ export async function buildFestivalWithBothShapes(
         tier,
         status: "READY",
         isLocked: false,
-        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        expiresAt: new Date(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         publicSiteEnabled: false,
         scoringSystem: "SCORE_BASED",
       })

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
 
 const mockDbSelect = vi.fn();

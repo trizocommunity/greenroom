@@ -1,4 +1,9 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { PaginatedResponse } from "@/api/contracts/_shared";
 import type {
   BulkCreateParticipantInput,
@@ -53,13 +58,16 @@ export function useParticipantsPaginated(
       if (params.sort) searchParams.append("sort", params.sort);
       if (params.order) searchParams.append("order", params.order);
       if (params.search) searchParams.append("search", params.search);
-      if (params.groupId && params.groupId !== "ALL") searchParams.append("groupId", params.groupId);
-      if (params.categoryId && params.categoryId !== "ALL") searchParams.append("categoryId", params.categoryId);
-      if (params.isTeamLeader !== undefined) searchParams.append("isTeamLeader", params.isTeamLeader.toString());
+      if (params.groupId && params.groupId !== "ALL")
+        searchParams.append("groupId", params.groupId);
+      if (params.categoryId && params.categoryId !== "ALL")
+        searchParams.append("categoryId", params.categoryId);
+      if (params.isTeamLeader !== undefined)
+        searchParams.append("isTeamLeader", params.isTeamLeader.toString());
 
-      const response = await apiClient.get<ApiResponse<PaginatedResponse<Participant>>>(
-        `/participants?${searchParams.toString()}`,
-      );
+      const response = await apiClient.get<
+        ApiResponse<PaginatedResponse<Participant>>
+      >(`/participants?${searchParams.toString()}`);
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId,

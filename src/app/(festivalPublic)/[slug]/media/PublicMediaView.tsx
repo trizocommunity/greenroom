@@ -4,6 +4,9 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { EmptyState } from "@/components/festival/public/PublicSection";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Pagination,
   PaginationContent,
@@ -13,9 +16,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { EmptyState } from "@/components/festival/public/PublicSection";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
 import {
   extractYouTubeId,
@@ -190,19 +190,20 @@ export function PublicMediaView({
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious
-                      
                       onClick={(e) => {
                         e.preventDefault();
                         if (page > 1) goToPage(page - 1);
                       }}
-                      className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                      className={
+                        page <= 1 ? "pointer-events-none opacity-50" : ""
+                      }
                     />
                   </PaginationItem>
 
                   {[...Array(Math.ceil(total / pageSize))].map((_, i) => {
                     const targetPage = i + 1;
                     const totalPages = Math.ceil(total / pageSize);
-                    
+
                     if (
                       targetPage === 1 ||
                       targetPage === totalPages ||
@@ -211,7 +212,6 @@ export function PublicMediaView({
                       return (
                         <PaginationItem key={i}>
                           <PaginationLink
-                            
                             isActive={page === targetPage}
                             onClick={(e) => {
                               e.preventDefault();
@@ -223,7 +223,7 @@ export function PublicMediaView({
                         </PaginationItem>
                       );
                     }
-                    
+
                     if (targetPage === page - 2 || targetPage === page + 2) {
                       return (
                         <PaginationItem key={i}>
@@ -231,18 +231,22 @@ export function PublicMediaView({
                         </PaginationItem>
                       );
                     }
-                    
+
                     return null;
                   })}
 
                   <PaginationItem>
                     <PaginationNext
-                      
                       onClick={(e) => {
                         e.preventDefault();
-                        if (page < Math.ceil(total / pageSize)) goToPage(page + 1);
+                        if (page < Math.ceil(total / pageSize))
+                          goToPage(page + 1);
                       }}
-                      className={page >= Math.ceil(total / pageSize) ? "pointer-events-none opacity-50" : ""}
+                      className={
+                        page >= Math.ceil(total / pageSize)
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
                     />
                   </PaginationItem>
                 </PaginationContent>

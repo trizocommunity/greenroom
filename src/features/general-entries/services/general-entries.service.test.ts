@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AppError } from "@/core/errors/errors";
 import {
   assertNotPublished,
   createGeneralEntry,
-  updateGeneralEntry,
   deleteGeneralEntry,
-  updateGeneralEntryCategory,
   deleteGeneralEntryCategory,
+  updateGeneralEntry,
+  updateGeneralEntryCategory,
 } from "./general-entries.service";
-import { AppError } from "@/core/errors/errors";
 
 const mockDbSelect = vi.fn();
 const mockDbInsert = vi.fn();
@@ -134,8 +134,10 @@ describe("general-entries.service", () => {
 
     it("should throw if entries are using it", async () => {
       mockDbSelect.mockResolvedValue([{ id: "entry-1" }]);
-      
-      await expect(deleteGeneralEntryCategory("cat-1")).rejects.toThrow(AppError);
+
+      await expect(deleteGeneralEntryCategory("cat-1")).rejects.toThrow(
+        AppError,
+      );
     });
   });
 });

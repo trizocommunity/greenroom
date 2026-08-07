@@ -5,9 +5,9 @@ import {
   programmeAssignmentMember as assignmentMemberTable,
   programmeAssignment as assignmentTable,
   category as categoryTable,
+  programmeCodeLetter as codeLetterTable,
   participant as participantTable,
   programme as programmeTable,
-  programmeCodeLetter as codeLetterTable,
   programmeReportingSession as prsTable,
   programmeReportedParticipant as reportedParticipantTable,
   result as resultTable,
@@ -15,13 +15,13 @@ import {
 } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
 import { MS, nowPlus, serverNowIso, serverNowMs } from "@/core/datetime/server";
+import { ReportingSessionRepository } from "@/features/programmes/repositories/reporting-session.repository";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import {
   type AccessSession,
   StageAssignmentService,
 } from "@/features/stages/services/stage-assignment.service";
 import { ReportingEventAdapter } from "./reporting-event-adapter.service";
-import { ReportingSessionRepository } from "@/features/programmes/repositories/reporting-session.repository";
 
 async function getOrCreateSessionByProgramme(
   programmeId: string,
@@ -140,7 +140,8 @@ export const ProgrammeReportingService = {
     actorName: string,
     opts?: { keepProgrammeInResetStatus?: boolean },
   ) {
-    const session = await ReportingSessionRepository.loadById(reportingSessionId);
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
     session.reopen(actorName);
 
     await db.transaction(async (tx) => {
@@ -353,7 +354,8 @@ export const ProgrammeReportingService = {
   },
 
   async reset(reportingSessionId: string, actorName: string) {
-    const session = await ReportingSessionRepository.loadById(reportingSessionId);
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
     session.reset(actorName);
     const events = await ReportingSessionRepository.save(session);
     await ReportingEventAdapter.dispatch(events);
@@ -378,7 +380,8 @@ export const ProgrammeReportingService = {
     isReported: boolean,
     actorName: string,
   ) {
-    const session = await ReportingSessionRepository.loadById(reportingSessionId);
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
 
     const assignment = await db.query.programmeAssignment.findFirst({
       where: eq(assignmentTable.id, assignmentId),
@@ -444,7 +447,8 @@ export const ProgrammeReportingService = {
   ) {
     if (assignmentIds.length === 0) return;
 
-    const session = await ReportingSessionRepository.loadById(reportingSessionId);
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
 
     const assignments = await db.query.programmeAssignment.findMany({
       where: inArray(assignmentTable.id, assignmentIds),
@@ -469,7 +473,11 @@ export const ProgrammeReportingService = {
         groupId: string | null;
         teamNumber: number | null;
       };
-      members: Array<{ id: string; assignmentId: string; participantId: string }>;
+      members: Array<{
+        id: string;
+        assignmentId: string;
+        participantId: string;
+      }>;
     }> = [];
 
     if (isGroupProgramme) {
@@ -525,7 +533,8 @@ export const ProgrammeReportingService = {
   },
 
   async close(reportingSessionId: string, actorName: string) {
-    const session = await ReportingSessionRepository.loadById(reportingSessionId);
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
 
     const dbSession = await db.query.programmeReportingSession.findFirst({
       where: eq(prsTable.id, reportingSessionId),
@@ -579,7 +588,8 @@ export const ProgrammeReportingService = {
   },
 
   async getReportingStats(reportingSessionId: string) {
-    const session = await ReportingSessionRepository.loadById(reportingSessionId);
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
 
     const assignments = await db.query.programmeAssignment.findMany({
       where: eq(assignmentTable.programmeId, session.programmeId),
@@ -609,7 +619,9 @@ export const ProgrammeReportingService = {
       : session.reportedParticipants.length;
 
     const remaining = totalUnits - reportedCount;
-    const startTime = session.startedAt ? parseInstant(session.startedAt) : null;
+    const startTime = session.startedAt
+      ? parseInstant(session.startedAt)
+      : null;
 
     let estimatedEnd: Date | null = null;
     let estimatedRemainingMinutes: number | null = null;
@@ -647,7 +659,8 @@ export const ProgrammeReportingService = {
     }>,
     actorName: string,
   ) {
-    const session = await ReportingSessionRepository.loadById(reportingSessionId);
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
 
     const normalizedAssignments = codeAssignments.map((a) => ({
       teamNumber: a.teamNumber,
@@ -668,7 +681,8 @@ export const ProgrammeReportingService = {
   },
 
   async resetSpinCodeLetters(reportingSessionId: string, actorName: string) {
-    const session = await ReportingSessionRepository.loadById(reportingSessionId);
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
     session.resetSpinCodeLetters(actorName);
     const events = await ReportingSessionRepository.save(session);
     await ReportingEventAdapter.dispatch(events);

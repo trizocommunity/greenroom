@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import { EmptyState } from "@/components/festival/public/PublicSection";
 import {
   Pagination,
   PaginationContent,
@@ -12,7 +13,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { EmptyState } from "@/components/festival/public/PublicSection";
 import { cn } from "@/core/utils/cn";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
 
@@ -185,12 +185,15 @@ export function ScheduleByDay({
                     <PaginationContent>
                       <PaginationItem>
                         <PaginationPrevious
-                          
                           onClick={(e) => {
                             e.preventDefault();
                             setPageIndex((p) => Math.max(0, p - 1));
                           }}
-                          className={pageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                          className={
+                            pageIndex === 0
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
                         />
                       </PaginationItem>
 
@@ -203,7 +206,6 @@ export function ScheduleByDay({
                           return (
                             <PaginationItem key={i}>
                               <PaginationLink
-                                
                                 isActive={pageIndex === i}
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -215,7 +217,7 @@ export function ScheduleByDay({
                             </PaginationItem>
                           );
                         }
-                        
+
                         if (i === pageIndex - 2 || i === pageIndex + 2) {
                           return (
                             <PaginationItem key={i}>
@@ -223,18 +225,23 @@ export function ScheduleByDay({
                             </PaginationItem>
                           );
                         }
-                        
+
                         return null;
                       })}
 
                       <PaginationItem>
                         <PaginationNext
-                          
                           onClick={(e) => {
                             e.preventDefault();
-                            setPageIndex((p) => Math.min(totalPages - 1, p + 1));
+                            setPageIndex((p) =>
+                              Math.min(totalPages - 1, p + 1),
+                            );
                           }}
-                          className={pageIndex === totalPages - 1 ? "pointer-events-none opacity-50" : ""}
+                          className={
+                            pageIndex === totalPages - 1
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
                         />
                       </PaginationItem>
                     </PaginationContent>

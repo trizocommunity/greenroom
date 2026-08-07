@@ -39,7 +39,12 @@ describe("mutateWithAccounting", () => {
 
     expect(db.transaction).toHaveBeenCalledOnce();
     expect(mockIncrementUsage).toHaveBeenCalledOnce();
-    expect(mockIncrementUsage).toHaveBeenCalledWith("fest-1", "storage", 7, mockTx);
+    expect(mockIncrementUsage).toHaveBeenCalledWith(
+      "fest-1",
+      "storage",
+      7,
+      mockTx,
+    );
     expect(mockOperation).toHaveBeenCalledOnce();
     expect(mockOperation).toHaveBeenCalledWith(mockTx);
     expect(result).toBe("operation-result");

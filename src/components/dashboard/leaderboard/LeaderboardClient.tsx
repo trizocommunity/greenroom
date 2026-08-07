@@ -1,11 +1,19 @@
 "use client";
 
-import {
-  Search,
-  Users,
-} from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { useFestival } from "@/components/festival/FestivalContext";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
@@ -13,9 +21,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useFestival } from "@/components/festival/FestivalContext";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -31,14 +37,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
@@ -46,7 +44,6 @@ import {
   getParticipantLeaderboardView,
   isResultVisibleForLeaderboard,
 } from "@/features/results/services/leaderboard-visibility.service";
-import { Badge } from "@/components/ui/badge";
 
 function assignmentOf(r: any) {
   return r.programmeAssignment ?? r.assignment;
@@ -166,7 +163,8 @@ export function LeaderboardClient({
     defaultParticipantFilterGroup ?? "all",
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedParticipant, setSelectedParticipant] = useState<ParticipantRow | null>(null);
+  const [selectedParticipant, setSelectedParticipant] =
+    useState<ParticipantRow | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = 15;
 
@@ -179,7 +177,7 @@ export function LeaderboardClient({
 
   // Top participants by points (individual programmes only).
   const participantStandings = useMemo(() => {
-    const byParticipant: Record<string, Omit<ParticipantRow, 'rank'>> = {};
+    const byParticipant: Record<string, Omit<ParticipantRow, "rank">> = {};
 
     const participantView = getParticipantLeaderboardView(tier);
 
@@ -231,7 +229,7 @@ export function LeaderboardClient({
       } else {
         byParticipant[sid].stage += p;
       }
-      
+
       byParticipant[sid].programmes.push({
         id: r.programme?.id ?? "unknown",
         name: r.programme?.name ?? "Unknown Programme",
@@ -267,13 +265,14 @@ export function LeaderboardClient({
   return (
     <div className="space-y-6">
       {children}
-      
+
       <div className="flex flex-col gap-1">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
           Top Scorers
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          View event top performers and their total points (only includes published results)
+          View event top performers and their total points (only includes
+          published results)
         </p>
       </div>
 
@@ -365,59 +364,62 @@ export function LeaderboardClient({
                 participantStandings
                   .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
                   .map((row) => (
-                  <TableRow
-                    key={row.participantId}
-                    className={cn("cursor-pointer hover:bg-muted/50 transition-colors", RANK_STYLES[row.rank - 1]?.row)}
-                    onClick={() => setSelectedParticipant(row)}
-                  >
-                    <TableCell className="text-center">
-                      <RankBadge rank={row.rank} />
-                    </TableCell>
-                    <TableCell className="font-medium text-foreground">
-                      {row.name}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {row.gender
-                        ? row.gender.charAt(0).toUpperCase() +
-                          row.gender.slice(1).toLowerCase()
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {row.groupName ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <span
-                            className="h-2 w-2 rounded-full shadow-sm"
-                            style={{
-                              backgroundColor: row.groupColor ?? "#94a3b8",
-                            }}
-                            aria-hidden
-                          />
-                          <span className="text-muted-foreground">
-                            {row.groupName}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
+                    <TableRow
+                      key={row.participantId}
+                      className={cn(
+                        "cursor-pointer hover:bg-muted/50 transition-colors",
+                        RANK_STYLES[row.rank - 1]?.row,
                       )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {row.categoryName ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-sky-600 dark:text-sky-400 font-medium">
-                        {row.offstage}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-rose-600 dark:text-rose-400 font-medium">
-                        {row.stage}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right font-bold tabular-nums text-foreground">
-                      {row.points}
-                    </TableCell>
-                  </TableRow>
-                ))
+                      onClick={() => setSelectedParticipant(row)}
+                    >
+                      <TableCell className="text-center">
+                        <RankBadge rank={row.rank} />
+                      </TableCell>
+                      <TableCell className="font-medium text-foreground">
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {row.gender
+                          ? row.gender.charAt(0).toUpperCase() +
+                            row.gender.slice(1).toLowerCase()
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {row.groupName ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-2 w-2 rounded-full shadow-sm"
+                              style={{
+                                backgroundColor: row.groupColor ?? "#94a3b8",
+                              }}
+                              aria-hidden
+                            />
+                            <span className="text-muted-foreground">
+                              {row.groupName}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {row.categoryName ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-sky-600 dark:text-sky-400 font-medium">
+                          {row.offstage}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-rose-600 dark:text-rose-400 font-medium">
+                          {row.stage}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-bold tabular-nums text-foreground">
+                        {row.points}
+                      </TableCell>
+                    </TableRow>
+                  ))
               ) : (
                 <TableRow>
                   <TableCell
@@ -439,67 +441,68 @@ export function LeaderboardClient({
             participantStandings
               .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
               .map((row) => (
-              <div
-                key={row.participantId}
-                onClick={() => setSelectedParticipant(row)}
-                className={cn(
-                  "flex items-start justify-between gap-3 rounded-xl border px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors",
-                  RANK_STYLES[row.rank - 1]
-                    ? cn("border-transparent", RANK_STYLES[row.rank - 1].row)
-                    : "border-border/70 bg-background",
-                )}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-3">
-                    <RankBadge rank={row.rank} />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{row.name}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                        <span>{row.categoryName ?? "—"}</span>
-                        <span className="inline-flex items-center gap-1">
-                          {row.groupName ? (
-                            <>
-                              <span
-                                className="h-1.5 w-1.5 rounded-full border border-white/60 shadow-sm"
-                                style={{
-                                  backgroundColor: row.groupColor ?? "#94a3b8",
-                                }}
-                                aria-hidden
-                              />
-                              <span>{row.groupName}</span>
-                            </>
-                          ) : (
-                            "—"
-                          )}
-                        </span>
+                <div
+                  key={row.participantId}
+                  onClick={() => setSelectedParticipant(row)}
+                  className={cn(
+                    "flex items-start justify-between gap-3 rounded-xl border px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors",
+                    RANK_STYLES[row.rank - 1]
+                      ? cn("border-transparent", RANK_STYLES[row.rank - 1].row)
+                      : "border-border/70 bg-background",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3">
+                      <RankBadge rank={row.rank} />
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{row.name}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                          <span>{row.categoryName ?? "—"}</span>
+                          <span className="inline-flex items-center gap-1">
+                            {row.groupName ? (
+                              <>
+                                <span
+                                  className="h-1.5 w-1.5 rounded-full border border-white/60 shadow-sm"
+                                  style={{
+                                    backgroundColor:
+                                      row.groupColor ?? "#94a3b8",
+                                  }}
+                                  aria-hidden
+                                />
+                                <span>{row.groupName}</span>
+                              </>
+                            ) : (
+                              "—"
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex flex-col items-end pt-0.5 min-w-[70px]">
-                  <div className="text-sm font-bold tabular-nums">
-                    {row.points}{" "}
-                    <span className="text-[10px] font-normal text-muted-foreground">
-                      pts
-                    </span>
+                  <div className="flex flex-col items-end pt-0.5 min-w-[70px]">
+                    <div className="text-sm font-bold tabular-nums">
+                      {row.points}{" "}
+                      <span className="text-[10px] font-normal text-muted-foreground">
+                        pts
+                      </span>
+                    </div>
+                    <div className="text-[10px] flex gap-2 mt-1">
+                      <span
+                        className="text-sky-600 dark:text-sky-400"
+                        title="Offstage Points"
+                      >
+                        Off: {row.offstage}
+                      </span>
+                      <span
+                        className="text-rose-600 dark:text-rose-400"
+                        title="Stage Points"
+                      >
+                        Stg: {row.stage}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-[10px] flex gap-2 mt-1">
-                    <span
-                      className="text-sky-600 dark:text-sky-400"
-                      title="Offstage Points"
-                    >
-                      Off: {row.offstage}
-                    </span>
-                    <span
-                      className="text-rose-600 dark:text-rose-400"
-                      title="Stage Points"
-                    >
-                      Stg: {row.stage}
-                    </span>
-                  </div>
                 </div>
-              </div>
-            ))
+              ))
           ) : (
             <p className="text-sm text-muted-foreground text-center py-6">
               No participant results yet.
@@ -507,7 +510,7 @@ export function LeaderboardClient({
           )}
         </div>
       </Card>
-      
+
       {participantStandings.length > pageSize && (
         <Pagination className="mt-4">
           <PaginationContent>
@@ -515,18 +518,27 @@ export function LeaderboardClient({
               <PaginationPrevious
                 onClick={(e) => {
                   e.preventDefault();
-                  if (pageIndex > 0) setPageIndex(p => p - 1);
+                  if (pageIndex > 0) setPageIndex((p) => p - 1);
                 }}
-                className={pageIndex === 0 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                className={
+                  pageIndex === 0
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
               />
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
                 onClick={(e) => {
                   e.preventDefault();
-                  if ((pageIndex + 1) * pageSize < participantStandings.length) setPageIndex(p => p + 1);
+                  if ((pageIndex + 1) * pageSize < participantStandings.length)
+                    setPageIndex((p) => p + 1);
                 }}
-                className={(pageIndex + 1) * pageSize >= participantStandings.length ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                className={
+                  (pageIndex + 1) * pageSize >= participantStandings.length
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
               />
             </PaginationItem>
           </PaginationContent>
@@ -534,7 +546,10 @@ export function LeaderboardClient({
       )}
 
       {/* Participant Breakdown Drawer */}
-      <Drawer open={!!selectedParticipant} onOpenChange={(open) => !open && setSelectedParticipant(null)}>
+      <Drawer
+        open={!!selectedParticipant}
+        onOpenChange={(open) => !open && setSelectedParticipant(null)}
+      >
         <DrawerContent>
           <div className="mx-auto w-full max-w-2xl max-h-[85vh] flex flex-col">
             {selectedParticipant && (
@@ -551,7 +566,10 @@ export function LeaderboardClient({
                           <span className="inline-flex items-center gap-1.5 font-medium">
                             <span
                               className="h-2 w-2 rounded-full shadow-sm"
-                              style={{ backgroundColor: selectedParticipant.groupColor ?? "#94a3b8" }}
+                              style={{
+                                backgroundColor:
+                                  selectedParticipant.groupColor ?? "#94a3b8",
+                              }}
                               aria-hidden
                             />
                             {selectedParticipant.groupName}
@@ -562,44 +580,69 @@ export function LeaderboardClient({
                       </DrawerDescription>
                     </div>
                     <div className="text-right">
-                      <div className="text-3xl font-black text-violet-600 dark:text-violet-400">{selectedParticipant.points}</div>
-                      <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Total Pts</div>
+                      <div className="text-3xl font-black text-violet-600 dark:text-violet-400">
+                        {selectedParticipant.points}
+                      </div>
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+                        Total Pts
+                      </div>
                     </div>
                   </div>
                 </DrawerHeader>
                 <ScrollArea className="flex-1 p-4">
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="rounded-xl border bg-sky-500/5 p-4 text-center">
-                      <div className="text-sm font-medium text-sky-600 dark:text-sky-400 mb-1">Offstage</div>
-                      <div className="text-2xl font-bold">{selectedParticipant.offstage}</div>
+                      <div className="text-sm font-medium text-sky-600 dark:text-sky-400 mb-1">
+                        Offstage
+                      </div>
+                      <div className="text-2xl font-bold">
+                        {selectedParticipant.offstage}
+                      </div>
                     </div>
                     <div className="rounded-xl border bg-rose-500/5 p-4 text-center">
-                      <div className="text-sm font-medium text-rose-600 dark:text-rose-400 mb-1">Stage</div>
-                      <div className="text-2xl font-bold">{selectedParticipant.stage}</div>
+                      <div className="text-sm font-medium text-rose-600 dark:text-rose-400 mb-1">
+                        Stage
+                      </div>
+                      <div className="text-2xl font-bold">
+                        {selectedParticipant.stage}
+                      </div>
                     </div>
                   </div>
 
-                  <h4 className="font-semibold text-lg mb-3">Scoring Breakdown</h4>
+                  <h4 className="font-semibold text-lg mb-3">
+                    Scoring Breakdown
+                  </h4>
                   <div className="border rounded-xl overflow-hidden">
                     <Table>
                       <TableHeader className="bg-muted/50">
                         <TableRow>
                           <TableHead>Programme</TableHead>
                           <TableHead className="w-24">Type</TableHead>
-                          <TableHead className="w-20 text-right">Points</TableHead>
+                          <TableHead className="w-20 text-right">
+                            Points
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {selectedParticipant.programmes.length > 0 ? (
                           selectedParticipant.programmes.map((prog, i) => (
                             <TableRow key={`${prog.id}-${i}`}>
-                              <TableCell className="font-medium">{prog.name}</TableCell>
+                              <TableCell className="font-medium">
+                                {prog.name}
+                              </TableCell>
                               <TableCell>
-                                <Badge variant="outline" className={cn(
-                                  "font-normal text-[10px]",
-                                  prog.stageType === "NON_STAGE" ? "text-sky-600 border-sky-200 bg-sky-500/10" : "text-rose-600 border-rose-200 bg-rose-500/10"
-                                )}>
-                                  {prog.stageType === "NON_STAGE" ? "Offstage" : "Stage"}
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "font-normal text-[10px]",
+                                    prog.stageType === "NON_STAGE"
+                                      ? "text-sky-600 border-sky-200 bg-sky-500/10"
+                                      : "text-rose-600 border-rose-200 bg-rose-500/10",
+                                  )}
+                                >
+                                  {prog.stageType === "NON_STAGE"
+                                    ? "Offstage"
+                                    : "Stage"}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right font-bold tabular-nums">
@@ -609,7 +652,10 @@ export function LeaderboardClient({
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground py-6">
+                            <TableCell
+                              colSpan={3}
+                              className="text-center text-muted-foreground py-6"
+                            >
                               No programmes found.
                             </TableCell>
                           </TableRow>

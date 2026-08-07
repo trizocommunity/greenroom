@@ -1,7 +1,8 @@
 "use server";
 
-import { and, eq, sql, isNotNull, asc } from "drizzle-orm";
+import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
@@ -12,9 +13,7 @@ import {
 import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
-import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { assertAnnouncerAccess } from "@/features/announcement/actions/announcement-access";
-import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
 import {
   computeStandings,
   getNextResultNumber,
@@ -22,6 +21,7 @@ import {
 } from "@/features/announcement/services/announcer.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
+import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
 import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 
 function revalidateAnnouncerPaths(slug: string) {
@@ -327,7 +327,7 @@ export async function swapResultNumbers(
     const programmes = await db.query.programme.findMany({
       where: and(
         eq(programmeTable.festivalId, festivalId),
-        isNotNull(programmeTable.resultNumber)
+        isNotNull(programmeTable.resultNumber),
       ),
       columns: { id: true, resultNumber: true, status: true },
       orderBy: [asc(programmeTable.resultNumber)],
@@ -337,7 +337,10 @@ export async function swapResultNumbers(
     const overIndex = programmes.findIndex((p) => p.id === programmeIdB);
 
     if (activeIndex === -1 || overIndex === -1) {
-      return { success: false, error: "Programme not found or missing result number" };
+      return {
+        success: false,
+        error: "Programme not found or missing result number",
+      };
     }
 
     const progA = programmes[activeIndex];
@@ -352,7 +355,11 @@ export async function swapResultNumbers(
 
     // Perform array move
     const newOrder = programmes.slice();
-    newOrder.splice(overIndex < 0 ? newOrder.length + overIndex : overIndex, 0, newOrder.splice(activeIndex, 1)[0]);
+    newOrder.splice(
+      overIndex < 0 ? newOrder.length + overIndex : overIndex,
+      0,
+      newOrder.splice(activeIndex, 1)[0],
+    );
 
     // Find which IDs need their result_number updated
     const updates: { id: string; newResultNumber: number }[] = [];
@@ -377,7 +384,7 @@ export async function swapResultNumbers(
             WHERE "id" = ${updates[i].id}
           `);
         }
-        
+
         // 2. Set to the new correct resultNumber
         for (let i = 0; i < updates.length; i++) {
           await tx.execute(sql`
@@ -401,13 +408,17 @@ export async function swapResultNumbers(
 
 export async function publishStandings(
   festivalId: string,
-  upToResultNumber?: number
+  upToResultNumber?: number,
 ): Promise<ActionResponse<void>> {
   try {
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
 
-    const programmeStandings = await computeStandings(festivalId, "published", upToResultNumber);
+    const programmeStandings = await computeStandings(
+      festivalId,
+      "published",
+      upToResultNumber,
+    );
     const generalStandings = await computeGeneralEntryStandings(festivalId);
 
     const mergedMap = new Map<string, TeamStandingRow>();
@@ -416,7 +427,12 @@ export async function publishStandings(
     }
     for (const r of generalStandings) {
       if (!mergedMap.has(r.name)) {
-        mergedMap.set(r.name, { name: r.name, points: 0, rank: 0, isGroup: true });
+        mergedMap.set(r.name, {
+          name: r.name,
+          points: 0,
+          rank: 0,
+          isGroup: true,
+        });
       }
       mergedMap.get(r.name)!.points += r.points;
     }
@@ -473,7 +489,12 @@ export async function publishGeneralStandings(
     }
     for (const r of generalStandings) {
       if (!mergedMap.has(r.name)) {
-        mergedMap.set(r.name, { name: r.name, points: 0, rank: 0, isGroup: true });
+        mergedMap.set(r.name, {
+          name: r.name,
+          points: 0,
+          rank: 0,
+          isGroup: true,
+        });
       }
       mergedMap.get(r.name)!.points += r.points;
     }
@@ -519,11 +540,15 @@ export async function publishGeneralStandings(
 export async function fetchStandingsAction(
   festivalId: string,
   scope: "all" | "published" | "general",
-  upToResultNumber?: number
+  upToResultNumber?: number,
 ): Promise<ActionResponse<TeamStandingRow[]>> {
   try {
     await assertAnnouncerAccess(festivalId);
-    const standings = await computeStandings(festivalId, scope, upToResultNumber);
+    const standings = await computeStandings(
+      festivalId,
+      scope,
+      upToResultNumber,
+    );
     return { success: true, data: standings };
   } catch (error) {
     return handleActionError(error);

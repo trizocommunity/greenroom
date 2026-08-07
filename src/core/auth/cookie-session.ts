@@ -51,7 +51,9 @@ export async function createCookieSession(
  * Read the raw cookie value for `name`, or `undefined` if absent.
  * Callers hash the value and look it up in their own DB session table.
  */
-export async function getCookieSession(name: string): Promise<string | undefined> {
+export async function getCookieSession(
+  name: string,
+): Promise<string | undefined> {
   const cookieStore = await cookies();
   return cookieStore.get(name)?.value;
 }

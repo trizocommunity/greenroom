@@ -1200,7 +1200,10 @@ export function AssignmentModal({
                                   </SelectTrigger>
                                   <SelectContent>
                                     {block.items.map((item) => (
-                                      <SelectItem key={item.id} value={item.participantId}>
+                                      <SelectItem
+                                        key={item.id}
+                                        value={item.participantId}
+                                      >
                                         <div className="flex items-center gap-2">
                                           <Crown className="h-3.5 w-3.5 text-amber-500 opacity-70" />
                                           {item.participantName}

@@ -12,7 +12,11 @@ import type {
   SpinCodesAssigned,
 } from "./reporting-events";
 
-export type ReportingStatus = "NOT_STARTED" | "IN_PROGRESS" | "CLOSED" | "RESET";
+export type ReportingStatus =
+  | "NOT_STARTED"
+  | "IN_PROGRESS"
+  | "CLOSED"
+  | "RESET";
 
 export type Assignment = {
   id: string;

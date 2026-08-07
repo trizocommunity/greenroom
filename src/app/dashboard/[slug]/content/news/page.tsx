@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import type { Tier } from "@/core/types/app-enums";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getNewsPostsAction } from "@/features/news/actions/news.actions";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";

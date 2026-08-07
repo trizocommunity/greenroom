@@ -1,16 +1,16 @@
+import { desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSession } from "@/core/auth/session";
-import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
-import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { db } from "@/core/database/client";
 import {
   generalEntry,
-  generalEntryCategory,
   generalEntryAward,
+  generalEntryCategory,
   group as groupTable,
 } from "@/core/database/schema";
-import { eq, desc } from "drizzle-orm";
+import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { GeneralEntriesClient } from "./GeneralEntriesClient";
 
 export const metadata: Metadata = {
@@ -31,10 +31,7 @@ export default async function GeneralEntriesPage({
     globalRole: session?.role ?? null,
   });
 
-  if (
-    !context ||
-    !["ADMIN", "OWNER", "SUPER_ADMIN"].includes(context.role)
-  ) {
+  if (!context || !["ADMIN", "OWNER", "SUPER_ADMIN"].includes(context.role)) {
     notFound();
   }
 
@@ -64,8 +61,6 @@ export default async function GeneralEntriesPage({
 
   return (
     <div className="pt-4 sm:pt-6 space-y-6">
-
-
       <GeneralEntriesClient
         festivalId={festival.id}
         categories={categories}

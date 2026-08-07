@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { TwoFactorChallengeForm } from "@/components/auth/TwoFactorChallengeForm";
-import { headers } from "next/headers";
 import { auth } from "@/core/auth/better-auth/auth";
 
 export const metadata: Metadata = {
@@ -54,9 +54,7 @@ export default async function TwoFactorChallengePage({
   // challenge. Drop them back to the login screen so they can sign
   // in normally.
   const cookieHeader = hdrs.get("cookie") ?? "";
-  const hasTwoFactorCookie = cookieHeader.includes(
-    "better-auth.two_factor",
-  );
+  const hasTwoFactorCookie = cookieHeader.includes("better-auth.two_factor");
 
   if (!session?.user?.id && !hasTwoFactorCookie) {
     redirect("/login");

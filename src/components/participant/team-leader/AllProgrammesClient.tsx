@@ -2,18 +2,18 @@
 
 import { ChevronRight, Crown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationEllipsis,
-} from "@/components/ui/pagination";
 import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsInCountdown";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -131,72 +131,84 @@ export function AllProgrammesClient({
             {visibleItems
               .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
               .map((p) => (
-              <ProgrammeRow
-                key={p.programmeId}
-                p={p}
-                onOpen={() => setOpenProgrammeId(p.programmeId)}
-              />
-            ))}
+                <ProgrammeRow
+                  key={p.programmeId}
+                  p={p}
+                  onOpen={() => setOpenProgrammeId(p.programmeId)}
+                />
+              ))}
           </ul>
-          
+
           {visibleItems.length > pageSize && (
             <Pagination className="mt-4">
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    
                     onClick={(e) => {
                       e.preventDefault();
-                      if (pageIndex > 0) setPageIndex(p => p - 1);
+                      if (pageIndex > 0) setPageIndex((p) => p - 1);
                     }}
-                    className={pageIndex === 0 ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      pageIndex === 0 ? "pointer-events-none opacity-50" : ""
+                    }
                   />
                 </PaginationItem>
 
-                {[...Array(Math.ceil(visibleItems.length / pageSize))].map((_, i) => {
-                  const targetPage = i;
-                  const totalPages = Math.ceil(visibleItems.length / pageSize);
-                  
-                  if (
-                    targetPage === 0 ||
-                    targetPage === totalPages - 1 ||
-                    (targetPage >= pageIndex - 1 && targetPage <= pageIndex + 1)
-                  ) {
-                    return (
-                      <PaginationItem key={i}>
-                        <PaginationLink
-                          
-                          isActive={pageIndex === targetPage}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setPageIndex(targetPage);
-                          }}
-                        >
-                          {targetPage + 1}
-                        </PaginationLink>
-                      </PaginationItem>
+                {[...Array(Math.ceil(visibleItems.length / pageSize))].map(
+                  (_, i) => {
+                    const targetPage = i;
+                    const totalPages = Math.ceil(
+                      visibleItems.length / pageSize,
                     );
-                  }
-                  
-                  if (targetPage === pageIndex - 2 || targetPage === pageIndex + 2) {
-                    return (
-                      <PaginationItem key={i}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    );
-                  }
-                  
-                  return null;
-                })}
+
+                    if (
+                      targetPage === 0 ||
+                      targetPage === totalPages - 1 ||
+                      (targetPage >= pageIndex - 1 &&
+                        targetPage <= pageIndex + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationLink
+                            isActive={pageIndex === targetPage}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPageIndex(targetPage);
+                            }}
+                          >
+                            {targetPage + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+
+                    if (
+                      targetPage === pageIndex - 2 ||
+                      targetPage === pageIndex + 2
+                    ) {
+                      return (
+                        <PaginationItem key={i}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+
+                    return null;
+                  },
+                )}
 
                 <PaginationItem>
                   <PaginationNext
-                    
                     onClick={(e) => {
                       e.preventDefault();
-                      if ((pageIndex + 1) * pageSize < visibleItems.length) setPageIndex(p => p + 1);
+                      if ((pageIndex + 1) * pageSize < visibleItems.length)
+                        setPageIndex((p) => p + 1);
                     }}
-                    className={(pageIndex + 1) * pageSize >= visibleItems.length ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      (pageIndex + 1) * pageSize >= visibleItems.length
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>

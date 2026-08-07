@@ -2,18 +2,18 @@ import { randomInt, randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
   programmeReportedParticipant as reportedParticipantTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import type {
+  CodeLettersReset,
   ReportingClosed,
   ReportingReopened,
   SpinCodesAssigned,
-  CodeLettersReset,
 } from "@/features/programmes/domain/reporting-events";
 
 export function sequentialAlphabetCode(indexOneBased: number): string {
@@ -180,7 +180,13 @@ export async function generateForIndividualSession(
         row.participantId,
       );
 
-      await insertRecipient(tx, codeLetterId, row.participantId, memberId, nowStr);
+      await insertRecipient(
+        tx,
+        codeLetterId,
+        row.participantId,
+        memberId,
+        nowStr,
+      );
 
       participantCodes.push({ participantId: row.participantId, code });
       usedCodes.add(code);
@@ -227,10 +233,7 @@ export async function generateForGroupSession(
     const byTeam = new Map<string, TeamBucket>();
 
     for (const row of reportedParticipants) {
-      if (
-        row.participantId &&
-        assignedParticipantIds.has(row.participantId)
-      )
+      if (row.participantId && assignedParticipantIds.has(row.participantId))
         continue;
 
       const teamKey =
@@ -271,7 +274,13 @@ export async function generateForGroupSession(
           session.programmeId,
           participantId,
         );
-        await insertRecipient(tx, codeLetterId, participantId, memberId, nowStr);
+        await insertRecipient(
+          tx,
+          codeLetterId,
+          participantId,
+          memberId,
+          nowStr,
+        );
         participantCodes.push({ participantId, code });
       }
       usedCodes.add(code);
@@ -393,9 +402,8 @@ export async function generateFromSpinWheel(
         assignment.groupId
       ) {
         const members =
-          memberLookup.get(
-            `${assignment.groupId}:${assignment.teamNumber}`,
-          ) ?? [];
+          memberLookup.get(`${assignment.groupId}:${assignment.teamNumber}`) ??
+          [];
         teamParticipants = members.map((pid) => ({
           participantId: pid,
         }));
@@ -462,7 +470,10 @@ async function loadReportedParticipants(tx: any, reportingSessionId: string) {
 }
 
 export const CodeLetterAdapter = {
-  async onReportingClosed(event: ReportingClosed, txIn?: any): Promise<CodeLetterEntry[]> {
+  async onReportingClosed(
+    event: ReportingClosed,
+    txIn?: any,
+  ): Promise<CodeLetterEntry[]> {
     const session = {
       id: event.reportingSessionId,
       festivalId: event.festivalId,
@@ -476,7 +487,12 @@ export const CodeLetterAdapter = {
       );
 
       return event.programmeType === "GROUP"
-        ? generateForGroupSession(session, reportedParticipants, event.actorName, tx)
+        ? generateForGroupSession(
+            session,
+            reportedParticipants,
+            event.actorName,
+            tx,
+          )
         : generateForIndividualSession(
             session,
             reportedParticipants,
@@ -522,10 +538,7 @@ export const CodeLetterAdapter = {
     return txIn ? run(txIn) : db.transaction(run);
   },
 
-  async onCodeLettersReset(
-    event: CodeLettersReset,
-    txIn?: any,
-  ): Promise<void> {
+  async onCodeLettersReset(event: CodeLettersReset, txIn?: any): Promise<void> {
     return txIn
       ? clearSessionCodeLettersTx(txIn, event.reportingSessionId)
       : db.transaction(async (tx) =>

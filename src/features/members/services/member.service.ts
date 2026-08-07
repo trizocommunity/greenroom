@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { auth } from "@/core/auth/better-auth/auth";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import {
   createUser,
@@ -13,7 +14,6 @@ import {
   findMembersByFestival,
   updateMemberRoles,
 } from "@/features/members/repositories/member.repository";
-import { auth } from "@/core/auth/better-auth/auth";
 
 export const MemberService = {
   async getMembers(festivalId: string) {

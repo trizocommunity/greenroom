@@ -1,50 +1,38 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import {
-  Plus,
-  Pencil,
-  Trash2,
-  ShieldCheck,
-  ShieldAlert,
+  AlertCircle,
   Award,
-  Grid2X2,
   Check,
-  X,
   FileText,
-  AlertCircle
+  Grid2X2,
+  Pencil,
+  Plus,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+  X,
 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/lib/toast";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import {
-  createGeneralEntryAction,
-  updateGeneralEntryAction,
-  deleteGeneralEntryAction,
-  publishGeneralEntryAction,
-  unpublishGeneralEntryAction,
-  createGeneralEntryCategoryAction,
-  updateGeneralEntryCategoryAction,
-  deleteGeneralEntryCategoryAction,
-} from "@/features/general-entries/actions/general-entries.actions";
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetFooter,
 } from "@/components/ui/sheet";
 import {
   Table,
@@ -54,6 +42,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  createGeneralEntryAction,
+  createGeneralEntryCategoryAction,
+  deleteGeneralEntryAction,
+  deleteGeneralEntryCategoryAction,
+  publishGeneralEntryAction,
+  unpublishGeneralEntryAction,
+  updateGeneralEntryAction,
+  updateGeneralEntryCategoryAction,
+} from "@/features/general-entries/actions/general-entries.actions";
+import { toast } from "@/lib/toast";
 
 type Group = { id: string; name: string };
 type Category = { id: string; name: string };
@@ -185,11 +185,7 @@ export function GeneralEntriesClient({
   function handleSaveEntry() {
     if (!entryName.trim()) return;
     const validAwards = entryAwards
-      .filter(
-        (a) =>
-          a.points.trim() !== "" &&
-          !isNaN(parseInt(a.points)),
-      )
+      .filter((a) => a.points.trim() !== "" && !isNaN(parseInt(a.points)))
       .map((a) => ({ groupId: a.groupId, points: parseInt(a.points) }));
 
     startTransition(async () => {
@@ -198,7 +194,12 @@ export function GeneralEntriesClient({
           await updateGeneralEntryAction(festivalId, {
             id: editingEntry.id,
             name: entryName.trim(),
-            categoryId: entryType === "PROGRAMME" ? null : entryCategoryId === "none" ? null : entryCategoryId,
+            categoryId:
+              entryType === "PROGRAMME"
+                ? null
+                : entryCategoryId === "none"
+                  ? null
+                  : entryCategoryId,
             type: entryType as "GENERAL" | "PROGRAMME",
             remarks: entryType === "PROGRAMME" ? entryRemarks : null,
             awards: validAwards,
@@ -208,7 +209,12 @@ export function GeneralEntriesClient({
           await createGeneralEntryAction({
             festivalId,
             name: entryName.trim(),
-            categoryId: entryType === "PROGRAMME" ? null : entryCategoryId === "none" ? null : entryCategoryId,
+            categoryId:
+              entryType === "PROGRAMME"
+                ? null
+                : entryCategoryId === "none"
+                  ? null
+                  : entryCategoryId,
             type: entryType as "GENERAL" | "PROGRAMME",
             remarks: entryType === "PROGRAMME" ? entryRemarks : null,
             awards: validAwards,
@@ -252,12 +258,12 @@ export function GeneralEntriesClient({
       }
     });
   }
-  
+
   function openViewEntry(entry: Entry) {
     setViewEntry(entry);
     setViewSheetOpen(true);
   }
-  
+
   function renderPoints(points: number) {
     return points > 0 ? `+${points}` : `${points}`;
   }
@@ -433,7 +439,7 @@ export function GeneralEntriesClient({
                   <option value="PROGRAMME">Programme</option>
                 </select>
               </div>
-              
+
               {entryType === "PROGRAMME" && (
                 <div>
                   <Label>Remarks</Label>
@@ -446,7 +452,7 @@ export function GeneralEntriesClient({
                   />
                 </div>
               )}
-              
+
               {entryType === "GENERAL" && (
                 <div>
                   <Label>Category</Label>
@@ -524,28 +530,37 @@ export function GeneralEntriesClient({
                 <div className="flex items-center gap-2 mt-2">
                   {viewEntry.type === "GENERAL" && (
                     <Badge variant="outline" className="text-xs font-normal">
-                      {categories.find((c) => c.id === viewEntry.categoryId)?.name || "Uncategorized"}
+                      {categories.find((c) => c.id === viewEntry.categoryId)
+                        ?.name || "Uncategorized"}
                     </Badge>
                   )}
                   <Badge variant="secondary" className="text-xs font-normal">
                     {viewEntry.type === "PROGRAMME" ? "Programme" : "General"}
                   </Badge>
                   {viewEntry.awards.some((a) => a.isPublished) ? (
-                    <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0 text-xs">
+                    <Badge
+                      variant="secondary"
+                      className="bg-green-500/10 text-green-600 border-0 text-xs"
+                    >
                       <ShieldCheck className="w-3 h-3 mr-1" /> Published
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-0 text-xs">
+                    <Badge
+                      variant="secondary"
+                      className="bg-amber-500/10 text-amber-600 border-0 text-xs"
+                    >
                       <ShieldAlert className="w-3 h-3 mr-1" /> Draft
                     </Badge>
                   )}
                 </div>
               </SheetHeader>
-              
+
               <div className="py-6 space-y-6">
                 {viewEntry.type === "PROGRAMME" && viewEntry.remarks && (
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-muted-foreground"><FileText className="w-4 h-4"/> Remarks</Label>
+                    <Label className="flex items-center gap-2 text-muted-foreground">
+                      <FileText className="w-4 h-4" /> Remarks
+                    </Label>
                     <div className="p-3 bg-muted/40 rounded-md border text-sm whitespace-pre-wrap">
                       {viewEntry.remarks}
                     </div>
@@ -553,10 +568,14 @@ export function GeneralEntriesClient({
                 )}
 
                 <div className="space-y-3">
-                  <Label className="flex items-center gap-2 text-muted-foreground"><Award className="w-4 h-4"/> Awarded Points</Label>
+                  <Label className="flex items-center gap-2 text-muted-foreground">
+                    <Award className="w-4 h-4" /> Awarded Points
+                  </Label>
                   <div className="space-y-2">
                     {viewEntry.awards.map((award) => {
-                      const groupName = groups.find((g) => g.id === award.groupId)?.name;
+                      const groupName = groups.find(
+                        (g) => g.id === award.groupId,
+                      )?.name;
                       const isNegative = award.points < 0;
                       return (
                         <div
@@ -566,7 +585,9 @@ export function GeneralEntriesClient({
                           <span className="font-medium text-sm">
                             {groupName}
                           </span>
-                          <span className={`font-bold px-2 py-0.5 rounded-sm text-sm ${isNegative ? 'bg-red-500/10 text-red-600' : 'bg-primary/10 text-primary'}`}>
+                          <span
+                            className={`font-bold px-2 py-0.5 rounded-sm text-sm ${isNegative ? "bg-red-500/10 text-red-600" : "bg-primary/10 text-primary"}`}
+                          >
                             {renderPoints(award.points)}
                           </span>
                         </div>
@@ -580,24 +601,37 @@ export function GeneralEntriesClient({
                   </div>
                 </div>
               </div>
-              
+
               <SheetFooter className="flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0 mt-auto pt-6 border-t">
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto flex-1"
-                  disabled={isPending || viewEntry.awards.some((a) => a.isPublished)}
+                  disabled={
+                    isPending || viewEntry.awards.some((a) => a.isPublished)
+                  }
                   onClick={() => openEditEntry(viewEntry)}
                 >
                   <Pencil className="w-4 h-4 mr-2" /> Edit
                 </Button>
-                
+
                 <Button
-                  variant={viewEntry.awards.some((a) => a.isPublished) ? "destructive" : "default"}
+                  variant={
+                    viewEntry.awards.some((a) => a.isPublished)
+                      ? "destructive"
+                      : "default"
+                  }
                   className="w-full sm:w-auto flex-1"
                   disabled={isPending || viewEntry.awards.length === 0}
-                  onClick={() => handlePublishEntry(viewEntry.id, viewEntry.awards.some((a) => a.isPublished))}
+                  onClick={() =>
+                    handlePublishEntry(
+                      viewEntry.id,
+                      viewEntry.awards.some((a) => a.isPublished),
+                    )
+                  }
                 >
-                  {viewEntry.awards.some((a) => a.isPublished) ? "Unpublish" : "Publish"}
+                  {viewEntry.awards.some((a) => a.isPublished)
+                    ? "Unpublish"
+                    : "Publish"}
                 </Button>
               </SheetFooter>
             </>
@@ -632,42 +666,64 @@ export function GeneralEntriesClient({
               ) : (
                 entries.map((entry) => {
                   const isPublished = entry.awards.some((a) => a.isPublished);
-                  const categoryName = entry.type === "PROGRAMME" ? "Programme" : categories.find((c) => c.id === entry.categoryId)?.name || "Uncategorized";
+                  const categoryName =
+                    entry.type === "PROGRAMME"
+                      ? "Programme"
+                      : categories.find((c) => c.id === entry.categoryId)
+                          ?.name || "Uncategorized";
                   const pointsCount = entry.awards.length;
-                  
+
                   return (
-                    <TableRow 
-                      key={entry.id} 
+                    <TableRow
+                      key={entry.id}
                       className="cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => openViewEntry(entry)}
                     >
-                      <TableCell className="font-medium">{entry.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {entry.name}
+                      </TableCell>
                       <TableCell>{categoryName}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="font-normal text-xs">
+                        <Badge
+                          variant="outline"
+                          className="font-normal text-xs"
+                        >
                           {entry.type === "PROGRAMME" ? "Programme" : "General"}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         {pointsCount > 0 ? (
-                          <span className="text-muted-foreground text-sm">{pointsCount} group(s)</span>
+                          <span className="text-muted-foreground text-sm">
+                            {pointsCount} group(s)
+                          </span>
                         ) : (
-                          <span className="text-muted-foreground text-xs italic opacity-60">None</span>
+                          <span className="text-muted-foreground text-xs italic opacity-60">
+                            None
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>
                         {isPublished ? (
-                          <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0 shadow-none">
+                          <Badge
+                            variant="secondary"
+                            className="bg-green-500/10 text-green-600 border-0 shadow-none"
+                          >
                             <ShieldCheck className="w-3 h-3 mr-1" /> Published
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-0 shadow-none">
+                          <Badge
+                            variant="secondary"
+                            className="bg-amber-500/10 text-amber-600 border-0 shadow-none"
+                          >
                             <ShieldAlert className="w-3 h-3 mr-1" /> Draft
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="flex justify-end gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Button
                             variant="ghost"
                             size="icon"
@@ -702,7 +758,7 @@ export function GeneralEntriesClient({
             </TableBody>
           </Table>
         </div>
-        
+
         {/* Mobile Cards View */}
         <div className="block sm:hidden divide-y divide-border">
           {entries.length === 0 ? (
@@ -713,49 +769,73 @@ export function GeneralEntriesClient({
           ) : (
             entries.map((entry) => {
               const isPublished = entry.awards.some((a) => a.isPublished);
-              const categoryName = entry.type === "PROGRAMME" ? "Programme" : categories.find((c) => c.id === entry.categoryId)?.name || "Uncategorized";
+              const categoryName =
+                entry.type === "PROGRAMME"
+                  ? "Programme"
+                  : categories.find((c) => c.id === entry.categoryId)?.name ||
+                    "Uncategorized";
               const pointsCount = entry.awards.length;
-              
+
               return (
-                <div 
-                  key={entry.id} 
+                <div
+                  key={entry.id}
                   className="flex flex-col gap-3 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
                   onClick={() => openViewEntry(entry)}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col min-w-0 gap-1">
-                      <span className="font-semibold truncate">{entry.name}</span>
+                      <span className="font-semibold truncate">
+                        {entry.name}
+                      </span>
                       <div className="flex items-center flex-wrap gap-2 text-xs mt-0.5">
-                        <span className="text-muted-foreground">{categoryName}</span>
+                        <span className="text-muted-foreground">
+                          {categoryName}
+                        </span>
                         <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
-                        <Badge variant="outline" className="font-normal text-[10px] px-1.5 h-4">
+                        <Badge
+                          variant="outline"
+                          className="font-normal text-[10px] px-1.5 h-4"
+                        >
                           {entry.type === "PROGRAMME" ? "Programme" : "General"}
                         </Badge>
                       </div>
                     </div>
                     <div className="flex items-center shrink-0">
                       {isPublished ? (
-                        <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-0 shadow-none px-2 h-5 text-[10px]">
+                        <Badge
+                          variant="secondary"
+                          className="bg-green-500/10 text-green-600 border-0 shadow-none px-2 h-5 text-[10px]"
+                        >
                           Published
                         </Badge>
                       ) : (
-                        <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-0 shadow-none px-2 h-5 text-[10px]">
+                        <Badge
+                          variant="secondary"
+                          className="bg-amber-500/10 text-amber-600 border-0 shadow-none px-2 h-5 text-[10px]"
+                        >
                           Draft
                         </Badge>
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between mt-1 pt-1 border-t border-border/40">
                     <div className="text-xs">
                       {pointsCount > 0 ? (
-                        <span className="text-muted-foreground font-medium">{pointsCount} group(s) awarded</span>
+                        <span className="text-muted-foreground font-medium">
+                          {pointsCount} group(s) awarded
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground italic opacity-60">No points awarded</span>
+                        <span className="text-muted-foreground italic opacity-60">
+                          No points awarded
+                        </span>
                       )}
                     </div>
-                    
-                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+
+                    <div
+                      className="flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Button
                         variant="ghost"
                         size="icon"
