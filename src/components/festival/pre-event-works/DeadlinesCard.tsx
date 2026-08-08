@@ -91,7 +91,7 @@ function DeadlineStateBadge({
   state: "UPCOMING" | "OPEN" | "CLOSED" | "UNCONFIGURED";
 }) {
   if (state === "UNCONFIGURED") return null;
-  
+
   if (state === "CLOSED") {
     return (
       <Badge

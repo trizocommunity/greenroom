@@ -1414,7 +1414,6 @@ export async function getStagePortalBoardAction(day?: string) {
   }>;
 
   if (isOffStage) {
-
     const offStageReportingSessions =
       await db.query.programmeReportingSession.findMany({
         where: and(

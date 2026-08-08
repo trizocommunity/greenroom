@@ -53,11 +53,24 @@ export function FestSetupWidget({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setVisitedScoring(
-        localStorage.getItem(`visited_scoring_${festivalSlug}`) === "true",
-      );
+      const visited = localStorage.getItem(`visited_scoring_${festivalSlug}`) === "true";
+      setVisitedScoring(visited);
+
+      const allCompleted = 
+        setupStatus.hasProgrammes &&
+        (setupStatus.hasScoringPolicy || visited) &&
+        setupStatus.hasParticipants &&
+        setupStatus.hasChestNumbers &&
+        setupStatus.hasSchedule &&
+        setupStatus.hasOffStageTasks &&
+        setupStatus.hasStaff &&
+        setupStatus.isLaunched;
+
+      if (allCompleted) {
+        setIsExpanded(false);
+      }
     }
-  }, [festivalSlug]);
+  }, [festivalSlug, setupStatus]);
 
   const handleScoringClick = () => {
     localStorage.setItem(`visited_scoring_${festivalSlug}`, "true");

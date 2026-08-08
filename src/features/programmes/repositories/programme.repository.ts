@@ -91,18 +91,27 @@ export async function findProgrammesByFestivalPaginated(
     status?: string;
   },
 ) {
-  const { page, pageSize, categoryId, search, type, stageType, status } = options;
+  const { page, pageSize, categoryId, search, type, stageType, status } =
+    options;
   const offset = (page - 1) * pageSize;
 
   const where = and(
     eq(programmes.festivalId, festivalId),
-    categoryId && categoryId !== "ALL" ? eq(programmes.categoryId, categoryId) : undefined,
-    type && type !== "ALL" ? eq(programmes.type, type as "INDIVIDUAL" | "GROUP") : undefined,
-    stageType && stageType !== "ALL" ? eq(programmes.stageType, stageType as "STAGE" | "NON_STAGE") : undefined,
-    status && status !== "ALL" ? eq(programmes.status, status as any) : undefined,
+    categoryId && categoryId !== "ALL"
+      ? eq(programmes.categoryId, categoryId)
+      : undefined,
+    type && type !== "ALL"
+      ? eq(programmes.type, type as "INDIVIDUAL" | "GROUP")
+      : undefined,
+    stageType && stageType !== "ALL"
+      ? eq(programmes.stageType, stageType as "STAGE" | "NON_STAGE")
+      : undefined,
+    status && status !== "ALL"
+      ? eq(programmes.status, status as any)
+      : undefined,
     search ? ilike(programmes.name, `%${search}%`) : undefined,
   );
-  
+
   const [rows, totalRows] = await Promise.all([
     db.query.programme.findMany({
       where,

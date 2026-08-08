@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCategories } from "@/api/client/categories";
+import {
+  useDeleteProgramme,
+  useProgrammesPaginated,
+} from "@/api/client/programmes";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
@@ -71,11 +75,6 @@ import {
 import { BulkUploadProgrammesModal } from "./BulkUploadProgrammesModal";
 import { ProgrammeDialog } from "./ProgrammeDialog";
 
-import {
-  useDeleteProgramme,
-  useProgrammesPaginated,
-} from "@/api/client/programmes";
-
 interface ProgrammesClientProps {
   festivalId: string;
   festivalTier?: string | null;
@@ -118,7 +117,7 @@ export function ProgrammesClient({
       type: typeFilter === "ALL" ? undefined : typeFilter,
       stageType: stageTypeFilter === "ALL" ? undefined : stageTypeFilter,
       status: statusFilter === "ALL" ? undefined : statusFilter,
-    }
+    },
   );
 
   const programmes = paginatedData?.data ?? [];
@@ -321,44 +320,225 @@ export function ProgrammesClient({
               </div>
             ) : (
               programmes.map((programme: any) => (
-                  <div
-                    key={programme.id}
-                    className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all active:scale-[0.99] hover:shadow-md hover:border-primary/25"
-                  >
-                    {/* Card header: name + actions */}
-                    <div className="flex items-start justify-between gap-3 p-4 pb-2">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-base text-foreground leading-snug line-clamp-2">
-                          {programme.name}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <p className="text-sm text-muted-foreground">
-                            {programme.category?.name || "No category"}
-                          </p>
-                          {programme.status && (
-                            <ProgrammeStatusBadge
-                              status={programme.status as ProgrammeStatus}
-                              className="text-xs"
-                            />
-                          )}
-                          <Badge
-                            variant={
-                              getProgressMeta(programme).isFullyAssigned
-                                ? "secondary"
-                                : "outline"
-                            }
-                            className="text-[10px]"
-                          >
-                            {getProgressMeta(programme).label}
-                          </Badge>
-                        </div>
+                <div
+                  key={programme.id}
+                  className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all active:scale-[0.99] hover:shadow-md hover:border-primary/25"
+                >
+                  {/* Card header: name + actions */}
+                  <div className="flex items-start justify-between gap-3 p-4 pb-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-base text-foreground leading-snug line-clamp-2">
+                        {programme.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <p className="text-sm text-muted-foreground">
+                          {programme.category?.name || "No category"}
+                        </p>
+                        {programme.status && (
+                          <ProgrammeStatusBadge
+                            status={programme.status as ProgrammeStatus}
+                            className="text-xs"
+                          />
+                        )}
+                        <Badge
+                          variant={
+                            getProgressMeta(programme).isFullyAssigned
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-[10px]"
+                        >
+                          {getProgressMeta(programme).label}
+                        </Badge>
                       </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            setActionProgramme({ programme, action: "view" })
+                          }
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        {!isReadOnly && (
+                          <>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setActionProgramme({
+                                  programme,
+                                  action: "edit",
+                                })
+                              }
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() =>
+                                setActionProgramme({
+                                  programme,
+                                  action: "delete",
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Details strip: labeled, scannable */}
+                  <div className="px-4 pb-4 pt-1 space-y-2.5">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        {programme.type === "GROUP" ? (
+                          <Users className="h-3.5 w-3.5 shrink-0 text-primary/80" />
+                        ) : (
+                          <User className="h-3.5 w-3.5 shrink-0 text-primary/80" />
+                        )}
+                        <span>
+                          {programme.type === "GROUP" ? "Team" : "Individual"}
+                        </span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <Mic2 className="h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          {programme.stageType === "STAGE"
+                            ? "On stage"
+                            : "Off stage"}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                      {programme.type === "INDIVIDUAL" ? (
+                        <span className="text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            {programme.maxParticipantsPerGroup}
+                          </span>{" "}
+                          max entries per group
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            {programme.maxTeamsPerGroup}
+                          </span>{" "}
+                          teams per group,{" "}
+                          <span className="font-medium text-foreground">
+                            {programme.maxParticipantsPerTeam}
+                          </span>{" "}
+                          members per team
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          {/* Desktop: table */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Programme type</TableHead>
+                  <TableHead className="text-muted-foreground font-normal">
+                    Stage
+                  </TableHead>
+                  <TableHead>Limits</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {programmes.map((programme: any) => (
+                  <TableRow key={programme.id}>
+                    <TableCell className="font-medium">
+                      {programme.name}
+                    </TableCell>
+                    <TableCell>
+                      {programme.category?.name || "No Category"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {programme.status ? (
+                          <ProgrammeStatusBadge
+                            status={programme.status as ProgrammeStatus}
+                            className="text-[10px]"
+                          />
+                        ) : (
+                          <span className="text-muted-foreground text-xs">
+                            —
+                          </span>
+                        )}
+                        <Badge
+                          variant={
+                            getProgressMeta(programme).isFullyAssigned
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-[10px]"
+                        >
+                          {getProgressMeta(programme).label}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          programme.type === "GROUP" ? "secondary" : "outline"
+                        }
+                        className="text-[10px] font-medium"
+                      >
+                        {programme.type === "GROUP" ? "Team" : "Individual"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[10px] text-muted-foreground">
+                        {programme.stageType === "STAGE"
+                          ? "Stage"
+                          : "Off-Stage"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {programme.type === "INDIVIDUAL" ? (
+                        <span className="text-muted-foreground">
+                          Max Entries: {programme.maxParticipantsPerGroup}
+                        </span>
+                      ) : (
+                        <div className="flex flex-col">
+                          <span>Max Teams: {programme.maxTeamsPerGroup}</span>
+                          <span className="text-muted-foreground">
+                            Size: {programme.maxParticipantsPerTeam}
+                          </span>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
                           >
                             <MoreVertical className="h-4 w-4" />
                             <span className="sr-only">Actions</span>
@@ -367,7 +547,10 @@ export function ProgrammesClient({
                         <DropdownMenuContent align="end" className="w-44">
                           <DropdownMenuItem
                             onSelect={() =>
-                              setActionProgramme({ programme, action: "view" })
+                              setActionProgramme({
+                                programme,
+                                action: "view",
+                              })
                             }
                           >
                             <Eye className="h-4 w-4 mr-2" />
@@ -403,193 +586,9 @@ export function ProgrammesClient({
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </div>
-
-                    {/* Details strip: labeled, scannable */}
-                    <div className="px-4 pb-4 pt-1 space-y-2.5">
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                          {programme.type === "GROUP" ? (
-                            <Users className="h-3.5 w-3.5 shrink-0 text-primary/80" />
-                          ) : (
-                            <User className="h-3.5 w-3.5 shrink-0 text-primary/80" />
-                          )}
-                          <span>
-                            {programme.type === "GROUP" ? "Team" : "Individual"}
-                          </span>
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                          <Mic2 className="h-3.5 w-3.5 shrink-0" />
-                          <span>
-                            {programme.stageType === "STAGE"
-                              ? "On stage"
-                              : "Off stage"}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
-                        {programme.type === "INDIVIDUAL" ? (
-                          <span className="text-muted-foreground">
-                            <span className="font-medium text-foreground">
-                              {programme.maxParticipantsPerGroup}
-                            </span>{" "}
-                            max entries per group
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            <span className="font-medium text-foreground">
-                              {programme.maxTeamsPerGroup}
-                            </span>{" "}
-                            teams per group,{" "}
-                            <span className="font-medium text-foreground">
-                              {programme.maxParticipantsPerTeam}
-                            </span>{" "}
-                            members per team
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))
-            )}
-          </div>
-          {/* Desktop: table */}
-          <div className="hidden md:block overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Programme type</TableHead>
-                  <TableHead className="text-muted-foreground font-normal">
-                    Stage
-                  </TableHead>
-                  <TableHead>Limits</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {programmes.map((programme: any) => (
-                    <TableRow key={programme.id}>
-                      <TableCell className="font-medium">
-                        {programme.name}
-                      </TableCell>
-                      <TableCell>
-                        {programme.category?.name || "No Category"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {programme.status ? (
-                            <ProgrammeStatusBadge
-                              status={programme.status as ProgrammeStatus}
-                              className="text-[10px]"
-                            />
-                          ) : (
-                            <span className="text-muted-foreground text-xs">
-                              —
-                            </span>
-                          )}
-                          <Badge
-                            variant={
-                              getProgressMeta(programme).isFullyAssigned
-                                ? "secondary"
-                                : "outline"
-                            }
-                            className="text-[10px]"
-                          >
-                            {getProgressMeta(programme).label}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            programme.type === "GROUP" ? "secondary" : "outline"
-                          }
-                          className="text-[10px] font-medium"
-                        >
-                          {programme.type === "GROUP" ? "Team" : "Individual"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-[10px] text-muted-foreground">
-                          {programme.stageType === "STAGE"
-                            ? "Stage"
-                            : "Off-Stage"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {programme.type === "INDIVIDUAL" ? (
-                          <span className="text-muted-foreground">
-                            Max Entries: {programme.maxParticipantsPerGroup}
-                          </span>
-                        ) : (
-                          <div className="flex flex-col">
-                            <span>Max Teams: {programme.maxTeamsPerGroup}</span>
-                            <span className="text-muted-foreground">
-                              Size: {programme.maxParticipantsPerTeam}
-                            </span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-primary"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                              <span className="sr-only">Actions</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem
-                              onSelect={() =>
-                                setActionProgramme({
-                                  programme,
-                                  action: "view",
-                                })
-                              }
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View
-                            </DropdownMenuItem>
-                            {!isReadOnly && (
-                              <>
-                                <DropdownMenuItem
-                                  onSelect={() =>
-                                    setActionProgramme({
-                                      programme,
-                                      action: "edit",
-                                    })
-                                  }
-                                >
-                                  <Pencil className="h-4 w-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onSelect={() =>
-                                    setActionProgramme({
-                                      programme,
-                                      action: "delete",
-                                    })
-                                  }
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
                 {programmes.length === 0 && (
                   <TableRow>
                     <TableCell
@@ -616,7 +615,10 @@ export function ProgrammesClient({
                       onClick={(e) => {
                         e.preventDefault();
                         if (pagination.pageIndex > 0)
-                          setPagination((p) => ({ ...p, pageIndex: p.pageIndex - 1 }));
+                          setPagination((p) => ({
+                            ...p,
+                            pageIndex: p.pageIndex - 1,
+                          }));
                       }}
                       className={
                         pagination.pageIndex === 0
@@ -630,7 +632,10 @@ export function ProgrammesClient({
                       onClick={(e) => {
                         e.preventDefault();
                         if (pagination.pageIndex < pageCount - 1)
-                          setPagination((p) => ({ ...p, pageIndex: p.pageIndex + 1 }));
+                          setPagination((p) => ({
+                            ...p,
+                            pageIndex: p.pageIndex + 1,
+                          }));
                       }}
                       className={
                         pagination.pageIndex >= pageCount - 1

@@ -12,7 +12,7 @@ const handler = createProtectedHandler({
       return badRequest("MISSING_PARAM", "festivalId is required");
     await assertFestivalAccess(user, festivalId);
     const categoryId = url.searchParams.get("categoryId") ?? undefined;
-    
+
     const pageParam = url.searchParams.get("page");
     if (pageParam) {
       const { page, pageSize } = paginationSchema.parse({

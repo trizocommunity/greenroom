@@ -57,7 +57,7 @@ export function useProgrammesPaginated(
       if (params.type) searchParams.set("type", params.type);
       if (params.stageType) searchParams.set("stageType", params.stageType);
       if (params.status) searchParams.set("status", params.status);
-      
+
       const response = await apiClient.get<
         ApiResponse<PaginatedResponse<Programme>>
       >(`/programmes?${searchParams}`);

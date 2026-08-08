@@ -14,9 +14,9 @@ import {
   deleteProgramme,
   findProgrammeById,
   findProgrammesByFestival,
+  findProgrammesByFestivalPaginated,
   findProgrammeWithAssignments,
   updateProgramme,
-  findProgrammesByFestivalPaginated,
 } from "@/features/programmes/repositories/programme.repository";
 import { assertProgrammePreReporting } from "./programme-status.service";
 
