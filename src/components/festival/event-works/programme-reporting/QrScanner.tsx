@@ -13,7 +13,7 @@ import {
   ZapOff,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
@@ -207,8 +207,10 @@ export function QrScanner({
 
     // Commit the <video> mount synchronously so videoRef is set after await
     // getUserMedia() (fast grant paths used to leave ref null).
-    setLastResult(null);
-    setStatus("scanning");
+    flushSync(() => {
+      setLastResult(null);
+      setStatus("scanning");
+    });
 
     try {
       const stream =

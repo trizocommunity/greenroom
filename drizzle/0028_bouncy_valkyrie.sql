@@ -1,0 +1,2 @@
+DROP INDEX "programme_reported_participant_reportingSessionId_assignmentId_";--> statement-breakpoint
+CREATE UNIQUE INDEX "programme_reported_participant_unique_member" ON "programme_reported_participant" USING btree ("reportingSessionId","assignmentId","assignmentMemberId");

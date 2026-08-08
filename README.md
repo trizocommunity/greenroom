@@ -67,7 +67,8 @@ DATABASE_URL="postgresql://..." npm run db:clean -- --force
 DATABASE_URL_UNPOOLED="postgresql://..." DATABASE_URL="postgresql://..." npm run db:push
 
 # Seed
-DATABASE_URL="postgresql://..." npm run db:seed
+DATABASE_URL="postgresql://..." npx tsx scripts/seed-superadmin.ts --force
+
 ```
 
 Windows: in CMD use `set URL=...&& npm run ...`; in PowerShell use `$env:URL="..."; npm run ...`.

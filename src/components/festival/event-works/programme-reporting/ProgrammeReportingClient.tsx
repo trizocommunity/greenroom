@@ -1641,7 +1641,7 @@ export function ProgrammeReportingClient({
                     <QrScanner
                       variant="embedded"
                       mode="camera"
-                      autoStart
+                      autoStart={false}
                       hideResults
                       festivalId={festivalId}
                       reportingSessionId={session.id}

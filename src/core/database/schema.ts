@@ -1396,11 +1396,12 @@ export const programmeReportedParticipant = pgTable(
       table.groupId.asc().nullsLast(),
     ),
     uniqueIndex(
-      "programme_reported_participant_reportingSessionId_assignmentId_",
+      "programme_reported_participant_unique_member",
     ).using(
       "btree",
       table.reportingSessionId.asc().nullsLast(),
       table.assignmentId.asc().nullsLast(),
+      table.assignmentMemberId.asc().nullsLast(),
     ),
     index("programme_reported_participant_participantId_idx").using(
       "btree",
