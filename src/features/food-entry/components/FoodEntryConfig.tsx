@@ -38,31 +38,7 @@ export function FoodEntryConfig({
     defaultValues: {
       festivalId,
       slots:
-        initialSlots.length > 0
-          ? initialSlots
-          : [
-              {
-                id: crypto.randomUUID(),
-                name: "Breakfast",
-                slotOrder: 1,
-                windowStartMin: 420,
-                windowEndMin: 600,
-              },
-              {
-                id: crypto.randomUUID(),
-                name: "Lunch",
-                slotOrder: 2,
-                windowStartMin: 720,
-                windowEndMin: 900,
-              },
-              {
-                id: crypto.randomUUID(),
-                name: "Dinner",
-                slotOrder: 3,
-                windowStartMin: 1140,
-                windowEndMin: 1320,
-              },
-            ],
+        initialSlots.length > 0 ? initialSlots : [],
     },
   });
 

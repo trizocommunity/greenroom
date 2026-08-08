@@ -227,14 +227,16 @@ export default async function OverviewWidgets({
         festivalSlug={slug}
         festivalId={festival.id}
         setupStatus={{
+          hasCategories: overviewData.hasCategories,
           hasProgrammes: overviewData.hasProgrammes,
+          hasGroups: overviewData.hasGroups,
           hasScoringPolicy: overviewData.hasScoringPolicy,
           hasParticipants: overviewData.hasParticipants,
           hasChestNumbers: overviewData.hasChestNumbers,
           hasSchedule: overviewData.hasSchedule,
           hasOffStageTasks: overviewData.hasOffStageTasks,
           hasStaff: overviewData.hasStaff,
-          isLaunched: festival.status !== "READY",
+          isLaunched: festival.publicSiteEnabled ?? false,
         }}
       />
 

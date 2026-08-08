@@ -15,7 +15,7 @@ import { serverNowIso } from "@/core/datetime/server";
 import {
   deleteFestival as deleteFestivalRecord,
   findFestivalById,
-  findFestivalBySlug,
+  isSlugTaken,
   updateFestival,
 } from "@/features/festivals/repositories/festival.repository";
 
@@ -68,8 +68,8 @@ export const PUT = async (
   }
 
   if (parsed.data.slug && parsed.data.slug !== existing.slug) {
-    const slugOwner = await findFestivalBySlug(parsed.data.slug);
-    if (slugOwner && slugOwner.id !== id) {
+    const isTaken = await isSlugTaken(parsed.data.slug, id);
+    if (isTaken) {
       return conflict(
         "FESTIVAL_SLUG_TAKEN",
         "This subdomain is already taken. Please choose another.",

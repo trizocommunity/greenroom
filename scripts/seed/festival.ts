@@ -76,6 +76,7 @@ export async function createFestival(
     expiresAt,
     publicSiteEnabled: false,
     chestNumberSettings: FESTIVAL.chestNumberSettings,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     createdAt,
     updatedAt: createdAt,
   });

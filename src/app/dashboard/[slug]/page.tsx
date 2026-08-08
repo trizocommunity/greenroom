@@ -45,7 +45,7 @@ export default async function FestivalDashboardPage({
 
   return (
     <div className="flex flex-col gap-5 pt-4 sm:pt-6 pb-12">
-      <DashboardGreeting name={greetingName} />
+      <DashboardGreeting name={greetingName} timezone={festival.timezone} />
       {effectiveRole === "STAGE_MANAGER" ? (
         <Suspense fallback={<OverviewSkeleton />}>
           <StageManagerOverview

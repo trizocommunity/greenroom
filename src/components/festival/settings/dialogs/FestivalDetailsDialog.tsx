@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useUpdateFestival } from "@/api/client/festivals";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-picker";
+import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";
 import {
   Drawer,
   DrawerContent,
@@ -37,6 +38,7 @@ interface FestivalDetailsDialogProps {
     startDate?: Date | string | null;
     endDate?: Date | string | null;
     slug: string;
+    timezone?: string;
     createdAt?: Date | string | null;
   };
   onSuccess?: () => void;
@@ -56,6 +58,8 @@ export function FestivalDetailsDialog({
   const [tagline, setTagline] = useState(festival.tagline || "");
   const [location, setLocation] = useState(festival.location || "");
   const [slug, setSlug] = useState(festival.slug || "");
+  const [timezone, setTimezone] = useState(festival.timezone || "");
+  const [serverSlugError, setServerSlugError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -76,6 +80,8 @@ export function FestivalDetailsDialog({
       : slug.length > 0 && slug.length < 3
         ? "Subdomain must be at least 3 characters."
         : null;
+
+  const displaySlugError = slugError || serverSlugError;
 
   const durationStart = festival.createdAt
     ? (toDateOrNull(festival.createdAt) ?? new Date())
@@ -105,6 +111,7 @@ export function FestivalDetailsDialog({
   };
 
   const handleSave = async () => {
+    setServerSlugError(null);
     if (!name.trim()) {
       toast.error("Festival name is required.");
       return;
@@ -131,6 +138,7 @@ export function FestivalDetailsDialog({
         startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
         endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
         slug: slugChanged ? nextSlug : undefined,
+        timezone: timezone || "",
       });
       setOpen(false);
       onSuccess?.();
@@ -143,10 +151,24 @@ export function FestivalDetailsDialog({
       } else {
         toast.success("Festival details updated");
       }
-    } catch (error) {
-      const message =
-        axios.isAxiosError(error) && error.response?.data?.error?.message;
-      toast.error(message || "Failed to update festival details");
+    } catch (error: any) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.error?.message
+        : error?.message;
+
+      if (
+        message &&
+        (message.toLowerCase().includes("subdomain") ||
+          message.toLowerCase().includes("slug") ||
+          message.toLowerCase().includes("taken") ||
+          message.toLowerCase().includes("unique"))
+      ) {
+        setServerSlugError(
+          "This subdomain is already taken. Please choose another.",
+        );
+      } else {
+        toast.error(message || "Failed to update festival details");
+      }
     }
   };
 
@@ -162,14 +184,14 @@ export function FestivalDetailsDialog({
       <DrawerTrigger asChild>{trigger ?? defaultTrigger}</DrawerTrigger>
       <DrawerContent className="p-0 sm:p-0 gap-0">
         <div className="mx-auto w-full max-w-2xl flex flex-col h-full overflow-hidden">
-          <DrawerHeader className="shrink-0 p-4 sm:p-6 pb-2 border-b">
+          <DrawerHeader className="shrink-0 py-4 sm:py-6 pb-2 border-b">
             <DrawerTitle>Festival Details</DrawerTitle>
             <DrawerDescription>
               Core identity and timing of your festival.
             </DrawerDescription>
           </DrawerHeader>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto py-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Festival Name</Label>
               <Input
@@ -207,18 +229,25 @@ export function FestivalDetailsDialog({
               <Input
                 id="slug"
                 value={slug}
-                onChange={(e) => setSlug(slugify(e.target.value))}
+                onChange={(e) => {
+                  setSlug(slugify(e.target.value));
+                  setServerSlugError(null);
+                }}
                 placeholder="summer-arts-2025"
-                className={slugError ? "border-destructive" : undefined}
+                className={
+                  displaySlugError
+                    ? "border-destructive focus-visible:ring-destructive/20"
+                    : undefined
+                }
               />
-              {slugError ? (
-                <p className="text-xs text-destructive">{slugError}</p>
+              {displaySlugError ? (
+                <p className="text-xs text-destructive">{displaySlugError}</p>
               ) : (
                 <p className="text-xs text-muted-foreground truncate">
                   {origin || "yourapp.com"}/{slug || "your-subdomain"}
                 </p>
               )}
-              {slug !== festival.slug && !slugError && (
+              {slug !== festival.slug && !displaySlugError && (
                 <p className="text-xs text-amber-600">
                   Changing this will move your festival to a new URL and
                   redirect you there after saving.
@@ -246,6 +275,16 @@ export function FestivalDetailsDialog({
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="City, Country"
               />
+            </div>
+
+            <div className="space-y-2 flex flex-col pt-1">
+              <Label htmlFor="timezone" className="mb-1">
+                Timezone
+              </Label>
+              <TimezoneSelect value={timezone} onChange={setTimezone} />
+              <p className="text-xs text-muted-foreground">
+                All festival deadlines and schedules will use this timezone.
+              </p>
             </div>
           </div>
 

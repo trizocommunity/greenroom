@@ -33,7 +33,7 @@ export async function getFestivalTimezone(festivalId: string) {
     where: eq(festival.id, festivalId),
     columns: { timezone: true },
   });
-  return f?.timezone || "UTC";
+  return f?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 export async function getGroupsAndCategoriesForFestival(festivalId: string) {

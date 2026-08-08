@@ -1,4 +1,5 @@
 import { formatInTimeZone } from "date-fns-tz";
+import { getBrowserTimezone } from "@/core/datetime/user-tz";
 
 export interface FoodSlot {
   id: string;
@@ -13,18 +14,19 @@ export interface FoodSessionRow {
   status: "OPEN" | "CLOSED";
 }
 
-export type FoodSlotStatus = "ACTIVE" | "UPCOMING" | "PAST";
+export type FoodSlotStatus = "ACTIVE" | "PAST";
 
 export function getFoodSlotStatus(
   now: Date,
   festivalTimeZone: string | undefined,
   slot: Pick<FoodSlot, "windowStartMin" | "windowEndMin">,
 ): FoodSlotStatus {
-  const tz = festivalTimeZone || "UTC";
+  const tz = festivalTimeZone || getBrowserTimezone();
   const localMinutes = nowInFestivalTZMinutes(now, tz);
 
-  if (localMinutes < slot.windowStartMin) return "UPCOMING";
-  if (localMinutes < slot.windowEndMin) return "ACTIVE";
+  if (localMinutes >= slot.windowStartMin && localMinutes < slot.windowEndMin) {
+    return "ACTIVE";
+  }
   return "PAST";
 }
 
@@ -44,7 +46,7 @@ export function determineActiveSession(
   slots: FoodSlot[],
   sessionRows: FoodSessionRow[], // these should only be today's sessions
 ): FoodSessionRow | null {
-  const tz = festivalTimeZone || "UTC"; // fallback
+  const tz = festivalTimeZone || getBrowserTimezone();
   const localMinutes = nowInFestivalTZMinutes(now, tz);
 
   for (const slot of slots) {

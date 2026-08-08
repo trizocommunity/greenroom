@@ -7,7 +7,6 @@ import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
-  auditLog as auditLogTable,
   festival as festivalTable,
   festivalMember as memberTable,
   payment as paymentTable,
@@ -86,6 +85,16 @@ export async function createFestival(input: CreateFestivalInput) {
           .replace(/^-+|-+$/g, "")
       ).slice(0, 50);
 
+      const { isSlugTaken } = await import(
+        "@/features/festivals/repositories/festival.repository"
+      );
+      const taken = await isSlugTaken(finalSlug);
+      if (taken) {
+        throw new AppError(
+          "This subdomain is already taken. Please choose another.",
+        );
+      }
+
       const festivalId = randomUUID();
       const now = serverNowIso();
 
@@ -98,6 +107,8 @@ export async function createFestival(input: CreateFestivalInput) {
           institutionType: (data.institutionType as any) || "OTHER",
           institutionName: data.institutionName,
           location: data.location,
+          timezone:
+            data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
           startDate: parseInstant(data.startDate)?.toISOString(),
           endDate: parseInstant(data.endDate)?.toISOString(),
           ownerId: session.userId,
@@ -528,6 +539,16 @@ export async function relaunchFestival(input: {
       .replace(/^-+|-+$/g, "")
       .slice(0, 50);
 
+    const { isSlugTaken } = await import(
+      "@/features/festivals/repositories/festival.repository"
+    );
+    const taken = await isSlugTaken(finalSlug);
+    if (taken) {
+      throw new AppError(
+        "This subdomain is already taken. Please choose another name.",
+      );
+    }
+
     const result = await db.transaction(async (tx) => {
       const festivalId = randomUUID();
       const now = serverNowIso();
@@ -546,6 +567,7 @@ export async function relaunchFestival(input: {
           expiresAt,
           publicSiteEnabled: false,
           scoringSystem: "SCORE_BASED",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           createdAt: now,
           updatedAt: now,
         })
@@ -587,6 +609,18 @@ export async function relaunchFestival(input: {
     revalidatePath("/festivals");
 
     return { success: true, data: result };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function checkFestivalSlugAvailability(slug: string) {
+  try {
+    const { isSlugTaken } = await import(
+      "@/features/festivals/repositories/festival.repository"
+    );
+    const taken = await isSlugTaken(slug);
+    return { success: true, data: { available: !taken } };
   } catch (error) {
     return handleActionError(error);
   }

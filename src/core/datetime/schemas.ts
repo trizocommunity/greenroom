@@ -39,5 +39,6 @@ export const zodTimezone = z.enum(
 /**
  * Loose timezone validator: accepts any string but warns on unknown
  * names. Use when the source is freeform (e.g. browser auto-detect).
+ * Allowing empty string so we can explicitly unset/use browser default.
  */
-export const zodTimezoneLoose = z.string().min(1).max(64);
+export const zodTimezoneLoose = z.string().max(64);

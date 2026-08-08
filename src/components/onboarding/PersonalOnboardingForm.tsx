@@ -23,7 +23,7 @@ const personalOnboardingSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
   userRole: z.string().min(1, "Please select a role"),
-  timezone: z.string().min(1, "Please pick a timezone"),
+  timezone: z.string(),
 });
 
 type FormData = z.infer<typeof personalOnboardingSchema>;

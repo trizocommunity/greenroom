@@ -42,6 +42,24 @@ export async function findFestivalBySlug(slug: string) {
   });
 }
 
+export async function isSlugTaken(slug: string, excludeId?: string) {
+  const strippedSlug = slug.replace(/-/g, "");
+  const whereClause = excludeId
+    ? and(
+        eq(sql`replace(${festivals.slug}, '-', '')`, strippedSlug),
+        sql`${festivals.id} != ${excludeId}`
+      )
+    : eq(sql`replace(${festivals.slug}, '-', '')`, strippedSlug);
+
+  const result = await db
+    .select({ id: festivals.id })
+    .from(festivals)
+    .where(whereClause)
+    .limit(1);
+
+  return result.length > 0;
+}
+
 export async function createFestival(
   data: Omit<typeof festivals.$inferInsert, "id" | "updatedAt"> & {
     id?: string;
@@ -389,7 +407,9 @@ export async function getDashboardOverviewData(festivalId: string) {
     teamStandings: fest?.teamStandings,
 
     // Fest Setup Flags
+    hasCategories: tc[0].c > 0,
     hasProgrammes: tp[0].c > 0,
+    hasGroups: tg[0].c > 0,
     hasScoringPolicy: scoringPoliciesCount[0].c > 0,
     hasParticipants: ts[0].c > 0,
     hasChestNumbers: chestNumbersCount[0].c > 0,

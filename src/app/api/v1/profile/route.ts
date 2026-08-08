@@ -35,10 +35,15 @@ const handler = createProtectedHandler({
       return badRequest("INVALID_INPUT", parsed.error.message);
     }
 
+    const updateData = { ...parsed.data };
+    if (updateData.timezone === "") {
+      updateData.timezone = null as any; // Using as any since the schema might only allow string | undefined if we aren't careful, but Drizzle accepts null for nullable columns
+    }
+
     const [updated] = await db
       .update(usersTable)
       .set({
-        ...parsed.data,
+        ...updateData,
         updatedAt: serverNowIso(),
       })
       .where(eq(usersTable.id, sessionUser.userId))

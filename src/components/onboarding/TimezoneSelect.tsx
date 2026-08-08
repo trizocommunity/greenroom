@@ -18,7 +18,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  getBrowserTimezone,
   groupedTimezones,
   labelForTimezone,
   TZ_OPTIONS,
@@ -31,16 +30,33 @@ interface TimezoneSelectProps {
   disabled?: boolean;
   id?: string;
   "aria-label"?: string;
-  placeholder?: string;
-  showAutoDetectedHint?: boolean;
+}
+
+function LiveTime({ timezone }: { timezone?: string }) {
+  const [time, setTime] = React.useState<Date | null>(null);
+
+  React.useEffect(() => {
+    setTime(new Date());
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!time) return <span className="w-10" />; // placeholder width
+
+  return (
+    <span className="text-[10px] sm:text-xs text-muted-foreground opacity-70 tabular-nums font-medium mr-1 tracking-tight">
+      {time.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: timezone || undefined,
+      })}
+    </span>
+  );
 }
 
 /**
  * Curated IANA timezone combobox.
- *
- * - Pre-fills with `getBrowserTimezone()` on mount when `value` is empty.
- * - Shows "Auto-detected: <label>" hint when the selected value matches the
- *   browser-detected timezone.
  *
  * Used by:
  *   - Onboarding forms (Phase 5)
@@ -52,22 +68,10 @@ export function TimezoneSelect({
   disabled,
   id,
   "aria-label": ariaLabel = "Timezone",
-  placeholder = "Select timezone",
-  showAutoDetectedHint = true,
 }: TimezoneSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const detected = React.useMemo(() => getBrowserTimezone(), []);
-  const initialised = React.useRef(false);
 
-  React.useEffect(() => {
-    if (!initialised.current && !value) {
-      initialised.current = true;
-      onChange(detected);
-    }
-  }, [value, detected, onChange]);
-
-  const selectedLabel = value ? labelForTimezone(value) : "";
-  const isDetected = value === detected;
+  const selectedLabel = value ? labelForTimezone(value) : "Local Time (Browser Default)";
   const groups = React.useMemo(() => groupedTimezones(), []);
 
   return (
@@ -88,9 +92,12 @@ export function TimezoneSelect({
           >
             <span className="flex items-center gap-2 truncate">
               <Globe className="h-4 w-4 shrink-0 opacity-60" />
-              <span className="truncate">{selectedLabel || placeholder}</span>
+              <span className="truncate">{selectedLabel}</span>
             </span>
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+            <div className="flex items-center shrink-0">
+              <LiveTime timezone={value} />
+              <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+            </div>
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -101,6 +108,25 @@ export function TimezoneSelect({
             <CommandInput placeholder="Search timezone or city…" />
             <CommandList className="max-h-72">
               <CommandEmpty>No timezone found.</CommandEmpty>
+              
+              <CommandGroup heading="System" className="font-medium">
+                <CommandItem
+                  value="local"
+                  onSelect={() => {
+                    onChange("");
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "h-4 w-4",
+                      !value ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  <span className="flex-1 truncate">Local Time (Browser Default)</span>
+                </CommandItem>
+              </CommandGroup>
+
               {groups.map((group) => (
                 <CommandGroup
                   key={group.region}
@@ -134,11 +160,6 @@ export function TimezoneSelect({
           </Command>
         </PopoverContent>
       </Popover>
-      {showAutoDetectedHint && isDetected && value !== "" && (
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Auto-detected: {selectedLabel}
-        </p>
-      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { AlertCircle, Loader2, Lock, ScanLine, UserCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { formatInTimeZone } from "date-fns-tz";
 import { QrScanner } from "@/components/festival/event-works/programme-reporting/QrScanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ interface FoodEntryScannerProps {
     groups: { id: string; name: string }[];
     categories: { id: string; name: string }[];
   };
+  timezone: string;
 }
 
 function formatWindow(startMin: number, endMin: number) {
@@ -63,14 +65,13 @@ function formatWindow(startMin: number, endMin: number) {
   return `${fmt(startMin)} - ${fmt(endMin)}`;
 }
 
-function formatScannedAt(value: string | Date) {
+function formatScannedAt(value: string | Date, timeZone: string) {
   const d = typeof value === "string" ? new Date(value) : value;
-  return d.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  try {
+    return formatInTimeZone(d, timeZone, "MMM d, hh:mm a");
+  } catch (e) {
+    return format(d, "MMM d, hh:mm a"); // fallback if timezone is invalid
+  }
 }
 
 export function FoodEntryScanner({
@@ -79,6 +80,7 @@ export function FoodEntryScanner({
   slot,
   activeSlotId,
   filters,
+  timezone,
 }: FoodEntryScannerProps) {
   const router = useRouter();
   const [entries, setEntries] = useState<any[]>([]);
@@ -298,9 +300,9 @@ export function FoodEntryScanner({
                         </TableCell>
                         <TableCell>{entry.groupName ?? "—"}</TableCell>
                         <TableCell>{entry.categoryName ?? "—"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatScannedAt(entry.scannedAt)}
-                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground whitespace-nowrap">
+                        {formatScannedAt(entry.scannedAt, timezone)}
+                      </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {entry.scannedByName ?? "—"}
                         </TableCell>
@@ -322,7 +324,7 @@ export function FoodEntryScanner({
                         {entry.chestNumber}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatScannedAt(entry.scannedAt)}
+                        {formatScannedAt(entry.scannedAt, timezone)}
                       </span>
                     </div>
                     <p className="font-medium text-sm">

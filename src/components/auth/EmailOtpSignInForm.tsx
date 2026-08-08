@@ -1,7 +1,7 @@
 "use client";
 
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
-import { ArrowRight, Loader2, Mail, RotateCw, ShieldCheck } from "lucide-react";
+import { ArrowRight, Loader2, Mail, RotateCw } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -53,8 +53,7 @@ export function EmailOtpSignInForm() {
   const [agreed, setAgreed] = React.useState(true);
   const authLayout = useAuthLayout();
 
-  const isCheckYourInbox =
-    phase === "code" && submittedEmail !== null && !isVerifying;
+  const isCheckYourInbox = phase === "code" && submittedEmail !== null;
   const isBusy = isSending || isVerifying;
 
   // Centre the layout card on the "check your inbox" step.
@@ -225,25 +224,21 @@ export function EmailOtpSignInForm() {
     return (
       <ErrorScopeProvider scope="email-otp">
         <InlineError className="mb-2" />
-        <div className="text-center space-y-4 py-2">
-          <div className="mx-auto w-10 h-10 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 rounded-full flex items-center justify-center">
-            <Mail className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+        <div className="text-center space-y-4 py-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="mx-auto w-12 h-12 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mb-2">
+            <Mail className="h-5 w-5 text-primary" />
           </div>
-          <div className="space-y-1">
-            <h3 className="text-base sm:text-lg font-normal tracking-tight text-foreground">
-              Enter your code
-            </h3>
-            <p className="text-muted-foreground text-xs sm:text-sm leading-normal">
-              We sent a {OTP_LENGTH}-digit code to{" "}
-              <span className="font-medium text-foreground">
-                {submittedEmail}
-              </span>
-              . It expires in 5 minutes.
-            </p>
-          </div>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Code sent to{" "}
+            <span className="font-semibold text-foreground">
+              {submittedEmail}
+            </span>
+            <br />
+            <span className="text-xs opacity-75">Expires in 5 minutes</span>
+          </p>
 
           <div
-            className="flex items-center justify-center gap-2 sm:gap-3"
+            className="flex items-center justify-center gap-2 sm:gap-3 py-2"
             onPaste={onCodePaste}
           >
             {codeDigits.map((digit, idx) => (
@@ -254,13 +249,12 @@ export function EmailOtpSignInForm() {
                 autoComplete={idx === 0 ? "one-time-code" : "off"}
                 autoFocus={idx === 0}
                 maxLength={1}
-                inputSize="m"
                 value={digit}
                 disabled={isBusy}
                 aria-label={`Digit ${idx + 1}`}
                 onChange={(e) => onCodeChange(idx, e.target.value)}
                 onKeyDown={(e) => onCodeKeyDown(e, idx)}
-                className="w-12 sm:w-14 text-center font-bold text-lg sm:text-xl tracking-widest rounded-lg sm:rounded-xl border-border/60 bg-card focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent h-12 sm:h-14"
+                className="w-11 sm:w-10 h-11 sm:h-10 text-center font-bold text-lg sm:text-xl tracking-widest rounded-xl border-border/60 bg-muted/30 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent transition-all shadow-sm"
               />
             ))}
           </div>
@@ -275,40 +269,37 @@ export function EmailOtpSignInForm() {
             </p>
           )}
 
-          <div className="flex items-center justify-center text-xs text-muted-foreground">
-            <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-            Codes are hashed at rest and rate-limited.
-          </div>
+          <div className="flex flex-col items-center justify-center gap-3 text-xs text-muted-foreground pt-4">
+            <div className="flex items-center gap-1.5">
+              <span>Didn&apos;t get it?</span>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                disabled={isBusy || resendCooldown > 0}
+                onClick={onResend}
+                className="h-auto p-0 font-semibold text-primary hover:underline"
+              >
+                {isSending ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <RotateCw className="mr-1 h-3 w-3" />
+                )}
+                {resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : "Resend code"}
+              </Button>
+            </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-1 text-xs text-muted-foreground pt-1">
-            <span>Didn&apos;t get it?</span>
-            <Button
+            <button
               type="button"
-              variant="link"
-              size="sm"
-              disabled={isBusy || resendCooldown > 0}
-              onClick={onResend}
-              className="h-auto p-0 px-1 font-semibold text-primary hover:underline"
+              className="text-muted-foreground hover:text-foreground underline transition-colors text-xs"
+              onClick={onUseDifferentEmail}
+              disabled={isBusy}
             >
-              {isSending ? (
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              ) : (
-                <RotateCw className="mr-1 h-3 w-3" />
-              )}
-              {resendCooldown > 0
-                ? `Resend in ${resendCooldown}s`
-                : "Resend code"}
-            </Button>
+              Use a different email
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="font-semibold text-primary hover:underline text-xs"
-            onClick={onUseDifferentEmail}
-            disabled={isBusy}
-          >
-            Use a different email
-          </button>
         </div>
       </ErrorScopeProvider>
     );

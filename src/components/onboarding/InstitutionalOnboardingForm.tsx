@@ -29,7 +29,7 @@ const institutionalOnboardingSchema = z.object({
   affiliation: z.string().optional(),
   city: z.string().optional(),
   sizeRange: z.string().optional(),
-  timezone: z.string().min(1, "Please pick a timezone"),
+  timezone: z.string(),
 });
 
 type FormData = z.infer<typeof institutionalOnboardingSchema>;

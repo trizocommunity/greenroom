@@ -19,13 +19,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ChestNumberSetupDrawer } from "./ChestNumberSetupDrawer";
-import { LaunchFestivalDialog } from "./LaunchFestivalDialog";
+import { LaunchFestivalDrawer } from "./LaunchFestivalDrawer";
 import { OffStageProvisionDrawer } from "./OffStageProvisionDrawer";
 
 interface FestSetupWidgetProps {
   festivalSlug: string;
   festivalId: string;
   setupStatus: {
+    hasCategories: boolean;
+    hasGroups: boolean;
     hasProgrammes: boolean;
     hasScoringPolicy: boolean;
     hasParticipants: boolean;
@@ -47,23 +49,24 @@ export function FestSetupWidget({
   // Drawer & Dialog states
   const [chestDrawerOpen, setChestDrawerOpen] = useState(false);
   const [offStageDrawerOpen, setOffStageDrawerOpen] = useState(false);
-  const [launchDialogOpen, setLaunchDialogOpen] = useState(false);
+  const [launchDrawerOpen, setLaunchDrawerOpen] = useState(false);
 
   const [visitedScoring, setVisitedScoring] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const visited = localStorage.getItem(`visited_scoring_${festivalSlug}`) === "true";
+      const visited =
+        localStorage.getItem(`visited_scoring_${festivalSlug}`) === "true";
       setVisitedScoring(visited);
 
-      const allCompleted = 
+      const allCompleted =
+        setupStatus.hasCategories &&
+        setupStatus.hasGroups &&
         setupStatus.hasProgrammes &&
         (setupStatus.hasScoringPolicy || visited) &&
         setupStatus.hasParticipants &&
         setupStatus.hasChestNumbers &&
-        setupStatus.hasSchedule &&
         setupStatus.hasOffStageTasks &&
-        setupStatus.hasStaff &&
         setupStatus.isLaunched;
 
       if (allCompleted) {
@@ -79,9 +82,25 @@ export function FestSetupWidget({
 
   const steps = [
     {
+      id: "categories",
+      title: "Add Categories",
+      mobileTitle: "Define age/skill categories",
+      icon: ClipboardList,
+      isComplete: setupStatus.hasCategories,
+      href: `/dashboard/${festivalSlug}/pre-event-works/categories`,
+    },
+    {
+      id: "groups",
+      title: "Add Groups",
+      mobileTitle: "Define participating groups",
+      icon: Users,
+      isComplete: setupStatus.hasGroups,
+      href: `/dashboard/${festivalSlug}/pre-event-works/groups`,
+    },
+    {
       id: "programmes",
       title: "Add Programmes",
-      mobileTitle: "Define categories & programs",
+      mobileTitle: "Define programs",
       icon: ClipboardList,
       isComplete: setupStatus.hasProgrammes,
       href: `/dashboard/${festivalSlug}/pre-event-works/programmes`,
@@ -98,7 +117,7 @@ export function FestSetupWidget({
     {
       id: "participants",
       title: "Register Participants",
-      mobileTitle: "Add groups & individuals",
+      mobileTitle: "Add participants",
       icon: Users,
       isComplete: setupStatus.hasParticipants,
       href: `/dashboard/${festivalSlug}/pre-event-works/participants`,
@@ -112,14 +131,6 @@ export function FestSetupWidget({
       onClick: () => setChestDrawerOpen(true),
     },
     {
-      id: "schedule",
-      title: "Set Stages & Schedule",
-      mobileTitle: "Create stages & timetable",
-      icon: CalendarDays,
-      isComplete: setupStatus.hasSchedule,
-      href: `/dashboard/${festivalSlug}/pre-event-works/schedule`,
-    },
-    {
       id: "offstage",
       title: "Off-Stage Provisions",
       mobileTitle: "Track behind-the-scenes tasks",
@@ -128,20 +139,12 @@ export function FestSetupWidget({
       onClick: () => setOffStageDrawerOpen(true),
     },
     {
-      id: "staff",
-      title: "Assign Event Staff",
-      mobileTitle: "Invite managers & judges",
-      icon: UserPlus,
-      isComplete: setupStatus.hasStaff,
-      href: `/dashboard/${festivalSlug}/members`,
-    },
-    {
       id: "launch",
       title: "Launch Festival",
       mobileTitle: "Ready? Make it live!",
       icon: Rocket,
       isComplete: setupStatus.isLaunched,
-      onClick: () => setLaunchDialogOpen(true),
+      onClick: () => setLaunchDrawerOpen(true),
     },
   ];
 
@@ -270,10 +273,10 @@ export function FestSetupWidget({
         open={offStageDrawerOpen}
         onOpenChange={setOffStageDrawerOpen}
       />
-      <LaunchFestivalDialog
+      <LaunchFestivalDrawer
         festivalSlug={festivalSlug}
-        open={launchDialogOpen}
-        onOpenChange={setLaunchDialogOpen}
+        open={launchDrawerOpen}
+        onOpenChange={setLaunchDrawerOpen}
       />
     </Card>
   );

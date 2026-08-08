@@ -491,7 +491,7 @@ export const festival = pgTable(
     expiredAt: tzTimestamp(),
     institutionId: text(),
     festivalType: festivalTypeEnum().default("INDEPENDENT").notNull(),
-    timezone: text().default("UTC").notNull(),
+    timezone: text().notNull(),
     archivedAt: tzTimestamp(),
   },
   (table) => [

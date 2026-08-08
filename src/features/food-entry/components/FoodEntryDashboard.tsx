@@ -75,7 +75,6 @@ function formatWindow(startMin: number, endMin: number) {
 
 function statusVariant(status: FoodSlotStatus) {
   if (status === "ACTIVE") return "default" as const;
-  if (status === "UPCOMING") return "outline" as const;
   return "secondary" as const;
 }
 
@@ -103,6 +102,10 @@ export function FoodEntryDashboard({
       scannedCount: todaySession?.scannedCount ?? 0,
       status: getFoodSlotStatus(now, initialData.timezone, slot),
     };
+  }).sort((a, b) => {
+    if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+    if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
+    return a.slotOrder - b.slotOrder;
   });
   const activeSlotId =
     slotRows.find((slot) => slot.status === "ACTIVE")?.id ?? null;
@@ -220,6 +223,7 @@ export function FoodEntryDashboard({
                 slot={selectedSlot}
                 activeSlotId={activeSlotId}
                 filters={initialData.filters}
+                timezone={initialData.timezone}
               />
             </div>
           )}
