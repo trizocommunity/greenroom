@@ -25,9 +25,9 @@ type InviteDetails = {
   festivalRole: string;
 };
 
-type ErrorKind = "expired" | "used" | "invalid";
+type LinkErrorKind = "expired" | "used" | "invalid";
 
-function classifyError(message: string): ErrorKind {
+function classifyLinkError(message: string): LinkErrorKind {
   const m = message.toLowerCase();
   if (m.includes("expired")) return "expired";
   if (m.includes("already")) return "used";
@@ -59,7 +59,8 @@ export default function InvitePage() {
   const params = useParams();
   const token = params.token as string;
 
-  const [error, setError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   const [inviteDetails, setInviteDetails] = useState<InviteDetails | null>(
     null,
   );
@@ -70,33 +71,42 @@ export default function InvitePage() {
 
   const acceptInvitation = useCallback(() => {
     setIsAccepting(true);
-    setError(null);
+    setAcceptError(null);
     api.invitations
       .accept({ token })
       .then((res) => {
         if (res.body.success) {
-          router.push(
-            res.body.requiresOnboarding
-              ? "/onboarding"
-              : `/dashboard/${res.body.festivalSlug}`,
-          );
-        } else {
-          setIsAccepting(false);
-          setError(res.body.error || "Failed to accept invitation");
+          // Full navigation so the browser applies Set-Cookie from accept
+          // before the next document load (soft router.push can race).
+          const dest = res.body.requiresOnboarding ? "/onboarding" : "/profile";
+          window.location.assign(dest);
+          return;
         }
-      })
-      .catch(() => {
         setIsAccepting(false);
-        setError("Failed to accept invitation");
+        setAcceptError(res.body.error || "Failed to accept invitation");
+      })
+      .catch((err: unknown) => {
+        setIsAccepting(false);
+        const message =
+          err &&
+          typeof err === "object" &&
+          "body" in err &&
+          err.body &&
+          typeof err.body === "object" &&
+          "error" in err.body &&
+          typeof (err.body as { error: unknown }).error === "string"
+            ? (err.body as { error: string }).error
+            : "Failed to accept invitation";
+        setAcceptError(message);
       });
-  }, [router, token]);
+  }, [token]);
 
   // Step 1: figure out who (if anyone) is signed in.
   const { data: betterSession, isPending: sessionLoading } = useSession();
 
   useEffect(() => {
     if (!token) {
-      setError("Invalid invitation link");
+      setLinkError("Invalid invitation link");
       return;
     }
     if (sessionLoading) return;
@@ -111,7 +121,7 @@ export default function InvitePage() {
       .details(token)
       .then((res) => {
         if (!res.body.success) {
-          setError(res.body.error || "Invalid invitation");
+          setLinkError(res.body.error || "Invalid invitation");
           return;
         }
         setInviteDetails({
@@ -120,15 +130,15 @@ export default function InvitePage() {
           festivalRole: res.body.data.festivalRole,
         });
         if (res.body.data.alreadyAccepted) {
-          setError("This invitation has already been used");
+          setLinkError("This invitation has already been used");
           return;
         }
         if (res.body.data.expired) {
-          setError("This invitation has expired");
+          setLinkError("This invitation has expired");
         }
       })
       .catch(() => {
-        setError("Failed to load invitation details");
+        setLinkError("Failed to load invitation details");
       });
   }, [isAuthenticated, token]);
 
@@ -145,7 +155,7 @@ export default function InvitePage() {
   }, []);
 
   // --- Loading -------------------------------------------------------------
-  if (isAuthenticated === null || (!inviteDetails && !error)) {
+  if (isAuthenticated === null || (!inviteDetails && !linkError)) {
     return (
       <Shell>
         <div className="rounded-2xl border border-border/70 bg-card p-8 text-center shadow-sm">
@@ -158,9 +168,9 @@ export default function InvitePage() {
     );
   }
 
-  // --- Error states --------------------------------------------------------
-  if (error) {
-    const kind = classifyError(error);
+  // --- Link / details error states (not accept failures) -------------------
+  if (linkError) {
+    const kind = classifyLinkError(linkError);
     const copy = {
       expired: {
         icon: Clock,
@@ -174,7 +184,7 @@ export default function InvitePage() {
         icon: CheckCircle2,
         tone: "text-emerald-500 bg-emerald-500/10",
         title: "This invitation was already used",
-        body: "Looks like this invite has already been accepted. If that was you, head to your dashboard.",
+        body: "Looks like this invite has already been accepted. If that was you, head to your profile.",
       },
       invalid: {
         icon: XCircle,
@@ -206,7 +216,7 @@ export default function InvitePage() {
               }
               className="rounded-xl font-medium"
             >
-              {isAuthenticated ? "Go to your dashboard" : "Go to sign in"}
+              {isAuthenticated ? "Go to your profile" : "Go to sign in"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -324,6 +334,22 @@ export default function InvitePage() {
               </span>{" "}
               and sets up your Greenroom account — no password needed.
             </p>
+          ) : null}
+
+          {acceptError ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+              <div className="flex gap-3">
+                <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Couldn&apos;t join the festival
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {acceptError}
+                  </p>
+                </div>
+              </div>
+            </div>
           ) : null}
 
           <Button

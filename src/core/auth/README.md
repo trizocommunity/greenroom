@@ -44,12 +44,14 @@ section). See `src/app/(auth)/2fa/page.tsx` and
   up the user's email and calls `signInUserByEmail` so the existing
   `createSession(dbUser.id, role)` call site in
   `invitations/accept` still works.
-- `signInUserByEmail(email): Promise<void>` — mint a session for a known
+- `signInUserByEmail(email): Promise<Response>` — mint a session for a known
   email without sending an email. Creates an OTP via
   `auth.api.createVerificationOTP` (with the `sendVerificationOTP` hook
   suppressed via `process.env.GREENROOM_SILENT_AUTH`), then consumes it
-  via `auth.api.signInEmailOTP`. Cleaner than the previous magic-link
-  JSON read-back — the OTP is returned in the create response.
+  via `auth.api.signInEmailOTP({ asResponse: true })`. Returns the raw
+  Response so Route Handlers can forward `Set-Cookie` onto their reply.
+- `appendSetCookieHeaders(target, source)` — copies `Set-Cookie` headers
+  from a Better Auth response onto a `NextResponse`.
 - `deleteSession(): Promise<void>` — calls `auth.api.signOut({ headers })`.
 
 The legacy JWT cookie (`session`), `JWT_SECRET` env, and magic-link

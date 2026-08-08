@@ -1,6 +1,7 @@
 import "server-only";
 
 import { headers } from "next/headers";
+import type { NextResponse } from "next/server";
 import { auth } from "@/core/auth/better-auth/auth";
 
 /**
@@ -123,13 +124,16 @@ export async function createSession(
  * implementation required). `sendVerificationOTP` honours
  * `process.env.GREENROOM_SILENT_AUTH` so the invitation-accept path can
  * skip the email send while still going through the production hook.
- * `signInEmailOTP` then consumes the OTP and mints the session via
- * `nextCookies`.
+ * `signInEmailOTP` then consumes the OTP and mints the session.
+ *
+ * Returns the Better Auth `Response` (`asResponse: true`) so Route
+ * Handlers can forward `Set-Cookie` onto their own `NextResponse` —
+ * `nextCookies()` alone is not always enough for fetch callers.
  *
  * Throws if Better Auth cannot mint a session — caller should surface
  * a 500 in that case.
  */
-export async function signInUserByEmail(email: string): Promise<void> {
+export async function signInUserByEmail(email: string): Promise<Response> {
   const hdrs = await headers();
   const normalisedEmail = email.toLowerCase().trim();
 
@@ -158,13 +162,40 @@ export async function signInUserByEmail(email: string): Promise<void> {
     }
   }
 
-  // Step 2: consume the OTP, which mints the session and writes
-  // the cookie via nextCookies.
-  await auth.api.signInEmailOTP({
+  // Step 2: consume the OTP, which mints the session. Return the raw
+  // Response so callers can copy Set-Cookie onto their HTTP response.
+  const signInResponse = await auth.api.signInEmailOTP({
     body: { email: normalisedEmail, otp },
     headers: hdrs,
-    asResponse: false,
+    asResponse: true,
   });
+  if (!signInResponse.ok) {
+    throw new Error(
+      `signInUserByEmail: signInEmailOTP failed with status ${signInResponse.status} for ${normalisedEmail}`,
+    );
+  }
+  return signInResponse;
+}
+
+/** Copy every `Set-Cookie` from a Better Auth response onto a NextResponse. */
+export function appendSetCookieHeaders(
+  target: NextResponse,
+  source: Headers,
+): void {
+  const cookies =
+    typeof source.getSetCookie === "function"
+      ? source.getSetCookie()
+      : [];
+  if (cookies.length > 0) {
+    for (const cookie of cookies) {
+      target.headers.append("Set-Cookie", cookie);
+    }
+    return;
+  }
+  const single = source.get("set-cookie");
+  if (single) {
+    target.headers.append("Set-Cookie", single);
+  }
 }
 
 /**

@@ -1,5 +1,6 @@
 import { render } from "@react-email/render";
 import type { ReactElement } from "react";
+import { buildInviteUrl } from "@/config/routes";
 import { FestivalExpiringSoonEmail } from "./kinds/festival-expiring-soon";
 import {
   FestivalInvitationEmail,
@@ -27,17 +28,6 @@ const DEFAULT_SIGN_IN_OTP_EXPIRY_MINUTES = 5;
 const DEFAULT_INVITATION_EXPIRY_HOURS = 48;
 const DEFAULT_OTP_EXPIRY_MINUTES = 10;
 const DEFAULT_TWO_FACTOR_OTP_EXPIRY_MINUTES = 5;
-
-const BASE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://greenroomm.vercel.app"
-    : "http://localhost:3000")
-).replace(/\/+$/, "");
-
-function inviteUrl(token: string) {
-  return `${BASE_URL}/invite/${token}`;
-}
 
 export function resolveTheme(
   kind: EmailKind,
@@ -90,7 +80,7 @@ export async function renderEmail(
     case "festival_invitation": {
       element = (
         <FestivalInvitationEmail
-          url={inviteUrl(kind.token)}
+          url={buildInviteUrl(kind.token)}
           festivalName={kind.festivalName}
           role={kind.role}
           expiresInHours={

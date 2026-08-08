@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, eq, inArray, lt } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { buildInviteUrl, getAppBaseUrl } from "@/config/routes";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
@@ -125,11 +126,12 @@ export const POST = async (req: Request) => {
       .returning();
 
     if (process.env.NODE_ENV !== "production") {
-      const inviteUrl = `http://localhost:3000/invite/${token}`;
+      const inviteUrl = buildInviteUrl(token);
       console.log(
         `[DEV] Invitation: ${email} → ${festivalRecord.name} (${festivalRole})`,
       );
       console.log(`[DEV] Invite link: ${inviteUrl}`);
+      console.log(`[DEV] App base URL: ${getAppBaseUrl()}`);
     }
 
     try {
