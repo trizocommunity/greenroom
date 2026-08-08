@@ -134,15 +134,17 @@ function buildProgrammeReportingSessionStageScope(
 
 function buildJudgementConfigReportingSessionStageScope(
   accessibleStageIds: string[] | "all",
+  judgementConfigTableRef: typeof judgementConfigTable = judgementConfigTable,
 ): SQL | undefined {
   if (accessibleStageIds === "all") return undefined;
+  
   return exists(
     db
       .select({ one: sql`1` })
       .from(reportingSessionTable)
       .where(
         and(
-          eq(reportingSessionTable.id, judgementConfigTable.reportingSessionId),
+          eq(reportingSessionTable.id, judgementConfigTableRef.reportingSessionId),
           inArray(reportingSessionTable.stageId, accessibleStageIds),
         ),
       ),
@@ -474,14 +476,11 @@ export async function getActiveJudgementConfigsAction(festivalId: string) {
     festivalId,
     session,
   );
-  const configScope =
-    buildJudgementConfigReportingSessionStageScope(accessibleStageIds);
-
   const configs = await db.query.judgementConfig.findMany({
-    where: and(
-      eq(judgementConfigTable.festivalId, festivalId),
-      inArray(judgementConfigTable.status, ["LIVE", "SUBMITTED"]),
-      configScope,
+    where: (judgementConfig, { and, inArray, eq }) => and(
+      eq(judgementConfig.festivalId, festivalId),
+      inArray(judgementConfig.status, ["LIVE", "SUBMITTED"]),
+      buildJudgementConfigReportingSessionStageScope(accessibleStageIds, judgementConfig),
     ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
@@ -525,14 +524,11 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
     festivalId,
     session,
   );
-  const configScope =
-    buildJudgementConfigReportingSessionStageScope(accessibleStageIds);
-
   const configs = await db.query.judgementConfig.findMany({
-    where: and(
-      eq(judgementConfigTable.festivalId, festivalId),
-      configScope,
-      inArray(judgementConfigTable.status, ["COMPLETED"]),
+    where: (judgementConfig, { and, inArray, eq }) => and(
+      eq(judgementConfig.festivalId, festivalId),
+      buildJudgementConfigReportingSessionStageScope(accessibleStageIds, judgementConfig),
+      inArray(judgementConfig.status, ["COMPLETED"]),
     ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
