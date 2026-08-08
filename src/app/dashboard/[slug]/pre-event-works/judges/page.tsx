@@ -14,7 +14,9 @@ export default async function JudgesPage({
   return (
     <div className="pt-4 sm:pt-6">
       <JudgesClient festivalId={festival.id}>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Judges</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          All Judges
+        </h1>
       </JudgesClient>
     </div>
   );

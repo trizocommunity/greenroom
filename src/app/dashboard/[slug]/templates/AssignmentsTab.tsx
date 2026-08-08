@@ -1,20 +1,39 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  upsertResultRangeAction,
-  upsertCertificateTypeAction,
-  upsertSingleAssignmentAction,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   deleteAssignmentAction,
+  upsertCertificateTypeAction,
+  upsertResultRangeAction,
+  upsertSingleAssignmentAction,
 } from "@/features/posters/actions/template-assignment.actions";
 import type { PosterTemplateListItem } from "@/features/posters/types/poster-template.types";
 import type { TemplateAssignment } from "@/features/posters/types/template-assignment.types";
+import { toast } from "@/lib/toast";
 
 interface AssignmentsTabProps {
   festivalId: string;
@@ -45,10 +64,16 @@ export function AssignmentsTab({
   const [badgeTemplate, setBadgeTemplate] = useState("");
   const [teamPointsTemplate, setTeamPointsTemplate] = useState("");
 
-  const resultRanges = assignments.filter((a) => a.assignmentKind === "RESULT_RANGE");
-  const certTypes = assignments.filter((a) => a.assignmentKind === "CERTIFICATE_TYPE");
+  const resultRanges = assignments.filter(
+    (a) => a.assignmentKind === "RESULT_RANGE",
+  );
+  const certTypes = assignments.filter(
+    (a) => a.assignmentKind === "CERTIFICATE_TYPE",
+  );
   const badge = assignments.find((a) => a.assignmentKind === "BADGE");
-  const teamPoints = assignments.find((a) => a.assignmentKind === "TEAM_POINTS");
+  const teamPoints = assignments.find(
+    (a) => a.assignmentKind === "TEAM_POINTS",
+  );
 
   const handleDelete = (id: string) => {
     startTransition(async () => {
@@ -76,7 +101,7 @@ export function AssignmentsTab({
         setFromResult("");
         setToResult("");
         // Optimistic refresh would be better, but we can just reload or rely on server action revalidation
-        window.location.reload(); 
+        window.location.reload();
       } else {
         toast.error(res.error);
       }
@@ -139,34 +164,68 @@ export function AssignmentsTab({
       <Card>
         <CardHeader>
           <CardTitle>Result Posters</CardTitle>
-          <CardDescription>Assign RESULT templates to specific result number ranges (e.g. 1st place, 2nd-3rd place).</CardDescription>
+          <CardDescription>
+            Assign RESULT templates to specific result number ranges (e.g. 1st
+            place, 2nd-3rd place).
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4 items-end">
             <div className="flex-1">
               <div className="text-sm font-medium mb-1">Template</div>
-              <Select value={rangeTemplate} onValueChange={setRangeTemplate} disabled={readOnly || isPending}>
-                <SelectTrigger><SelectValue placeholder="Select published template" /></SelectTrigger>
+              <Select
+                value={rangeTemplate}
+                onValueChange={setRangeTemplate}
+                disabled={readOnly || isPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select published template" />
+                </SelectTrigger>
                 <SelectContent>
-                  {templates.filter(t => t.type === "RESULT").map(t => (
-                    <SelectItem key={t.code} value={t.code}>{t.code} ({t.code})</SelectItem>
-                  ))}
+                  {templates
+                    .filter((t) => t.type === "RESULT")
+                    .map((t) => (
+                      <SelectItem key={t.code} value={t.code}>
+                        {t.code} ({t.code})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="w-24">
               <div className="text-sm font-medium mb-1">From No.</div>
-              <Input type="number" min={1} value={fromResult} onChange={e => setFromResult(e.target.value)} disabled={readOnly || isPending} />
+              <Input
+                type="number"
+                min={1}
+                value={fromResult}
+                onChange={(e) => setFromResult(e.target.value)}
+                disabled={readOnly || isPending}
+              />
             </div>
             <div className="w-24">
               <div className="text-sm font-medium mb-1">To No.</div>
-              <Input type="number" min={1} value={toResult} onChange={e => setToResult(e.target.value)} disabled={readOnly || isPending} />
+              <Input
+                type="number"
+                min={1}
+                value={toResult}
+                onChange={(e) => setToResult(e.target.value)}
+                disabled={readOnly || isPending}
+              />
             </div>
-            <Button onClick={handleAddRange} disabled={readOnly || isPending || !rangeTemplate || !fromResult || !toResult}>
+            <Button
+              onClick={handleAddRange}
+              disabled={
+                readOnly ||
+                isPending ||
+                !rangeTemplate ||
+                !fromResult ||
+                !toResult
+              }
+            >
               Add
             </Button>
           </div>
-          
+
           {resultRanges.length > 0 && (
             <Table>
               <TableHeader>
@@ -177,12 +236,21 @@ export function AssignmentsTab({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {resultRanges.map(a => (
+                {resultRanges.map((a) => (
                   <TableRow key={a.id}>
                     <TableCell>{a.templateCode}</TableCell>
-                    <TableCell>{a.fromResultNo} - {a.toResultNo}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(a.id)} disabled={readOnly || isPending}>Remove</Button>
+                      {a.fromResultNo} - {a.toResultNo}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(a.id)}
+                        disabled={readOnly || isPending}
+                      >
+                        Remove
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -196,25 +264,43 @@ export function AssignmentsTab({
       <Card>
         <CardHeader>
           <CardTitle>Certificates</CardTitle>
-          <CardDescription>Assign CERTIFICATE templates to certificate types.</CardDescription>
+          <CardDescription>
+            Assign CERTIFICATE templates to certificate types.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4 items-end">
             <div className="flex-1">
               <div className="text-sm font-medium mb-1">Template</div>
-              <Select value={certTemplate} onValueChange={setCertTemplate} disabled={readOnly || isPending}>
-                <SelectTrigger><SelectValue placeholder="Select published template" /></SelectTrigger>
+              <Select
+                value={certTemplate}
+                onValueChange={setCertTemplate}
+                disabled={readOnly || isPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select published template" />
+                </SelectTrigger>
                 <SelectContent>
-                  {templates.filter(t => t.type === "CERTIFICATE").map(t => (
-                    <SelectItem key={t.code} value={t.code}>{t.code} ({t.code})</SelectItem>
-                  ))}
+                  {templates
+                    .filter((t) => t.type === "CERTIFICATE")
+                    .map((t) => (
+                      <SelectItem key={t.code} value={t.code}>
+                        {t.code} ({t.code})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="w-48">
               <div className="text-sm font-medium mb-1">Type</div>
-              <Select value={certType} onValueChange={setCertType} disabled={readOnly || isPending}>
-                <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+              <Select
+                value={certType}
+                onValueChange={setCertType}
+                disabled={readOnly || isPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PARTICIPATION">Participation</SelectItem>
                   <SelectItem value="FIRST">First Prize</SelectItem>
@@ -225,11 +311,14 @@ export function AssignmentsTab({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleAddCert} disabled={readOnly || isPending || !certTemplate || !certType}>
+            <Button
+              onClick={handleAddCert}
+              disabled={readOnly || isPending || !certTemplate || !certType}
+            >
               Assign
             </Button>
           </div>
-          
+
           {certTypes.length > 0 && (
             <Table>
               <TableHeader>
@@ -240,12 +329,19 @@ export function AssignmentsTab({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {certTypes.map(a => (
+                {certTypes.map((a) => (
                   <TableRow key={a.id}>
                     <TableCell>{a.templateCode}</TableCell>
                     <TableCell>{a.certificateType}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(a.id)} disabled={readOnly || isPending}>Remove</Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(a.id)}
+                        disabled={readOnly || isPending}
+                      >
+                        Remove
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -260,20 +356,45 @@ export function AssignmentsTab({
         <Card>
           <CardHeader>
             <CardTitle>Participant Badge</CardTitle>
-            <CardDescription>Assigned: {badge ? badge.templateCode : "None"}</CardDescription>
+            <CardDescription>
+              Assigned: {badge ? badge.templateCode : "None"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Select value={badgeTemplate} onValueChange={setBadgeTemplate} disabled={readOnly || isPending}>
-                <SelectTrigger><SelectValue placeholder="Select template" /></SelectTrigger>
+              <Select
+                value={badgeTemplate}
+                onValueChange={setBadgeTemplate}
+                disabled={readOnly || isPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select template" />
+                </SelectTrigger>
                 <SelectContent>
-                  {templates.filter(t => t.type === "CANDIDATE_CARD").map(t => (
-                    <SelectItem key={t.code} value={t.code}>{t.code} ({t.code})</SelectItem>
-                  ))}
+                  {templates
+                    .filter((t) => t.type === "CANDIDATE_CARD")
+                    .map((t) => (
+                      <SelectItem key={t.code} value={t.code}>
+                        {t.code} ({t.code})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
-              <Button onClick={handleSetBadge} disabled={readOnly || isPending || !badgeTemplate}>Save</Button>
-              {badge && <Button variant="ghost" onClick={() => handleDelete(badge.id)} disabled={readOnly || isPending}>Remove</Button>}
+              <Button
+                onClick={handleSetBadge}
+                disabled={readOnly || isPending || !badgeTemplate}
+              >
+                Save
+              </Button>
+              {badge && (
+                <Button
+                  variant="ghost"
+                  onClick={() => handleDelete(badge.id)}
+                  disabled={readOnly || isPending}
+                >
+                  Remove
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -281,20 +402,45 @@ export function AssignmentsTab({
         <Card>
           <CardHeader>
             <CardTitle>Team Points Board</CardTitle>
-            <CardDescription>Assigned: {teamPoints ? teamPoints.templateCode : "None"}</CardDescription>
+            <CardDescription>
+              Assigned: {teamPoints ? teamPoints.templateCode : "None"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Select value={teamPointsTemplate} onValueChange={setTeamPointsTemplate} disabled={readOnly || isPending}>
-                <SelectTrigger><SelectValue placeholder="Select template" /></SelectTrigger>
+              <Select
+                value={teamPointsTemplate}
+                onValueChange={setTeamPointsTemplate}
+                disabled={readOnly || isPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select template" />
+                </SelectTrigger>
                 <SelectContent>
-                  {templates.filter(t => t.type === "TEAM_POINTS").map(t => (
-                    <SelectItem key={t.code} value={t.code}>{t.code} ({t.code})</SelectItem>
-                  ))}
+                  {templates
+                    .filter((t) => t.type === "TEAM_POINTS")
+                    .map((t) => (
+                      <SelectItem key={t.code} value={t.code}>
+                        {t.code} ({t.code})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
-              <Button onClick={handleSetTeamPoints} disabled={readOnly || isPending || !teamPointsTemplate}>Save</Button>
-              {teamPoints && <Button variant="ghost" onClick={() => handleDelete(teamPoints.id)} disabled={readOnly || isPending}>Remove</Button>}
+              <Button
+                onClick={handleSetTeamPoints}
+                disabled={readOnly || isPending || !teamPointsTemplate}
+              >
+                Save
+              </Button>
+              {teamPoints && (
+                <Button
+                  variant="ghost"
+                  onClick={() => handleDelete(teamPoints.id)}
+                  disabled={readOnly || isPending}
+                >
+                  Remove
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

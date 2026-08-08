@@ -10,7 +10,6 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { ProgrammeResultPosterSection } from "@/components/festival/posters/ProgrammeResultPosterSection";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +33,7 @@ import {
 } from "@/features/results/actions/results.actions";
 import type { BasicScoreRow } from "@/features/results/services/basic-scoring.service";
 import { getGradeBadgeColor } from "@/features/results/services/results-calculator";
+import { toast } from "@/lib/toast";
 
 type Assignment = {
   id: string;

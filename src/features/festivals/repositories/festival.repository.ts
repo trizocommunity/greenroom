@@ -5,12 +5,14 @@ import {
   category as categories,
   festival as festivals,
   group as groups,
+  judge as judges,
+  festivalMember as members,
   participant as participants,
   programmeAssignment,
   programme as programmes,
   result as results,
+  festivalScoringPolicy as scoringPolicies,
   stage as stages,
-  judge as judges,
 } from "@/core/database/schema";
 import { isAfter, parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
@@ -38,6 +40,24 @@ export async function findFestivalBySlug(slug: string) {
     where: eq(festivals.slug, slug),
     with: { user: true },
   });
+}
+
+export async function isSlugTaken(slug: string, excludeId?: string) {
+  const strippedSlug = slug.replace(/-/g, "");
+  const whereClause = excludeId
+    ? and(
+        eq(sql`replace(${festivals.slug}, '-', '')`, strippedSlug),
+        sql`${festivals.id} != ${excludeId}`
+      )
+    : eq(sql`replace(${festivals.slug}, '-', '')`, strippedSlug);
+
+  const result = await db
+    .select({ id: festivals.id })
+    .from(festivals)
+    .where(whereClause)
+    .limit(1);
+
+  return result.length > 0;
 }
 
 export async function createFestival(
@@ -278,6 +298,10 @@ export async function getDashboardOverviewData(festivalId: string) {
     participantsByTeamRaw,
     participantsByCategoryRaw,
     jCount,
+    scoringPoliciesCount,
+    chestNumbersCount,
+    offStageCount,
+    staffCount,
   ] = await Promise.all([
     db
       .select({ c: count() })
@@ -307,13 +331,19 @@ export async function getDashboardOverviewData(festivalId: string) {
       .select({ c: count() })
       .from(programmes)
       .where(
-        and(eq(programmes.festivalId, festivalId), eq(programmes.status, "PENDING_JUDGMENT")),
+        and(
+          eq(programmes.festivalId, festivalId),
+          eq(programmes.status, "PENDING_JUDGMENT"),
+        ),
       ),
     db
       .select({ c: count() })
       .from(programmes)
       .where(
-        and(eq(programmes.festivalId, festivalId), eq(programmes.status, "PUBLISHED")),
+        and(
+          eq(programmes.festivalId, festivalId),
+          eq(programmes.status, "PUBLISHED"),
+        ),
       ),
     db
       .select({
@@ -338,6 +368,29 @@ export async function getDashboardOverviewData(festivalId: string) {
       .select({ c: count() })
       .from(judges)
       .where(eq(judges.festivalId, festivalId)),
+    db
+      .select({ c: count() })
+      .from(scoringPolicies)
+      .where(eq(scoringPolicies.festivalId, festivalId)),
+    db
+      .select({ c: count() })
+      .from(participants)
+      .where(
+        and(
+          eq(participants.festivalId, festivalId),
+          sql`${participants.chestNumber} IS NOT NULL`,
+        ),
+      ),
+    db
+      .select({ c: count() })
+      .from(stages)
+      .where(
+        and(eq(stages.festivalId, festivalId), eq(stages.isOffStage, true)),
+      ),
+    db
+      .select({ c: count() })
+      .from(members)
+      .where(eq(members.festivalId, festivalId)),
   ]);
 
   return {
@@ -352,6 +405,17 @@ export async function getDashboardOverviewData(festivalId: string) {
     participantsByTeam: participantsByTeamRaw,
     participantsByCategory: participantsByCategoryRaw,
     teamStandings: fest?.teamStandings,
+
+    // Fest Setup Flags
+    hasCategories: tc[0].c > 0,
+    hasProgrammes: tp[0].c > 0,
+    hasGroups: tg[0].c > 0,
+    hasScoringPolicy: scoringPoliciesCount[0].c > 0,
+    hasParticipants: ts[0].c > 0,
+    hasChestNumbers: chestNumbersCount[0].c > 0,
+    hasSchedule: tst[0].c > 0, // A stage is required for scheduling
+    hasOffStageTasks: offStageCount[0].c > 0,
+    hasStaff: staffCount[0].c > 0,
   };
 }
 

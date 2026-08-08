@@ -6,15 +6,17 @@ import {
   Eye,
   Loader2,
   Pencil,
+  Plus,
   RotateCcw,
   Trash2,
-  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
-
+import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Drawer,
   DrawerClose,
@@ -24,10 +26,6 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/core/utils/cn";
 import {
   deletePosterTemplateDraftAction,
@@ -36,6 +34,7 @@ import {
 } from "@/features/posters/actions/poster-template.actions";
 import type { PosterTemplateRecord } from "@/features/posters/types/poster-template.types";
 import { festivalEditorPath } from "@/features/posters/utils/poster-routes";
+import { toast } from "@/lib/toast";
 
 const TYPE_LABELS: Record<string, string> = {
   RESULT: "Result poster",
@@ -90,7 +89,8 @@ export function TemplatesClient({
 }) {
   const router = useRouter();
   const [templates, setTemplates] = useState(initialTemplates);
-  const [previewTemplate, setPreviewTemplate] = useState<PosterTemplateRecord | null>(null);
+  const [previewTemplate, setPreviewTemplate] =
+    useState<PosterTemplateRecord | null>(null);
   const [pending, startTransition] = useTransition();
 
   const sorted = useMemo(() => sortTemplates(templates), [templates]);
@@ -186,11 +186,16 @@ export function TemplatesClient({
         )}
       </div>
 
-      <Drawer open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+      <Drawer
+        open={!!previewTemplate}
+        onOpenChange={(open) => !open && setPreviewTemplate(null)}
+      >
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>Template Preview</DrawerTitle>
-            <DrawerDescription>Preview and details of this template.</DrawerDescription>
+            <DrawerDescription>
+              Preview and details of this template.
+            </DrawerDescription>
           </DrawerHeader>
           {previewTemplate && (
             <div className="py-4 space-y-6 px-4 max-h-[70vh] overflow-y-auto">
@@ -204,16 +209,26 @@ export function TemplatesClient({
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg">
                 <div className="font-medium text-muted-foreground">Type:</div>
-                <div className="font-medium">{TYPE_LABELS[previewTemplate.type] ?? previewTemplate.type}</div>
+                <div className="font-medium">
+                  {TYPE_LABELS[previewTemplate.type] ?? previewTemplate.type}
+                </div>
 
                 <div className="font-medium text-muted-foreground">Code:</div>
-                <div className="font-mono font-medium">{previewTemplate.code}</div>
+                <div className="font-mono font-medium">
+                  {previewTemplate.code}
+                </div>
 
                 <div className="font-medium text-muted-foreground">Size:</div>
-                <div className="font-medium">{previewTemplate.width} × {previewTemplate.height} px</div>
+                <div className="font-medium">
+                  {previewTemplate.width} × {previewTemplate.height} px
+                </div>
 
-                <div className="font-medium text-muted-foreground">Updated:</div>
-                <div className="font-medium">{formatUpdatedAt(previewTemplate.updatedAt)}</div>
+                <div className="font-medium text-muted-foreground">
+                  Updated:
+                </div>
+                <div className="font-medium">
+                  {formatUpdatedAt(previewTemplate.updatedAt)}
+                </div>
               </div>
             </div>
           )}

@@ -1,7 +1,6 @@
 "use client";
 
 import { Copy, ExternalLink, Gavel, Globe, UserRound } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "@/lib/toast";
 
 type LinkRow = {
   key: string;
@@ -68,20 +68,22 @@ export function LiveLinksCard({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Live links</CardTitle>
-        <CardDescription>
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold leading-none tracking-tight">
+          Live links
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1.5">
           Shareable entry points for your festival
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {rows.map((r) => {
           const showActions = !r.requiresLive || publicSiteEnabled;
           return (
             <div
               key={r.key}
-              className="flex items-center gap-3 rounded-md border bg-card px-3 py-2.5"
+              className="flex items-center gap-3 rounded-md border bg-card px-3 py-2.5 shadow-sm"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                 <r.icon className="h-4 w-4" />
@@ -98,12 +100,12 @@ export function LiveLinksCard({
                 <div className="flex shrink-0 items-center gap-1">
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="h-8"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => copy(r.path)}
+                    title="Copy Link"
                   >
-                    <Copy className="mr-1 h-3.5 w-3.5" />
-                    Copy
+                    <Copy className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     asChild
@@ -121,7 +123,7 @@ export function LiveLinksCard({
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

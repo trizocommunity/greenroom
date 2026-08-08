@@ -1,11 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronRight, Loader2, Medal, Search, Trophy } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PublicResultPosterSection } from "@/components/festival/posters/PublicResultPosterSection";
-import { LoadMore } from "@/components/festival/public/LoadMore";
 import {
   EmptyState,
   PublicSection,
@@ -13,11 +12,19 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/core/utils/cn";
 import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
@@ -37,6 +44,7 @@ export interface Result {
   team: string; // This is the group name
   position: number;
   points: number;
+  awardPoints: number;
   grade?: string | null;
   codeLetter?: string | null;
   chestNo?: string | null;
@@ -99,6 +107,7 @@ export function ResultsList({
     loadMore,
     refilter,
     refreshFirstPage,
+    goToPage,
   } = usePublicPages<PublicProgrammeResults>({
     endpoint: `/api/festivals/${festivalSlug}/results`,
     select: selectProgrammes,
@@ -366,16 +375,80 @@ export function ResultsList({
                   })}
                 </ul>
 
-                <LoadMore
-                  shown={programmes.length}
-                  total={total}
-                  hasMore={hasMore}
-                  isLoading={isLoadingMore}
-                  error={error}
-                  onLoadMore={loadMore}
-                  noun="programmes"
-                  accentColor={accentColor}
-                />
+                {Math.ceil(total / PAGE_SIZE) > 1 && (
+                  <div className="mt-8 flex justify-center pb-6">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (page > 1) goToPage(page - 1);
+                            }}
+                            className={
+                              page <= 1 ? "pointer-events-none opacity-50" : ""
+                            }
+                          />
+                        </PaginationItem>
+
+                        {[...Array(Math.ceil(total / PAGE_SIZE))].map(
+                          (_, i) => {
+                            const targetPage = i + 1;
+                            const totalPages = Math.ceil(total / PAGE_SIZE);
+
+                            if (
+                              targetPage === 1 ||
+                              targetPage === totalPages ||
+                              (targetPage >= page - 1 && targetPage <= page + 1)
+                            ) {
+                              return (
+                                <PaginationItem key={i}>
+                                  <PaginationLink
+                                    isActive={page === targetPage}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      goToPage(targetPage);
+                                    }}
+                                  >
+                                    {targetPage}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              );
+                            }
+
+                            if (
+                              targetPage === page - 2 ||
+                              targetPage === page + 2
+                            ) {
+                              return (
+                                <PaginationItem key={i}>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              );
+                            }
+
+                            return null;
+                          },
+                        )}
+
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (page < Math.ceil(total / PAGE_SIZE))
+                                goToPage(page + 1);
+                            }}
+                            className={
+                              page >= Math.ceil(total / PAGE_SIZE)
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
               </>
             ) : (
               <EmptyState>
@@ -411,24 +484,24 @@ export function ResultsList({
             }
           }}
         >
-          <DialogContent className="flex max-h-[88vh] max-w-md flex-col gap-0 overflow-hidden p-0 md:max-w-2xl">
+          <DialogContent className="flex max-h-[88vh] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
             {selectedProgram ? (
               <>
-                <DialogHeader className="border-b border-border p-6 pb-5 text-left">
-                  <div className="flex gap-4">
+                <DialogHeader className="bg-muted/30 border-b border-border p-6 pb-5 text-left">
+                  <div className="flex items-center gap-4">
                     {selectedProgram.resultNumber && (
-                      <div className="text-5xl font-bold tracking-widest text-primary">
+                      <div className="text-4xl font-black tracking-tighter text-primary">
                         #{selectedProgram.resultNumber}
                       </div>
                     )}
-                    <div className="space-y-1 min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                         {selectedProgram.category} ·{" "}
                         {selectedProgram.type === "GROUP"
                           ? "Team"
                           : "Individual"}
                       </p>
-                      <DialogTitle className="text-xl font-semibold tracking-tight text-heading md:text-2xl">
+                      <DialogTitle className="text-lg font-semibold tracking-tight text-heading sm:text-xl">
                         {selectedProgram.name}
                       </DialogTitle>
                     </div>
@@ -436,74 +509,123 @@ export function ResultsList({
                 </DialogHeader>
 
                 <ScrollArea className="flex-1 overflow-y-auto px-6 py-5">
-                  <ol className="divide-y divide-border border-y border-border">
-                    {selectedProgram.results.map((result) => {
-                      const isWinner = result.position === 1;
-                      return (
-                        <li
-                          key={result.id}
-                          className="flex items-center gap-4 py-3.5"
-                        >
-                          <span
-                            className={cn(
-                              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-                              isWinner
-                                ? "text-primary-foreground"
-                                : "bg-muted text-muted-foreground",
-                            )}
-                            style={
-                              isWinner
-                                ? { backgroundColor: accentColor }
-                                : undefined
-                            }
-                          >
-                            {result.position}
-                          </span>
+                  <ol className="flex flex-col gap-2.5">
+                    {selectedProgram.results
+                      .filter((r) => r.position >= 1 && r.position <= 3)
+                      .sort((a, b) => a.position - b.position)
+                      .map((result) => {
+                        let badgeClass = "";
+                        let rowClass = "";
+                        let nameClass = "";
+                        let teamClass = "";
+                        let icon = null;
+                        let placeLabel = "";
 
-                          <div className="min-w-0 flex-1">
-                            <p
+                        switch (result.position) {
+                          case 1:
+                            badgeClass =
+                              "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400";
+                            rowClass =
+                              "bg-amber-50/40 dark:bg-amber-900/10 border-amber-200/60 dark:border-amber-900/30";
+                            nameClass =
+                              "text-amber-950 dark:text-amber-100 font-semibold";
+                            teamClass =
+                              "text-amber-700/80 dark:text-amber-400/70";
+                            icon = <Trophy className="h-4 w-4" />;
+                            placeLabel = "1st Place";
+                            break;
+                          case 2:
+                            badgeClass =
+                              "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+                            rowClass =
+                              "bg-slate-50/50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800";
+                            nameClass =
+                              "text-slate-900 dark:text-slate-100 font-medium";
+                            teamClass = "text-slate-500 dark:text-slate-400";
+                            icon = <Medal className="h-4 w-4" />;
+                            placeLabel = "2nd Place";
+                            break;
+                          case 3:
+                            badgeClass =
+                              "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400";
+                            rowClass =
+                              "bg-orange-50/40 dark:bg-orange-900/10 border-orange-200/60 dark:border-orange-900/30";
+                            nameClass =
+                              "text-orange-950 dark:text-orange-100 font-medium";
+                            teamClass =
+                              "text-orange-700/80 dark:text-orange-400/70";
+                            icon = <Medal className="h-4 w-4" />;
+                            placeLabel = "3rd Place";
+                            break;
+                          default:
+                            badgeClass = "bg-muted text-muted-foreground";
+                            rowClass = "bg-transparent border-border";
+                            nameClass = "text-heading font-medium text-sm";
+                            teamClass = "text-muted-foreground";
+                            icon = (
+                              <span className="text-sm font-bold">
+                                {result.position}
+                              </span>
+                            );
+                            placeLabel = `${result.position}th Place`;
+                        }
+
+                        return (
+                          <li
+                            key={result.id}
+                            className={cn(
+                              "flex items-center gap-3.5 rounded-xl border px-4 py-3 transition-colors",
+                              rowClass,
+                            )}
+                          >
+                            <div
                               className={cn(
-                                "truncate text-heading",
-                                isWinner
-                                  ? "text-[15px] font-semibold"
-                                  : "text-sm font-medium",
+                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                                badgeClass,
                               )}
                             >
-                              {result.winner}
-                              {result.chestNo && (
-                                <span className="ml-1.5 text-muted-foreground font-normal text-xs">
-                                  #{result.chestNo}
-                                </span>
-                              )}
-                            </p>
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {[
-                                result.team,
-                                result.codeLetter
-                                  ? `Code ${result.codeLetter}`
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
-                          </div>
+                              {icon}
+                            </div>
 
-                          <div className="shrink-0 text-right">
-                            <p className="text-sm font-semibold tabular-nums text-foreground">
-                              {result.points}
-                              <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                pts
-                              </span>
-                            </p>
-                            {result.grade && (
-                              <p className="mt-0.5 text-[11px] font-medium text-success">
-                                Grade {result.grade}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={cn(
+                                  "truncate text-[15px]",
+                                  nameClass,
+                                )}
+                              >
+                                {result.winner}
                               </p>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
+                              <p
+                                className={cn(
+                                  "mt-0.5 truncate text-xs",
+                                  teamClass,
+                                )}
+                              >
+                                {[
+                                  result.team,
+                                  result.codeLetter
+                                    ? `Code ${result.codeLetter}`
+                                    : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0 text-right">
+                              <div
+                                className={cn(
+                                  "text-[10px] font-bold uppercase tracking-widest",
+                                  teamClass,
+                                )}
+                              >
+                                {placeLabel}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
                   </ol>
                   <div className="mt-5">
                     <PublicResultPosterSection

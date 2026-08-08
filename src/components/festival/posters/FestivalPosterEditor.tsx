@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { toast } from "sonner";
 import type { PosterEditorAutosaveConfig } from "@/components/editor/PosterEditorPlayground";
 import type { PosterTemplateType } from "@/components/editor/poster-editor-config";
 import { createPresetDocument } from "@/components/editor/poster-editor-presets";
@@ -15,9 +14,9 @@ import {
 import {
   getEditorPreviewBindingsAction,
   getPosterTemplateAction,
+  listPosterTemplatesAction,
   publishPosterTemplateAction,
   savePosterTemplateDraftAction,
-  listPosterTemplatesAction,
 } from "@/features/posters/actions/poster-template.actions";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 import type { PosterTemplateStatus } from "@/features/posters/types/poster-template.types";
@@ -26,6 +25,7 @@ import {
   defaultCodeForType,
   templateTypeFromCode,
 } from "@/features/posters/utils/template-code";
+import { toast } from "@/lib/toast";
 
 const PosterEditorPlayground = dynamic(
   () =>

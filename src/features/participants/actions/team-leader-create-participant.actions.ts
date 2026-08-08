@@ -7,7 +7,10 @@ import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { resolveDeadlineWindow } from "@/features/festivals/services/deadline-window";
+import {
+  isTeamLeaderActionWindowOpen,
+  resolveDeadlineWindow,
+} from "@/features/festivals/services/deadline-window";
 import { assignChestNumberForParticipantInternal } from "@/features/participants/actions/chest-number.actions";
 import { ParticipantService } from "@/features/participants/services/participant.service";
 
@@ -64,6 +67,21 @@ export async function createParticipantAsTeamLeaderAction(
   }
   if (state === "UPCOMING") {
     throw new AppError(ERROR_MESSAGES.PARTICIPANT_CREATION_WINDOW_NOT_OPEN);
+  }
+  if (state === "UNCONFIGURED") {
+    throw new AppError(
+      ERROR_MESSAGES.PARTICIPANT_CREATION_WINDOW_NOT_CONFIGURED,
+    );
+  }
+  if (
+    !isTeamLeaderActionWindowOpen({
+      start: festival.participantCreationStartDate,
+      end: festival.participantCreationDeadline,
+    })
+  ) {
+    throw new AppError(
+      ERROR_MESSAGES.PARTICIPANT_CREATION_WINDOW_NOT_CONFIGURED,
+    );
   }
 
   const newParticipant = await ParticipantService.create(festivalId, {

@@ -12,14 +12,17 @@ import {
   scheduleEntry as scheduleEntryTable,
   user as userTable,
 } from "@/core/database/schema";
-import { AppError } from "@/core/errors/errors";
-import { assertProgrammePreReporting } from "@/features/programmes/services/programme-status.service";
 import { parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
+import type { AppError } from "@/core/errors/errors";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
-import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
+import {
+  assertProgrammePreReporting,
+  updateProgrammeStatus,
+} from "@/features/programmes/services/programme-status.service";
 import { assertStageBelongsToFestival } from "@/features/schedule/utils/assert-stage-belongs-to-festival";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
 import {
@@ -159,7 +162,6 @@ export async function getScheduleEntries(
         with: { category: true },
       },
       stage: true,
-      creatorUser: { columns: { fullName: true, displayName: true } },
       updaterUser: { columns: { fullName: true, displayName: true } },
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
@@ -180,7 +182,6 @@ export async function getScheduleEntriesPublic(
         with: { category: true },
       },
       stage: true,
-      creatorUser: { columns: { fullName: true, displayName: true } },
       updaterUser: { columns: { fullName: true, displayName: true } },
     },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
@@ -244,7 +245,7 @@ export async function getSchedulableProgrammesAction(
     .select({
       programmeId: assignmentTable.programmeId,
       count: count(),
-      teamCount: sql<number>`COUNT(DISTINCT ${assignmentTable.teamNumber})`,
+      teamCount: sql<number>`COUNT(DISTINCT (${assignmentTable.groupId}, ${assignmentTable.teamNumber}))`,
     })
     .from(assignmentTable)
     .where(eq(assignmentTable.festivalId, festivalId))
@@ -257,9 +258,7 @@ export async function getSchedulableProgrammesAction(
   );
 
   return allProgrammes
-    .filter(
-      (p) => !scheduledProgrammeIds.has(p.id) && countMap.has(p.id),
-    )
+    .filter((p) => !scheduledProgrammeIds.has(p.id) && countMap.has(p.id))
     .map((p) => ({
       id: p.id,
       name: p.name,
@@ -374,19 +373,23 @@ export async function createScheduleEntry(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
-    "schedule",
-  );
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "schedule", effectiveFeatures);
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
   if (data.type === "PROGRAMME") {
     if (!data.programmeId)
       return { success: false, error: "Please select a programme." };
-    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, data.programmeId) });
+    const p = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, data.programmeId),
+    });
     if (p) {
-      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+      try {
+        assertProgrammePreReporting(p.status);
+      } catch (e) {
+        return { success: false, error: (e as AppError).message };
+      }
     }
   } else {
     if (!data.title)
@@ -449,8 +452,11 @@ export async function createScheduleEntry(
       conflictParts: conflict,
     };
 
-  const createdBy = session?.userId
-    ? await getDisplayName(session.userId)
+  const actorUser = session?.userId
+    ? await db.query.user.findFirst({
+        where: eq(userTable.id, session.userId),
+        columns: { email: true, displayName: true, fullName: true },
+      })
     : null;
 
   const now = serverNowIso();
@@ -467,7 +473,9 @@ export async function createScheduleEntry(
     startTime: parseInstant(data.startTime)!.toISOString(),
     endTime: parseInstant(data.endTime)?.toISOString() ?? null,
     order: data.order ?? 0,
-    createdBy,
+    createdByName:
+      actorUser?.displayName || actorUser?.fullName || actorUser?.email || null,
+    createdByEmail: actorUser?.email || null,
     updatedBy: null,
     updatedAt: now,
   });
@@ -477,6 +485,10 @@ export async function createScheduleEntry(
   }
 
   revalidateSchedulePaths(festival.slug);
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
   return { success: true };
 }
 
@@ -511,25 +523,35 @@ export async function updateScheduleEntry(
   if (!existing) return { success: false, error: "Schedule entry not found" };
 
   if (existing.type === "PROGRAMME" && existing.programmeId) {
-    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, existing.programmeId) });
+    const p = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, existing.programmeId),
+    });
     if (p) {
-      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+      try {
+        assertProgrammePreReporting(p.status);
+      } catch (e) {
+        return { success: false, error: (e as AppError).message };
+      }
     }
   }
   if (data.programmeId && data.programmeId !== existing.programmeId) {
-    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, data.programmeId) });
+    const p = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, data.programmeId),
+    });
     if (p) {
-      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+      try {
+        assertProgrammePreReporting(p.status);
+      } catch (e) {
+        return { success: false, error: (e as AppError).message };
+      }
     }
   }
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
-    "schedule",
-  );
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "schedule", effectiveFeatures);
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
@@ -623,6 +645,10 @@ export async function updateScheduleEntry(
   }
 
   revalidateSchedulePaths(festival.slug);
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
   return { success: true };
 }
 
@@ -643,9 +669,15 @@ export async function deleteScheduleEntry(
   if (!entry) return { success: false, error: "Schedule entry not found" };
 
   if (entry.type === "PROGRAMME" && entry.programmeId) {
-    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, entry.programmeId) });
+    const p = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, entry.programmeId),
+    });
     if (p) {
-      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+      try {
+        assertProgrammePreReporting(p.status);
+      } catch (e) {
+        return { success: false, error: (e as AppError).message };
+      }
     }
   }
 
@@ -664,23 +696,27 @@ export async function deleteScheduleEntry(
   }
 
   revalidateSchedulePaths(festival.slug);
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
   return { success: true };
 }
 
 export async function clearScheduleEntries(
   festivalId: string,
   filters?: { stageId?: string | null; dateKey?: string | null },
-): Promise<{ success: true; count: number } | { success: false; error: string }> {
+): Promise<
+  { success: true; count: number } | { success: false; error: string }
+> {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
-    "schedule",
-  );
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "schedule", effectiveFeatures);
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
@@ -718,7 +754,10 @@ export async function clearScheduleEntries(
   if (filters?.dateKey) {
     entriesToDelete = entriesToDelete.filter((e) => {
       const d = parseStoredScheduleInstant(e.startTime);
-      return !Number.isNaN(d.getTime()) && format(d, "yyyy-MM-dd") === filters.dateKey;
+      return (
+        !Number.isNaN(d.getTime()) &&
+        format(d, "yyyy-MM-dd") === filters.dateKey
+      );
     });
   }
 
@@ -727,7 +766,9 @@ export async function clearScheduleEntries(
   }
 
   const ids = entriesToDelete.map((e) => e.id);
-  await db.delete(scheduleEntryTable).where(inArray(scheduleEntryTable.id, ids));
+  await db
+    .delete(scheduleEntryTable)
+    .where(inArray(scheduleEntryTable.id, ids));
 
   for (const entry of entriesToDelete) {
     if (entry.type === "PROGRAMME") {
@@ -739,6 +780,10 @@ export async function clearScheduleEntries(
   }
 
   revalidateSchedulePaths(festival.slug);
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
   return { success: true, count: entriesToDelete.length };
 }
 
@@ -752,10 +797,8 @@ export async function reorderScheduleEntries(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
-    "schedule",
-  );
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "schedule", effectiveFeatures);
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
@@ -770,7 +813,14 @@ export async function reorderScheduleEntries(
       inArray(scheduleEntryTable.id, entryIds),
       eq(scheduleEntryTable.festivalId, festivalId),
     ),
-    columns: { id: true, startTime: true, endTime: true, stageId: true, type: true, programmeId: true },
+    columns: {
+      id: true,
+      startTime: true,
+      endTime: true,
+      stageId: true,
+      type: true,
+      programmeId: true,
+    },
     with: { programme: { columns: { status: true } } },
     orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
@@ -831,6 +881,10 @@ export async function reorderScheduleEntries(
   });
 
   revalidateSchedulePaths(festival.slug);
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
   return { success: true };
 }
 
@@ -863,8 +917,12 @@ export async function getScheduleEntriesEnriched(festivalId: string) {
 
   return entries.map((e) => ({
     ...e,
-    assignmentCount: e.programmeId ? (countMap.get(e.programmeId)?.count ?? 0) : 0,
-    teamCount: e.programmeId ? (countMap.get(e.programmeId)?.teamCount ?? 0) : 0,
+    assignmentCount: e.programmeId
+      ? (countMap.get(e.programmeId)?.count ?? 0)
+      : 0,
+    teamCount: e.programmeId
+      ? (countMap.get(e.programmeId)?.teamCount ?? 0)
+      : 0,
   }));
 }
 
@@ -883,10 +941,8 @@ export async function swapScheduleSlots(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
-    "schedule",
-  );
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "schedule", effectiveFeatures);
   if (!canManage)
     return { success: false, error: "Schedule is not available on your plan." };
 
@@ -911,16 +967,28 @@ export async function swapScheduleSlots(
     return { success: false, error: "Can only swap programme entries." };
 
   if (entryA.programmeId) {
-    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, entryA.programmeId) });
+    const p = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, entryA.programmeId),
+    });
     if (p) {
-      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+      try {
+        assertProgrammePreReporting(p.status);
+      } catch (e) {
+        return { success: false, error: (e as AppError).message };
+      }
     }
   }
 
   if (entryB.programmeId) {
-    const p = await db.query.programme.findFirst({ where: eq(programmeTable.id, entryB.programmeId) });
+    const p = await db.query.programme.findFirst({
+      where: eq(programmeTable.id, entryB.programmeId),
+    });
     if (p) {
-      try { assertProgrammePreReporting(p.status); } catch (e) { return { success: false, error: (e as AppError).message }; }
+      try {
+        assertProgrammePreReporting(p.status);
+      } catch (e) {
+        return { success: false, error: (e as AppError).message };
+      }
     }
   }
 
@@ -957,5 +1025,9 @@ export async function swapScheduleSlots(
   });
 
   revalidateSchedulePaths(festival.slug);
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
   return { success: true };
 }

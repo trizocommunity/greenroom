@@ -4,7 +4,10 @@ import { TIER_CONFIG } from "@/config/pricing";
 import { db } from "@/core/database/client";
 import { systemConfig } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
-import type { FeaturePath } from "@/features/plan-features/services/features";
+import type {
+  BooleanFeaturePath,
+  FeaturePath,
+} from "@/features/plan-features/services/feature-gate";
 
 type Tier = "BASIC" | "STANDARD" | "PRO";
 
@@ -27,16 +30,15 @@ async function getStoredOverrides(): Promise<PlanFeatureOverrides> {
   }
 }
 
-async function getPlanFeatureOverrides(): Promise<PlanFeatureOverrides> {
-  return getStoredOverrides();
-}
-
-function getEffectiveFeatureMatrix(): Record<
+function getBaseFeatureMatrix(): Record<
   Tier,
-  Partial<Record<FeaturePath, boolean>>
+  Partial<Record<BooleanFeaturePath, boolean>>
 > {
   const tiers: Tier[] = ["BASIC", "STANDARD", "PRO"];
-  const result = {} as Record<Tier, Partial<Record<FeaturePath, boolean>>>;
+  const result = {} as Record<
+    Tier,
+    Partial<Record<BooleanFeaturePath, boolean>>
+  >;
   for (const tier of tiers) {
     const configFeatures = TIER_CONFIG[tier]?.features;
     if (!configFeatures) continue;
@@ -49,14 +51,18 @@ function getEffectiveFeatureMatrix(): Record<
   return result;
 }
 
-export async function getEffectivePlanFeatureMatrix(): Promise<
-  Record<Tier, Partial<Record<FeaturePath, boolean>>>
+/** Load the full override matrix for all tiers (used by Super Admin UI). */
+export async function loadAllFeatureOverrides(): Promise<
+  Record<Tier, Partial<Record<BooleanFeaturePath, boolean>>>
 > {
   const overrides = await getStoredOverrides();
-  const base = getEffectiveFeatureMatrix();
+  const base = getBaseFeatureMatrix();
 
   const tiers: Tier[] = ["BASIC", "STANDARD", "PRO"];
-  const result = {} as Record<Tier, Partial<Record<FeaturePath, boolean>>>;
+  const result = {} as Record<
+    Tier,
+    Partial<Record<BooleanFeaturePath, boolean>>
+  >;
 
   for (const tier of tiers) {
     result[tier] = { ...base[tier] };
@@ -67,7 +73,7 @@ export async function getEffectivePlanFeatureMatrix(): Promise<
           TOGGLE_KEY_SET.has(key) &&
           typeof tierOverrides[key] === "boolean"
         ) {
-          result[tier][key] = tierOverrides[key];
+          result[tier][key as BooleanFeaturePath] = tierOverrides[key];
         }
       }
     }
@@ -75,26 +81,17 @@ export async function getEffectivePlanFeatureMatrix(): Promise<
   return result;
 }
 
-export async function getEffectiveFeatureEnabled(
+/** Load the effective override map for a single tier (used by most callers). */
+export async function loadFeatureOverrides(
   tier: Tier,
-  feature: FeaturePath,
-): Promise<boolean> {
-  const matrix = await getEffectivePlanFeatureMatrix();
-  const value = matrix[tier]?.[feature];
-  if (typeof value === "boolean") return value;
-  return Boolean(TIER_CONFIG[tier]?.features?.[feature]);
-}
-
-export async function getEffectiveTierFeatures(
-  tier: Tier,
-): Promise<Partial<Record<FeaturePath, boolean>>> {
-  const matrix = await getEffectivePlanFeatureMatrix();
+): Promise<Partial<Record<BooleanFeaturePath, boolean>>> {
+  const matrix = await loadAllFeatureOverrides();
   return matrix[tier] ?? {};
 }
 
 export async function setPlanFeatureOverride(
   tier: Tier,
-  feature: FeaturePath,
+  feature: BooleanFeaturePath,
   enabled: boolean,
 ): Promise<void> {
   const overrides = await getStoredOverrides();

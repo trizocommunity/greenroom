@@ -2,8 +2,16 @@
 
 import { Loader2, Mail, Users } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 import { useMembers } from "@/api/client/members";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { usePendingInvitations } from "@/features/invitation/hooks/use-invitations";
 import { AddMemberDialog } from "./AddMemberDialog";
@@ -30,6 +38,8 @@ export function MembersClient({
   const { data: invitationsData, isLoading: invitationsLoading } =
     usePendingInvitations(festivalId);
   const invitations: PendingInvitation[] = invitationsData?.body?.data || [];
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
 
   const isOwner = userRole === "OWNER";
 
@@ -190,17 +200,54 @@ export function MembersClient({
                 their invitation.
               </p>
             ) : (
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {sortByCreatedDesc(members).map((member) => (
-                  <MemberCard
-                    key={member.id}
-                    member={member}
-                    festivalId={festivalId}
-                    isOwner={isOwner}
-                    isReadOnly={isReadOnly}
-                    canManageStageAssignments={canManageStageAssignments}
-                  />
-                ))}
+              <div className="space-y-4">
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {sortByCreatedDesc(members)
+                    .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+                    .map((member) => (
+                      <MemberCard
+                        key={member.id}
+                        member={member}
+                        festivalId={festivalId}
+                        isOwner={isOwner}
+                        isReadOnly={isReadOnly}
+                        canManageStageAssignments={canManageStageAssignments}
+                      />
+                    ))}
+                </div>
+                {members.length > pageSize && (
+                  <Pagination className="mt-6">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (pageIndex > 0) setPageIndex((p) => p - 1);
+                          }}
+                          className={
+                            pageIndex === 0
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if ((pageIndex + 1) * pageSize < members.length)
+                              setPageIndex((p) => p + 1);
+                          }}
+                          className={
+                            (pageIndex + 1) * pageSize >= members.length
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
               </div>
             )}
           </section>

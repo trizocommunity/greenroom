@@ -1,5 +1,6 @@
 "use client";
 
+import { formatInTimeZone } from "date-fns-tz";
 import {
   Crown,
   ExternalLink,
@@ -7,6 +8,7 @@ import {
   MoreVertical,
   Plus,
   QrCode,
+  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,9 +20,9 @@ import {
 } from "@/components/app/AppSection";
 import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
-import { DeadlineWindowGate } from "@/components/festival/pre-event-works/DeadlineWindowGate";
 import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/participants/ParticipantDetailsDialog";
 import { AddParticipantDialog } from "@/components/participant/team-leader/AddParticipantDialog";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,12 +37,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/core/utils/cn";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
 import {
   getParticipantProfilePath,
@@ -82,13 +94,26 @@ export function MyParticipantsClient({
   isReadOnly?: boolean;
 }) {
   const router = useRouter();
+  const festivalTz = useDisplayTimezone();
   const {
     isLocked,
+    isUnconfigured,
     isUpcoming,
     start: windowStartDate,
     end: windowEndDate,
   } = useDeadlineWindow(windowStart ?? null, deadline ?? null);
   const runtimeIsReadOnly = Boolean(isReadOnly) || isLocked;
+  // Team leaders only get write access when the festival manager has set a
+  // full open → close window AND we are currently inside it.
+  const tlHasAccess = !runtimeIsReadOnly;
+
+  const formatBound = useMemo(
+    () => (d: Date | null) =>
+      d ? formatInTimeZone(d, festivalTz, "EEE, MMM d • h:mm a") : null,
+    [festivalTz],
+  );
+  const startLabel = formatBound(windowStartDate);
+  const deadlineLabel = formatBound(windowEndDate);
 
   const categories = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
@@ -102,6 +127,8 @@ export function MyParticipantsClient({
   }, [participants]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
   const [detailsParticipant, setDetailsParticipant] =
     useState<ParticipantForMyParticipants | null>(null);
   const [qrParticipant, setQrParticipant] =
@@ -112,23 +139,8 @@ export function MyParticipantsClient({
     return participants.filter((s) => s.category?.id === selectedCategoryId);
   }, [participants, selectedCategoryId]);
 
-  if (isUpcoming) {
-    return (
-      <div className="space-y-8">
-        <AppPageHeader
-          eyebrow="Team leader"
-          title="My participants"
-          description="Everyone in your group, with their category and chest number."
-        />
-        <DeadlineWindowGate
-          title="Participant registration hasn't opened yet"
-          description="You'll be able to add and manage your participants as soon as the window opens."
-          start={windowStartDate}
-          end={windowEndDate}
-        />
-      </div>
-    );
-  }
+  // Reset pagination when filter changes
+  useMemo(() => setPageIndex(0), [selectedCategoryId]);
 
   return (
     <div className="space-y-8">
@@ -143,25 +155,91 @@ export function MyParticipantsClient({
               start={windowStart}
               end={deadline}
             />
-            <AddParticipantDialog
-              festivalId={festivalId}
-              categories={allCategories}
-              disabled={runtimeIsReadOnly}
-              onCreated={() => router.refresh()}
-              trigger={
-                <Button
-                  size="sm"
-                  disabled={runtimeIsReadOnly}
-                  className="h-9 rounded-full"
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add participant
-                </Button>
-              }
-            />
+            {tlHasAccess && (
+              <AddParticipantDialog
+                festivalId={festivalId}
+                categories={allCategories}
+                disabled={runtimeIsReadOnly}
+                onCreated={() => router.refresh()}
+                trigger={
+                  <Button
+                    size="sm"
+                    disabled={runtimeIsReadOnly}
+                    className="h-9 rounded-full"
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    Add participant
+                  </Button>
+                }
+              />
+            )}
           </>
         }
       />
+
+      {/* Compact notice when no registration window is configured. */}
+      {isUnconfigured && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-blue-500/30 bg-blue-500/[0.06] px-4 py-3 text-sm text-blue-600">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="leading-relaxed">
+            The festival manager hasn't set a participant registration window
+            yet — reach out to them to enable new participants.
+          </p>
+        </div>
+      )}
+
+      {/* Larger notice when the window exists but is upcoming/closed. */}
+      {!isUnconfigured && !tlHasAccess && (
+        <div
+          className={cn(
+            "rounded-2xl border p-4 sm:p-5",
+            isUpcoming
+              ? "border-amber-500/30 bg-amber-500/[0.06]"
+              : "border-destructive/30 bg-destructive/[0.06]",
+          )}
+        >
+          <div className="flex items-start gap-3">
+            <ShieldAlert
+              className={cn(
+                "mt-0.5 h-5 w-5 shrink-0",
+                isUpcoming ? "text-amber-600" : "text-destructive",
+              )}
+            />
+            <div className="min-w-0">
+              <p
+                className={cn(
+                  "text-[15px] font-medium",
+                  isUpcoming ? "text-amber-600" : "text-destructive",
+                )}
+              >
+                {isUpcoming
+                  ? "Adding participants hasn't opened yet"
+                  : "Adding new participants is closed"}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {isUpcoming ? (
+                  <>
+                    {startLabel
+                      ? `Adding new participants opens on ${startLabel}`
+                      : "Adding new participants hasn't opened yet"}
+                    {deadlineLabel ? ` and closes on ${deadlineLabel}.` : "."}{" "}
+                    You can review existing participants below. Contact the
+                    festival manager if you need it opened sooner.
+                  </>
+                ) : (
+                  <>
+                    {deadlineLabel
+                      ? `Adding new participants closed on ${deadlineLabel}.`
+                      : "Adding new participants is closed."}{" "}
+                    You can review existing participants below. Contact the
+                    festival manager if something needs to change.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Select
@@ -192,54 +270,138 @@ export function MyParticipantsClient({
           description="Nobody in your group matches this category yet."
         />
       ) : (
-        <ul className="divide-y divide-border border-y border-border">
-          {visibleParticipants.map((s) => (
-            <li key={s.id} className="flex items-center gap-4 py-3.5">
-              <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-                {s.chestNumber ?? "—"}
-              </span>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-[15px] font-medium text-heading">
-                    {s.name}
+        <>
+          <ul className="divide-y divide-border border-y border-border">
+            {visibleParticipants
+              .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+              .map((s) => (
+                <li key={s.id} className="flex items-center gap-4 py-3.5">
+                  <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                    {s.chestNumber ?? "—"}
                   </span>
-                  {s.isTeamLeader && (
-                    <StatusPill tone="warning" icon={Crown}>
-                      Leader
-                    </StatusPill>
-                  )}
-                </div>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {s.category?.name ?? "No category"}
-                </p>
-              </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
-                    aria-label={`Actions for ${s.name}`}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setDetailsParticipant(s)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    View details
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setQrParticipant(s)}>
-                    <QrCode className="mr-2 h-4 w-4" />
-                    Chest number QR
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </li>
-          ))}
-        </ul>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-[15px] font-medium text-heading">
+                        {s.name}
+                      </span>
+                      {s.isTeamLeader && (
+                        <StatusPill tone="warning" icon={Crown}>
+                          Leader
+                        </StatusPill>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {s.category?.name ?? "No category"}
+                    </p>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                        aria-label={`Actions for ${s.name}`}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() => setDetailsParticipant(s)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setQrParticipant(s)}>
+                        <QrCode className="mr-2 h-4 w-4" />
+                        Chest number QR
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </li>
+              ))}
+          </ul>
+
+          {visibleParticipants.length > pageSize && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (pageIndex > 0) setPageIndex((p) => p - 1);
+                    }}
+                    className={
+                      pageIndex === 0 ? "pointer-events-none opacity-50" : ""
+                    }
+                  />
+                </PaginationItem>
+
+                {[
+                  ...Array(Math.ceil(visibleParticipants.length / pageSize)),
+                ].map((_, i) => {
+                  const targetPage = i;
+                  const totalPages = Math.ceil(
+                    visibleParticipants.length / pageSize,
+                  );
+
+                  if (
+                    targetPage === 0 ||
+                    targetPage === totalPages - 1 ||
+                    (targetPage >= pageIndex - 1 && targetPage <= pageIndex + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          isActive={pageIndex === targetPage}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPageIndex(targetPage);
+                          }}
+                        >
+                          {targetPage + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+
+                  if (
+                    targetPage === pageIndex - 2 ||
+                    targetPage === pageIndex + 2
+                  ) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (
+                        (pageIndex + 1) * pageSize <
+                        visibleParticipants.length
+                      )
+                        setPageIndex((p) => p + 1);
+                    }}
+                    className={
+                      (pageIndex + 1) * pageSize >= visibleParticipants.length
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       )}
 
       {detailsParticipant ? (

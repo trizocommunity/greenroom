@@ -24,19 +24,16 @@ import { ReportingEndsInCountdown } from "@/components/programme/ReportingEndsIn
 import { getFestivalDurationDays } from "@/config/pricing";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
-import { MS } from "@/core/datetime/server";
 import {
   participant as participantTable,
   programmeReportingSession as sessionTable,
 } from "@/core/database/schema";
+import { MS } from "@/core/datetime/server";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getBadgePayloadAction } from "@/features/posters/actions/badge.actions";
 import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
@@ -103,10 +100,7 @@ export default async function ParticipantMainPage({
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier as any),
-    "publicParticipantProfile",
-  );
+  const canViewProfile = isEnabled(festival.tier, "publicParticipantProfile");
   if (!canViewProfile) notFound();
 
   const participant = await findParticipantByFestivalAndProfileSlug(
@@ -114,6 +108,11 @@ export default async function ParticipantMainPage({
     participantSlug,
   );
   if (!participant) notFound();
+
+  // Team leaders live at /dashboard; this route is participant-only.
+  if (participant.isTeamLeader) {
+    redirect(`/${slug}/${participantSlug}/dashboard`);
+  }
 
   const session = await getParticipantSessionFromCookie();
   const isOwnerSession =
@@ -163,7 +162,7 @@ export default async function ParticipantMainPage({
   >();
   const assignmentIdByProgrammeId = new Map<string, string>();
 
-  for (const a of participant.assignments ?? []) {
+  for (const a of participant.assignedProgrammes ?? []) {
     const p = a.programme;
     const pid = a.programmeId ?? p?.id;
     if (!pid || !p?.status) continue;
@@ -171,12 +170,12 @@ export default async function ParticipantMainPage({
       programmeById.set(pid, {
         programmeId: pid,
         name: p.name,
-        categoryName: (p as any).category?.name ?? null,
+        categoryName: p.category?.name ?? null,
         status: p.status as ProgrammeStatus,
         programmeType: p.type,
       });
     }
-    assignmentIdByProgrammeId.set(pid, a.id);
+    assignmentIdByProgrammeId.set(pid, a.assignmentId);
   }
 
   const assignedProgrammes = Array.from(programmeById.values()).sort(
@@ -214,8 +213,6 @@ export default async function ParticipantMainPage({
     ["IN_PROGRESS", "CLOSED"].includes(s.status),
   );
 
-
-
   const liveSessions = ongoingSessions.filter(
     (s) => s.status === "IN_PROGRESS" && !isSessionTimedOut(s),
   );
@@ -229,7 +226,7 @@ export default async function ParticipantMainPage({
     categoryName: category?.name ?? "",
     qrPayload: getQrCodeContent(participant as any),
   });
-  const badge = badgeResult.success ? badgeResult.data ?? null : null;
+  const badge = badgeResult.success ? (badgeResult.data ?? null) : null;
 
   return (
     <div className={`${APP_CONTAINER} space-y-10 py-8 md:py-10`}>

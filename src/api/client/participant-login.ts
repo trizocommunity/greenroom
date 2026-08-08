@@ -1,5 +1,4 @@
 import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
 import type {
   ParticipantLogoutResponse,
   RequestAccessInput,
@@ -9,9 +8,14 @@ import type {
 } from "@/api/contracts/participant-login";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { useInlineErrorMutation } from "./useInlineErrorMutation";
 
 export function useRequestAccess() {
-  return useMutation<RequestAccessResponse, Error, RequestAccessInput>({
+  return useInlineErrorMutation<
+    RequestAccessResponse,
+    Error,
+    RequestAccessInput
+  >({
     mutationFn: async (data) => {
       const res = await apiClient.post<ApiResponse<RequestAccessResponse>>(
         "/participant-login/request-access",
@@ -19,12 +23,12 @@ export function useRequestAccess() {
       );
       return handleApiResponse(res.data);
     },
-    onError: (error) => toast.error(error.message),
+    meta: { requireInlineError: true, errorScope: "participant-login" },
   });
 }
 
 export function useVerifyOtp() {
-  return useMutation<VerifyOtpResponse, Error, VerifyOtpInput>({
+  return useInlineErrorMutation<VerifyOtpResponse, Error, VerifyOtpInput>({
     mutationFn: async (data) => {
       const res = await apiClient.post<ApiResponse<VerifyOtpResponse>>(
         "/participant-login/verify-otp",
@@ -32,7 +36,7 @@ export function useVerifyOtp() {
       );
       return handleApiResponse(res.data);
     },
-    onError: (error) => toast.error(error.message),
+    meta: { requireInlineError: true, errorScope: "participant-login" },
   });
 }
 
@@ -44,6 +48,5 @@ export function useParticipantLogout() {
       );
       return handleApiResponse(res.data);
     },
-    onError: (error) => toast.error(error.message),
   });
 }

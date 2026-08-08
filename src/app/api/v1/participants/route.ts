@@ -1,3 +1,4 @@
+import { paginationSchema, sortingSchema } from "@/api/contracts/_shared";
 import { createParticipantInput } from "@/api/contracts/participants";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
@@ -13,6 +14,34 @@ const handler = createProtectedHandler({
     if (!festivalId)
       return badRequest("MISSING_PARAM", "festivalId is required");
     await assertFestivalAccess(user, festivalId);
+
+    const pageParam = url.searchParams.get("page");
+    if (pageParam) {
+      const { page, pageSize } = paginationSchema.parse({
+        page: pageParam,
+        pageSize: url.searchParams.get("pageSize") ?? undefined,
+      });
+
+      const { sort, order } = sortingSchema.parse({
+        sort: url.searchParams.get("sort") ?? undefined,
+        order: url.searchParams.get("order") ?? undefined,
+      });
+
+      const result = await ParticipantService.getAllPaginated(festivalId, {
+        page,
+        pageSize,
+        sort,
+        order,
+        groupId: url.searchParams.get("groupId") ?? undefined,
+        categoryId: url.searchParams.get("categoryId") ?? undefined,
+        search: url.searchParams.get("search") ?? undefined,
+        isTeamLeader: url.searchParams.has("isTeamLeader")
+          ? url.searchParams.get("isTeamLeader") === "true"
+          : undefined,
+      });
+      return ok(result);
+    }
+
     const data = await ParticipantService.getAll(festivalId);
     return ok(data);
   },
@@ -34,6 +63,10 @@ const handler = createProtectedHandler({
       where: (s, { eq }) => eq(s.id, result.id),
       with: { category: true, group: true },
     });
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok(updated);
   },
 });

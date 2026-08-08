@@ -26,6 +26,10 @@ const handler = createProtectedHandler({
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
     const result = await CategoryService.create(festivalId, parsed.data);
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok(result);
   },
 });

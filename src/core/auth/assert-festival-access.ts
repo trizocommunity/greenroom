@@ -5,38 +5,21 @@ import {
   festivalMember as festivalMemberTable,
   festival as festivalTable,
 } from "@/core/database/schema";
-import { MS, nowPlus, serverNowMs } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 
-type AccessLevel = "owner" | "member" | "super_admin" | "none";
-
-interface CacheEntry {
-  access: AccessLevel;
-  expiresAt: number;
-}
-
-const accessCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = MS.minute;
-
-function getCacheKey(festivalId: string, userId: string, role: string): string {
-  return `${festivalId}:${userId}:${role}`;
-}
-
-function getFromCache(key: string): AccessLevel | null {
-  const entry = accessCache.get(key);
-  if (!entry) return null;
-  if (serverNowMs() > entry.expiresAt) {
-    accessCache.delete(key);
-    return null;
-  }
-  return entry.access;
-}
-
-function setToCache(key: string, access: AccessLevel): void {
-  accessCache.set(key, { access, expiresAt: nowPlus(CACHE_TTL_MS).getTime() });
-}
-
+/**
+ * Assert the current user has access to the festival.
+ *
+ * PR 3 dropped the in-memory cache that used to live here. With Better
+ * Auth's session, role changes propagate immediately — there's no stale
+ * up-to-60-second window to worry about, and the DB hit per request is
+ * fast enough (one `festival` row + one optional `festivalMember` row,
+ * both indexed) that caching it buys very little.
+ *
+ * Super-admins always pass. Owners always pass. Everyone else needs an
+ * active `festivalMember` row.
+ */
 export async function assertFestivalAccess(
   session: SessionPayload | null,
   festivalId: string,
@@ -47,20 +30,6 @@ export async function assertFestivalAccess(
   }
 
   const isSuperAdmin = session.role === "SUPER_ADMIN";
-  const cacheKey = getCacheKey(festivalId, session.userId, session.role);
-
-  const cachedAccess = getFromCache(cacheKey);
-  if (cachedAccess) {
-    if (cachedAccess === "none") {
-      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
-    }
-    if (options?.requireWritable) {
-      await assertFestivalMutationAllowed(festivalId, {
-        allowPast: options.allowPast,
-      });
-    }
-    return;
-  }
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, festivalId),
@@ -83,20 +52,9 @@ export async function assertFestivalAccess(
     isMember = Boolean(member?.isActive);
   }
 
-  let access: AccessLevel;
-  if (isSuperAdmin) {
-    access = "super_admin";
-  } else if (isOwner) {
-    access = "owner";
-  } else if (isMember) {
-    access = "member";
-  } else {
-    access = "none";
-  }
+  const hasAccess = isSuperAdmin || isOwner || isMember;
 
-  setToCache(cacheKey, access);
-
-  if (access === "none") {
+  if (!hasAccess) {
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
   }
 

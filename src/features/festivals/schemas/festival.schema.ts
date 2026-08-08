@@ -18,6 +18,7 @@ export const createFestivalSchema = z
     institutionType: z.nativeEnum(InstitutionType).optional(),
     institutionName: z.string().optional().or(z.literal("")),
     location: z.string().optional().or(z.literal("")),
+    timezone: z.string().optional().or(z.literal("")),
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
   })

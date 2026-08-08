@@ -8,7 +8,7 @@ import {
   category as categoryTable,
   participant as participantTable,
 } from "@/core/database/schema";
-import { isDeadlineWindowOpen } from "@/features/festivals/services/deadline-window";
+import { isTeamLeaderActionWindowOpen } from "@/features/festivals/services/deadline-window";
 
 export default async function MyParticipantsPage({
   params,
@@ -41,7 +41,7 @@ export default async function MyParticipantsPage({
 
   const windowStart = festival.participantCreationStartDate;
   const deadline = festival.participantCreationDeadline;
-  const isReadOnly = !isDeadlineWindowOpen({
+  const isReadOnly = !isTeamLeaderActionWindowOpen({
     start: windowStart,
     end: deadline,
   });

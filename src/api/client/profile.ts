@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { z } from "zod";
 import type { UpdateProfileInput } from "@/api/contracts/profile";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { STALE_TIME } from "@/lib/query-utils";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "./_query-keys";
 
 export interface UserWithInstitution {

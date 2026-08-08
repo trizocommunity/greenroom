@@ -1,5 +1,6 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import {
   deleteTeamAssignmentAction,
   getProgrammeTeamMembersAction,
@@ -9,12 +10,13 @@ import {
   updateFestivalSettingsAction,
 } from "@/features/festivals/actions/festival-crud.actions";
 import {
+  cancelJudgementAction,
+  forceCompleteJudgementAction,
   getStagePortalBoardAction,
   getStagePortalScorePayloadAction,
   markCodeLetterAbsenceAction,
   previewJudgeSubmissionSummaryAction,
   restartJudgementAction,
-  cancelJudgementAction,
   startJudgementAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
@@ -62,10 +64,12 @@ import {
   resetStagePortalCredentialAction,
 } from "@/features/stage-portal/actions/stage-portal-credential.actions";
 import { provisionOffStageAction } from "@/features/stages/actions/off-stage.actions";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "./_query-keys";
+import { useInlineErrorMutation } from "./useInlineErrorMutation";
 
 export function useStagePortalLogin() {
-  return useMutation({
+  return useInlineErrorMutation({
     mutationFn: async (input: {
       festivalSlug: string;
       accessCode: string;
@@ -73,9 +77,7 @@ export function useStagePortalLogin() {
     }) => {
       return getStagePortalLoginAction(input);
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    meta: { requireInlineError: true, errorScope: "stage-portal-login" },
   });
 }
 
@@ -117,6 +119,7 @@ export function useSubmitJudgeScores() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["results"] });
+      qc.invalidateQueries({ queryKey: ["stage-portal"] });
     },
   });
 }
@@ -138,6 +141,7 @@ export function useSubmitGroupJudgeScores() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["results"] });
+      qc.invalidateQueries({ queryKey: ["stage-portal"] });
     },
   });
 }
@@ -217,6 +221,23 @@ export function useCancelJudgement() {
   });
 }
 
+export function useForceCompleteJudgement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (configId: string) => {
+      return forceCompleteJudgementAction(configId);
+    },
+    onSuccess: (_, configId) => {
+      qc.invalidateQueries({ queryKey: ["judgement"] });
+      qc.invalidateQueries({ queryKey: ["programmes"] });
+      toast.success("Submitted to completed programmes");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 export function useStagePortalBoard(day?: string) {
   return useQuery({
     queryKey: ["stage-portal", "board", day ?? "today"],
@@ -231,6 +252,7 @@ export function useStagePortalScorePayload(configId: string) {
     queryFn: async () => getStagePortalScorePayloadAction(configId),
     enabled: !!configId,
     refetchInterval: 3000,
+    retry: false,
   });
 }
 
@@ -275,8 +297,7 @@ export function useProvisionOffStage() {
     Error,
     { festivalId: string }
   >({
-    mutationFn: async ({ festivalId }) =>
-      provisionOffStageAction(festivalId),
+    mutationFn: async ({ festivalId }) => provisionOffStageAction(festivalId),
     onError: (error) => {
       toast.error(error.message);
     },

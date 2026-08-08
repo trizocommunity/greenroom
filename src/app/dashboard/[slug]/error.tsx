@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { humanizeError } from "@/core/errors/humanize";
 
 export default function DashboardError({
   error,
@@ -13,13 +14,14 @@ export default function DashboardError({
 }) {
   const pathname = usePathname();
 
-  // Extract slug from pathname: /dashboard/[slug]/...
   const slug = pathname?.split("/")?.[2] ?? "";
   const dashboardHref = slug ? `/dashboard/${slug}` : "/";
 
   useEffect(() => {
     console.error("[DashboardError]", error);
   }, [error]);
+
+  const friendly = humanizeError(error);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh] px-6 text-center relative">
@@ -56,8 +58,7 @@ export default function DashboardError({
             Unexpected error
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {error.message ||
-              "This screen ran into a problem. Try again, or head back to the dashboard."}
+            {friendly.message}
           </p>
         </div>
 

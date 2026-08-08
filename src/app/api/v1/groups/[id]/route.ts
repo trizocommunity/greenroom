@@ -34,6 +34,10 @@ export const PUT = async (
   try {
     await assertFestivalAccess(session, festivalId);
     const result = await GroupService.update(id, festivalId, parsed.data);
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok(result);
   } catch (error: unknown) {
     if (error instanceof AppError) {
@@ -62,6 +66,10 @@ export const DELETE = async (
   try {
     await assertFestivalAccess(session, festivalId);
     const result = await GroupService.delete(groupId, festivalId);
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok(result);
   } catch (error: unknown) {
     if (error instanceof AppError) {

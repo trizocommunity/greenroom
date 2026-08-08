@@ -1,16 +1,16 @@
 /**
- * Backwards-compatibility shim.
+ * Backwards-compatibility shim for non-server callers that still import
+ * the helper-shaped senders (`sendInvitationEmail`, `sendTeamLeaderOtpEmail`)
+ * — each is a one-line delegation to `sendEmail({ to, kind })`.
  *
- * The old `email.ts` exported four hand-rolled HTML senders. The new
- * `src/core/integrations/email/` module exports a single typed
- * `sendEmail({ to, kind })` API. This file re-exports the three
- * function signatures that still have callers; each one is a one-line
- * delegation to `sendEmail`.
+ * `sendMagicLinkEmail` was removed in ISSUE-42 PR C — sign-in is now
+ * handled by Better Auth's `emailOTP` plugin; the only server-side caller
+ * used to live in `core/auth/better-auth/auth.ts`'s `magicLink` hook
+ * (now unmounted). If a future plugin reintroduces the magic-link flow,
+ * add the helper back here.
  *
- * `sendPlainFestivalEmail` was removed — there were no remaining callers,
- * and `festival_announcement` is no longer in the public `EmailKind`
- * union (see `core/integrations/email/types.ts`). If a generic
- * announcement kind is reintroduced later, add it back here.
+ * `sendPlainFestivalEmail` was also removed earlier — no remaining callers
+ * and `festival_announcement` was dropped from the `EmailKind` union.
  *
  * Errors are intentionally swallowed (returning void) to match the
  * legacy contract — callers shouldn't have to start handling a result
@@ -21,16 +21,6 @@
  */
 
 import { sendEmail } from "./email/index";
-
-export async function sendMagicLinkEmail(
-  to: string,
-  token: string,
-): Promise<void> {
-  await sendEmail({
-    to,
-    kind: { kind: "magic_link", token },
-  });
-}
 
 export async function sendInvitationEmail(
   to: string,

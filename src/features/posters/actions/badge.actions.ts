@@ -1,14 +1,14 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
+import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import { db } from "@/core/database/client";
 import {
-  festival as festivalTable,
   festivalPosterTemplate,
+  festival as festivalTable,
 } from "@/core/database/schema";
 import { handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
-import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import * as AssignmentRepo from "@/features/posters/repositories/template-assignment.repository";
 
 export interface BadgePayload {

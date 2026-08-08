@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { useCloudinaryUpload } from "@/api/client";
 import {
   useCreateNews,
@@ -43,11 +42,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { toast } from "@/lib/toast";
 
 type NewsPost = {
   id: string;
@@ -98,6 +105,9 @@ export function NewsClient({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 10;
   const [saving, setSaving] = useState(false);
   const [viewDetailsPost, setViewDetailsPost] = useState<NewsPost | null>(null);
   const uploadMutation = useCloudinaryUpload();
@@ -317,87 +327,125 @@ export function NewsClient({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {displayPosts.map((post) => (
-          <Card
-            key={post.id}
-            className={cn(
-              "overflow-hidden transition-shadow hover:shadow-md",
-              !post.imageUrl && "border-t-4 border-t-primary/20",
-            )}
-          >
-            <div className="relative">
-              {post.imageUrl ? (
-                <div className="aspect-video w-full bg-muted">
-                  <Image
-                    src={post.imageUrl}
-                    alt={post.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="aspect-video w-full bg-muted/50 flex items-center justify-center">
-                  <Newspaper className="h-10 w-10 text-muted-foreground/50" />
-                </div>
+        {displayPosts
+          .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+          .map((post) => (
+            <Card
+              key={post.id}
+              className={cn(
+                "overflow-hidden transition-shadow hover:shadow-md",
+                !post.imageUrl && "border-t-4 border-t-primary/20",
               )}
-              <div className="absolute top-2 right-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="h-8 w-8 rounded-full shadow-md bg-background/90 hover:bg-background"
-                      aria-label="Actions"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => setViewDetailsPost(post)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View details
-                    </DropdownMenuItem>
-                    {!isReadOnly && (
-                      <>
-                        <DropdownMenuItem onClick={() => openEdit(post)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => setDeleteConfirmId(post.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+            >
+              <div className="relative">
+                {post.imageUrl ? (
+                  <div className="aspect-video w-full bg-muted">
+                    <Image
+                      src={post.imageUrl}
+                      alt={post.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-video w-full bg-muted/50 flex items-center justify-center">
+                    <Newspaper className="h-10 w-10 text-muted-foreground/50" />
+                  </div>
+                )}
+                <div className="absolute top-2 right-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full shadow-md bg-background/90 hover:bg-background"
+                        aria-label="Actions"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        onClick={() => setViewDetailsPost(post)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View details
+                      </DropdownMenuItem>
+                      {!isReadOnly && (
+                        <>
+                          <DropdownMenuItem onClick={() => openEdit(post)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteConfirmId(post.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-            </div>
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-base font-semibold line-clamp-2 leading-snug">
-                {post.title}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                {post.publishedAt
-                  ? formatDate(parseInstant(post.publishedAt), {
-                      tz: displayTz,
-                      style: "medium",
-                    })
-                  : "Draft"}
-              </p>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                {post.excerpt || post.content}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-base font-semibold line-clamp-2 leading-snug">
+                  {post.title}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {post.publishedAt
+                    ? formatDate(parseInstant(post.publishedAt), {
+                        tz: displayTz,
+                        style: "medium",
+                      })
+                    : "Draft"}
+                </p>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                  {post.excerpt || post.content}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
       </div>
+
+      {displayPosts.length > pageSize && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pageIndex > 0) setPageIndex((p) => p - 1);
+                }}
+                className={
+                  pageIndex === 0
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if ((pageIndex + 1) * pageSize < displayPosts.length)
+                    setPageIndex((p) => p + 1);
+                }}
+                className={
+                  (pageIndex + 1) * pageSize >= displayPosts.length
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       <DeleteDialog
         title="Delete news post"

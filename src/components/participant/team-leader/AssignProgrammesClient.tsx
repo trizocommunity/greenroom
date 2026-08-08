@@ -13,7 +13,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import {
   useAssignments,
   useBulkCreateAssignments,
@@ -22,9 +21,17 @@ import {
 import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { AssignmentModal } from "@/components/festival/pre-event-works/assignments/AssignmentModal";
-import { DeadlineWindowGate } from "@/components/festival/pre-event-works/DeadlineWindowGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -48,6 +55,7 @@ import type {
 import { cn } from "@/core/utils/cn";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
+import { toast } from "@/lib/toast";
 
 type ProgrammeForAssignment = {
   id: string;
@@ -102,12 +110,16 @@ export function AssignProgrammesClient({
 }) {
   const {
     isLocked,
+    isUnconfigured,
     isUpcoming,
     justLocked,
     start: windowStartDate,
     end: windowEndDate,
   } = useDeadlineWindow(windowStart ?? null, deadline ?? null);
   const runtimeIsReadOnly = isReadOnly || isLocked;
+  // Team leaders only get write access when the festival manager has set a
+  // full open → close window AND we are currently inside it.
+  const tlHasAccess = !runtimeIsReadOnly;
 
   const { data: assignments = [], refetch } = useAssignments(festivalId);
   const bulkCreateAssignments = useBulkCreateAssignments();
@@ -144,6 +156,10 @@ export function AssignProgrammesClient({
   const [selectedProgrammeCategoryId, setSelectedProgrammeCategoryId] =
     useState<string>(leaderCategoryId);
 
+  const [assignPageIndex, setAssignPageIndex] = useState(0);
+  const [assignmentsPageIndex, setAssignmentsPageIndex] = useState(0);
+  const pageSize = 15;
+
   const selectedProgrammeCategoryType = useMemo(() => {
     return (
       programmeCategoryOptions.find((c) => c.id === selectedProgrammeCategoryId)
@@ -164,6 +180,10 @@ export function AssignProgrammesClient({
     }, 5000);
     return () => window.clearInterval(intervalId);
   }, [festivalId, refetch]);
+
+  useEffect(() => {
+    setAssignPageIndex(0);
+  }, [selectedProgrammeCategoryId, selectedProgrammeType]);
 
   useEffect(() => {
     if (!programmeCategoryOptions.length) return;
@@ -222,6 +242,14 @@ export function AssignProgrammesClient({
     "ASSIGN" | "ASSIGNMENTS"
   >("ASSIGN");
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+
+  // When the team leader loses access (window closes or never opened), make
+  // sure we can't sit on a hidden tab.
+  useEffect(() => {
+    if (!tlHasAccess && assignProgrammesTab === "ASSIGN") {
+      setAssignProgrammesTab("ASSIGNMENTS");
+    }
+  }, [tlHasAccess, assignProgrammesTab]);
 
   // AssignmentModal expects a top-level `categoryId` on each programme (this
   // component's ProgrammeForAssignment only nests it under `category.id`).
@@ -968,20 +996,9 @@ export function AssignProgrammesClient({
     ? groupCapacityByProgrammeId.get(drawerRow.programmeId)
     : undefined;
 
-  // Nothing on this screen is usable before the window opens, so the gate
-  // takes over the whole section rather than disabling controls one by one.
-  if (isUpcoming) {
-    return (
-      <div className="pt-5">
-        <DeadlineWindowGate
-          title="Programme assignments haven't opened yet"
-          description="You'll be able to assign your participants to programmes as soon as the window opens."
-          start={windowStartDate}
-          end={windowEndDate}
-        />
-      </div>
-    );
-  }
+  // The Assign tab is hidden when the team leader has no access (no deadline
+  // configured, or the window is upcoming/closed). The Assignments tab stays
+  // visible so they can still review what's already been assigned.
 
   return (
     <div className="pt-5">
@@ -1004,32 +1021,19 @@ export function AssignProgrammesClient({
           setAssignProgrammesTab(v as "ASSIGN" | "ASSIGNMENTS")
         }
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList className="justify-start gap-1">
-            <TabsTrigger value="ASSIGN">Assign</TabsTrigger>
-            <TabsTrigger value="ASSIGNMENTS">
-              Assignments
-              {programmeAssignmentRows.length > 0 && (
-                <span className="ml-1.5 text-xs tabular-nums opacity-70">
-                  {programmeAssignmentRows.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-          {!runtimeIsReadOnly && (
-            <Button
-              size="sm"
-              className="h-9 rounded-full"
-              onClick={() => setAssignmentModalOpen(true)}
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              New assignment
-            </Button>
-          )}
-        </div>
+        {/* Compact deadline notice when no window is configured. */}
+        {isUnconfigured && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-blue-500/30 bg-blue-500/[0.06] px-4 py-3 text-sm text-blue-600">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="leading-relaxed">
+              The festival manager hasn't set an assignment window yet — reach
+              out to them to enable new assignments.
+            </p>
+          </div>
+        )}
 
-        {/* Deadline notice — above both tabs so it is never missed */}
-        {runtimeIsReadOnly && (
+        {/* Larger deadline notice when the window exists but is upcoming/closed. */}
+        {!isUnconfigured && runtimeIsReadOnly && (
           <div
             className={cn(
               "mt-4 rounded-2xl border p-4 sm:p-5",
@@ -1109,101 +1113,223 @@ export function AssignProgrammesClient({
           </div>
         )}
 
-        {/* ── Assign: pick a programme, assign inside the drawer ─────── */}
-        <TabsContent value="ASSIGN" className="mt-5">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
-              <Select
-                value={selectedProgrammeCategoryId}
-                onValueChange={setSelectedProgrammeCategoryId}
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm sm:w-[190px]">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {programmeCategoryOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        {tlHasAccess && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <TabsList className="justify-start gap-1">
+              <TabsTrigger value="ASSIGN">Assign</TabsTrigger>
+              <TabsTrigger value="ASSIGNMENTS">
+                Assignments
+                {programmeAssignmentRows.length > 0 && (
+                  <span className="ml-1.5 text-xs tabular-nums opacity-70">
+                    {programmeAssignmentRows.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            <Button
+              size="sm"
+              className="h-9 rounded-full"
+              onClick={() => setAssignmentModalOpen(true)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              New assignment
+            </Button>
+          </div>
+        )}
 
-              <Select
-                value={selectedProgrammeType}
-                onValueChange={(v) =>
-                  setSelectedProgrammeType(v as "ALL" | "GROUP" | "INDIVIDUAL")
-                }
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm sm:w-[160px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All types</SelectItem>
-                  <SelectItem value="GROUP">Group</SelectItem>
-                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                </SelectContent>
-              </Select>
+        {/* ── Assign: pick a programme, assign inside the drawer ─────── */}
+        {tlHasAccess && (
+          <TabsContent value="ASSIGN" className="mt-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
+                <Select
+                  value={selectedProgrammeCategoryId}
+                  onValueChange={setSelectedProgrammeCategoryId}
+                >
+                  <SelectTrigger className="h-9 rounded-full text-sm sm:w-[190px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {programmeCategoryOptions.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={selectedProgrammeType}
+                  onValueChange={(v) =>
+                    setSelectedProgrammeType(
+                      v as "ALL" | "GROUP" | "INDIVIDUAL",
+                    )
+                  }
+                >
+                  <SelectTrigger className="h-9 rounded-full text-sm sm:w-[160px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All types</SelectItem>
+                    <SelectItem value="GROUP">Group</SelectItem>
+                    <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {eligibleProgrammes.length} programme
+                {eligibleProgrammes.length === 1 ? "" : "s"}
+              </span>
             </div>
 
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {eligibleProgrammes.length} programme
-              {eligibleProgrammes.length === 1 ? "" : "s"}
-            </span>
-          </div>
+            {eligibleProgrammes.length === 0 ? (
+              <AppEmptyState
+                title="No programmes"
+                description="Nothing matches these filters."
+              />
+            ) : (
+              <>
+                <ul className="divide-y divide-border border-y border-border">
+                  {eligibleProgrammes
+                    .slice(
+                      assignPageIndex * pageSize,
+                      (assignPageIndex + 1) * pageSize,
+                    )
+                    .map((p) => {
+                      const capacity = groupCapacityByProgrammeId.get(p.id);
+                      const isFull = capacity?.isFull ?? false;
 
-          {eligibleProgrammes.length === 0 ? (
-            <AppEmptyState
-              title="No programmes"
-              description="Nothing matches these filters."
-            />
-          ) : (
-            <ul className="divide-y divide-border border-y border-border">
-              {eligibleProgrammes.map((p) => {
-                const capacity = groupCapacityByProgrammeId.get(p.id);
-                const isFull = capacity?.isFull ?? false;
+                      return (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            onClick={() => openAssignDrawer(p.id)}
+                            className="group flex w-full items-center gap-4 py-4 text-left transition-opacity hover:opacity-80"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate text-[15px] font-medium text-heading">
+                                  {p.name}
+                                </span>
+                                <ProgrammeStatusBadge
+                                  status={getUiProgrammeStatus(p)}
+                                />
+                              </div>
+                              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                                {p.category.name} ·{" "}
+                                {p.type === "GROUP"
+                                  ? `Team · ${p.maxTeamsPerGroup} teams of ${p.maxParticipantsPerTeam}`
+                                  : `Individual · max ${p.maxParticipantsPerGroup}`}
+                                {p.category.type === "GENERAL"
+                                  ? " · open to all categories"
+                                  : ""}
+                              </p>
+                            </div>
 
-                return (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => openAssignDrawer(p.id)}
-                      className="group flex w-full items-center gap-4 py-4 text-left transition-opacity hover:opacity-80"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-[15px] font-medium text-heading">
-                            {p.name}
-                          </span>
-                          <ProgrammeStatusBadge
-                            status={getUiProgrammeStatus(p)}
-                          />
-                        </div>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {p.category.name} ·{" "}
-                          {p.type === "GROUP"
-                            ? `Team · ${p.maxTeamsPerGroup} teams of ${p.maxParticipantsPerTeam}`
-                            : `Individual · max ${p.maxParticipantsPerGroup}`}
-                          {p.category.type === "GENERAL"
-                            ? " · open to all categories"
-                            : ""}
-                        </p>
-                      </div>
+                            <StatusPill
+                              tone={isFull ? "live" : "muted"}
+                              className="shrink-0 tabular-nums"
+                            >
+                              {capacity
+                                ? `${capacity.used}/${capacity.total}`
+                                : "—"}
+                            </StatusPill>
+                            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                </ul>
 
-                      <StatusPill
-                        tone={isFull ? "live" : "muted"}
-                        className="shrink-0 tabular-nums"
-                      >
-                        {capacity ? `${capacity.used}/${capacity.total}` : "—"}
-                      </StatusPill>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </TabsContent>
+                {eligibleProgrammes.length > pageSize && (
+                  <Pagination className="mt-4">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (assignPageIndex > 0)
+                              setAssignPageIndex((p) => p - 1);
+                          }}
+                          className={
+                            assignPageIndex === 0
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+
+                      {[
+                        ...Array(
+                          Math.ceil(eligibleProgrammes.length / pageSize),
+                        ),
+                      ].map((_, i) => {
+                        const targetPage = i;
+                        const totalPages = Math.ceil(
+                          eligibleProgrammes.length / pageSize,
+                        );
+
+                        if (
+                          targetPage === 0 ||
+                          targetPage === totalPages - 1 ||
+                          (targetPage >= assignPageIndex - 1 &&
+                            targetPage <= assignPageIndex + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                isActive={assignPageIndex === targetPage}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setAssignPageIndex(targetPage);
+                                }}
+                              >
+                                {targetPage + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        }
+
+                        if (
+                          targetPage === assignPageIndex - 2 ||
+                          targetPage === assignPageIndex + 2
+                        ) {
+                          return (
+                            <PaginationItem key={i}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          );
+                        }
+
+                        return null;
+                      })}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (
+                              (assignPageIndex + 1) * pageSize <
+                              eligibleProgrammes.length
+                            )
+                              setAssignPageIndex((p) => p + 1);
+                          }}
+                          className={
+                            (assignPageIndex + 1) * pageSize >=
+                            eligibleProgrammes.length
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </>
+            )}
+          </TabsContent>
+        )}
 
         {/* ── Assignments, per programme ─────────────────────────────── */}
         <TabsContent value="ASSIGNMENTS" className="mt-5">
@@ -1213,58 +1339,150 @@ export function AssignProgrammesClient({
               description="Once you assign participants to a programme, it will appear here."
             />
           ) : (
-            <ul className="divide-y divide-border border-y border-border">
-              {programmeAssignmentRows.map((row) => {
-                const details = programmeDetailsById.get(row.programmeId);
-                const isGroup =
-                  (details?.type ?? row.programme?.type) === "GROUP";
-                const memberCount = row.assignments.length;
-                const categoryName =
-                  details?.category?.name ?? row.programme?.category?.name;
+            <>
+              <ul className="divide-y divide-border border-y border-border">
+                {programmeAssignmentRows
+                  .slice(
+                    assignmentsPageIndex * pageSize,
+                    (assignmentsPageIndex + 1) * pageSize,
+                  )
+                  .map((row) => {
+                    const details = programmeDetailsById.get(row.programmeId);
+                    const isGroup =
+                      (details?.type ?? row.programme?.type) === "GROUP";
+                    const memberCount = row.assignments.length;
+                    const categoryName =
+                      details?.category?.name ?? row.programme?.category?.name;
 
-                return (
-                  <li key={row.programmeId}>
-                    <button
-                      type="button"
-                      onClick={() => setDrawerProgrammeId(row.programmeId)}
-                      className="group flex w-full items-center gap-4 py-4 text-left transition-opacity hover:opacity-80"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-[15px] font-medium text-heading">
-                            {row.programme?.name ?? "Programme"}
-                          </span>
-                          {row.programme && (
-                            <ProgrammeStatusBadge
-                              status={getUiProgrammeStatus(
-                                row.programme as any,
+                    return (
+                      <li key={row.programmeId}>
+                        <button
+                          type="button"
+                          onClick={() => setDrawerProgrammeId(row.programmeId)}
+                          className="group flex w-full items-center gap-4 py-4 text-left transition-opacity hover:opacity-80"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-[15px] font-medium text-heading">
+                                {row.programme?.name ?? "Programme"}
+                              </span>
+                              {row.programme && (
+                                <ProgrammeStatusBadge
+                                  status={getUiProgrammeStatus(
+                                    row.programme as any,
+                                  )}
+                                />
                               )}
-                            />
-                          )}
-                        </div>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {categoryName ? `${categoryName} · ` : ""}
-                          {isGroup
-                            ? `${row.teams.size} team${row.teams.size === 1 ? "" : "s"} · ${memberCount} participant${memberCount === 1 ? "" : "s"}`
-                            : `${memberCount} participant${memberCount === 1 ? "" : "s"}`}
-                          {row.lastAssignedAt
-                            ? ` · last assigned ${format(new Date(row.lastAssignedAt), "PP")}`
-                            : ""}
-                        </p>
-                      </div>
+                            </div>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {categoryName ? `${categoryName} · ` : ""}
+                              {isGroup
+                                ? `${row.teams.size} team${row.teams.size === 1 ? "" : "s"} · ${memberCount} participant${memberCount === 1 ? "" : "s"}`
+                                : `${memberCount} participant${memberCount === 1 ? "" : "s"}`}
+                              {row.lastAssignedAt
+                                ? ` · last assigned ${format(new Date(row.lastAssignedAt), "PP")}`
+                                : ""}
+                            </p>
+                          </div>
 
-                      <StatusPill
-                        tone="muted"
-                        className="shrink-0 tabular-nums"
-                      >
-                        {memberCount}
-                      </StatusPill>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                          <StatusPill
+                            tone="muted"
+                            className="shrink-0 tabular-nums"
+                          >
+                            {memberCount}
+                          </StatusPill>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </li>
+                    );
+                  })}
+              </ul>
+
+              {programmeAssignmentRows.length > pageSize && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (assignmentsPageIndex > 0)
+                            setAssignmentsPageIndex((p) => p - 1);
+                        }}
+                        className={
+                          assignmentsPageIndex === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+
+                    {[
+                      ...Array(
+                        Math.ceil(programmeAssignmentRows.length / pageSize),
+                      ),
+                    ].map((_, i) => {
+                      const targetPage = i;
+                      const totalPages = Math.ceil(
+                        programmeAssignmentRows.length / pageSize,
+                      );
+
+                      if (
+                        targetPage === 0 ||
+                        targetPage === totalPages - 1 ||
+                        (targetPage >= assignmentsPageIndex - 1 &&
+                          targetPage <= assignmentsPageIndex + 1)
+                      ) {
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              isActive={assignmentsPageIndex === targetPage}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setAssignmentsPageIndex(targetPage);
+                              }}
+                            >
+                              {targetPage + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      }
+
+                      if (
+                        targetPage === assignmentsPageIndex - 2 ||
+                        targetPage === assignmentsPageIndex + 2
+                      ) {
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+
+                      return null;
+                    })}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (
+                            (assignmentsPageIndex + 1) * pageSize <
+                            programmeAssignmentRows.length
+                          )
+                            setAssignmentsPageIndex((p) => p + 1);
+                        }}
+                        className={
+                          (assignmentsPageIndex + 1) * pageSize >=
+                          programmeAssignmentRows.length
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
@@ -1684,7 +1902,7 @@ export function AssignProgrammesClient({
                           <ul className="divide-y divide-border border-y border-border">
                             {teamAssignments.map((a: any) => (
                               <AssignedParticipantRow
-                                key={a.id}
+                                key={`${a.id}-${a.participant?.id}`}
                                 assignment={a}
                                 isTeamLead={
                                   existingTeamLeads[
@@ -1693,7 +1911,6 @@ export function AssignProgrammesClient({
                                 }
                                 readOnly={runtimeIsReadOnly}
                                 pending={deleteAssignment.isPending}
-                                onRemove={onRemoveAssignment}
                               />
                             ))}
                           </ul>
@@ -1742,7 +1959,7 @@ function AssignedParticipantRow({
   isTeamLead?: boolean;
   readOnly: boolean;
   pending: boolean;
-  onRemove: (assignmentId: string, label: string) => void;
+  onRemove?: (assignmentId: string, label: string) => void;
 }) {
   const name = assignment?.participant?.name ?? "Participant";
 
@@ -1772,7 +1989,7 @@ function AssignedParticipantRow({
         )}
       </div>
 
-      {!readOnly && (
+      {!readOnly && onRemove && (
         <Button
           type="button"
           variant="ghost"

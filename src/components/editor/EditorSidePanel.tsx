@@ -11,12 +11,12 @@ import {
   Upload,
 } from "lucide-react";
 import { useRef } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/core/utils/cn";
+import { toast } from "@/lib/toast";
 import { EditorCanvasSizeSetup } from "./EditorCanvasSizeSetup";
 import { EditorFontsPanel } from "./EditorFontsPanel";
 import { editorPanelAside } from "./editor-chrome";

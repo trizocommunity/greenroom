@@ -1,7 +1,15 @@
 import type Konva from "konva";
-import { useEffect, useState } from "react";
-import { Circle, Group, Image as KonvaImage, Line, Rect, RegularPolygon, Text } from "react-konva";
 import QRCode from "qrcode";
+import { useEffect, useState } from "react";
+import {
+  Circle,
+  Group,
+  Image as KonvaImage,
+  Line,
+  Rect,
+  RegularPolygon,
+  Text,
+} from "react-konva";
 import { konvaShadowProps } from "./editor-konva-props";
 import { EDITOR_COLORS } from "./editor-theme";
 import { estimateTextWidth, getEditableText } from "./editor-utils";
@@ -28,9 +36,20 @@ export interface PosterElementRendererProps {
   onBoundsChange?: () => void;
 }
 
-function ImageElement({ el, onSelect, hoverHandlers, dragHandlers, draggable, nodeOpacity, onBoundsChange }: Omit<PosterElementRendererProps, "interactive" | "previewMode" | "displayText">) {
+function ImageElement({
+  el,
+  onSelect,
+  hoverHandlers,
+  dragHandlers,
+  draggable,
+  nodeOpacity,
+  onBoundsChange,
+}: Omit<
+  PosterElementRendererProps,
+  "interactive" | "previewMode" | "displayText"
+>) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  
+
   useEffect(() => {
     if (!el.imageUrl) return;
     const img = new window.Image();
@@ -68,20 +87,32 @@ function ImageElement({ el, onSelect, hoverHandlers, dragHandlers, draggable, no
   );
 }
 
-function QrCodeElement({ el, onSelect, hoverHandlers, dragHandlers, draggable, nodeOpacity, displayText, previewMode }: PosterElementRendererProps) {
+function QrCodeElement({
+  el,
+  onSelect,
+  hoverHandlers,
+  dragHandlers,
+  draggable,
+  nodeOpacity,
+  displayText,
+  previewMode,
+}: PosterElementRendererProps) {
   const [qrImage, setQrImage] = useState<HTMLImageElement | null>(null);
-  
+
   useEffect(() => {
     if (!previewMode) {
       setQrImage(null);
       return;
     }
-    
+
     // In preview mode, generate real QR code
     // The text content should be evaluated (displayText)
     const textToEncode = displayText || "https://trizocommunity.com";
-    
-    QRCode.toDataURL(textToEncode, { margin: 1, color: { dark: "#000000", light: "#ffffff" } })
+
+    QRCode.toDataURL(textToEncode, {
+      margin: 1,
+      color: { dark: "#000000", light: "#ffffff" },
+    })
       .then((url) => {
         const img = new window.Image();
         img.onload = () => setQrImage(img);
@@ -158,11 +189,21 @@ function QrCodeElement({ el, onSelect, hoverHandlers, dragHandlers, draggable, n
 }
 
 export function PosterElementRenderer(props: PosterElementRendererProps) {
-  const { el, draggable, nodeOpacity, displayText, onSelect, onDblClick, hoverHandlers, dragHandlers } = props;
+  const {
+    el,
+    draggable,
+    nodeOpacity,
+    displayText,
+    onSelect,
+    onDblClick,
+    hoverHandlers,
+    dragHandlers,
+  } = props;
 
   if (el.type === "text") {
     const fontSize = el.fontSize ?? 24;
-    const textWidth = el.width ?? estimateTextWidth(getEditableText(el), fontSize);
+    const textWidth =
+      el.width ?? estimateTextWidth(getEditableText(el), fontSize);
     const deco = el.textDecoration ?? "";
     const shadow = konvaShadowProps(el);
     return (

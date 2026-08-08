@@ -8,8 +8,7 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { festivalMediaImage } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
-import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
-import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
+import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 
 const handler = createProtectedHandler({
   async GET({ user, request }) {
@@ -44,7 +43,6 @@ const handler = createProtectedHandler({
       .where(eq(festivalMediaImage.festivalId, festivalId));
     const order = (maxOrder ?? -1) + 1;
 
-    const addedMb = await StorageUsageService.getUrlSizeMB(url);
     const now = serverNowIso();
     const image = {
       id: randomUUID(),
@@ -55,11 +53,18 @@ const handler = createProtectedHandler({
       updatedAt: now,
     };
 
-    await db.insert(festivalMediaImage).values(image);
-    if (addedMb > 0) {
-      await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
-    }
+    await StorageBackedFieldService.mutateUrls({
+      festivalId,
+      add: [url],
+      operation: async (tx) => {
+        await tx.insert(festivalMediaImage).values(image);
+      },
+    });
 
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok(image);
   },
 
@@ -86,18 +91,20 @@ const handler = createProtectedHandler({
       return badRequest("NOT_FOUND", "Image not found");
     }
 
-    const removedMb = await StorageUsageService.getUrlSizeMB(image.url);
-    await db
-      .delete(festivalMediaImage)
-      .where(eq(festivalMediaImage.id, image.id));
-    if (removedMb > 0) {
-      await UsageCounterService.incrementUsage(
-        festivalId,
-        "storage",
-        -removedMb,
-      );
-    }
+    await StorageBackedFieldService.mutateUrls({
+      festivalId,
+      remove: [image.url],
+      operation: async (tx) => {
+        await tx
+          .delete(festivalMediaImage)
+          .where(eq(festivalMediaImage.id, image.id));
+      },
+    });
 
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok({ success: true });
   },
 });

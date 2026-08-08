@@ -1,9 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { StagesClient } from "@/components/festival/event-works/stage-management/StagesClient";
 import { getSession } from "@/core/auth/session";
+import type { Tier } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { getStages } from "@/features/stages/actions/stage.actions";
 
 interface PageProps {
@@ -19,9 +21,11 @@ export default async function StageManagementPage({ params }: PageProps) {
   }
 
   // Feature Access Check (respects Super Admin plan-feature overrides)
-  const canManageStages = await getEffectiveFeatureEnabled(
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManageStages = isEnabled(
     festival.tier,
     "stageManagement",
+    effectiveFeatures,
   );
   if (!canManageStages) {
     redirect(

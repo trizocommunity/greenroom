@@ -1,13 +1,13 @@
 "use server";
 
 import type { Tier } from "@/core/types/app-enums";
-import type { FeaturePath } from "@/features/plan-features/services/features";
+import type { FeaturePath } from "@/features/plan-features/services/feature-gate";
 import type { FeatureTag } from "@/features/plan-features/services/features-tags";
 import {
   FEATURE_TAGS,
   isFeatureTagEnabled,
 } from "@/features/plan-features/services/features-tags";
-import { getEffectivePlanFeatureMatrix } from "@/features/plan-features/services/plan-features.service";
+import { loadAllFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 
 const TIERS: Tier[] = ["BASIC", "STANDARD", "PRO"];
 
@@ -15,7 +15,7 @@ export async function getEffectiveFeatureTagEnabled(
   tier: Tier,
   tag: FeatureTag,
 ): Promise<boolean> {
-  const matrix = await getEffectivePlanFeatureMatrix();
+  const matrix = await loadAllFeatureOverrides();
   const effectiveFeatureMatrix = (matrix[tier] ?? {}) as Partial<
     Record<FeaturePath, boolean>
   >;
@@ -31,7 +31,7 @@ export async function getEffectiveFeatureTagEnabled(
 export async function getEffectiveFeatureTagMatrix(): Promise<
   Record<Tier, Partial<Record<FeatureTag, boolean>>>
 > {
-  const matrix = await getEffectivePlanFeatureMatrix();
+  const matrix = await loadAllFeatureOverrides();
 
   const out = {} as Record<Tier, Partial<Record<FeatureTag, boolean>>>;
   for (const tier of TIERS) {

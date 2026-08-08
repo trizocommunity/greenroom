@@ -1,17 +1,17 @@
 import { and, count, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
   programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
 import { resolveScoringPolicy } from "@/features/judgement/services/scoring-policy.service";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import { ResultModel } from "@/features/results/repositories/result.repository";
 import { calculatePosition } from "@/features/results/services/results-calculator";
-import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 
 export type BasicScoreRow =
   | { kind: "assignment"; assignmentId: string; points: number }
@@ -23,9 +23,7 @@ function validatePoints(points: number) {
   }
 }
 
-async function countTeamMembers(
-  assignmentId: string,
-): Promise<number> {
+async function countTeamMembers(assignmentId: string): Promise<number> {
   const [row] = await db
     .select({ c: count() })
     .from(assignmentMemberTable)
@@ -84,9 +82,7 @@ export async function saveBasicProgrammeScores(input: {
     }
 
     if (programmeType !== "GROUP") {
-      throw new AppError(
-        "Team scores are only valid for GROUP programmes.",
-      );
+      throw new AppError("Team scores are only valid for GROUP programmes.");
     }
     const teamAssignments = assignments.filter(
       (a) =>
@@ -160,7 +156,7 @@ export async function saveBasicProgrammeScores(input: {
   for (const [assignmentId, points] of pointsByAssignment) {
     const resolved = resolvedByAssignment.get(assignmentId)!;
     const position = calculatePosition(points, allPoints);
-    
+
     let finalAwardPoints = resolved.awardPoints;
     if (position === 1) finalAwardPoints += resolved.positionPoints1st;
     else if (position === 2) finalAwardPoints += resolved.positionPoints2nd;

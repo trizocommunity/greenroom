@@ -7,7 +7,6 @@ import {
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { assertProgrammePreReporting } from "./programme-status.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
 import {
@@ -15,13 +14,30 @@ import {
   deleteProgramme,
   findProgrammeById,
   findProgrammesByFestival,
+  findProgrammesByFestivalPaginated,
   findProgrammeWithAssignments,
   updateProgramme,
 } from "@/features/programmes/repositories/programme.repository";
+import { assertProgrammePreReporting } from "./programme-status.service";
 
 export const ProgrammeService = {
   async getAll(festivalId: string, categoryId?: string) {
     return findProgrammesByFestival(festivalId, categoryId);
+  },
+
+  async getAllPaginated(
+    festivalId: string,
+    options: {
+      page: number;
+      pageSize: number;
+      categoryId?: string;
+      search?: string;
+      type?: string;
+      stageType?: string;
+      status?: string;
+    },
+  ) {
+    return findProgrammesByFestivalPaginated(festivalId, options);
   },
 
   async getDetails(id: string, festivalId: string) {
@@ -127,7 +143,19 @@ export const ProgrammeService = {
         maxParticipantsPerTeam: p.maxParticipantsPerTeam || 1,
       }));
 
-      return await db.insert(programmes).values(data).returning();
+      return await db.transaction(async (tx) => {
+        const chunkSize = 100;
+        const results = [];
+        for (let i = 0; i < data.length; i += chunkSize) {
+          const chunk = data.slice(i, i + chunkSize);
+          const inserted = await tx
+            .insert(programmes)
+            .values(chunk)
+            .returning();
+          results.push(...inserted);
+        }
+        return results;
+      });
     } catch (error) {
       await UsageCounterService.incrementUsage(
         festivalId,
@@ -212,7 +240,9 @@ export const ProgrammeService = {
       .where(eq(scheduleEntryTable.programmeId, id));
 
     if (scheduleCount > 0) {
-      throw new AppError("Programme is scheduled. Remove it from the schedule before deleting.");
+      throw new AppError(
+        "Programme is scheduled. Remove it from the schedule before deleting.",
+      );
     }
 
     await UsageCounterService.incrementUsage(

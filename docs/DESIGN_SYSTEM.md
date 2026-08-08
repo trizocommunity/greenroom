@@ -32,3 +32,7 @@ This project uses **shadcn/ui** as the single source of truth for all UI primiti
   - Avoid custom `<button>`, `<input>`, `<textarea>`, or direct `@radix-ui/react-*` usage in feature components.
 - Compose variants using the built‑in `class-variance-authority` setups in the `ui` components.
 
+### Exceptions
+
+- `src/components/editor/**` is exempted from some Biome rules (see `biome.json` overrides). Editor internals may use raw HTML elements where Radix/shadcn primitives do not fit the canvas-based editing surface; keep new feature components outside the editor on the standard primitives.
+

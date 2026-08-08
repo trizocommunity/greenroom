@@ -17,7 +17,12 @@ export type EmailContext = {
 };
 
 export type EmailKind =
-  | { kind: "magic_link"; token: string; expiresInMinutes?: number }
+  | {
+      kind: "sign_in_otp";
+      otp: string;
+      email: string;
+      expiresInMinutes?: number;
+    }
   | {
       kind: "festival_invitation";
       token: string;
@@ -29,6 +34,12 @@ export type EmailKind =
       kind: "team_leader_otp";
       otp: string;
       festivalName: string;
+      expiresInMinutes?: number;
+    }
+  | {
+      kind: "two_factor_otp";
+      otp: string;
+      email: string;
       expiresInMinutes?: number;
     }
   | {
@@ -56,9 +67,10 @@ export type SendEmailResult =
  * one toggle per kind and by the send path to look up its current setting.
  */
 export const EMAIL_KINDS = [
-  "magic_link",
+  "sign_in_otp",
   "festival_invitation",
   "team_leader_otp",
+  "two_factor_otp",
   "festival_expiring_soon",
 ] as const;
 
@@ -73,9 +85,10 @@ export const EMAIL_KIND_META: Record<
   EmailKindName,
   { label: string; description: string }
 > = {
-  magic_link: {
-    label: "Magic-link sign-in",
-    description: "One-time sign-in link sent when a user requests email login.",
+  sign_in_otp: {
+    label: "Sign-in verification code",
+    description:
+      "One-time 4-digit code sent when a user requests email sign-in (replaces magic-link).",
   },
   festival_invitation: {
     label: "Festival invitation",
@@ -85,6 +98,11 @@ export const EMAIL_KIND_META: Record<
     label: "Team-leader OTP",
     description:
       "One-time code sent to a team leader signing in to the stage portal.",
+  },
+  two_factor_otp: {
+    label: "Two-factor verification code",
+    description:
+      "One-time code sent to a user with 2FA enabled after they pass the first sign-in factor.",
   },
   festival_expiring_soon: {
     label: "Festival expiring soon",

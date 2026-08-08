@@ -10,10 +10,7 @@ import {
 } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getScoringPolicyAction } from "@/features/judgement/actions/judgement.actions";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { isBasicTier } from "@/features/plan-features/services/tier";
 import { SettingsTabs } from "./_components/SettingsTabs";
 
@@ -23,19 +20,14 @@ export default async function SettingsPage({
   params: Promise<{ slug: string }>;
 }) {
   const session = await getSession();
-  if (!session?.userId) redirect("/auth/login");
+  if (!session?.userId) redirect("/login");
 
   const { slug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival) return notFound();
 
   // Feature Access Check
-  if (
-    !FeatureService.isFeatureEnabled(
-      getTierForFeatureCheck(festival.tier),
-      "festivalSettings",
-    )
-  ) {
+  if (!isEnabled(festival.tier, "festivalSettings")) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=settings`);
   }
 

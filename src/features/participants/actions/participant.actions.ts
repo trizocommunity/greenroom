@@ -16,10 +16,7 @@ import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { assignChestNumberForNewParticipant } from "@/features/participants/actions/chest-number.actions";
 import { ParticipantService } from "@/features/participants/services/participant.service";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 export async function getParticipantsAction(festivalId: string) {
@@ -183,17 +180,28 @@ export async function bulkCreateParticipantsAction(
 
   for (const participant of participants) {
     try {
-      const newParticipant = await ParticipantService.create(festivalId, {
-        name: participant.name,
-        groupId: participant.groupId,
-        categoryId: participant.categoryId,
-        email: participant.email,
-        phone: participant.phone,
-        gender: (participant.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
-        dateOfBirth: participant.dateOfBirth || "2000-01-01",
-        standard: participant.standard,
+      await db.transaction(async (tx) => {
+        const newParticipant = await ParticipantService.create(
+          festivalId,
+          {
+            name: participant.name,
+            groupId: participant.groupId,
+            categoryId: participant.categoryId,
+            email: participant.email,
+            phone: participant.phone,
+            gender:
+              (participant.gender as "MALE" | "FEMALE" | "OTHER") || "MALE",
+            dateOfBirth: participant.dateOfBirth || "2000-01-01",
+            standard: participant.standard,
+          },
+          tx,
+        );
+        await assignChestNumberForNewParticipant(
+          festivalId,
+          newParticipant.id,
+          tx,
+        );
       });
-      await assignChestNumberForNewParticipant(festivalId, newParticipant.id);
       successCount++;
     } catch (error: unknown) {
       errors.push({
@@ -274,12 +282,7 @@ export async function exportParticipantsToExcelAction(
   if (!festival)
     return { success: false, error: ERROR_MESSAGES.FESTIVAL_NOT_FOUND };
 
-  if (
-    !FeatureService.isFeatureEnabled(
-      getTierForFeatureCheck(festival.tier as any),
-      "excelExport",
-    )
-  ) {
+  if (!isEnabled(festival.tier, "excelExport")) {
     return {
       success: false,
       error: "Excel export is not available on your plan. Upgrade to export.",

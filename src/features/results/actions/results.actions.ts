@@ -70,7 +70,7 @@ function revalidateResultsPaths(slug: string) {
   revalidatePath(`/dashboard/${slug}/event-works/marks`);
   revalidatePath(`/dashboard/${slug}/event-works/judgement`);
   revalidatePath(`/dashboard/${slug}/event-works/results`);
-  revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
+  revalidatePath(`/dashboard/${slug}/event-works/top-scorers`);
   revalidatePath(`/${slug}/results`);
 }
 

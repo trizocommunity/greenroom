@@ -63,7 +63,10 @@ export function EditorCanvasSizeSetup({
   };
 
   const commitFields = () => {
-    applySize(parseInt(widthInput, 10) || width, parseInt(heightInput, 10) || height);
+    applySize(
+      parseInt(widthInput, 10) || width,
+      parseInt(heightInput, 10) || height,
+    );
   };
 
   return (

@@ -1,8 +1,8 @@
-﻿# PRO Plan
+# PRO Plan
 
 **Purpose:** Enterprise-grade festival plan with maximum capacity and advanced features. Single source of truth for spec, behavior, and how it is enforced in the codebase.
 
-**Config source:** `src/config/pricing.ts` (`TIER_CONFIG.PRO`). Feature resolution may include Super Admin overrides via `src/server/services/plan-features.service.ts`.
+**Config source:** `src/config/pricing.ts` (`TIER_CONFIG.PRO`). Feature resolution may include Super Admin overrides via `src/features/plan-features/services/plan-features.service.ts`.
 
 ---
 
@@ -11,7 +11,7 @@
 | Item | Value |
 |------|-------|
 | **Price** | â‚¹6,000 |
-| **Duration** | 30 days (active) |
+| **Duration** | 90 days (active) |
 | **Target** | Established festivals, institutions, multi-event organizers |
 
 ### Limits
@@ -43,8 +43,8 @@
 ### Included (PRO)
 
 - **Pre-Works:** Categories, Groups, Participants, Participant Profile (dashboard + public), Programmes, Assignments.
-- **Event-Works:** Scoring Policy, Scoring, Chest Numbers, Leaderboard, Stage Management, Schedule/Sessions.
-- **Import/Export:** Participant import, Participant bulk upload, Programme bulk upload, PDF export, Excel export.
+- **Event-Works:** Scoring Policy, Scoring, Chest Numbers, Leaderboard, Stage Management, Schedule/Sessions, Food Hall.
+- **Import/Export:** Participant import, Participant bulk upload, Programme bulk upload, PDF export, Excel export, Exports.
 - **Landing & Content:** Basic public page, Full landing page, Landing page builder, Media, News.
 - **Certificates & QR:** QR Codes, Auto certificates, Custom certificate templates, Bulk certificate generation.
 - **Branding:** Logo upload, Custom URL, Custom domain, Custom colors, White-label.
@@ -66,22 +66,24 @@ PRO adds (or expands) the following over STANDARD:
 
 | Area | Feature | STANDARD | PRO |
 |------|---------|:--------:|:---:|
-| Team | Role-Based Access Control | âŒ | âœ… |
-| Team | Unlimited members | âŒ (max 3) | âœ… |
-| Import/Export | Bulk certificate generation | âŒ | âœ… |
-| Landing & Content | Landing page builder | âŒ | âœ… |
-| Reporting | Advanced analytics | âŒ | âœ… |
-| Reporting | Custom reports | âŒ | âœ… |
-| Certificates | Custom certificate templates | âŒ | âœ… |
-| Branding | Custom domain | âŒ | âœ… |
-| Branding | White-label | âŒ | âœ… |
-| Communication | SMS notifications | âŒ | âœ… |
-| Communication | Bulk notifications | âŒ | âœ… |
+| Team | Role-Based Access Control | âœ… | âœ… |
+| Team | Unlimited members | âœ… | âœ… |
+| Import/Export | Bulk certificate generation | âœ… | âœ… |
+| Landing & Content | Landing page builder | âœ… | âœ… |
+| Reporting | Advanced analytics | âœ… | âœ… |
+| Reporting | Custom reports | âœ… | âœ… |
+| Certificates | Custom certificate templates | âœ… | âœ… |
+| Branding | Custom domain | âœ… | âœ… |
+| Branding | White-label | âœ… | âœ… |
+| Communication | SMS notifications | âœ… | âœ… |
+| Communication | Bulk notifications | âœ… | âœ… |
 | Advanced | API access | âŒ | âœ… |
 | Advanced | Webhooks | âŒ | âœ… |
-| Advanced | Live results | âŒ | âœ… |
-| Advanced | Multi-festival management | âŒ | âœ… |
-| Support | Priority support | email (12h) | priority (4h) |
+| Advanced | Live results | âœ… | âœ… |
+| Advanced | Multi-festival management | âœ… | âœ… |
+| Support | Priority support | priority (4h) | priority (4h) |
+
+> Note: Current `TIER_CONFIG` enables most PRO-marketed features for STANDARD as well. The only features PRO truly adds over STANDARD in the current code are **API access** and **webhooks**.
 
 ---
 
@@ -91,7 +93,7 @@ PRO adds (or expands) the following over STANDARD:
 
 - **Tier + limits:** `TIER_CONFIG.PRO` in `src/config/pricing.ts` (limits and `features` object).
 - **Server (config only):** `FeatureService.isFeatureEnabled(tier, feature)` in `src/lib/features.ts` reads from `TIER_CONFIG` only.
-- **Server (with overrides):** `getEffectiveFeatureEnabled(tier, feature)` and `getEffectiveTierFeatures(tier)` in `src/server/services/plan-features.service.ts` merge config with Super Admin overrides stored in `SystemConfig`.
+- **Server (with overrides):** `getEffectiveFeatureEnabled(tier, feature)` and `getEffectiveTierFeatures(tier)` in `src/features/plan-features/services/plan-features.service.ts` merge config with Super Admin overrides stored in `SystemConfig`.
 - **Dashboard context:** `src/app/dashboard/[slug]/layout.tsx` loads `getEffectiveTierFeatures(getResolvedTier(festival.tier))` and passes result as `effectiveFeatures` into `FestivalProvider`. Client feature checks respect these overrides when present.
 
 ### 4.2 Client (UI) gating
@@ -102,7 +104,7 @@ PRO adds (or expands) the following over STANDARD:
 
 ### 4.3 Server-side enforcement
 
-- **Routes:** Pages under `/dashboard/[slug]/settings`, `/dashboard/[slug]/members`, `/dashboard/[slug]/content/media`, `/dashboard/[slug]/content/news`, `/dashboard/[slug]/pre-works/stage-management`, `/dashboard/[slug]/pre-works/schedule`, `/dashboard/[slug]/event-works/qr-codes`, `/dashboard/[slug]/analytics`, and admin routes check feature access (via `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled`) and grant access for PRO (all features enabled).
+- **Routes:** Pages under `/dashboard/[slug]/settings`, `/dashboard/[slug]/members`, `/dashboard/[slug]/content/media`, `/dashboard/[slug]/content/news`, `/dashboard/[slug]/pre-event-works/stage-management`, `/dashboard/[slug]/pre-event-works/schedule`, `/dashboard/[slug]/event-works/qr-codes`, `/dashboard/[slug]/event-works/food-entry`, `/dashboard/[slug]/analytics`, `/dashboard/[slug]/exports`, and admin routes check feature access (via `getEffectiveFeatureEnabled` or `FeatureService.isFeatureEnabled`) and grant access for PRO (all features enabled).
 - **Actions:** Server actions (e.g. API endpoints, webhooks, bulk operations) validate tier/feature (and limits) before performing mutations.
 - **Limits:** Participant/programme/event/stage/category limits are enforced using `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts` and `participant.service.ts`.
 - **Multi-festival:** PRO users can manage multiple festivals; festival switching UI and cross-festival operations are available.
@@ -119,27 +121,27 @@ PRO adds (or expands) the following over STANDARD:
 |------|---------|
 | Tier & limits config | `src/config/pricing.ts` |
 | Feature flags (config-only) | `src/lib/features.ts` |
-| Effective features (config + overrides) | `src/server/services/plan-features.service.ts` |
+| Effective features (config + overrides) | `src/features/plan-features/services/plan-features.service.ts` |
 | Plan feature toggles (Super Admin) | `src/config/plan-features.config.ts` |
-| Client feature hooks | `src/hooks/useFeature.ts` |
+| Client feature hooks | `src/features/plan-features/hooks/use-feature.ts` |
 | Dashboard layout & context | `src/app/dashboard/[slug]/layout.tsx`, `FestivalProvider` |
 | Sidebar filtering | `src/components/festival/dashboard/FestivalDashboardSidebar.tsx` |
 | Sidebar structure | `src/config/sidebar.config.ts` |
-| Festival context (expiry, role) | `src/server/services/festival-context.service.ts` |
-| Role-based access | `src/server/services/rbac.service.ts` |
+| Festival context (expiry, role) | `src/features/festivals/services/festival-context.service.ts` |
+| Role-based access | `src/features/team/services/team.service.ts`, `src/features/members/services/member.service.ts` |
 | API endpoints | `src/app/api/` |
-| Webhooks | `src/server/services/webhook.service.ts` |
+| Webhooks | `src/features/festivals/services/public-api-access.service.ts` |
 
 ---
 
 ## 6. User Journey (Summary)
 
-1. **Purchase:** User selects PRO (â‚¹6,000) â†’ payment â†’ festival created with 30-day validity.
+1. **Purchase:** User selects PRO (â‚¹6,000) â†’ payment â†’ festival created with 90-day validity.
 2. **Setup:** Configure landing page builder â†’ import participants (bulk CSV) â†’ create programmes â†’ assign team members with roles.
 3. **Configuration:** Set up custom domain, white-label branding, schedule with sessions, QR codes, media/news content.
 4. **Event:** Configure scoring â†’ enter scores per programme â†’ view live results and leaderboard â†’ generate bulk certificates.
 5. **Post-event:** Export advanced analytics and custom reports â†’ share via API/webhooks.
-6. **Expiry:** After 30 days, access redirects to profile; tier-aware cleanup may delete PRO festival data.
+6. **Expiry:** After 90 days, access redirects to profile; tier-aware cleanup may delete PRO festival data.
 
 ---
 

@@ -30,13 +30,16 @@
 
 import { UpgradeTrigger } from "@/components/common/UpgradeTrigger";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
-import type { FeaturePath } from "@/features/plan-features/services/features";
+import type {
+  BooleanFeaturePath,
+  FeaturePath,
+} from "@/features/plan-features/services/feature-gate";
 
 interface FeatureGateProps {
   /**
    * The feature to check
    */
-  feature: FeaturePath;
+  feature: BooleanFeaturePath;
 
   /**
    * The tier required to unlock this feature
@@ -103,7 +106,7 @@ export function FeatureGate({
 /**
  * Helper to get human-readable feature labels
  */
-function getFeatureLabel(feature: FeaturePath): string {
+function getFeatureLabel(feature: BooleanFeaturePath): string {
   const labels: Record<FeaturePath, string> = {
     // Pre Event Works
     categories: "Categories",
@@ -117,6 +120,7 @@ function getFeatureLabel(feature: FeaturePath): string {
 
     // Event-Works
     chestNumbers: "Chest Numbers",
+    foodHall: "Food Hall",
     results: "Results",
     stageManagement: "Stage Management",
     schedule: "Schedule",

@@ -14,10 +14,7 @@ import {
 } from "@/features/festivals/loaders/festival-results.loader";
 import { getPublicMediaData } from "@/features/media/loaders/media-public.loader";
 import { getPublicNewsData } from "@/features/news/loaders/news-public.loader";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 export async function generateMetadata({
@@ -61,10 +58,7 @@ export default async function FestivalPage({
   const { festival, event } = data;
 
   // Check Feature Access
-  const fullLandingPage = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier),
-    "fullLandingPage",
-  );
+  const fullLandingPage = isEnabled(festival.tier, "fullLandingPage");
 
   // HANDLE NO EVENT (Should be rare unless blocked)
   if (!event) {

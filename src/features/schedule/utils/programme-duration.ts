@@ -15,7 +15,9 @@ export interface DurationResult {
   label: string;
 }
 
-export function calculateProgrammeDuration(input: DurationInput): DurationResult {
+export function calculateProgrammeDuration(
+  input: DurationInput,
+): DurationResult {
   if (input.durationMode === "PARALLEL") {
     const total = input.parallelDurationMinutes ?? 60;
     return {

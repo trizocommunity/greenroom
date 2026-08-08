@@ -88,8 +88,10 @@ export function DeadlinesCard({
 function DeadlineStateBadge({
   state,
 }: {
-  state: "UPCOMING" | "OPEN" | "CLOSED";
+  state: "UPCOMING" | "OPEN" | "CLOSED" | "UNCONFIGURED";
 }) {
+  if (state === "UNCONFIGURED") return null;
+
   if (state === "CLOSED") {
     return (
       <Badge

@@ -22,11 +22,7 @@ export interface ParsedItem<T> {
 }
 
 const GROUP_VARIANTS = new Set(["GROUP", "group", "Group"]);
-const INDIVIDUAL_VARIANTS = new Set([
-  "INDIVIDUAL",
-  "individual",
-  "Individual",
-]);
+const INDIVIDUAL_VARIANTS = new Set(["INDIVIDUAL", "individual", "Individual"]);
 const STAGE_VARIANTS = new Set(["STAGE", "stage", "Stage"]);
 const NON_STAGE_VARIANTS = new Set([
   "OFF-STAGE",
@@ -37,9 +33,10 @@ const NON_STAGE_VARIANTS = new Set([
   "Non-Stage",
 ]);
 
-export function normaliseProgrammeType(
-  raw: unknown,
-): { value: ProgrammeType | ""; error?: string } {
+export function normaliseProgrammeType(raw: unknown): {
+  value: ProgrammeType | "";
+  error?: string;
+} {
   const text = (raw ?? "").toString().trim();
   if (text === "") {
     return { value: "", error: "Type is required (GROUP or INDIVIDUAL)" };
@@ -49,9 +46,10 @@ export function normaliseProgrammeType(
   return { value: "", error: `Invalid Type: ${text}` };
 }
 
-export function normaliseStageType(
-  raw: unknown,
-): { value: StageType; error?: string } {
+export function normaliseStageType(raw: unknown): {
+  value: StageType;
+  error?: string;
+} {
   const text = (raw ?? "").toString().trim();
   if (text === "") return { value: "STAGE" };
   if (NON_STAGE_VARIANTS.has(text)) return { value: "NON_STAGE" };

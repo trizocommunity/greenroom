@@ -1,8 +1,9 @@
 import "server-only";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { createSession, getSession } from "@/core/auth/session";
+import { getSession, signInUserByEmail } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { generateId } from "@/core/database/ids";
 import {
@@ -50,14 +51,14 @@ export const POST = async (req: Request) => {
 
     // The invite link is only ever delivered to the invitation's own email
     // address, so possessing a valid token is proof of ownership — the same
-    // trust model magic-link sign-in already relies on. If the visitor isn't
+    // trust model email-OTP sign-in already relies on. If the visitor isn't
     // signed in yet, log them into (or create) the account for that email
     // instead of forcing a separate manual sign-in round trip.
     let session = await getSession();
 
     if (!session?.userId) {
       let dbUser = await db.query.user.findFirst({
-        where: sql`lower(${userTable.email}) = ${invitation.email}`,
+        where: eq(userTable.email, invitation.email.toLowerCase()),
       });
 
       if (!dbUser) {
@@ -65,7 +66,7 @@ export const POST = async (req: Request) => {
           .insert(userTable)
           .values({
             id: generateId(),
-            email: invitation.email,
+            email: invitation.email.toLowerCase(),
             globalRole: "USER",
           })
           .returning();
@@ -79,9 +80,26 @@ export const POST = async (req: Request) => {
         );
       }
 
-      const role = dbUser.globalRole as "USER" | "SUPER_ADMIN";
-      await createSession(dbUser.id, role);
-      session = { userId: dbUser.id, role, expires: new Date() };
+      // Mint a session via Better Auth. This writes the session row and
+      // the session cookie (`nextCookies` propagates the Set-Cookie).
+      // No email is sent — the user already proved ownership by
+      // presenting the invitation token.
+      try {
+        await signInUserByEmail(dbUser.email);
+      } catch (err) {
+        console.error("[invitations/accept] signInUserByEmail failed", err);
+        return NextResponse.json(
+          { success: false, error: "Could not create session" },
+          { status: 500 },
+        );
+      }
+      session = await getSession();
+      if (!session?.userId) {
+        return NextResponse.json(
+          { success: false, error: "Could not establish session" },
+          { status: 500 },
+        );
+      }
     }
 
     const existingMember = await db.query.festivalMember.findFirst({
@@ -147,6 +165,8 @@ export const POST = async (req: Request) => {
     const acceptedUser = await db.query.user.findFirst({
       where: eq(userTable.id, session.userId),
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({
       success: true,

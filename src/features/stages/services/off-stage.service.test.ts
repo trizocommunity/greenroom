@@ -45,15 +45,19 @@ vi.mock("@/core/datetime/server", () => ({
   serverNowIso: () => "2026-08-02T00:00:00.000Z",
 }));
 
-vi.mock("@/features/stage-portal/actions/stage-portal-credential.actions", () => ({
-  provisionStagePortalCredential: (
-    input: { festivalId: string; stageId: string },
-  ) => {
-    mockProvisionCallCount.count += 1;
-    mockProvisionStagePortalCredential(input);
-    return Promise.resolve({ accessCode: "ABC234", pin: "1234" });
-  },
-}));
+vi.mock(
+  "@/features/stage-portal/actions/stage-portal-credential.actions",
+  () => ({
+    provisionStagePortalCredential: (input: {
+      festivalId: string;
+      stageId: string;
+    }) => {
+      mockProvisionCallCount.count += 1;
+      mockProvisionStagePortalCredential(input);
+      return Promise.resolve({ accessCode: "ABC234", pin: "1234" });
+    },
+  }),
+);
 
 import { ensureOffStageStage, getOffStageStage } from "./off-stage.service";
 
@@ -119,7 +123,8 @@ describe("ensureOffStageStage", () => {
       festivalId: FESTIVAL_ID,
       name: OFF_STAGE_NAME,
       description: OFF_STAGE_DESCRIPTION,
-      createdBy: "system",
+      createdByName: "System",
+      createdByEmail: null,
       isOffStage: true,
     });
 

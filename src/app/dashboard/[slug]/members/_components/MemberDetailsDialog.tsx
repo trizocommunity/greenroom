@@ -172,7 +172,9 @@ export function MemberDetailsDialog({
                       <CheckCircle2
                         className={cn(
                           "h-4 w-4 shrink-0",
-                          isSelected ? "text-primary" : "text-muted-foreground/40",
+                          isSelected
+                            ? "text-primary"
+                            : "text-muted-foreground/40",
                         )}
                       />
                       {r.label}
@@ -252,7 +254,9 @@ export function MemberDetailsDialog({
                   onSaveStages?.(selectedStages);
                 }
               }}
-              disabled={isSaving || (canEditRoles && selectedRoles.length === 0)}
+              disabled={
+                isSaving || (canEditRoles && selectedRoles.length === 0)
+              }
             >
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes

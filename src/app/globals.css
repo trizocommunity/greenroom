@@ -52,6 +52,7 @@
   --heading: #111827;
 
   --success: #10b981;
+  --success-muted: rgba(16, 185, 129, 0.14);
   --warning: #f59e0b;
   --info: #3b82f6;
   --purple: #8b5cf6;
@@ -111,6 +112,7 @@
   --heading: #f9fafb;
 
   --success: #34d399;
+  --success-muted: rgba(52, 211, 153, 0.14);
   --warning: #fbbf24;
   --info: #60a5fa;
   --purple: #a78bfa;
@@ -208,7 +210,8 @@ h6 {
   }
 
   .gradient-soft {
-    background-image: radial-gradient(circle at 0% 0%, #e0f2fe, transparent 55%),
+    background-image:
+      radial-gradient(circle at 0% 0%, #e0f2fe, transparent 55%),
       radial-gradient(circle at 100% 100%, #fce7f3, transparent 55%),
       linear-gradient(135deg, #fef3c7, #eef2ff);
   }
@@ -322,7 +325,6 @@ h6 {
   .animate-pulse-dot {
     animation: gr-pulse-dot 2s ease-in-out infinite;
   }
-
 }
 
 @keyframes gr-marquee {
@@ -369,7 +371,6 @@ h6 {
   }
 }
 
-
 /* Unlayered on purpose: rules outside a cascade layer beat the layered
    utilities above, so this disables the decorative motion without
    `!important`. */
@@ -414,4 +415,3 @@ h6 {
     appearance: textfield;
   }
 }
-

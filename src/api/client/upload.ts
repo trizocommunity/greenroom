@@ -1,8 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
 import type { UploadInput, UploadResponse } from "@/api/contracts/upload";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
+import { toast } from "@/lib/toast";
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

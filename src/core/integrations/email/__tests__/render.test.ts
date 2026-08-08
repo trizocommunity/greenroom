@@ -1,73 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderEmail } from "../render";
 
-describe("renderEmail — magic_link", () => {
-  it("renders dark theme with brand CTA + verify URL", async () => {
-    const result = await renderEmail({
-      kind: "magic_link",
-      token: "abc123",
-    });
-    expect(result.subject).toBe("[Greenroom] Your sign-in link");
-    expect(result.html).toContain("Sign in to Greenroom");
-    expect(result.html).toContain("rgb(11,14,20)"); // dark canvas
-    expect(result.html).toContain("rgb(239,68,68)"); // dark brand
-    expect(result.html).toMatch(/login\/verify\/abc123/);
-    expect(result.text).toContain("login/verify/abc123");
-  });
-
-  it("renders a copyable URL block + copy button + share-via-email mailto link", async () => {
-    const result = await renderEmail({
-      kind: "magic_link",
-      token: "abc123",
-    });
-    // Helper text + copy button + brand-coloured share link
-    expect(result.html).toContain("Or copy and share this link:");
-    expect(result.html).toContain("Copy link");
-    expect(result.html).toContain("Share via email");
-    // mailto: subject + URL pre-filled, encoded
-    expect(result.html).toContain(
-      "mailto:?subject=Greenroom%20sign-in%20link",
-    );
-    expect(result.html).toContain(encodeURIComponent("login/verify/abc123"));
-    // Full URL appears as selectable text inside the styled block (not just href)
-    expect(result.html).toContain("https://");
-    expect(result.html).toContain("login/verify/abc123");
-    // Plain-text fallback also carries the URL so copy works in plain-text clients
-    expect(result.text).toContain("login/verify/abc123");
-  });
-
-  it("respects expiresInMinutes override", async () => {
-    const result = await renderEmail({
-      kind: "magic_link",
-      token: "x",
-      expiresInMinutes: 5,
-    });
-    expect(result.text).toContain("5 minutes");
-  });
-
-  it("theme override switches to light palette", async () => {
-    const light = await renderEmail(
-      { kind: "magic_link", token: "x" },
-      "light",
-    );
-    // Light canvas hex is #f7f8fa.
-    expect(
-      light.html.includes("rgb(247,248,250)") || light.html.includes("#f7f8fa"),
-    ).toBe(true);
-    expect(light.html).not.toContain("rgb(11,14,20)");
-    // Light brand hex is #d72626.
-    expect(
-      light.html.includes("rgb(215,38,38)") || light.html.includes("#d72626"),
-    ).toBe(true);
-  });
-
-  it("default magic_link renders dark", async () => {
-    const dark = await renderEmail({ kind: "magic_link", token: "x" });
-    expect(dark.html).toContain("rgb(11,14,20)");
-    expect(dark.html).not.toContain("rgb(247,248,250)");
-  });
-});
-
 describe("renderEmail — festival_invitation", () => {
   it("renders light theme with eyebrow + accept CTA", async () => {
     const result = await renderEmail({
@@ -143,5 +76,64 @@ describe("renderEmail — festival_expiring_soon", () => {
     });
     expect(result.subject).toBe("[Greenroom] X expires in 1 day");
     expect(result.html).toContain("1 day"); // singular, not "1 days"
+  });
+});
+
+describe("renderEmail — two_factor_otp", () => {
+  it("renders dark theme with OTP code prominent + email address", async () => {
+    const result = await renderEmail({
+      kind: "two_factor_otp",
+      otp: "847201",
+      email: "alice@example.com",
+    });
+    expect(result.subject).toBe("[Greenroom] Your sign-in verification code");
+    expect(result.html).toContain("847201");
+    expect(result.html).toContain("alice@example.com");
+    expect(result.html).toContain("rgb(11,14,20)"); // dark canvas
+    expect(result.text).toContain("847201");
+  });
+
+  it("respects expiresInMinutes override", async () => {
+    const result = await renderEmail({
+      kind: "two_factor_otp",
+      otp: "123456",
+      email: "alice@example.com",
+      expiresInMinutes: 10,
+    });
+    expect(result.html).toContain("10 minutes");
+  });
+});
+
+describe("renderEmail — sign_in_otp (ISSUE-42)", () => {
+  it("renders dark theme with 4-digit OTP code prominent + email address", async () => {
+    const result = await renderEmail({
+      kind: "sign_in_otp",
+      otp: "4821",
+      email: "alice@example.com",
+    });
+    expect(result.subject).toBe("[Greenroom] Your sign-in code");
+    expect(result.html).toContain("4821");
+    expect(result.html).toContain("alice@example.com");
+    expect(result.html).toContain("rgb(11,14,20)"); // dark canvas
+    expect(result.text).toContain("4821");
+  });
+
+  it("default 5-minute expiry copy", async () => {
+    const result = await renderEmail({
+      kind: "sign_in_otp",
+      otp: "0123",
+      email: "alice@example.com",
+    });
+    expect(result.html).toContain("5 minutes");
+  });
+
+  it("respects expiresInMinutes override", async () => {
+    const result = await renderEmail({
+      kind: "sign_in_otp",
+      otp: "1234",
+      email: "alice@example.com",
+      expiresInMinutes: 10,
+    });
+    expect(result.html).toContain("10 minutes");
   });
 });

@@ -108,13 +108,27 @@ function LiveCard({
   );
 }
 
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+
 export function StagePortalHomeClient() {
   const router = useRouter();
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
   const [day, setDay] = useState<string | undefined>(undefined);
+  const [pageIndex, setPageIndex] = useState(0);
   const { data, isLoading } = useStagePortalBoard(day);
   const logout = useLogoutStagePortal();
+
+  const pageSize = 15;
+  const totalPages = Math.ceil((data?.programmes?.length || 0) / pageSize);
 
   const stageName = data?.stage?.name ?? "Stage";
   const isOffStage = data?.stage?.isOffStage ?? false;
@@ -250,30 +264,101 @@ export function StagePortalHomeClient() {
               : "Nothing scheduled on this stage for this day."}
           </p>
         ) : (
-          <ul className="divide-y divide-border border-y border-border">
-            {data.programmes.map((p) => {
-              const meta = STATUS_META[p.portalStatus as PortalStatus];
-              return (
-                <li
-                  key={`${p.programmeId}-${p.startTime}`}
-                  className="flex items-center gap-3 py-3"
-                >
-                  {!isOffStage && (
-                    <span className="flex w-12 shrink-0 items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
-                      <Clock className="h-3 w-3" aria-hidden />
-                      {timeLabel(p.startTime)}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
-                    {p.name}
-                  </span>
-                  <StatusPill tone={meta.tone} className="shrink-0">
-                    {meta.label}
-                  </StatusPill>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <ul className="divide-y divide-border border-y border-border">
+              {data.programmes
+                .slice(pageIndex * pageSize, pageIndex * pageSize + pageSize)
+                .map((p) => {
+                  const meta = STATUS_META[p.portalStatus as PortalStatus];
+                  return (
+                    <li
+                      key={`${p.programmeId}-${p.startTime}`}
+                      className="flex items-center gap-3 py-3"
+                    >
+                      {!isOffStage && (
+                        <span className="flex w-12 shrink-0 items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
+                          <Clock className="h-3 w-3" aria-hidden />
+                          {timeLabel(p.startTime)}
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
+                        {p.name}
+                      </span>
+                      <StatusPill tone={meta.tone} className="shrink-0">
+                        {meta.label}
+                      </StatusPill>
+                    </li>
+                  );
+                })}
+            </ul>
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center pb-6">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPageIndex((p) => Math.max(0, p - 1));
+                        }}
+                        className={
+                          pageIndex === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+
+                    {[...Array(totalPages)].map((_, i) => {
+                      if (
+                        i === 0 ||
+                        i === totalPages - 1 ||
+                        (i >= pageIndex - 1 && i <= pageIndex + 1)
+                      ) {
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              isActive={pageIndex === i}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setPageIndex(i);
+                              }}
+                            >
+                              {i + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      }
+
+                      if (i === pageIndex - 2 || i === pageIndex + 2) {
+                        return (
+                          <PaginationItem key={i}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+
+                      return null;
+                    })}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPageIndex((p) => Math.min(totalPages - 1, p + 1));
+                        }}
+                        className={
+                          pageIndex === totalPages - 1
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

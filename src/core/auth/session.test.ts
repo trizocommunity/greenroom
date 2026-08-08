@@ -1,29 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockCookieGet = vi.fn();
-const mockCookieSet = vi.fn();
-const mockCookieDelete = vi.fn();
-const mockCookies = vi.fn(async () => ({
-  get: mockCookieGet,
-  set: mockCookieSet,
-  delete: mockCookieDelete,
-}));
+const mockHeaders = vi.fn(async () => new Headers());
+const mockGetSession = vi.fn();
+const mockSignOut = vi.fn();
+const mockCreateVerificationOTP = vi.fn();
+const mockSignInEmailOTP = vi.fn();
+const mockUserFindFirst = vi.fn();
 
-const mockLimit = vi.fn();
-const mockWhere = vi.fn(() => ({ limit: mockLimit }));
-const mockFrom = vi.fn(() => ({ where: mockWhere }));
-const mockSelect = vi.fn(() => ({ from: mockFrom }));
+vi.mock("server-only", () => ({}));
 
 vi.mock("next/headers", () => ({
-  cookies: () => mockCookies(),
+  headers: () => mockHeaders(),
+}));
+
+vi.mock("@/core/auth/better-auth/auth", () => ({
+  auth: {
+    api: {
+      getSession: (...args: unknown[]) => mockGetSession(...args),
+      signOut: (...args: unknown[]) => mockSignOut(...args),
+      createVerificationOTP: (...args: unknown[]) =>
+        mockCreateVerificationOTP(...args),
+      signInEmailOTP: (...args: unknown[]) => mockSignInEmailOTP(...args),
+    },
+  },
 }));
 
 vi.mock("@/core/database/client", () => ({
   db: {
-    select: ((...args: unknown[]) =>
-      (mockSelect as unknown as (...a: unknown[]) => unknown)(
-        ...args,
-      )) as unknown as (...args: unknown[]) => unknown,
+    query: {
+      user: {
+        findFirst: (...args: unknown[]) => mockUserFindFirst(...args),
+      },
+    },
   },
 }));
 
@@ -31,130 +39,172 @@ vi.mock("@/core/database/schema", () => ({
   user: { id: "id" },
 }));
 
-vi.mock("drizzle-orm", async () => {
-  const actual =
-    await vi.importActual<typeof import("drizzle-orm")>("drizzle-orm");
-  return {
-    ...actual,
-    eq: (...args: unknown[]) => ({ op: "eq", args }),
-  };
-});
-
-import { MS } from "@/core/datetime/server";
 import {
   createSession,
   decrypt,
   deleteSession,
-  encrypt,
   getSession,
+  signInUserByEmail,
 } from "./session";
 
-async function signCookie(
-  userId: string,
-  role: "USER" | "SUPER_ADMIN" = "USER",
-) {
-  return encrypt({
-    userId,
-    role,
-    expires: new Date(Date.now() + MS.month),
-  });
-}
-
 beforeEach(() => {
-  mockCookieGet.mockReset();
-  mockCookieSet.mockReset();
-  mockCookieDelete.mockReset();
-  mockSelect.mockClear();
-  mockFrom.mockClear();
-  mockWhere.mockClear();
-  mockLimit.mockReset();
+  mockHeaders.mockClear();
+  mockGetSession.mockReset();
+  mockSignOut.mockReset();
+  mockCreateVerificationOTP.mockReset();
+  mockSignInEmailOTP.mockReset();
+  mockUserFindFirst.mockReset();
 });
 
-describe("getSession", () => {
-  it("returns null when there is no session cookie", async () => {
-    mockCookieGet.mockReturnValueOnce(undefined);
+describe("getSession — adapter over Better Auth", () => {
+  it("returns null when Better Auth reports no session", async () => {
+    mockGetSession.mockResolvedValueOnce(null);
 
     const result = await getSession();
 
     expect(result).toBeNull();
-    expect(mockSelect).not.toHaveBeenCalled();
-    expect(mockCookieDelete).not.toHaveBeenCalled();
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+    expect(mockGetSession.mock.calls[0]?.[0]).toMatchObject({
+      headers: expect.any(Headers),
+    });
   });
 
-  it("returns null when the JWT is invalid", async () => {
-    mockCookieGet.mockReturnValueOnce({ value: "not-a-valid-jwt" });
-
-    const result = await getSession();
-
-    expect(result).toBeNull();
-    expect(mockCookieDelete).not.toHaveBeenCalled();
-    expect(mockSelect).not.toHaveBeenCalled();
-  });
-
-  it("returns the session payload when the cookie and user row are both valid", async () => {
-    const token = await signCookie("user-1");
-    mockCookieGet.mockReturnValueOnce({ value: token });
-    mockLimit.mockResolvedValueOnce([{ id: "user-1" }]);
+  it("maps a Better Auth session to the legacy SessionPayload shape", async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: {
+        id: "user-1",
+        email: "alice@example.com",
+        name: "Alice",
+        emailVerified: true,
+        globalRole: "USER",
+      },
+      session: {
+        id: "session-1",
+        userId: "user-1",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        token: "tok",
+      },
+    });
 
     const result = await getSession();
 
     expect(result).not.toBeNull();
     expect(result?.userId).toBe("user-1");
-    expect(mockSelect).toHaveBeenCalled();
-    expect(mockCookieDelete).not.toHaveBeenCalled();
+    expect(result?.role).toBe("USER");
+    expect(result?.expires).toBeInstanceOf(Date);
   });
 
-  it("returns null and clears the cookie when the user row no longer exists", async () => {
-    const token = await signCookie("ghost-user");
-    mockCookieGet.mockReturnValueOnce({ value: token });
-    mockLimit.mockResolvedValueOnce([]);
+  it("maps SUPER_ADMIN correctly", async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: {
+        id: "user-2",
+        email: "admin@example.com",
+        name: "Admin",
+        emailVerified: true,
+        globalRole: "SUPER_ADMIN",
+      },
+      session: {
+        id: "session-2",
+        userId: "user-2",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        token: "tok",
+      },
+    });
 
     const result = await getSession();
 
-    expect(result).toBeNull();
-    expect(mockSelect).toHaveBeenCalled();
-    expect(mockCookieDelete).toHaveBeenCalledWith("session");
+    expect(result?.role).toBe("SUPER_ADMIN");
   });
-});
 
-describe("encrypt — session lifetime", () => {
-  it("issues a JWT that expires ~30 days after issuance", async () => {
-    const before = Math.floor(Date.now() / 1000);
-    const token = await encrypt({
-      userId: "user-1",
-      role: "USER",
-      expires: new Date(Date.now() + MS.month),
+  it("defaults the role to USER when globalRole is missing", async () => {
+    mockGetSession.mockResolvedValueOnce({
+      user: {
+        id: "user-3",
+        email: "carol@example.com",
+        name: "Carol",
+        emailVerified: true,
+      },
+      session: {
+        id: "session-3",
+        userId: "user-3",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        token: "tok",
+      },
     });
 
-    const decoded = await decrypt(token);
-    const iat = decoded.iat as number;
-    const exp = decoded.exp as number;
-    expect(iat).toBeGreaterThanOrEqual(before);
-    expect(exp - iat).toBeGreaterThanOrEqual(30 * 24 * 60 * 60 - 5);
-    expect(exp - iat).toBeLessThanOrEqual(30 * 24 * 60 * 60 + 5);
+    const result = await getSession();
+
+    expect(result?.role).toBe("USER");
   });
 });
 
-describe("createSession — cookie lifetime", () => {
-  it("sets the session cookie with an expires ~30 days in the future", async () => {
-    const before = Date.now();
+describe("deleteSession — delegates to Better Auth signOut", () => {
+  it("calls auth.api.signOut with the request headers", async () => {
+    mockSignOut.mockResolvedValueOnce({ success: true });
+
+    await deleteSession();
+
+    expect(mockSignOut).toHaveBeenCalledTimes(1);
+    expect(mockSignOut.mock.calls[0]?.[0]).toMatchObject({
+      headers: expect.any(Headers),
+    });
+  });
+});
+
+describe("createSession — backwards-compat shim", () => {
+  it("looks up the user by id and delegates to signInUserByEmail", async () => {
+    mockUserFindFirst.mockResolvedValueOnce({ email: "alice@example.com" });
+    mockCreateVerificationOTP.mockResolvedValueOnce("1234");
+    mockSignInEmailOTP.mockResolvedValueOnce({ token: "session-token" });
+
     await createSession("user-1", "USER");
 
-    expect(mockCookieSet).toHaveBeenCalledTimes(1);
-    const [, , opts] = mockCookieSet.mock.calls[0];
-    const expiresMs = (opts.expires as Date).getTime();
-    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-    expect(expiresMs - before).toBeGreaterThanOrEqual(thirtyDaysMs - 5_000);
-    expect(expiresMs - before).toBeLessThanOrEqual(thirtyDaysMs + 5_000);
-    expect(opts.httpOnly).toBe(true);
-    expect(opts.path).toBe("/");
-    expect(opts.sameSite).toBe("strict");
+    expect(mockCreateVerificationOTP).toHaveBeenCalledTimes(1);
+    expect(mockSignInEmailOTP).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws when the user has no email", async () => {
+    mockUserFindFirst.mockResolvedValueOnce(null);
+
+    await expect(createSession("ghost", "USER")).rejects.toThrow(
+      /has no email/,
+    );
   });
 });
 
-describe("deleteSession", () => {
-  it("clears the session cookie", async () => {
-    await deleteSession();
-    expect(mockCookieDelete).toHaveBeenCalledWith("session");
+describe("signInUserByEmail — silent session mint (ISSUE-42)", () => {
+  it("mints an OTP via createVerificationOTP and consumes it via signInEmailOTP", async () => {
+    mockCreateVerificationOTP.mockResolvedValueOnce("9876");
+    mockSignInEmailOTP.mockResolvedValueOnce({ token: "session-token" });
+
+    await signInUserByEmail("  Bob@Example.COM ");
+
+    expect(mockCreateVerificationOTP).toHaveBeenCalledTimes(1);
+    const createBody = mockCreateVerificationOTP.mock.calls[0]?.[0]?.body;
+    expect(createBody).toEqual({
+      email: "bob@example.com",
+      type: "sign-in",
+    });
+
+    expect(mockSignInEmailOTP).toHaveBeenCalledTimes(1);
+    const signInBody = mockSignInEmailOTP.mock.calls[0]?.[0]?.body;
+    expect(signInBody).toEqual({
+      email: "bob@example.com",
+      otp: "9876",
+    });
+  });
+
+  it("throws when createVerificationOTP returns an unexpected shape", async () => {
+    mockCreateVerificationOTP.mockResolvedValueOnce({ wrong: "shape" });
+
+    await expect(signInUserByEmail("ghost@example.com")).rejects.toThrow(
+      /unexpected shape/,
+    );
+  });
+});
+
+describe("decrypt — deprecated", () => {
+  it("returns null (the JWT path is gone)", async () => {
+    await expect(decrypt("any-token")).resolves.toBeNull();
   });
 });

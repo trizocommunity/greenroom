@@ -10,7 +10,7 @@ import {
 } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
-import { scheduleEntry } from "@/core/database/schema";
+import { scheduleEntry, user as userTable } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
@@ -111,14 +111,26 @@ const handler = createProtectedHandler({
       }
     }
 
+    const actorUser = user?.userId
+      ? await db.query.user.findFirst({
+          where: eq(userTable.id, user.userId),
+          columns: { email: true, displayName: true, fullName: true },
+        })
+      : null;
+
     const now = serverNowIso();
     const entry = await db
       .insert(scheduleEntry)
       .values({
         id: randomUUID(),
         festivalId,
-        createdBy: user!.userId,
-        updatedBy: user!.userId,
+        createdByName:
+          actorUser?.displayName ||
+          actorUser?.fullName ||
+          actorUser?.email ||
+          null,
+        createdByEmail: actorUser?.email || null,
+        updatedBy: null,
         updatedAt: now,
         ...parsed.data,
       })

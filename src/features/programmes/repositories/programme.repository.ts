@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { programme as programmes } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
@@ -77,6 +77,67 @@ export async function findProgrammesByFestival(
     const { assignments: pa, ...rest } = p;
     return { ...rest, _count: { assignments: pa.length } };
   });
+}
+
+export async function findProgrammesByFestivalPaginated(
+  festivalId: string,
+  options: {
+    page: number;
+    pageSize: number;
+    categoryId?: string;
+    search?: string;
+    type?: string;
+    stageType?: string;
+    status?: string;
+  },
+) {
+  const { page, pageSize, categoryId, search, type, stageType, status } =
+    options;
+  const offset = (page - 1) * pageSize;
+
+  const where = and(
+    eq(programmes.festivalId, festivalId),
+    categoryId && categoryId !== "ALL"
+      ? eq(programmes.categoryId, categoryId)
+      : undefined,
+    type && type !== "ALL"
+      ? eq(programmes.type, type as "INDIVIDUAL" | "GROUP")
+      : undefined,
+    stageType && stageType !== "ALL"
+      ? eq(programmes.stageType, stageType as "STAGE" | "NON_STAGE")
+      : undefined,
+    status && status !== "ALL"
+      ? eq(programmes.status, status as any)
+      : undefined,
+    search ? ilike(programmes.name, `%${search}%`) : undefined,
+  );
+
+  const [rows, totalRows] = await Promise.all([
+    db.query.programme.findMany({
+      where,
+      orderBy: [desc(programmes.createdAt)],
+      limit: pageSize,
+      offset,
+      with: {
+        category: true,
+        assignments: { columns: { id: true } },
+      },
+    }),
+    db.select({ value: count() }).from(programmes).where(where),
+  ]);
+
+  const mapped = rows.map((p) => {
+    const { assignments: pa, ...rest } = p;
+    return { ...rest, _count: { assignments: pa.length } };
+  });
+
+  return {
+    data: mapped,
+    total: totalRows[0]?.value ?? 0,
+    page,
+    pageSize,
+    hasMore: page * pageSize < (totalRows[0]?.value ?? 0),
+  };
 }
 
 export async function countProgrammes(festivalId: string) {

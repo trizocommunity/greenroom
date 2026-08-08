@@ -97,10 +97,18 @@ export async function getStagePortalLoginAction(input: {
 
   await setStagePortalSessionCookie(rawToken, expiresAt);
 
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
   return { success: true as const };
 }
 
 export async function logoutStagePortalAction() {
   await clearStagePortalSessionCookie();
+  try {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath("/", "layout");
+  } catch (e) {}
   return { success: true as const };
 }

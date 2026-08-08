@@ -57,6 +57,10 @@ const handler = createProtectedHandler({
     };
 
     await db.insert(festivalMediaVideo).values(video);
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok(video);
   },
 
@@ -82,6 +86,10 @@ const handler = createProtectedHandler({
         ),
       );
 
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok({ success: true });
   },
 });

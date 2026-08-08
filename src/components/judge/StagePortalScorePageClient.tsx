@@ -1,8 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { useStagePortalScorePayload } from "@/api/client/server-actions";
 import { StagePortalScoringClient } from "@/components/judge/StagePortalScoringClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function StagePortalScorePageClient({
@@ -13,9 +23,22 @@ export function StagePortalScorePageClient({
   festivalSlug: string;
 }) {
   const router = useRouter();
-  const { data, isLoading, error } = useStagePortalScorePayload(configId);
+  // Once the judge has submitted, stop polling so the "no longer live" error
+  // doesn't trigger the session-unavailable modal after a successful submission.
+  const [submitted, setSubmitted] = useState(false);
+  const { data, isLoading, error } = useStagePortalScorePayload(
+    submitted ? "" : configId,
+  );
 
-  if (isLoading) {
+  // Keep the last known payload so the scoring client can render its summary
+  // after submission even though the query has been disabled.
+  const lastPayloadRef = useRef(data?.payload);
+  if (data?.payload) {
+    lastPayloadRef.current = data.payload;
+  }
+  const payload = data?.payload ?? lastPayloadRef.current;
+
+  if (isLoading && !submitted) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 pt-6 sm:px-6 sm:pt-10">
         <Skeleton className="h-12 w-48 mb-4" />
@@ -24,12 +47,31 @@ export function StagePortalScorePageClient({
     );
   }
 
-  if (error || !data) {
+  if (!submitted && (error || !data)) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 pt-6 sm:px-6 sm:pt-10">
-        <p className="text-sm text-destructive">
-          {error?.message ?? "Judgement round not found or no longer live."}
-        </p>
+        <AlertDialog open={true} onOpenChange={() => {}}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Session Unavailable</AlertDialogTitle>
+              <AlertDialogDescription>
+                {error?.message ??
+                  "Judgement round not found or no longer live. It may have been cancelled by an administrator."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.refresh();
+                  router.push(`/${festivalSlug}/stage-portal`);
+                }}
+              >
+                Return to Portal
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -37,11 +79,13 @@ export function StagePortalScorePageClient({
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-6 sm:px-6 sm:pt-10">
       <StagePortalScoringClient
-        stageName={data.stageName}
-        payload={data.payload}
+        stageName={data?.stageName ?? ""}
+        payload={payload ?? ({} as any)}
         onDone={() => {
+          router.refresh();
           router.push(`/${festivalSlug}/stage-portal`);
         }}
+        onSubmitted={() => setSubmitted(true)}
       />
     </div>
   );

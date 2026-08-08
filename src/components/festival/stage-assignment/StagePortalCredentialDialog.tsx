@@ -2,7 +2,6 @@
 
 import { RefreshCcw } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import {
   useResetStagePortalCredential,
   useStagePortalCredential,
@@ -15,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "@/lib/toast";
 
 /**
  * Shows a stage's judge-portal access code and a one-time PIN after reset.

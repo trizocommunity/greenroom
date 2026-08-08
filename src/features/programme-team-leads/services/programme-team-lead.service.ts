@@ -1,8 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   programmeAssignmentMember as assignmentMemberTable,
+  programmeAssignment as assignmentTable,
+  participant as participantTable,
   programme as programmeTable,
   programmeTeamLead,
 } from "@/core/database/schema";
@@ -261,12 +262,21 @@ export const ProgrammeTeamLeadService = {
   },
 
   async getProgrammeTeamLeads(programmeId: string, executor: any = db) {
-    const rows = await executor.query.programmeTeamLead.findMany({
-      where: eq(programmeTeamLead.programmeId, programmeId),
-      with: {
-        participant: { columns: { id: true, name: true, chestNumber: true } },
-      },
-    });
+    const rows = await executor
+      .select({
+        programmeId: programmeTeamLead.programmeId,
+        groupId: programmeTeamLead.groupId,
+        teamNumber: programmeTeamLead.teamNumber,
+        participantId: programmeTeamLead.participantId,
+        participantName: participantTable.name,
+        chestNumber: participantTable.chestNumber,
+      })
+      .from(programmeTeamLead)
+      .leftJoin(
+        participantTable,
+        eq(programmeTeamLead.participantId, participantTable.id),
+      )
+      .where(eq(programmeTeamLead.programmeId, programmeId));
 
     const grouped: Record<
       string,
@@ -284,8 +294,8 @@ export const ProgrammeTeamLeadService = {
       grouped[row.groupId] ??= {};
       grouped[row.groupId][row.teamNumber] = {
         participantId: row.participantId,
-        participantName: row.participant?.name ?? "",
-        chestNumber: row.participant?.chestNumber ?? null,
+        participantName: row.participantName ?? "",
+        chestNumber: row.chestNumber ?? null,
       };
     }
 

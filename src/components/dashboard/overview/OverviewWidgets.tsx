@@ -24,22 +24,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DashboardCharts } from "./DashboardCharts";
-
 import type { festival as festivalSchema } from "@/core/database/schema";
 import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
-import type { FeaturePath } from "@/features/plan-features/services/features";
+import type { BooleanFeaturePath } from "@/features/plan-features/services/feature-gate";
 import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
-import { getEffectivePlanFeatureMatrix } from "@/features/plan-features/services/plan-features.service";
+import { loadAllFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
+import { DashboardCharts } from "./DashboardCharts";
+import { FestSetupWidget } from "./FestSetupWidget";
 
 interface OverviewWidgetsProps {
   festival: typeof festivalSchema.$inferSelect;
+  effectiveRole?: string | null;
 }
 
 function planFeature(
-  features: Partial<Record<FeaturePath, boolean>>,
-  key: FeaturePath,
+  features: Partial<Record<BooleanFeaturePath, boolean>>,
+  key: BooleanFeaturePath,
 ): boolean {
   return Boolean(features[key]);
 }
@@ -56,13 +57,14 @@ const COLORS = [
 
 export default async function OverviewWidgets({
   festival,
+  effectiveRole,
 }: OverviewWidgetsProps) {
   const overviewData = await getDashboardOverviewData(festival.id);
   const tier = getResolvedTier(festival.tier);
   const slug = festival.slug;
   const festivalTz = festival.timezone ?? "UTC";
 
-  const matrix = await getEffectivePlanFeatureMatrix();
+  const matrix = await loadAllFeatureOverrides();
   const features = matrix[tier] ?? {};
   const canUseExternalJudging = isFeatureTagEnabled({
     tier,
@@ -77,6 +79,15 @@ export default async function OverviewWidgets({
 
   const fmt = (n: number | undefined) => n?.toLocaleString() || "0";
 
+  const isSuperAdmin = effectiveRole === "SUPER_ADMIN";
+  const hasAccess = (allowedRoles?: string[]) => {
+    if (isSuperAdmin) return true;
+    if (!allowedRoles) return true;
+    if (allowedRoles.includes("ADMIN") && effectiveRole === "OWNER")
+      return true;
+    return effectiveRole ? allowedRoles.includes(effectiveRole) : false;
+  };
+
   const quickActions = [
     {
       label: "Overview",
@@ -89,48 +100,56 @@ export default async function OverviewWidgets({
       icon: Settings,
       href: `/dashboard/${slug}/settings`,
       condition: planFeature(features, "festivalSettings"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: "Groups",
       icon: Users,
       href: `/dashboard/${slug}/pre-event-works/groups`,
       condition: planFeature(features, "groups"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: "Participants",
       icon: UserPlus,
       href: `/dashboard/${slug}/pre-event-works/participants`,
       condition: planFeature(features, "participants"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: "Categories",
       icon: List,
       href: `/dashboard/${slug}/pre-event-works/categories`,
       condition: planFeature(features, "categories"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: "Programs",
       icon: FileText,
       href: `/dashboard/${slug}/pre-event-works/programmes`,
       condition: planFeature(features, "programmes"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: "Assignment",
       icon: ClipboardCheck,
       href: `/dashboard/${slug}/pre-event-works/assignments`,
       condition: planFeature(features, "assignments"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: "Schedule",
       icon: Calendar,
       href: `/dashboard/${slug}/pre-event-works/schedule`,
       condition: planFeature(features, "schedule"),
+      allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
     },
     {
       label: "Stages",
       icon: Mic,
       href: `/dashboard/${slug}/pre-event-works/stage-management`,
       condition: planFeature(features, "stageManagement"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: canUseExternalJudging
@@ -147,24 +166,28 @@ export default async function OverviewWidgets({
       condition:
         (canUseExternalJudging || canUseMarksUI) &&
         planFeature(features, "results"),
+      allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"],
     },
     {
       label: "Results",
       icon: BarChart2,
       href: `/dashboard/${slug}/event-works/results`,
       condition: canUseExternalJudging && planFeature(features, "results"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
-      label: "Leaderboard",
+      label: "Top Scorers",
       icon: Trophy,
-      href: `/dashboard/${slug}/event-works/leaderboard`,
+      href: `/dashboard/${slug}/event-works/top-scorers`,
       condition: planFeature(features, "liveScoreboard"),
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: "Documentation",
       icon: BookOpen,
       href: `/dashboard/${slug}/support/docs`,
       condition: true,
+      allowedRoles: ["ADMIN", "OWNER"],
     },
     {
       label: "My Tickets",
@@ -175,7 +198,7 @@ export default async function OverviewWidgets({
   ];
 
   const categoryChartData = overviewData.participantsByCategory
-    .filter(d => d.type !== 'GENERAL')
+    .filter((d) => d.type !== "GENERAL")
     .map((d, i) => ({
       name: d.name,
       count: d.count,
@@ -200,6 +223,23 @@ export default async function OverviewWidgets({
 
   return (
     <div className="flex flex-col gap-5">
+      <FestSetupWidget
+        festivalSlug={slug}
+        festivalId={festival.id}
+        setupStatus={{
+          hasCategories: overviewData.hasCategories,
+          hasProgrammes: overviewData.hasProgrammes,
+          hasGroups: overviewData.hasGroups,
+          hasScoringPolicy: overviewData.hasScoringPolicy,
+          hasParticipants: overviewData.hasParticipants,
+          hasChestNumbers: overviewData.hasChestNumbers,
+          hasSchedule: overviewData.hasSchedule,
+          hasOffStageTasks: overviewData.hasOffStageTasks,
+          hasStaff: overviewData.hasStaff,
+          isLaunched: festival.publicSiteEnabled ?? false,
+        }}
+      />
+
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         {/* Left Column (Main Content) */}
         <div className="flex flex-col gap-4">
@@ -406,6 +446,7 @@ export default async function OverviewWidgets({
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {quickActions.map((action) => {
               if (!action.condition) return null;
+              if (!hasAccess(action.allowedRoles)) return null;
               return (
                 <Link
                   key={action.label}

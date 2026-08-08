@@ -1,71 +1,10 @@
 /**
  * Results Calculation Utilities
  *
- * Grade = (points / maxPoints) × 100; maxPoints is per-programme (highest points entered).
- * Position = rank by points (1-indexed).
+ * Grades and award points are resolved from the festival scoring policy
+ * (see `src/features/judgement/services/scoring-policy.service.ts`).
+ * This module only keeps rank calculation and presentation helpers.
  */
-
-const DEFAULT_MAX_POINTS = 10;
-
-/**
- * Calculate grade from the points (result) only.
- *
- * @param points - Points given, 0 to maxPoints
- * @param maxPoints - Maximum for this programme (default 10)
- */
-export function calculateGrade(
-  points: number,
-  maxPoints: number = DEFAULT_MAX_POINTS,
-): {
-  grade: string;
-  percentage: number;
-  remarks: string;
-} {
-  if (maxPoints <= 0) {
-    return {
-      grade: "E",
-      percentage: 0,
-      remarks: "Needs Improvement",
-    };
-  }
-  const rawPercentage = (points / maxPoints) * 100;
-  const percentage = Math.min(100, Math.max(0, rawPercentage));
-
-  let grade: string;
-  let remarks: string;
-
-  if (percentage >= 90) {
-    grade = "A+";
-    remarks = "Outstanding Performance";
-  } else if (percentage >= 80) {
-    grade = "A";
-    remarks = "Excellent Performance";
-  } else if (percentage >= 70) {
-    grade = "B+";
-    remarks = "Very Good Performance";
-  } else if (percentage >= 60) {
-    grade = "B";
-    remarks = "Good Performance";
-  } else if (percentage >= 50) {
-    grade = "C+";
-    remarks = "Above Average";
-  } else if (percentage >= 40) {
-    grade = "C";
-    remarks = "Average Performance";
-  } else if (percentage >= 30) {
-    grade = "D";
-    remarks = "Below Average";
-  } else {
-    grade = "E";
-    remarks = "Needs Improvement";
-  }
-
-  return {
-    grade,
-    percentage,
-    remarks,
-  };
-}
 
 /**
  * Calculate position (rank) based on points among all points.
@@ -77,7 +16,7 @@ export function calculatePosition(points: number, allPoints: number[]): number {
 }
 
 /**
- * Get grade background color for badges
+ * Get grade background color for badges.
  */
 export function getGradeBadgeColor(grade: string): string {
   const colorMap: Record<string, string> = {

@@ -6,10 +6,7 @@ import { UserTimezoneProviderClient } from "@/components/providers/user-timezone
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getTopPriorityProgrammeStatus } from "@/features/programmes/services/programme-status-priority";
 
 const RESERVED_SLUGS = new Set([
@@ -35,10 +32,7 @@ export default async function ParticipantLayout({
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier),
-    "publicParticipantProfile",
-  );
+  const canViewProfile = isEnabled(festival.tier, "publicParticipantProfile");
   if (!canViewProfile) notFound();
 
   const participant = await findParticipantByFestivalAndProfileSlug(
@@ -82,7 +76,7 @@ export default async function ParticipantLayout({
     effectiveFeatures: undefined,
   } as any;
 
-  const statuses: ProgrammeStatus[] = (participant.assignments ?? [])
+  const statuses: ProgrammeStatus[] = (participant.assignedProgrammes ?? [])
     .map((a: any) => a.programme?.status)
     .filter(Boolean);
 
@@ -100,6 +94,7 @@ export default async function ParticipantLayout({
               name: festival.name,
             }}
             participant={{
+              id: participant.id,
               isTeamLeader: Boolean(participant.isTeamLeader),
               name: participant.name,
             }}

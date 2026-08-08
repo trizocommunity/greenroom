@@ -3,14 +3,14 @@
 import { addMinutes, differenceInMinutes, format, parseISO } from "date-fns";
 import {
   AlertCircle,
-  Info,
-  Tag,
-  MapPin,
   Calendar,
   Clock,
+  Info,
+  MapPin,
+  Tag,
   Users,
 } from "lucide-react";
-import { useMemo, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Tooltip,
   TooltipContent,

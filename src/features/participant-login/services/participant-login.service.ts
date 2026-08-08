@@ -7,12 +7,10 @@ import {
 } from "@/core/auth/participant-session";
 import { db } from "@/core/database/client";
 import { participantOtp, participantSession } from "@/core/database/schema";
-import {
-  dateKeyLocal,
-  wallClockToInstant,
-} from "@/core/datetime";
+import { dateKeyLocal, wallClockToInstant } from "@/core/datetime";
 import { fromNow, MS, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { sendEmail } from "@/core/integrations/email/index";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findGroupsByFestival } from "@/features/groups/repositories/group.repository";
 
@@ -156,14 +154,30 @@ export const ParticipantLoginService = {
     const codeHash = hashOtp(otpCode);
     const expiresAt = fromNow(OTP_TTL_MS);
     const now = serverNowIso();
+    const otpId = crypto.randomUUID();
 
     await db.insert(participantOtp).values({
-      id: crypto.randomUUID(),
+      id: otpId,
       participantId: participantData.id,
       codeHash,
       expiresAt,
       updatedAt: now,
     });
+
+    const sendResult = await sendEmail({
+      to: participantData.email,
+      kind: {
+        kind: "team_leader_otp",
+        otp: otpCode,
+        festivalName: festival.name,
+        expiresInMinutes: Math.floor(OTP_TTL_MS / MS.minute),
+      },
+    });
+
+    if ("error" in sendResult || "kindDisabled" in sendResult) {
+      await db.delete(participantOtp).where(eq(participantOtp.id, otpId));
+      throw new AppError(ERROR_MESSAGES.EMAIL_SEND_FAILED);
+    }
 
     const debugOtp =
       process.env.NODE_ENV === "production" ? undefined : otpCode;

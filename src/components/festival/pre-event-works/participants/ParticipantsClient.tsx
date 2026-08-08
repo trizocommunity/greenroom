@@ -1,5 +1,6 @@
 "use client";
 
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   Binary,
@@ -17,15 +18,14 @@ import {
   User,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
 import {
   useDeleteParticipant,
-  useParticipants,
+  useParticipantsPaginated,
 } from "@/api/client/participants";
+import { StatusPill } from "@/components/app/AppSection";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -43,6 +43,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -68,6 +76,7 @@ import { formatDate, isAfter, parseInstant } from "@/core/datetime";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import { toast } from "@/lib/toast";
 import { AssignTeamLeadersModal } from "./AssignTeamLeadersModal";
 import { BulkUploadParticipantsModal } from "./BulkUploadParticipantsModal";
 import { ParticipantDetailsDialog } from "./ParticipantDetailsDialog";
@@ -95,7 +104,6 @@ export function ParticipantsClient({
   onChestRevalidate,
   children,
 }: ParticipantsClientProps) {
-  const { data: participants = [], isLoading } = useParticipants(festivalId);
   const deleteParticipant = useDeleteParticipant();
   const { data: groups = [] } = useGroups(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
@@ -107,9 +115,6 @@ export function ParticipantsClient({
   const singleCategories = (categories ?? []).filter(
     (c: any) => c.type === "SINGLE",
   );
-  const pendingChestCount = (participants ?? []).filter(
-    (s: any) => !s.chestNumber && s.category?.type === "SINGLE",
-  ).length;
 
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
@@ -120,7 +125,55 @@ export function ParticipantsClient({
   } | null>(null);
   const [sortBy, setSortBy] = useState<"NAME" | "CREATED" | "NUMERIC">("NAME");
 
-  if (isLoading) {
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 15,
+  });
+
+  const { data: tlData, isLoading: isLoadingTl } = useParticipantsPaginated(
+    festivalId,
+    {
+      page: 1,
+      pageSize: 100,
+      isTeamLeader: true,
+    },
+  );
+  const teamLeaders = tlData?.data ?? [];
+
+  const { data: paginatedData, isLoading: isLoadingParticipants } =
+    useParticipantsPaginated(festivalId, {
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+      sort: sortBy,
+      order: sortBy === "CREATED" ? "desc" : "asc",
+      search: searchQuery,
+      groupId: selectedGroup,
+      categoryId: selectedCategory,
+    });
+
+  const filteredParticipants = paginatedData?.data ?? [];
+  const totalCount = paginatedData?.total ?? 0;
+
+  const table = useReactTable({
+    data: filteredParticipants,
+    columns: [], // Using empty columns as we manually render the rows
+    pageCount: Math.ceil(totalCount / pagination.pageSize),
+    state: {
+      pagination,
+    },
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+  });
+
+  const isLoading = isLoadingTl || isLoadingParticipants;
+
+  // Approximate pending chest count (we only know it for the current page now, or we can just omit it if it's too complex. For now let's calculate from current page)
+  const pendingChestCount = filteredParticipants.filter(
+    (s: any) => !s.chestNumber && s.category?.type === "SINGLE",
+  ).length;
+
+  if (isLoading && filteredParticipants.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -128,57 +181,7 @@ export function ParticipantsClient({
     );
   }
 
-  // Separate Team Leaders
-  const teamLeaders = participants.filter((s: any) => s.isTeamLeader);
-  const regularParticipants = participants.filter((s: any) => !s.isTeamLeader);
-
-  const filteredParticipants = regularParticipants.filter((p: any) => {
-    if (selectedGroup !== "ALL") {
-      if (p.groupId !== selectedGroup && p.group?.id !== selectedGroup)
-        return false;
-    }
-    if (selectedCategory !== "ALL") {
-      if (
-        p.categoryId !== selectedCategory &&
-        p.category?.id !== selectedCategory
-      )
-        return false;
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      const name = (p.name || "").toLowerCase();
-      const chest = (p.chestNumber || "").toLowerCase();
-      if (!name.includes(q) && !chest.includes(q)) return false;
-    }
-    return true;
-  });
-
-  // Sort Logic
-  const sortedParticipants = [...filteredParticipants].sort(
-    (a: any, b: any) => {
-      switch (sortBy) {
-        case "NAME":
-          return a.name.localeCompare(b.name);
-        case "CREATED":
-          // b.createdAt > a.createdAt (newest first) → positive compare result
-          return isAfter(b.createdAt, a.createdAt)
-            ? 1
-            : isAfter(a.createdAt, b.createdAt)
-              ? -1
-              : 0;
-        case "NUMERIC": {
-          const aNum = a.chestNumber?.replace(/\D/g, "");
-          const bNum = b.chestNumber?.replace(/\D/g, "");
-          if (!aNum && !bNum) return 0;
-          if (!aNum) return 1;
-          if (!bNum) return -1;
-          return parseInt(aNum, 10) - parseInt(bNum, 10);
-        }
-        default:
-          return 0;
-      }
-    },
-  );
+  const sortedParticipants = filteredParticipants;
 
   const hasFilters =
     selectedGroup !== "ALL" ||
@@ -271,127 +274,130 @@ export function ParticipantsClient({
       />
 
       {teamLeaders.length > 0 && (
-        <div className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory gap-4 pb-4 px-1">
-          {teamLeaders.map((tl) => (
-            <Card
-              key={tl.id}
-              className="w-[260px] md:w-[280px] lg:w-[calc(25%-0.75rem)] snap-center shrink-0 group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-amber-500/30"
-            >
-              <div className="absolute top-2 right-2 p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border shadow-sm"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        setActionParticipant({
-                          participant: tl,
-                          action: "view",
-                        })
-                      }
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    {/* View QR */}
-                    {canUseQR && (
-                      <DropdownMenuItem
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          // Use chest number for QR code
-                          const qrContent = getQrCodeContent(tl);
-                          setActionParticipant({
-                            participant: { ...tl, _profileUrl: qrContent },
-                            action: "qr",
-                          });
-                        }}
+        <ScrollArea className="w-full">
+          <div className="flex gap-4 pb-4 px-1">
+            {teamLeaders.map((tl) => (
+              <Card
+                key={tl.id}
+                className="w-[280px] shrink-0 group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-amber-500/30"
+              >
+                <div className="absolute top-2 right-2 p-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border shadow-sm"
                       >
-                        <FileText className="h-4 w-4 mr-2" />
-                        View QR
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          setActionParticipant({
+                            participant: tl,
+                            action: "view",
+                          })
+                        }
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
                       </DropdownMenuItem>
-                    )}
-                    {!isReadOnly && (
-                      <>
+                      {/* View QR */}
+                      {canUseQR && (
                         <DropdownMenuItem
-                          onSelect={() =>
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            // Use chest number for QR code
+                            const qrContent = getQrCodeContent(tl);
                             setActionParticipant({
-                              participant: tl,
-                              action: "edit",
-                            })
-                          }
+                              participant: { ...tl, _profileUrl: qrContent },
+                              action: "qr",
+                            });
+                          }}
                         >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
+                          <FileText className="h-4 w-4 mr-2" />
+                          View QR
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onSelect={() =>
-                            setActionParticipant({
-                              participant: tl,
-                              action: "delete",
-                            })
-                          }
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <CardContent className="p-4 flex flex-col h-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-base leading-tight truncate">
-                      {tl.name}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      {tl.chestNumber ? (
-                        <span className="font-mono text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50">
-                          {tl.chestNumber}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                          No Chest No.
-                        </span>
                       )}
+                      {!isReadOnly && (
+                        <>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setActionParticipant({
+                                participant: tl,
+                                action: "edit",
+                              })
+                            }
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() =>
+                              setActionParticipant({
+                                participant: tl,
+                                action: "delete",
+                              })
+                            }
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <CardContent className="p-4 flex flex-col h-full">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-base leading-tight truncate">
+                        {tl.name}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        {tl.chestNumber ? (
+                          <span className="font-mono text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50">
+                            {tl.chestNumber}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                            No Chest No.
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-auto pt-3 border-t border-dashed space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Group</span>
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <span
-                        className="size-2 rounded-full"
-                        style={{
-                          backgroundColor: tl.group?.color || "#f59e0b",
-                        }}
-                      />
-                      {tl.group?.name || "-"}
+                  <div className="mt-auto pt-3 border-t border-dashed space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Group</span>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <span
+                          className="size-2 rounded-full"
+                          style={{
+                            backgroundColor: tl.group?.color || "#f59e0b",
+                          }}
+                        />
+                        {tl.group?.name || "-"}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Category</span>
+                      <span className="font-medium text-foreground">
+                        {tl.category?.name || "-"}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Category</span>
-                    <span className="font-medium text-foreground">
-                      {tl.category?.name || "-"}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       )}
 
       <Card className="overflow-hidden">
@@ -447,6 +453,7 @@ export function ParticipantsClient({
                   setSelectedGroup("ALL");
                   setSelectedCategory("ALL");
                   setSearchQuery("");
+                  setPagination((prev) => ({ ...prev, pageIndex: 0 }));
                 }}
                 title="Clear filters"
               >
@@ -470,21 +477,30 @@ export function ParticipantsClient({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem
-                    onSelect={() => setSortBy("NAME")}
+                    onSelect={() => {
+                      setSortBy("NAME");
+                      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                    }}
                     className={sortBy === "NAME" ? "bg-accent" : ""}
                   >
                     <SortAsc className="h-3.5 w-3.5 mr-2" />
                     <span>A-Z</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={() => setSortBy("CREATED")}
+                    onSelect={() => {
+                      setSortBy("CREATED");
+                      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                    }}
                     className={sortBy === "CREATED" ? "bg-accent" : ""}
                   >
                     <History className="h-3.5 w-3.5 mr-2" />
                     <span>Created At</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={() => setSortBy("NUMERIC")}
+                    onSelect={() => {
+                      setSortBy("NUMERIC");
+                      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                    }}
                     className={sortBy === "NUMERIC" ? "bg-accent" : ""}
                   >
                     <Binary className="h-3.5 w-3.5 mr-2" />
@@ -495,8 +511,7 @@ export function ParticipantsClient({
             </div>
 
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {filteredParticipants.length} row
-              {filteredParticipants.length !== 1 ? "s" : ""}
+              {totalCount} row{totalCount !== 1 ? "s" : ""}
             </span>
           </div>
         </CardHeader>
@@ -527,6 +542,11 @@ export function ParticipantsClient({
                     <h3 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-1">
                       {participant.name}
                     </h3>
+                    {participant.isTeamLeader && (
+                      <StatusPill tone="warning" icon={Crown}>
+                        Leader
+                      </StatusPill>
+                    )}
                   </div>
                   <div className="mt-2.5 rounded-lg bg-muted/40 px-3 py-2">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -627,6 +647,42 @@ export function ParticipantsClient({
           ))
         )}
       </div>
+
+      {/* Mobile Pagination */}
+      {totalCount > 0 && (
+        <div className="block lg:hidden mt-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => table.previousPage()}
+                  className={
+                    !table.getCanPreviousPage()
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <span className="flex h-9 items-center px-4 text-sm font-medium">
+                  {table.getState().pagination.pageIndex + 1} /{" "}
+                  {table.getPageCount() || 1}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => table.nextPage()}
+                  className={
+                    !table.getCanNextPage()
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
       {/* Desktop: table */}
       <Card className="hidden lg:block overflow-hidden mt-4">
         <CardContent className="p-0">
@@ -650,8 +706,13 @@ export function ParticipantsClient({
                       {index + 1}
                     </TableCell>
                     <TableCell className="font-medium">
-                      <div className="flex items-start flex-col gap-1">
+                      <div className="flex items-center gap-2">
                         <span>{participant.name}</span>
+                        {participant.isTeamLeader && (
+                          <StatusPill tone="warning" icon={Crown}>
+                            Leader
+                          </StatusPill>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -777,6 +838,40 @@ export function ParticipantsClient({
             </Table>
           </div>
         </CardContent>
+        {totalCount > 0 && (
+          <div className="border-t px-2 py-4">
+            <Pagination className="justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => table.previousPage()}
+                    className={
+                      !table.getCanPreviousPage()
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <span className="flex h-9 items-center px-4 text-sm font-medium">
+                    Page {table.getState().pagination.pageIndex + 1} of{" "}
+                    {table.getPageCount() || 1}
+                  </span>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => table.nextPage()}
+                    className={
+                      !table.getCanNextPage()
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </Card>
 
       {/* Controlled dialogs opened from dropdown */}

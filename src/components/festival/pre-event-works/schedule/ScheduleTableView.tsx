@@ -1,7 +1,14 @@
 "use client";
 
 import { format } from "date-fns";
-import { ArrowRightLeft, Clock, MapPin, Pencil, Tag, Users } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Clock,
+  MapPin,
+  Pencil,
+  Tag,
+  Users,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,13 +126,9 @@ export function ScheduleTableView({
       }
       if (sortField === "name") {
         const aName =
-          a.type === "PROGRAMME"
-            ? (a.programme?.name ?? "")
-            : (a.title ?? "");
+          a.type === "PROGRAMME" ? (a.programme?.name ?? "") : (a.title ?? "");
         const bName =
-          b.type === "PROGRAMME"
-            ? (b.programme?.name ?? "")
-            : (b.title ?? "");
+          b.type === "PROGRAMME" ? (b.programme?.name ?? "") : (b.title ?? "");
         return dir * aName.localeCompare(bName);
       }
       if (sortField === "stage") {
@@ -201,8 +204,7 @@ export function ScheduleTableView({
               {filtered.map((entry) => {
                 const typeInfo = getTypeLabel(entry);
                 const participantsLabel = getParticipantsLabel(entry);
-                const [countLine, durationLine] =
-                  participantsLabel.split("\n");
+                const [countLine, durationLine] = participantsLabel.split("\n");
                 return (
                   <tr
                     key={entry.id}

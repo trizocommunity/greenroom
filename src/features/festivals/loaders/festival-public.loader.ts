@@ -70,6 +70,11 @@ export async function getPublicFestivalData(
       scoringSystem: true,
       teamStandings: true,
     },
+    with: {
+      groups: {
+        columns: { name: true },
+      },
+    },
   });
 
   if (!festival) {
@@ -84,8 +89,26 @@ export async function getPublicFestivalData(
         getFestivalDurationDays() * MS.day,
     ).toISOString();
 
+  const existingStandings = (festival.teamStandings as any[]) || [];
+  const standingsMap = new Map(existingStandings.map((t) => [t.name, t]));
+  for (const g of festival.groups || []) {
+    if (!standingsMap.has(g.name)) {
+      standingsMap.set(g.name, { name: g.name, points: 0, rank: 999 });
+    }
+  }
+  let mergedStandings = Array.from(standingsMap.values()).sort(
+    (a, b) => b.points - a.points,
+  );
+  mergedStandings = mergedStandings.map((row, index) => ({
+    ...row,
+    rank: index + 1,
+  }));
+
   return {
-    festival: festival as any,
+    festival: {
+      ...festival,
+      teamStandings: mergedStandings,
+    } as any,
     event: {
       startDate,
       endDate,

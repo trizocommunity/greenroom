@@ -1,10 +1,12 @@
 import { notFound, redirect } from "next/navigation";
+import type { Tier } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import {
   getMediaImagesAction,
   getMediaVideosAction,
 } from "@/features/media/actions/media.actions";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { MediaClient } from "./MediaClient";
 
 interface PageProps {
@@ -16,7 +18,8 @@ export default async function MediaPage({ params }: PageProps) {
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const canManage = await getEffectiveFeatureEnabled(festival.tier, "media");
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "media", effectiveFeatures);
   if (!canManage) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=media`);
   }

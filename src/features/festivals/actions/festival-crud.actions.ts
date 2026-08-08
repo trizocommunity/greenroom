@@ -3,11 +3,10 @@
 import { randomUUID } from "crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getFestivalDurationDays, TIER_CONFIG } from "@/config/pricing";
+import { TIER_CONFIG } from "@/config/pricing";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
-  auditLog as auditLogTable,
   festival as festivalTable,
   festivalMember as memberTable,
   payment as paymentTable,
@@ -26,8 +25,7 @@ import {
 } from "@/features/festivals/schemas/festival.schema";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
-import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
-import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
+import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 import { ensureOffStageStage } from "@/features/stages/services/off-stage.service";
 
 export async function createFestival(input: CreateFestivalInput) {
@@ -87,6 +85,16 @@ export async function createFestival(input: CreateFestivalInput) {
           .replace(/^-+|-+$/g, "")
       ).slice(0, 50);
 
+      const { isSlugTaken } = await import(
+        "@/features/festivals/repositories/festival.repository"
+      );
+      const taken = await isSlugTaken(finalSlug);
+      if (taken) {
+        throw new AppError(
+          "This subdomain is already taken. Please choose another.",
+        );
+      }
+
       const festivalId = randomUUID();
       const now = serverNowIso();
 
@@ -99,6 +107,8 @@ export async function createFestival(input: CreateFestivalInput) {
           institutionType: (data.institutionType as any) || "OTHER",
           institutionName: data.institutionName,
           location: data.location,
+          timezone:
+            data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
           startDate: parseInstant(data.startDate)?.toISOString(),
           endDate: parseInstant(data.endDate)?.toISOString(),
           ownerId: session.userId,
@@ -107,6 +117,8 @@ export async function createFestival(input: CreateFestivalInput) {
           isLocked: false,
           tier: tier,
           tierLabel: tierConfig?.label || "Standard",
+          publicSiteEnabled: false,
+          scoringSystem: "SCORE_BASED",
           createdAt: now,
           updatedAt: now,
         })
@@ -436,35 +448,19 @@ export async function updateFestivalBrandingAction(data: {
         ? String(data.logo ?? current.logo)
         : null;
 
-    const urlsToAdd: string[] = [];
-    const urlsToRemove: string[] = [];
-
-    if (previousLogo && previousLogo !== nextLogo)
-      urlsToRemove.push(previousLogo);
-    if (nextLogo && nextLogo !== previousLogo) urlsToAdd.push(nextLogo);
-
-    const [addMb, removeMb] = await Promise.all([
-      StorageUsageService.getUrlsSizeMB(urlsToAdd),
-      StorageUsageService.getUrlsSizeMB(urlsToRemove),
-    ]);
-    const deltaMb = addMb - removeMb;
-
-    await db.transaction(async (tx) => {
-      await tx
-        .update(festivalTable)
-        .set({
-          branding: nextBranding,
-          updatedAt: serverNowIso(),
-        })
-        .where(eq(festivalTable.id, festival.id));
-
-      if (deltaMb !== 0) {
-        await UsageCounterService.incrementUsage(
-          festival.id,
-          "storage",
-          deltaMb,
-        );
-      }
+    await StorageBackedFieldService.mutateSingleUrl({
+      festivalId: festival.id,
+      currentUrl: previousLogo,
+      nextUrl: nextLogo,
+      operation: async (tx) => {
+        await tx
+          .update(festivalTable)
+          .set({
+            branding: nextBranding,
+            updatedAt: serverNowIso(),
+          })
+          .where(eq(festivalTable.id, festival.id));
+      },
     });
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
@@ -536,12 +532,22 @@ export async function relaunchFestival(input: {
       } as const;
     }
 
-    const expiresAt = fromNow(getFestivalDurationDays() * MS.day);
+    const expiresAt = fromNow(tierConfig.festivalDurationDays * MS.day);
     const finalSlug = input.festivalName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 50);
+
+    const { isSlugTaken } = await import(
+      "@/features/festivals/repositories/festival.repository"
+    );
+    const taken = await isSlugTaken(finalSlug);
+    if (taken) {
+      throw new AppError(
+        "This subdomain is already taken. Please choose another name.",
+      );
+    }
 
     const result = await db.transaction(async (tx) => {
       const festivalId = randomUUID();
@@ -559,6 +565,9 @@ export async function relaunchFestival(input: {
           tierLabel: tierConfig?.label || "Standard",
           isLocked: false,
           expiresAt,
+          publicSiteEnabled: false,
+          scoringSystem: "SCORE_BASED",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           createdAt: now,
           updatedAt: now,
         })
@@ -600,6 +609,18 @@ export async function relaunchFestival(input: {
     revalidatePath("/festivals");
 
     return { success: true, data: result };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function checkFestivalSlugAvailability(slug: string) {
+  try {
+    const { isSlugTaken } = await import(
+      "@/features/festivals/repositories/festival.repository"
+    );
+    const taken = await isSlugTaken(slug);
+    return { success: true, data: { available: !taken } };
   } catch (error) {
     return handleActionError(error);
   }

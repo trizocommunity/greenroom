@@ -1,7 +1,8 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
@@ -9,20 +10,25 @@ import {
   programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
-import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
 import { assertAnnouncerAccess } from "@/features/announcement/actions/announcement-access";
-import { computeStandings } from "@/features/announcement/services/announcer.service";
+import {
+  computeStandings,
+  getNextResultNumber,
+  type TeamStandingRow,
+} from "@/features/announcement/services/announcer.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
+import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
+import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 
 function revalidateAnnouncerPaths(slug: string) {
   revalidatePath(`/dashboard/${slug}`);
-  revalidatePath(`/dashboard/${slug}/event-works/announcer`);
+  revalidatePath(`/dashboard/${slug}/event-works/announcement`);
   revalidatePath(`/dashboard/${slug}/event-works/results`);
-  revalidatePath(`/dashboard/${slug}/event-works/leaderboard`);
+  revalidatePath(`/dashboard/${slug}/event-works/top-scorers`);
   revalidatePath(`/${slug}`);
   revalidatePath(`/${slug}/results`);
 }
@@ -119,6 +125,75 @@ export async function setProgrammeResultNumber(
   }
 }
 
+export async function publishResult(
+  festivalId: string,
+  programmeId: string,
+): Promise<ActionResponse<void>> {
+  try {
+    const actorName = await assertAnnouncerAccess(festivalId);
+    await ensureFestivalWritable(festivalId);
+
+    const programme = await db.query.programme.findFirst({
+      where: and(
+        eq(programmeTable.id, programmeId),
+        eq(programmeTable.festivalId, festivalId),
+      ),
+      columns: {
+        id: true,
+        name: true,
+        resultNumber: true,
+        status: true,
+      },
+    });
+    if (!programme) return { success: false, error: "Programme not found" };
+
+    if (programme.resultNumber == null) {
+      return {
+        success: false,
+        error: "Assign a result number before publishing.",
+      };
+    }
+
+    const session = await getSession();
+    const now = serverNowIso();
+
+    await db
+      .update(resultTable)
+      .set({
+        isPublished: true,
+        publishedByEmail: (session?.email as string) ?? null,
+        publishedByName: actorName,
+        updatedAt: now,
+      })
+      .where(eq(resultTable.programmeId, programmeId));
+
+    await db
+      .update(programmeTable)
+      .set({
+        status: "PUBLISHED",
+        publishedAt: now,
+        publishedByEmail: (session?.email as string) ?? null,
+        publishedByName: actorName,
+        updatedAt: now,
+      })
+      .where(eq(programmeTable.id, programmeId));
+
+    const slug = await getFestivalSlug(festivalId);
+    if (slug) revalidateAnnouncerPaths(slug);
+
+    await createAuditLog({
+      action: "PUBLISH_RESULTS",
+      targetType: "RESULT",
+      targetId: programmeId,
+      metadata: { festivalId, programmeId },
+    }).catch((err) => console.error("[AuditLog] PUBLISH_RESULTS failed", err));
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
 export async function announceResult(
   festivalId: string,
   programmeId: string,
@@ -164,7 +239,7 @@ export async function announceResult(
     await db
       .update(programmeTable)
       .set({
-        status: "PUBLISHED",
+        status: "ANNOUNCED",
         publishedAt: now,
         publishedByEmail: (session?.email as string) ?? null,
         publishedByName: actorName,
@@ -208,10 +283,10 @@ export async function unpublishResult(
     });
     if (!programme) return { success: false, error: "Programme not found" };
 
-    if (programme.status !== "PUBLISHED") {
+    if (programme.status !== "PUBLISHED" && programme.status !== "ANNOUNCED") {
       return {
         success: false,
-        error: "Only published results can be unpublished.",
+        error: "Only published or announced results can be unpublished.",
       };
     }
 
@@ -241,32 +316,35 @@ export async function unpublishResult(
 
 export async function swapResultNumbers(
   festivalId: string,
-  programmeIdA: string,
-  programmeIdB: string,
+  programmeIdA: string, // the dragged item
+  programmeIdB: string, // the dropped over item
 ): Promise<ActionResponse<void>> {
   try {
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
 
-    const [progA, progB] = await Promise.all([
-      db.query.programme.findFirst({
-        where: and(
-          eq(programmeTable.id, programmeIdA),
-          eq(programmeTable.festivalId, festivalId),
-        ),
-        columns: { id: true, resultNumber: true, status: true },
-      }),
-      db.query.programme.findFirst({
-        where: and(
-          eq(programmeTable.id, programmeIdB),
-          eq(programmeTable.festivalId, festivalId),
-        ),
-        columns: { id: true, resultNumber: true, status: true },
-      }),
-    ]);
+    // Fetch all programmes that have a resultNumber for this festival, sorted
+    const programmes = await db.query.programme.findMany({
+      where: and(
+        eq(programmeTable.festivalId, festivalId),
+        isNotNull(programmeTable.resultNumber),
+      ),
+      columns: { id: true, resultNumber: true, status: true },
+      orderBy: [asc(programmeTable.resultNumber)],
+    });
 
-    if (!progA || !progB)
-      return { success: false, error: "Programme not found" };
+    const activeIndex = programmes.findIndex((p) => p.id === programmeIdA);
+    const overIndex = programmes.findIndex((p) => p.id === programmeIdB);
+
+    if (activeIndex === -1 || overIndex === -1) {
+      return {
+        success: false,
+        error: "Programme not found or missing result number",
+      };
+    }
+
+    const progA = programmes[activeIndex];
+    const progB = programmes[overIndex];
 
     try {
       assertProgrammePrePublishing(progA.status);
@@ -275,22 +353,49 @@ export async function swapResultNumbers(
       return { success: false, error: e.message };
     }
 
-    if (progA.resultNumber == null || progB.resultNumber == null)
-      return {
-        success: false,
-        error: "Both programmes must have result numbers to swap.",
-      };
+    // Perform array move
+    const newOrder = programmes.slice();
+    newOrder.splice(
+      overIndex < 0 ? newOrder.length + overIndex : overIndex,
+      0,
+      newOrder.splice(activeIndex, 1)[0],
+    );
 
-    const now = serverNowIso();
-    await db.execute(sql`
-      UPDATE "programme"
-      SET "result_number" = CASE
-        WHEN "id" = ${programmeIdA} THEN ${progB.resultNumber}
-        WHEN "id" = ${programmeIdB} THEN ${progA.resultNumber}
-      END,
-      "updatedAt" = ${now}
-      WHERE "id" IN (${programmeIdA}, ${programmeIdB})
-    `);
+    // Find which IDs need their result_number updated
+    const updates: { id: string; newResultNumber: number }[] = [];
+    for (let i = 0; i < newOrder.length; i++) {
+      if (newOrder[i].resultNumber !== programmes[i].resultNumber) {
+        updates.push({
+          id: newOrder[i].id,
+          newResultNumber: programmes[i].resultNumber!,
+        });
+      }
+    }
+
+    if (updates.length > 0) {
+      const now = serverNowIso();
+      await db.transaction(async (tx) => {
+        // 1. Temporarily set to a negative value to avoid unique constraint violation
+        for (let i = 0; i < updates.length; i++) {
+          await tx.execute(sql`
+            UPDATE "programme"
+            SET "result_number" = ${-1000 - i},
+                "updatedAt" = ${now}
+            WHERE "id" = ${updates[i].id}
+          `);
+        }
+
+        // 2. Set to the new correct resultNumber
+        for (let i = 0; i < updates.length; i++) {
+          await tx.execute(sql`
+            UPDATE "programme"
+            SET "result_number" = ${updates[i].newResultNumber},
+                "updatedAt" = ${now}
+            WHERE "id" = ${updates[i].id}
+          `);
+        }
+      });
+    }
 
     const slug = await getFestivalSlug(festivalId);
     if (slug) revalidateAnnouncerPaths(slug);
@@ -303,12 +408,103 @@ export async function swapResultNumbers(
 
 export async function publishStandings(
   festivalId: string,
+  upToResultNumber?: number,
 ): Promise<ActionResponse<void>> {
   try {
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
 
-    const standings = await computeStandings(festivalId, "published");
+    const programmeStandings = await computeStandings(
+      festivalId,
+      "published",
+      upToResultNumber,
+    );
+    const generalStandings = await computeGeneralEntryStandings(festivalId);
+
+    const mergedMap = new Map<string, TeamStandingRow>();
+    for (const r of programmeStandings) {
+      mergedMap.set(r.name, { ...r });
+    }
+    for (const r of generalStandings) {
+      if (!mergedMap.has(r.name)) {
+        mergedMap.set(r.name, {
+          name: r.name,
+          points: 0,
+          rank: 0,
+          isGroup: true,
+        });
+      }
+      mergedMap.get(r.name)!.points += r.points;
+    }
+
+    const standings = Array.from(mergedMap.values())
+      .sort((a, b) => b.points - a.points)
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+      }));
+
+    const highestResult = await db.query.programme.findFirst({
+      where: and(
+        eq(programmeTable.festivalId, festivalId),
+        eq(programmeTable.status, "PUBLISHED"),
+      ),
+      columns: { resultNumber: true },
+      orderBy: (p, { desc }) => [desc(p.resultNumber)],
+    });
+
+    const now = serverNowIso();
+    await db
+      .update(festivalTable)
+      .set({
+        queuedTeamStandings: standings,
+        standingsPublishedAtResultNumber: highestResult?.resultNumber ?? null,
+        standingsPublishedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(festivalTable.id, festivalId));
+
+    const slug = await getFestivalSlug(festivalId);
+    if (slug) revalidateAnnouncerPaths(slug);
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function publishGeneralStandings(
+  festivalId: string,
+): Promise<ActionResponse<void>> {
+  try {
+    await assertAnnouncerAccess(festivalId);
+    await ensureFestivalWritable(festivalId);
+
+    const programmeStandings = await computeStandings(festivalId, "published");
+    const generalStandings = await computeGeneralEntryStandings(festivalId);
+
+    const mergedMap = new Map<string, TeamStandingRow>();
+    for (const r of programmeStandings) {
+      mergedMap.set(r.name, { ...r });
+    }
+    for (const r of generalStandings) {
+      if (!mergedMap.has(r.name)) {
+        mergedMap.set(r.name, {
+          name: r.name,
+          points: 0,
+          rank: 0,
+          isGroup: true,
+        });
+      }
+      mergedMap.get(r.name)!.points += r.points;
+    }
+
+    const standings = Array.from(mergedMap.values())
+      .sort((a, b) => b.points - a.points)
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+      }));
 
     const highestResult = await db.query.programme.findFirst({
       where: and(
@@ -324,8 +520,64 @@ export async function publishStandings(
       .update(festivalTable)
       .set({
         teamStandings: standings,
+        queuedTeamStandings: null,
         standingsPublishedAtResultNumber: highestResult?.resultNumber ?? null,
         standingsPublishedAt: now,
+        standingsAnnouncedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(festivalTable.id, festivalId));
+
+    const slug = await getFestivalSlug(festivalId);
+    if (slug) revalidateAnnouncerPaths(slug);
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function fetchStandingsAction(
+  festivalId: string,
+  scope: "all" | "published" | "general",
+  upToResultNumber?: number,
+): Promise<ActionResponse<TeamStandingRow[]>> {
+  try {
+    await assertAnnouncerAccess(festivalId);
+    const standings = await computeStandings(
+      festivalId,
+      scope,
+      upToResultNumber,
+    );
+    return { success: true, data: standings };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function announceStandings(
+  festivalId: string,
+): Promise<ActionResponse<void>> {
+  try {
+    await assertAnnouncerAccess(festivalId);
+    await ensureFestivalWritable(festivalId);
+
+    const festival = await db.query.festival.findFirst({
+      where: eq(festivalTable.id, festivalId),
+      columns: { queuedTeamStandings: true },
+    });
+
+    if (!festival?.queuedTeamStandings) {
+      return { success: false, error: "No queued standings to announce" };
+    }
+
+    const now = serverNowIso();
+    await db
+      .update(festivalTable)
+      .set({
+        teamStandings: festival.queuedTeamStandings,
+        queuedTeamStandings: null,
+        standingsAnnouncedAt: now,
         updatedAt: now,
       })
       .where(eq(festivalTable.id, festivalId));

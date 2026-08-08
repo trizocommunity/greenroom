@@ -1,7 +1,6 @@
-import { createMagicLinkToken } from "@/core/auth/magic-link";
-import { MS } from "@/core/datetime/server";
+import { headers } from "next/headers";
+import { auth } from "@/core/auth/better-auth/auth";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { sendMagicLinkEmail } from "@/core/integrations/email";
 import {
   createUser,
   findUserByEmail,
@@ -15,8 +14,6 @@ import {
   findMembersByFestival,
   updateMemberRoles,
 } from "@/features/members/repositories/member.repository";
-
-const MAGIC_LINK_EXPIRY_MS = 30 * MS.minute;
 
 export const MemberService = {
   async getMembers(festivalId: string) {
@@ -60,11 +57,20 @@ export const MemberService = {
     });
 
     if (isNewUser) {
-      const token = await createMagicLinkToken(
-        data.email,
-        MAGIC_LINK_EXPIRY_MS,
-      );
-      await sendMagicLinkEmail(data.email, token).catch(() => {});
+      // Send a sign-in OTP so the new member can sign in. Better Auth's
+      // `sendVerificationOTP` hook (`core/auth/better-auth/auth.ts`)
+      // routes through our `send_in_otp` email template — no email-send
+      // code here.
+      const hdrs = await headers();
+      await auth.api
+        .sendVerificationOTP({
+          body: { email: data.email, type: "sign-in" },
+          headers: hdrs,
+          asResponse: false,
+        })
+        .catch((err) => {
+          console.error("[member.add] sendVerificationOTP failed", err);
+        });
     }
 
     return member;

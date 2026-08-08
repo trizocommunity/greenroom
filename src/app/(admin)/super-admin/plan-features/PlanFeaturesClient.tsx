@@ -3,7 +3,6 @@
 import { Check, Loader2, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,6 +21,7 @@ import {
   getFeatureTagLabel,
   getFeatureTagRequirements,
 } from "@/features/plan-features/services/features-tags";
+import { toast } from "@/lib/toast";
 
 type TagMatrix = Record<Tier, Partial<Record<FeatureTag, boolean>>>;
 

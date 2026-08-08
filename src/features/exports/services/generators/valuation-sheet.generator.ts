@@ -4,11 +4,10 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   category as categoryTable,
-  participant as participantTable,
-  programmeAssignment,
   programmeCodeLetter,
   programme as programmeTable,
 } from "@/core/database/schema";
+import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 import type { ValuationSheetConfig } from "@/features/exports/schemas/export-config.schema";
 import {
   buildCsv,
@@ -57,28 +56,26 @@ export async function generateValuationSheet(
   const programmeIds = programmes.map((p) => p.id);
   const progMeta = new Map(programmes.map((p) => [p.id, p]));
 
-  const assignConditions = programmeIds.length
-    ? [inArray(programmeAssignment.programmeId, programmeIds)]
-    : [eq(programmeAssignment.festivalId, festivalId)];
-  if (config.gender !== "ALL")
-    assignConditions.push(eq(participantTable.gender, config.gender));
+  const enrolledRows: {
+    programmeId: string;
+    chestNumber: string | null;
+    name: string;
+  }[] = [];
+  for (const programmeId of programmeIds) {
+    const enrolled =
+      await ProgrammeMembershipService.getParticipantsForProgramme(programmeId);
+    for (const row of enrolled) {
+      if (config.gender !== "ALL" && row.participant.gender !== config.gender)
+        continue;
+      enrolledRows.push({
+        programmeId,
+        chestNumber: row.participant.chestNumber,
+        name: row.participant.name,
+      });
+    }
+  }
 
-  const participants = programmeIds.length
-    ? await db
-        .select({
-          programmeId: programmeAssignment.programmeId,
-          chestNumber: participantTable.chestNumber,
-          name: participantTable.name,
-        })
-        .from(programmeAssignment)
-        .innerJoin(
-          participantTable,
-          eq(programmeAssignment.participantId, participantTable.id),
-        )
-        .where(and(...assignConditions))
-    : [];
-
-  const rows: ValuationRow[] = participants.map((r) => {
+  const rows: ValuationRow[] = enrolledRows.map((r) => {
     const meta = progMeta.get(r.programmeId);
     return {
       programmeId: r.programmeId,

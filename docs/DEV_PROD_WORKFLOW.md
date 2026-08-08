@@ -1,7 +1,7 @@
 # DEV vs PROD Workflow
 
 End-to-end runbook for the two environments Greenroom actually ships to: a
-local machine and `trizo-greenroom.vercel.app` (Vercel + Neon Postgres).
+local machine and `greenroomm.vercel.app` (Vercel + Neon Postgres).
 
 > Architecture is documented in detail in `issues/done/neon-database-adoption.md`.
 > This doc is the operating manual — what to run, in what order, against what.
@@ -35,10 +35,10 @@ Three files, three purposes:
 | `.env` | **No** (`.gitignore`) | Concrete values for whichever DB you're currently pointing at. Local-only. |
 | `.env.local` | **No** | Same purpose as `.env`, kept separate so it isn't accidentally committed when `.env` is. README uses this one. |
 
-`.env.example` documents the 14 vars the app reads:
+`.env.example` documents the vars the app reads:
 
 - **Database** — `DATABASE_URL` (pooled), `DATABASE_URL_UNPOOLED` (direct).
-- **Auth** — `JWT_SECRET`.
+- **Auth** — `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
 - **App** — `NEXT_PUBLIC_APP_URL`.
 - **Payments** — `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`.
 - **Email** — `RESEND_API_KEY` (optional in dev — see fallback below), `EMAIL_FROM`.
@@ -58,7 +58,7 @@ Three files, three purposes:
 ### Secrets you must generate fresh per environment
 
 ```bash
-openssl rand -hex 32   # JWT_SECRET, CRON_SECRET
+openssl rand -hex 32   # BETTER_AUTH_SECRET, CRON_SECRET
 ```
 
 Never reuse between dev and prod, and never commit them.
@@ -74,7 +74,7 @@ npm install
 cp .env.example .env.local        # or .env — both are gitignored
 ```
 
-Fill `JWT_SECRET` and a database URL (next step).
+Fill `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, and a database URL (next step).
 
 ### Pick a database
 
@@ -106,7 +106,9 @@ npm run dev
 | Command | What it does |
 |---|---|
 | `npm run dev` | Start Next dev server on `:3000` |
-| `npm test` / `npm run test:run` | Vitest (Node env, `src/**/*.test.ts`) |
+| `npm test` | Vitest (all projects) |
+| `npm run test:unit` | Vitest unit project |
+| `npm run test:integration` | Vitest integration project |
 | `npm run lint` | Biome lint |
 | `npm run format` | Biome format `--write` |
 | `npm run check` | Biome check (lint + format) `--write` |
@@ -232,7 +234,8 @@ guard is stricter: it also rejects any URL that contains neither
 2. **In Vercel project settings → Environment Variables**, add for both
    **Production** and **Preview** scopes:
    - `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (Neon pooled + direct)
-   - `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` — fresh per env
+   - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` — fresh per env
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — if using Google OAuth
    - `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `NEXT_PUBLIC_CLOUDINARY_*`,
      `CLOUDINARY_API_*` — anything you actually use
 
@@ -292,12 +295,12 @@ Summary: reset role password in Neon (dashboard or
 into Vercel Production env vars, force a redeploy. Plan ~1 minute of
 user-visible login downtime between reset and redeploy completing.
 
-### Rotate `JWT_SECRET` / `CRON_SECRET`
+### Rotate `BETTER_AUTH_SECRET` / `CRON_SECRET`
 
 Generate fresh values via `openssl rand -hex 32`, update Vercel env vars,
-force a redeploy. Note: rotating `JWT_SECRET` invalidates every existing user
-session — users will need to log in again, and any in-flight cron call will
-be 403'd until the new value is live.
+force a redeploy. Note: rotating `BETTER_AUTH_SECRET` invalidates every existing
+Better Auth session — users will need to log in again, and any in-flight cron
+call will be 403'd until the new value is live.
 
 ### Reset the local DB
 

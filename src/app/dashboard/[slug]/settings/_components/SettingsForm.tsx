@@ -22,7 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FeatureService } from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 interface SettingsFormProps {
@@ -48,18 +48,15 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
   const resolvedTier = getResolvedTier(festival.tier);
   const isBasic = resolvedTier === "BASIC";
 
-  const isProgrammeDeadlineEnabled = FeatureService.isFeatureEnabled(
+  const isProgrammeDeadlineEnabled = isEnabled(
     resolvedTier,
     "programmeAssignmentDeadline",
   );
-  const isParticipantDeadlineEnabled = FeatureService.isFeatureEnabled(
+  const isParticipantDeadlineEnabled = isEnabled(
     resolvedTier,
     "participantCreationDeadline",
   );
-  const isAdvancedSettingsEnabled = FeatureService.isFeatureEnabled(
-    resolvedTier,
-    "advancedSettings",
-  );
+  const isAdvancedSettingsEnabled = isEnabled(resolvedTier, "advancedSettings");
 
   const [refreshKey, setRefreshKey] = useState(0);
 

@@ -12,7 +12,7 @@ import {
 } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
 import { serverNow } from "@/core/datetime/server";
-import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
+import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 import {
   buildCandidateCardBindings,
   buildCertificateBindings,
@@ -28,6 +28,7 @@ import {
   type EditorPreviewBindingsPayload,
 } from "@/features/posters/services/poster-editor-preview-placeholders";
 import type { PosterTemplateType } from "@/features/posters/types/poster-template.types";
+import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 
 export type { EditorPreviewBindingsPayload };
 
@@ -98,19 +99,21 @@ export function formatFestDateRange(
 
 async function categoryNameFromFirstProgramme(
   participantId: string,
+  festivalId: string,
 ): Promise<string | null> {
+  const enrolled = await ProgrammeMembershipService.getProgrammesForParticipant(
+    participantId,
+    festivalId,
+  );
+  enrolled.sort((a, b) => a.programme.name.localeCompare(b.programme.name));
+  const firstProgramme = enrolled[0];
+  if (!firstProgramme) return null;
+
   const row = await db
     .select({ name: categoryTable.name })
-    .from(programmeAssignment)
-    .innerJoin(
-      programmeTable,
-      eq(programmeAssignment.programmeId, programmeTable.id),
-    )
-    .innerJoin(categoryTable, eq(programmeTable.categoryId, categoryTable.id))
-    .where(eq(programmeAssignment.participantId, participantId))
-    .orderBy(asc(programmeTable.name))
+    .from(categoryTable)
+    .where(eq(categoryTable.id, firstProgramme.categoryId))
     .limit(1);
-
   return row[0]?.name ?? null;
 }
 
@@ -296,7 +299,10 @@ async function loadCandidatePreview(
     );
   }
 
-  const categoryName = await categoryNameFromFirstProgramme(participant.id);
+  const categoryName = await categoryNameFromFirstProgramme(
+    participant.id,
+    festivalId,
+  );
 
   const bindings = buildCandidateCardBindings({
     festivalName,

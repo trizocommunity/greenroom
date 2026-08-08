@@ -11,12 +11,13 @@ const {
   mockGetSession,
   mockAssertFestivalAccess,
   mockFindFestivalById,
-  mockGetEffectiveFeatureEnabled,
+  mockLoadFeatureOverrides,
   mockUpdateProgrammeStatus,
   mockHandleProgrammeEntryMutation,
   mockRevalidatePath,
   mockGetAccessibleStageIds,
   mockProgrammeFindMany,
+  mockProgrammeFindFirst,
   mockScheduleEntryFindMany,
   mockScheduleEntryFindFirst,
   mockStageFindFirst,
@@ -41,12 +42,13 @@ const {
     mockGetSession: mkFn(),
     mockAssertFestivalAccess: mkFn(),
     mockFindFestivalById: mkFn(),
-    mockGetEffectiveFeatureEnabled: mkFn(),
+    mockLoadFeatureOverrides: mkFn(),
     mockUpdateProgrammeStatus: mkFn(),
     mockHandleProgrammeEntryMutation: mkFn(),
     mockRevalidatePath: mkFn(),
     mockGetAccessibleStageIds: mkFn(),
     mockProgrammeFindMany: mkFn(),
+    mockProgrammeFindFirst: mkFn(),
     mockScheduleEntryFindMany: mkFn(),
     mockScheduleEntryFindFirst: mkFn(),
     mockStageFindFirst: mkFn(),
@@ -116,6 +118,7 @@ vi.mock("@/core/database/client", () => ({
     query: {
       programme: {
         findMany: (...args: unknown[]) => mockProgrammeFindMany(...args),
+        findFirst: (...args: unknown[]) => mockProgrammeFindFirst(...args),
       },
       scheduleEntry: {
         findFirst: (...args: unknown[]) => mockScheduleEntryFindFirst(...args),
@@ -144,13 +147,14 @@ vi.mock("@/features/festivals/repositories/festival.repository", () => ({
 }));
 
 vi.mock("@/features/plan-features/services/plan-features.service", () => ({
-  getEffectiveFeatureEnabled: (...args: unknown[]) =>
-    mockGetEffectiveFeatureEnabled(...args),
+  loadFeatureOverrides: (...args: unknown[]) =>
+    mockLoadFeatureOverrides(...args),
 }));
 
 vi.mock("@/features/programmes/services/programme-status.service", () => ({
   updateProgrammeStatus: (...args: unknown[]) =>
     mockUpdateProgrammeStatus(...args),
+  assertProgrammePreReporting: vi.fn(),
 }));
 
 vi.mock("@/features/schedule/utils/schedule-orchestration", () => ({
@@ -207,11 +211,12 @@ beforeEach(() => {
 
   mockAssertFestivalAccess.mockResolvedValue(undefined);
   mockFindFestivalById.mockResolvedValue(baseFestival);
-  mockGetEffectiveFeatureEnabled.mockResolvedValue(true);
+  mockLoadFeatureOverrides.mockResolvedValue({ schedule: true });
 
   mockGetAccessibleStageIds.mockResolvedValue("all");
 
   mockProgrammeFindMany.mockResolvedValue([]);
+  mockProgrammeFindFirst.mockResolvedValue({ status: "PRE_REPORTING" });
   mockScheduleEntryFindMany.mockResolvedValue([]);
   mockScheduleEntryFindFirst.mockResolvedValue(undefined);
   mockStageFindFirst.mockResolvedValue({ id: "any" });

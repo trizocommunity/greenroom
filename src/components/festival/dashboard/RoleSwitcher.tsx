@@ -1,9 +1,9 @@
 "use client";
 
+import * as SelectPrimitive from "@radix-ui/react-select";
 import { ChevronsUpDown, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
 import {
   Select,
   SelectContent,
@@ -19,14 +19,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
+  clearRoleSwitchAction,
+  switchRoleAction,
+} from "@/features/role-switch/actions/role-switch.actions";
+import {
   ALL_FESTIVAL_ROLES,
   PRIVILEGED_ROLES,
   ROLE_LABELS,
 } from "@/features/role-switch/constants";
-import {
-  clearRoleSwitchAction,
-  switchRoleAction,
-} from "@/features/role-switch/actions/role-switch.actions";
 
 const ROLE_ICONS: Record<string, string> = {
   SUPER_ADMIN: "SA",
@@ -67,9 +67,7 @@ export function RoleSwitcher({
   const [isPending, startTransition] = useTransition();
 
   const isPrivileged = PRIVILEGED_ROLES.includes(actualRole as any);
-  const switchableRoles = isPrivileged
-    ? [...ALL_FESTIVAL_ROLES]
-    : memberRoles;
+  const switchableRoles = isPrivileged ? [...ALL_FESTIVAL_ROLES] : memberRoles;
 
   const showSwitcher = isPrivileged || memberRoles.length > 1;
 
@@ -77,7 +75,10 @@ export function RoleSwitcher({
     return (
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" className="cursor-default focus:ring-0 focus-visible:ring-0 outline-none border-none">
+          <SidebarMenuButton
+            size="lg"
+            className="cursor-default focus:ring-0 focus-visible:ring-0 outline-none border-none"
+          >
             <div
               className="flex aspect-square size-8 items-center justify-center rounded-lg text-white font-bold text-xs"
               style={{ backgroundColor: accentColor || "#000" }}
@@ -198,7 +199,9 @@ export function RoleSwitcher({
                   >
                     <div className="flex items-center gap-2">
                       <RotateCcw className="size-4" />
-                      <span>Reset to {ROLE_LABELS[actualRole] || actualRole}</span>
+                      <span>
+                        Reset to {ROLE_LABELS[actualRole] || actualRole}
+                      </span>
                     </div>
                   </SelectItem>
                 </SelectGroup>

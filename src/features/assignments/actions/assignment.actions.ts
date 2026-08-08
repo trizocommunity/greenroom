@@ -1,6 +1,7 @@
 "use server";
 
 import { and, count, eq, inArray } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getParticipantSessionFromCookie } from "@/core/auth/participant-session";
 import { getSession } from "@/core/auth/session";
@@ -15,11 +16,14 @@ import {
 } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import type { BulkAssignmentInput } from "@/features/assignments/services/assignment.service";
+import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { resolveDeadlineWindow } from "@/features/festivals/services/deadline-window";
+import {
+  isTeamLeaderActionWindowOpen,
+  resolveDeadlineWindow,
+} from "@/features/festivals/services/deadline-window";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 
 function auditActorForContext(actorContext: AssignmentActorContext) {
@@ -88,6 +92,17 @@ function assertAssignmentWindowOpen(
   }
   if (state === "UPCOMING") {
     throw new AppError(ERROR_MESSAGES.ASSIGNMENT_WINDOW_NOT_OPEN);
+  }
+  if (state === "UNCONFIGURED") {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_WINDOW_NOT_CONFIGURED);
+  }
+  if (
+    !isTeamLeaderActionWindowOpen({
+      start: festival?.programmeAssignmentStartDate,
+      end: festival?.programmeAssignmentDeadline,
+    })
+  ) {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_WINDOW_NOT_CONFIGURED);
   }
 }
 
@@ -210,7 +225,7 @@ export async function createAssignmentAction(
     }
   }
 
-  let created;
+  let created: Awaited<ReturnType<typeof AssignmentService.create>>;
   if (data.participantId) {
     created = await AssignmentService.create(
       festivalId,
@@ -244,6 +259,7 @@ export async function createAssignmentAction(
   }).catch((err) =>
     console.error("[AuditLog] ASSIGN_PARTICIPANTS failed", err),
   );
+  revalidatePath("/", "layout");
   return created;
 }
 
@@ -330,6 +346,7 @@ export async function bulkCreateAssignmentAction(
       ),
     ),
   );
+  revalidatePath("/", "layout");
   return created;
 }
 
@@ -382,6 +399,7 @@ export async function deleteAssignmentAction(
     },
     actor: auditActorForContext(actorContext),
   }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  revalidatePath("/", "layout");
   return deleted;
 }
 
@@ -417,6 +435,7 @@ export async function deleteTeamAssignmentAction(
     metadata: { programmeId, groupId, teamNumber, count: result.count },
     actor: auditActorForContext(actorContext),
   }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  revalidatePath("/", "layout");
   return result;
 }
 

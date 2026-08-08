@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  stage as stageTable,
   stagePortalCredential as credentialTable,
+  stage as stageTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { provisionStagePortalCredential } from "@/features/stage-portal/actions/stage-portal-credential.actions";
@@ -67,7 +67,8 @@ export async function ensureOffStageStage(
     festivalId,
     name: OFF_STAGE_NAME,
     description: OFF_STAGE_DESCRIPTION,
-    createdBy: "system",
+    createdByName: "System",
+    createdByEmail: null,
     isOffStage: true,
     createdAt: now,
     updatedAt: now,

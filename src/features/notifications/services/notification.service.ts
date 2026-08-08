@@ -7,6 +7,7 @@ import {
   participant as participantTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 
 type DeliveryChannel = "IN_APP" | "EMAIL";
 
@@ -60,15 +61,23 @@ async function resolveRecipients(
         eq(assignmentTable.festivalId, festivalId),
         eq(assignmentTable.programmeId, targets.programmeId),
       ),
-      with: {
-        participant: { columns: { groupId: true } },
-      },
+      columns: { groupId: true },
     });
+
+    const enrolled =
+      await ProgrammeMembershipService.getParticipantsForProgramme(
+        targets.programmeId,
+      );
+    for (const row of enrolled) {
+      participantIds.add(row.participantId);
+    }
 
     const groupIds = new Set<string>();
     for (const row of assignments) {
-      if (row.participantId) participantIds.add(row.participantId);
-      if (row.participant?.groupId) groupIds.add(row.participant.groupId);
+      if (row.groupId) groupIds.add(row.groupId);
+    }
+    for (const row of enrolled) {
+      if (row.participant.groupId) groupIds.add(row.participant.groupId);
     }
 
     if (targets.includeTeamLeadersForProgramme && groupIds.size > 0) {

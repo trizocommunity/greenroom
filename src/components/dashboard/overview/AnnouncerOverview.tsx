@@ -64,10 +64,7 @@ export async function AnnouncerOverview({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Announcer Overview
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <p className="text-sm text-muted-foreground">
           Announce results and manage the public leaderboard.
         </p>
       </div>
@@ -110,7 +107,7 @@ export async function AnnouncerOverview({
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {canUseExternalJudging ? (
-          <Link href={`${basePath}/event-works/announcer`}>
+          <Link href={`${basePath}/event-works/announcement`}>
             <Card className="h-full transition-colors hover:bg-muted/50">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -149,7 +146,7 @@ export async function AnnouncerOverview({
           </Link>
         ) : null}
 
-        <Link href={`${basePath}/event-works/leaderboard`}>
+        <Link href={`${basePath}/event-works/top-scorers`}>
           <Card className="h-full transition-colors hover:bg-muted/50">
             <CardHeader>
               <div className="flex items-center gap-3">

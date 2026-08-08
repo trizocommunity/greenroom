@@ -4,10 +4,8 @@ import { eq } from "drizzle-orm";
 import { createFestivalInput } from "@/api/contracts/festivals";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { festival as festivalsTable } from "@/core/database/schema";
-import {
-  createFestival,
-  findAllFestivals,
-} from "@/features/festivals/repositories/festival.repository";
+import { createFestival as createFestivalAction } from "@/features/festivals/actions/festival-crud.actions";
+import { findAllFestivals } from "@/features/festivals/repositories/festival.repository";
 
 const handler = createProtectedHandler({
   async GET({ user }) {
@@ -20,7 +18,7 @@ const handler = createProtectedHandler({
     return ok(festivals);
   },
 
-  async POST({ user, request }) {
+  async POST({ request }) {
     const body = await request.json();
     const parsed = createFestivalInput.safeParse(body.data ?? body);
 
@@ -28,16 +26,48 @@ const handler = createProtectedHandler({
       return badRequest("INVALID_INPUT", parsed.error.message);
     }
 
-    const { institutionType, ...rest } = parsed.data;
-    const festival = await createFestival({
-      ...rest,
-      institutionType: institutionType as
-        | (typeof festivalsTable.institutionType.enumValues)[number]
-        | undefined,
-      ownerId: user!.userId,
+    // paymentId travels in the URL (FestivalSetupForm is mounted at
+    // `/festival-setup?paymentId=...`), not the body. The body contract
+    // `createFestivalInput` predates the payment flow; the server action
+    // requires paymentId, so we read it from the query here.
+    const paymentId = new URL(request.url).searchParams.get("paymentId");
+    if (!paymentId) {
+      return badRequest("INVALID_INPUT", "paymentId query param required");
+    }
+
+    const {
+      institutionType,
+      name,
+      slug,
+      location,
+      institutionName,
+      timezone,
+      startDate,
+      endDate,
+    } = parsed.data;
+
+    if (!startDate || !endDate) {
+      return badRequest("INVALID_INPUT", "startDate and endDate required");
+    }
+
+    const result = await createFestivalAction({
+      paymentId,
+      festivalName: name,
+      festivalSlug: slug || undefined,
+      institutionType:
+        institutionType as (typeof festivalsTable.institutionType.enumValues)[number],
+      institutionName,
+      location,
+      timezone,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
     });
 
-    return ok(festival);
+    if (!result.success) {
+      return badRequest("INVALID_INPUT", result.error ?? "create failed");
+    }
+
+    return ok(result.data);
   },
 });
 

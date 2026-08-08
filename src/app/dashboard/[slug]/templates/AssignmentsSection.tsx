@@ -1,16 +1,9 @@
 "use client";
 
+import { Eye, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Drawer,
   DrawerClose,
@@ -29,19 +22,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Eye } from "lucide-react";
 import {
-  upsertResultRangeAction,
-  upsertCertificateTypeAction,
-  upsertSingleAssignmentAction,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   deleteAssignmentAction,
+  upsertCertificateTypeAction,
+  upsertResultRangeAction,
+  upsertSingleAssignmentAction,
 } from "@/features/posters/actions/template-assignment.actions";
-import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import type {
   PosterTemplateRecord,
   PosterTemplateType,
 } from "@/features/posters/types/poster-template.types";
 import type { TemplateAssignment } from "@/features/posters/types/template-assignment.types";
+import { toast } from "@/lib/toast";
 
 interface AssignmentsSectionProps {
   festivalId: string;
@@ -233,7 +233,7 @@ export function AssignmentsSection({
                                 doc={t.konvaJson}
                                 bindings={{}}
                                 inline
-                                scale={120 / t.height} 
+                                scale={120 / t.height}
                               />
                             </div>
                             <div className="font-mono text-sm font-semibold mt-1">
@@ -445,7 +445,9 @@ export function AssignmentsSection({
           {viewDetailsAssignment && (
             <div className="py-4 space-y-6 px-4">
               {(() => {
-                const template = templates.find((t) => t.code === viewDetailsAssignment.templateCode);
+                const template = templates.find(
+                  (t) => t.code === viewDetailsAssignment.templateCode,
+                );
                 return template ? (
                   <div className="w-full h-56 flex justify-center items-center bg-black/5 rounded-md p-4 overflow-hidden">
                     <PosterExportCanvas
@@ -471,7 +473,9 @@ export function AssignmentsSection({
                 </div>
 
                 <div className="font-medium text-muted-foreground">Config:</div>
-                <div className="font-medium">{getAssignmentDetailsString(viewDetailsAssignment)}</div>
+                <div className="font-medium">
+                  {getAssignmentDetailsString(viewDetailsAssignment)}
+                </div>
 
                 <div className="font-medium text-muted-foreground">
                   Created:

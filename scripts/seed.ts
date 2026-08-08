@@ -8,10 +8,7 @@ import {
   upsertPurchaseSummary,
 } from "./seed/festival";
 import { createParticipants } from "./seed/participants";
-import {
-  createProgrammes,
-  createSessions,
-} from "./seed/programmes";
+import { createProgrammes, createSessions } from "./seed/programmes";
 import { printSeedSummary, updateFestivalUsageCounts } from "./seed/summary";
 import {
   createCategories,

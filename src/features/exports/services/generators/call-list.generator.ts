@@ -6,11 +6,11 @@ import {
   category as categoryTable,
   group as groupTable,
   participant as participantTable,
-  programmeAssignment,
   programme as programmeTable,
   scheduleEntry,
 } from "@/core/database/schema";
 import { formatDate, parseInstant } from "@/core/datetime";
+import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 import type { CallListConfig } from "@/features/exports/schemas/export-config.schema";
 import {
   buildCsv,
@@ -113,31 +113,49 @@ async function loadCallRows(
   if (programmeIds.length === 0) return [];
   const progMeta = new Map(programmes.map((p) => [p.id, p]));
 
-  // Participants assigned to those programmes.
-  const assignConditions = [
-    inArray(programmeAssignment.programmeId, programmeIds),
-  ];
-  if (config.gender !== "ALL")
-    assignConditions.push(eq(participantTable.gender, config.gender));
+  // Participants enrolled in those programmes (INDIVIDUAL + GROUP via the helper).
+  const enrolledRows: {
+    programmeId: string;
+    chestNumber: string | null;
+    name: string;
+    dob: string | null;
+    phone: string | null;
+    groupId: string | null;
+  }[] = [];
+  for (const programmeId of programmeIds) {
+    const enrolled =
+      await ProgrammeMembershipService.getParticipantsForProgramme(programmeId);
+    for (const row of enrolled) {
+      if (config.gender !== "ALL" && row.participant.gender !== config.gender)
+        continue;
+      enrolledRows.push({
+        programmeId,
+        chestNumber: row.participant.chestNumber,
+        name: row.participant.name,
+        dob: row.participant.dateOfBirth,
+        phone: row.participant.phone,
+        groupId: row.groupId ?? row.participant.groupId ?? null,
+      });
+    }
+  }
 
-  const rows = await db
-    .select({
-      programmeId: programmeAssignment.programmeId,
-      chestNumber: participantTable.chestNumber,
-      name: participantTable.name,
-      teamName: groupTable.name,
-      dob: participantTable.dateOfBirth,
-      phone: participantTable.phone,
-    })
-    .from(programmeAssignment)
-    .innerJoin(
-      participantTable,
-      eq(programmeAssignment.participantId, participantTable.id),
-    )
-    .leftJoin(groupTable, eq(participantTable.groupId, groupTable.id))
-    .where(and(...assignConditions));
+  const groupIds = Array.from(
+    new Set(
+      enrolledRows
+        .map((r) => r.groupId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const groupNameMap = new Map<string, string>();
+  if (groupIds.length) {
+    const groups = await db
+      .select({ id: groupTable.id, name: groupTable.name })
+      .from(groupTable)
+      .where(inArray(groupTable.id, groupIds));
+    for (const g of groups) groupNameMap.set(g.id, g.name);
+  }
 
-  return rows.map((r) => {
+  return enrolledRows.map((r) => {
     const meta = progMeta.get(r.programmeId);
     return {
       programmeId: r.programmeId,
@@ -145,7 +163,7 @@ async function loadCallRows(
       categoryName: meta?.categoryName ?? "",
       chestNumber: r.chestNumber ?? "",
       name: r.name,
-      teamName: r.teamName ?? "",
+      teamName: r.groupId ? (groupNameMap.get(r.groupId) ?? "") : "",
       dob: formatDob(r.dob, festivalTz),
       phone: r.phone ?? "",
     };

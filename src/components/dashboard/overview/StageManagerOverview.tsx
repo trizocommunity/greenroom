@@ -15,7 +15,8 @@ import {
   stage as stageTable,
 } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 import { StageManagerLiveMetrics } from "./StageManagerLiveMetrics";
 
@@ -45,53 +46,47 @@ export async function StageManagerOverview({
       })
     : [];
 
-  const canSchedule = await getEffectiveFeatureEnabled(
-    festival.tier as Tier,
-    "schedule",
-  );
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canSchedule = isEnabled(festival.tier, "schedule", effectiveFeatures);
 
   const basePath = `/dashboard/${festivalSlug}`;
 
-  const [reportingStartedCount, judgementStartedCount] =
-    assignedStageIds.length
-      ? await Promise.all([
-          db
-            .select({ value: count() })
-            .from(prsTable)
-            .where(
-              and(
-                eq(prsTable.festivalId, festival.id),
-                inArray(prsTable.stageId, assignedStageIds),
-                eq(prsTable.status, "IN_PROGRESS"),
-              ),
-            )
-            .then((rows) => rows[0]?.value ?? 0),
-          db
-            .select({ value: count() })
-            .from(judgementConfigTable)
-            .innerJoin(
-              prsTable,
-              eq(judgementConfigTable.reportingSessionId, prsTable.id),
-            )
-            .where(
-              and(
-                eq(judgementConfigTable.festivalId, festival.id),
-                eq(judgementConfigTable.status, "ACTIVE"),
-                inArray(prsTable.stageId, assignedStageIds),
-              ),
-            )
-            .then((rows) => rows[0]?.value ?? 0),
-        ])
-      : [0, 0];
+  const [reportingStartedCount, judgementStartedCount] = assignedStageIds.length
+    ? await Promise.all([
+        db
+          .select({ value: count() })
+          .from(prsTable)
+          .where(
+            and(
+              eq(prsTable.festivalId, festival.id),
+              inArray(prsTable.stageId, assignedStageIds),
+              eq(prsTable.status, "IN_PROGRESS"),
+            ),
+          )
+          .then((rows) => rows[0]?.value ?? 0),
+        db
+          .select({ value: count() })
+          .from(judgementConfigTable)
+          .innerJoin(
+            prsTable,
+            eq(judgementConfigTable.reportingSessionId, prsTable.id),
+          )
+          .where(
+            and(
+              eq(judgementConfigTable.festivalId, festival.id),
+              eq(judgementConfigTable.status, "ACTIVE"),
+              inArray(prsTable.stageId, assignedStageIds),
+            ),
+          )
+          .then((rows) => rows[0]?.value ?? 0),
+      ])
+    : [0, 0];
 
   if (assignedStages.length === 0) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Stage Manager Overview
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground">
             View the schedule, sessions, and programme reporting for your
             assigned stages.
           </p>
@@ -117,10 +112,7 @@ export async function StageManagerOverview({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Stage Manager Overview
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <p className="text-sm text-muted-foreground">
           {assignedStages.length} assigned stage
           {assignedStages.length !== 1 ? "s" : ""}:{" "}
           {assignedStages.map((s) => s.name).join(", ")}

@@ -7,10 +7,7 @@ import { getSession } from "@/core/auth/session";
 import { parseInstant } from "@/core/datetime";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 
 export async function generateMetadata({
   params,
@@ -45,10 +42,7 @@ async function ParticipantProfileContent({
 
   await assertFestivalAccess(session, festival.id);
 
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier),
-    "viewParticipantProfile",
-  );
+  const canViewProfile = isEnabled(festival.tier, "viewParticipantProfile");
   if (!canViewProfile) notFound();
 
   const participant = await findParticipantByFestivalAndProfileSlug(
@@ -65,7 +59,7 @@ async function ParticipantProfileContent({
         ...participant,
         createdAt: parseInstant(participant.createdAt) ?? new Date(NaN),
         updatedAt: parseInstant(participant.updatedAt) ?? new Date(NaN),
-        assignments: participant.assignments ?? [],
+        assignedProgrammes: participant.assignedProgrammes ?? [],
       }}
       festivalId={festival.id}
       festivalSlug={festival.slug}

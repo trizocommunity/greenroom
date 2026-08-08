@@ -14,27 +14,21 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import {
   useCreateScheduleItem,
   useDeleteScheduleItem,
   useUpdateScheduleItem,
 } from "@/api/client/schedule";
-import { ScheduleCalendarView, type CalendarGroupBy } from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
+import {
+  type CalendarGroupBy,
+  ScheduleCalendarView,
+} from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +37,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -64,20 +66,21 @@ import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type ConflictParts,
-  type EnrichedScheduleEntry,
-  type SchedulableProgramme,
   checkScheduleConflict,
   clearScheduleEntries,
+  type EnrichedScheduleEntry,
   getScheduleEntriesEnriched,
+  type SchedulableProgramme,
 } from "@/features/schedule/actions/schedule.actions";
-import {
-  localWallClockToDate,
-  parseStoredScheduleInstant,
-} from "@/features/schedule/utils/schedule-datetime";
 import {
   calculateProgrammeDuration,
   getEndTimeFromDuration,
 } from "@/features/schedule/utils/programme-duration";
+import {
+  localWallClockToDate,
+  parseStoredScheduleInstant,
+} from "@/features/schedule/utils/schedule-datetime";
+import { toast } from "@/lib/toast";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
@@ -123,14 +126,12 @@ export function ScheduleClient({
   stages,
   festivalStartDate,
   festivalEndDate,
-  initialStageId,
-  hideStageFilter,
 }: ScheduleClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
   const displayTz = useDisplayTimezone();
   const [entries, setEntries] =
     useState<EnrichedScheduleEntry[]>(initialEntries);
-  const [viewMode, setViewMode] = useState<"calendar" | "table">("calendar");
+  const [viewMode, setViewMode] = useState<"calendar" | "table">("table");
   const [addOpen, setAddOpen] = useState(false);
   const [addFormError, setAddFormError] = useState<string | null>(null);
   const [addFormConflictParts, setAddFormConflictParts] =
@@ -171,15 +172,16 @@ export function ScheduleClient({
   }, [festivalId]);
 
   // Grouped by day
-  const groupedByDay = entries.reduce<
-    Record<string, EnrichedScheduleEntry[]>
-  >((acc, entry) => {
-    const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
-    if (!key) return acc;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(entry);
-    return acc;
-  }, {});
+  const groupedByDay = entries.reduce<Record<string, EnrichedScheduleEntry[]>>(
+    (acc, entry) => {
+      const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
+      if (!key) return acc;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(entry);
+      return acc;
+    },
+    {},
+  );
 
   const sortedDays = Object.keys(groupedByDay).sort();
   const effectiveActiveDay =
@@ -326,13 +328,9 @@ export function ScheduleClient({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
-            <p className="text-sm text-muted-foreground">
-              Create and manage competition schedules
-            </p>
-          </div>
+        <div className="flex flex-row items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
+
           <div className="flex items-center gap-2 flex-wrap">
             {conflictCount > 0 && (
               <Badge variant="destructive" className="gap-1.5">
@@ -370,183 +368,183 @@ export function ScheduleClient({
 
         {/* Controls bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search competitions, categories, stages..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+          <div className="relative w-full md:max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search competitions, categories, stages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
 
+          <hr className="border-border mt-5 " />
+
+          <div className="flex flex-wrap sm:flex-row items-center gap-2 md:gap-5 lg:gap-10 justify-between">
             <Tabs
               value={viewMode}
               onValueChange={(v) => setViewMode(v as "calendar" | "table")}
             >
-              <TabsList className="h-9">
-                <TabsTrigger value="calendar" className="gap-1.5 text-xs">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Calendar
-                </TabsTrigger>
+              <TabsList className="h-9 ">
                 <TabsTrigger value="table" className="gap-1.5 text-xs">
                   <TableProperties className="h-3.5 w-3.5" />
                   Table
                 </TabsTrigger>
+                <TabsTrigger value="calendar" className="gap-1.5 text-xs">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Calendar
+                </TabsTrigger>
               </TabsList>
             </Tabs>
-
-            {viewMode === "table" && (
-              <span className="text-xs text-muted-foreground hidden sm:inline-block">
-                All changes saved
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-
-            {viewMode === "calendar" && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs"
-                  >
-                    <Settings2 className="h-3.5 w-3.5" />
-                    Layout
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-72">
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm font-medium">Timeline Layout</p>
-                      <p className="text-xs text-muted-foreground">
-                        Customize your schedule display.
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">
-                        Group rows by
-                      </Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setGroupBy("date")}
-                          className={cn(
-                            "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-                            groupBy === "date"
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background text-muted-foreground hover:bg-muted",
-                          )}
-                        >
-                          Date
-                          <span className="block text-[10px] font-normal opacity-70 mt-0.5">
-                            Stages as rows
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setGroupBy("stage")}
-                          className={cn(
-                            "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-                            groupBy === "stage"
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background text-muted-foreground hover:bg-muted",
-                          )}
-                        >
-                          Stage
-                          <span className="block text-[10px] font-normal opacity-70 mt-0.5">
-                            Dates as rows
-                          </span>
-                        </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {viewMode === "calendar" && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                    >
+                      <Settings2 className="h-3.5 w-3.5" />
+                      Layout
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-72">
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-sm font-medium">Timeline Layout</p>
+                        <p className="text-xs text-muted-foreground">
+                          Customize your schedule display.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          Group rows by
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setGroupBy("date")}
+                            className={cn(
+                              "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
+                              groupBy === "date"
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-background text-muted-foreground hover:bg-muted",
+                            )}
+                          >
+                            Date
+                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">
+                              Stages as rows
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setGroupBy("stage")}
+                            className={cn(
+                              "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
+                              groupBy === "stage"
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-background text-muted-foreground hover:bg-muted",
+                            )}
+                          >
+                            Stage
+                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">
+                              Dates as rows
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Start Time
+                          </Label>
+                          <Input
+                            type="time"
+                            value={timelineStart}
+                            onChange={(e) => setTimelineStart(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            End Time
+                          </Label>
+                          <Input
+                            type="time"
+                            value={timelineEnd}
+                            onChange={(e) => setTimelineEnd(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Start Time</Label>
-                        <Input 
-                          type="time" 
-                          value={timelineStart} 
-                          onChange={(e) => setTimelineStart(e.target.value)} 
-                          className="h-8 text-xs" 
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">End Time</Label>
-                        <Input 
-                          type="time" 
-                          value={timelineEnd} 
-                          onChange={(e) => setTimelineEnd(e.target.value)} 
-                          className="h-8 text-xs" 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
+                  </PopoverContent>
+                </Popover>
+              )}
 
-            {!isReadOnly && entries.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={() => setClearOpen(true)}
-                disabled={isReadOnly}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Clear
-              </Button>
-            )}
+              {!isReadOnly && entries.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setClearOpen(true)}
+                  disabled={isReadOnly}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Day tabs for calendar view (date grouping only) */}
-      {viewMode === "calendar" && groupBy === "date" && sortedDays.length > 0 && (
-        <div
-          className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto gap-2 border-b border-border pb-3"
-          role="tablist"
-        >
-          {sortedDays.map((dayKey, index) => {
-            const dayCount = groupedByDay[dayKey].length;
-            const isActive = effectiveActiveDay === dayKey;
-            return (
-              <button
-                key={dayKey}
-                ref={(node) => {
-                  dayTabRefs.current[dayKey] = node;
-                }}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActiveDayKey(dayKey)}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 snap-center",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                Day {index + 1}
-                <span className="ml-2 opacity-80">({dayCount})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {viewMode === "calendar" &&
+        groupBy === "date" &&
+        sortedDays.length > 0 && (
+          <div
+            className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto gap-2 border-b border-border pb-3"
+            role="tablist"
+          >
+            {sortedDays.map((dayKey, index) => {
+              const dayCount = groupedByDay[dayKey].length;
+              const isActive = effectiveActiveDay === dayKey;
+              return (
+                <button
+                  key={dayKey}
+                  ref={(node) => {
+                    dayTabRefs.current[dayKey] = node;
+                  }}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveDayKey(dayKey)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 snap-center",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  Day {index + 1}
+                  <span className="ml-2 opacity-80">({dayCount})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
       {/* Empty state */}
       {entries.length === 0 ? (
@@ -846,13 +844,7 @@ function AddEntryDialog({
     if (!Number.isNaN(endDate.getTime())) {
       setEndTimeStr(format(endDate, "HH:mm"));
     }
-  }, [
-    autoEndTime,
-    entryType,
-    selectedProgramme,
-    dateStr,
-    startTimeStr,
-  ]);
+  }, [autoEndTime, entryType, selectedProgramme, dateStr, startTimeStr]);
 
   // Conflict check
   useEffect(() => {
@@ -1049,8 +1041,10 @@ function AddEntryDialog({
                         const dur = calculateProgrammeDuration({
                           type: selectedProgramme.type,
                           durationMode: selectedProgramme.durationMode,
-                          timePerUnitMinutes: selectedProgramme.timePerUnitMinutes,
-                          parallelDurationMinutes: selectedProgramme.parallelDurationMinutes,
+                          timePerUnitMinutes:
+                            selectedProgramme.timePerUnitMinutes,
+                          parallelDurationMinutes:
+                            selectedProgramme.parallelDurationMinutes,
                           unitCount:
                             selectedProgramme.type === "GROUP"
                               ? selectedProgramme.teamCount

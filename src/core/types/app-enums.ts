@@ -95,7 +95,6 @@ export const ProgrammeStatus = {
 export type ProgrammeStatus =
   (typeof ProgrammeStatus)[keyof typeof ProgrammeStatus];
 
-
 export const ProgrammeReportingStatus = {
   NOT_STARTED: "NOT_STARTED",
   IN_PROGRESS: "IN_PROGRESS",
@@ -111,6 +110,7 @@ export const ProgrammeJudgementStatus = {
   SCORING_IN_PROGRESS: "SCORING_IN_PROGRESS",
   AWAITING_JUDGES: "AWAITING_JUDGES",
   COMPLETED: "COMPLETED",
+  CANCELLED: "CANCELLED",
 } as const;
 export type ProgrammeJudgementStatus =
   (typeof ProgrammeJudgementStatus)[keyof typeof ProgrammeJudgementStatus];

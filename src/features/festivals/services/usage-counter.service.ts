@@ -18,14 +18,18 @@ export const UsageCounterService = {
    * @param festivalId The festival to update
    * @param resource The resource type ("participants" | "programmes" | "stages" | "storage")
    * @param amount Amount to increment (default 1)
+   * @param tx Optional database transaction
    */
   async incrementUsage(
     festivalId: string,
     resource: "participants" | "programmes" | "stages" | "storage",
     amount = 1,
+    tx?: typeof db,
   ) {
+    const client = tx ?? db;
+
     // 1. Fetch current usage & limit relative to the resource
-    const festival = await db.query.festival.findFirst({
+    const festival = await client.query.festival.findFirst({
       where: eq(festivals.id, festivalId),
     });
 
@@ -73,7 +77,7 @@ export const UsageCounterService = {
     }
 
     // 4. Atomic Increment using SQL
-    await db
+    await client
       .update(festivals)
       .set({
         [fieldToUpdate]: sql`${festivals[fieldToUpdate as keyof typeof festivals.$inferSelect]} + ${amount}`,

@@ -13,10 +13,7 @@ import { db } from "@/core/database/client";
 import { participant as participantTable } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 
 const RESERVED_SLUGS = new Set([
   "results",
@@ -38,10 +35,7 @@ export default async function MyGroupPage({
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier as any),
-    "publicParticipantProfile",
-  );
+  const canViewProfile = isEnabled(festival.tier, "publicParticipantProfile");
   if (!canViewProfile) notFound();
 
   const participant = await findParticipantByFestivalAndProfileSlug(

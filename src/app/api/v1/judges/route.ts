@@ -82,6 +82,10 @@ const handler = createProtectedHandler({
       }
     }
 
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/", "layout");
+    } catch (e) {}
     return ok(created);
   },
 });

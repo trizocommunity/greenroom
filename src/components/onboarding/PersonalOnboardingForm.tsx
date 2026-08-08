@@ -1,6 +1,6 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
 import { Loader2 } from "lucide-react";
 import * as React from "react";
 import { useForm } from "react-hook-form";
@@ -23,7 +23,7 @@ const personalOnboardingSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
   userRole: z.string().min(1, "Please select a role"),
-  timezone: z.string().min(1, "Please pick a timezone"),
+  timezone: z.string(),
 });
 
 type FormData = z.infer<typeof personalOnboardingSchema>;

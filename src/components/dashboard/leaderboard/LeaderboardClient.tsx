@@ -1,10 +1,27 @@
 "use client";
 
-import { Crown, Medal } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useFestival } from "@/components/festival/FestivalContext";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -22,9 +39,7 @@ import {
 } from "@/components/ui/table";
 import type { Tier } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
-import {
-  getResolvedTier,
-} from "@/features/plan-features/services/tier";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 import {
   getParticipantLeaderboardView,
   isResultVisibleForLeaderboard,
@@ -36,6 +51,56 @@ function assignmentOf(r: any) {
 
 function resultPointsOf(r: any): number {
   return (r?.awardPoints ?? r?.points ?? 0) as number;
+}
+
+const RANK_STYLES = [
+  {
+    ring: "ring-amber-400/60",
+    bg: "bg-gradient-to-br from-amber-400 to-yellow-500",
+    text: "text-amber-950",
+    row: "bg-amber-500/10 hover:bg-amber-500/15 cursor-pointer",
+    badge:
+      "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
+  },
+  {
+    ring: "ring-slate-300/60",
+    bg: "bg-gradient-to-br from-slate-300 to-slate-400",
+    text: "text-slate-900",
+    row: "bg-slate-400/10 hover:bg-slate-400/15 cursor-pointer",
+    badge:
+      "bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300",
+  },
+  {
+    ring: "ring-orange-400/60",
+    bg: "bg-gradient-to-br from-orange-400 to-amber-600",
+    text: "text-orange-950",
+    row: "bg-orange-500/10 hover:bg-orange-500/15 cursor-pointer",
+    badge:
+      "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
+  },
+] as const;
+
+function RankBadge({ rank }: { rank: number }) {
+  const style = RANK_STYLES[rank - 1];
+  if (style) {
+    return (
+      <span
+        className={cn(
+          "inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-black shadow-sm ring-2",
+          style.bg,
+          style.text,
+          style.ring,
+        )}
+      >
+        {rank}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+      {rank}
+    </span>
+  );
 }
 
 interface LeaderboardClientProps {
@@ -59,6 +124,26 @@ interface LeaderboardClientProps {
   children?: React.ReactNode;
 }
 
+type ParticipantRow = {
+  participantId: string;
+  rank: number;
+  name: string;
+  gender: string | null;
+  groupName: string | null;
+  groupColor: string | null;
+  categoryName: string | null;
+  offstage: number;
+  stage: number;
+  points: number;
+  programmes: {
+    id: string;
+    name: string;
+    type: string;
+    stageType: string;
+    points: number;
+  }[];
+};
+
 export function LeaderboardClient({
   festival,
   results,
@@ -77,32 +162,22 @@ export function LeaderboardClient({
   const [participantFilterGroup, setParticipantFilterGroup] = useState<string>(
     defaultParticipantFilterGroup ?? "all",
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedParticipant, setSelectedParticipant] =
+    useState<ParticipantRow | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [searchQuery, participantFilterCategory, participantFilterGroup]);
 
   const festivalContext = useFestival();
   const tier = getResolvedTier(tierProp ?? festivalContext.tier);
 
-  // Published team standings (filtered by group if selected).
-  const publishedStandingsFiltered = useMemo(() => {
-    if (!groups?.length) return publishedStandings;
-    if (participantFilterGroup === "all") return publishedStandings;
-    const groupName = groups.find((g) => g.id === participantFilterGroup)?.name;
-    if (!groupName) return [];
-    return (publishedStandings ?? []).filter((t: any) => t?.name === groupName);
-  }, [groups, publishedStandings, participantFilterGroup]);
-
   // Top participants by points (individual programmes only).
   const participantStandings = useMemo(() => {
-    const byParticipant: Record<
-      string,
-      {
-        participantId: string;
-        name: string;
-        groupName: string | null;
-        groupColor: string | null;
-        categoryName: string | null;
-        points: number;
-      }
-    > = {};
+    const byParticipant: Record<string, Omit<ParticipantRow, "rank">> = {};
 
     const participantView = getParticipantLeaderboardView(tier);
 
@@ -128,27 +203,56 @@ export function LeaderboardClient({
 
       const sid = a.participant.id;
       const name = a.participant.name ?? "Unknown";
-      const groupName = a.group?.name ?? null;
-      const groupColor = a.group?.color ?? null;
+      const groupName = a.group?.name ?? a.participant?.group?.name ?? null;
+      const groupColor = a.group?.color ?? a.participant?.group?.color ?? null;
       const categoryName = a.participant?.category?.name ?? null;
 
       if (!byParticipant[sid]) {
         byParticipant[sid] = {
           participantId: sid,
           name,
+          gender: a.participant.gender ?? null,
           groupName,
           groupColor,
           categoryName,
+          offstage: 0,
+          stage: 0,
           points: 0,
+          programmes: [],
         };
       }
-      byParticipant[sid].points += resultPointsOf(r);
+
+      const p = resultPointsOf(r);
+      byParticipant[sid].points += p;
+      if (r.programme?.stageType === "NON_STAGE") {
+        byParticipant[sid].offstage += p;
+      } else {
+        byParticipant[sid].stage += p;
+      }
+
+      byParticipant[sid].programmes.push({
+        id: r.programme?.id ?? "unknown",
+        name: r.programme?.name ?? "Unknown Programme",
+        type: r.programme?.type ?? "INDIVIDUAL",
+        stageType: r.programme?.stageType ?? "STAGE",
+        points: p,
+      });
     });
 
     return Object.values(byParticipant)
+      .filter((p) => {
+        if (!searchQuery) return true;
+        return p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      })
       .sort((a, b) => b.points - a.points)
       .map((row, index) => ({ ...row, rank: index + 1 }));
-  }, [results, tier, participantFilterCategory, participantFilterGroup]);
+  }, [
+    results,
+    tier,
+    participantFilterCategory,
+    participantFilterGroup,
+    searchQuery,
+  ]);
 
   // Polling refresh every 15 seconds.
   useEffect(() => {
@@ -159,32 +263,40 @@ export function LeaderboardClient({
   }, [router]);
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-row items-center justify-between gap-4">
-        {children ?? (
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              Leaderboard
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-              Team and participant standings from published results.
-            </p>
-          </div>
-        )}
+    <div className="space-y-6">
+      {children}
 
-        {/* Filters */}
-        {!hideParticipantFilters && (
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          Top Scorers
+        </h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          View event top performers and their total points (only includes
+          published results)
+        </p>
+      </div>
+
+      {!hideParticipantFilters && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search participants..."
+              className="h-9 pl-8 w-full bg-background"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
             <Select
               value={participantFilterCategory}
               onValueChange={setParticipantFilterCategory}
             >
-              <SelectTrigger className="h-8 text-xs w-[140px]">
-                <SelectValue placeholder="Category" />
+              <SelectTrigger className="h-9 text-sm w-[150px] sm:w-[180px] bg-background">
+                <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
                 {categories
                   .filter((c) => c.type !== "GENERAL")
                   .map((c) => (
@@ -198,11 +310,11 @@ export function LeaderboardClient({
               value={participantFilterGroup}
               onValueChange={setParticipantFilterGroup}
             >
-              <SelectTrigger className="h-8 text-xs w-[130px]">
-                <SelectValue placeholder="Group" />
+              <SelectTrigger className="h-9 text-sm w-[150px] sm:w-[180px] bg-background">
+                <SelectValue placeholder="All Groups" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All groups</SelectItem>
+                <SelectItem value="all">All Groups</SelectItem>
                 {groups.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
                     {g.name}
@@ -211,201 +323,137 @@ export function LeaderboardClient({
               </SelectContent>
             </Select>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Two-panel layout */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Left panel: Published team standings */}
-        <Card className="p-0 overflow-hidden border-green-500/20">
-          <div className="bg-green-500/10 p-4 border-b border-green-500/10 flex items-center justify-between">
-            <h3 className="font-bold flex items-center gap-2 text-green-600 dark:text-green-500">
-              <Crown className="w-4 h-4" />
-              Team Standings
-            </h3>
-          </div>
-
-          {/* Desktop */}
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">#</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead className="text-right">Points</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {publishedStandingsFiltered &&
-                publishedStandingsFiltered.length > 0 ? (
-                  publishedStandingsFiltered.map((team: any, idx: number) => (
-                    <TableRow
-                      key={team.name}
-                      className={idx < 3 ? "bg-green-50/5" : ""}
-                    >
-                      <TableCell className="text-center font-bold text-muted-foreground">
-                        {idx + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {team.name}
-                        {idx === 0 && (
-                          <Crown className="inline w-3 h-3 ml-1 text-yellow-600" />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-lg">
-                        {team.points}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={3}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No published standings yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile */}
-          <div className="md:hidden p-3 space-y-2">
-            {publishedStandingsFiltered &&
-            publishedStandingsFiltered.length > 0 ? (
-              publishedStandingsFiltered.map((team: any, idx: number) => (
-                <div
-                  key={team.name}
-                  className={cn(
-                    "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
-                    idx < 3
-                      ? "border-green-500/25 bg-green-500/5"
-                      : "border-border/70 bg-background",
-                  )}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-muted-foreground w-5 text-center">
-                        {idx + 1}
-                      </span>
-                      <span className="text-sm font-medium truncate">
-                        {team.name}
-                      </span>
-                      {idx === 0 && (
-                        <Crown className="w-4 h-4 text-yellow-600" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-sm font-bold tabular-nums">
-                    {team.points}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No published standings yet.
-              </p>
-            )}
-          </div>
-        </Card>
-
-        {/* Right panel: Top participants (individual programmes only) */}
-        <Card className="p-0 overflow-hidden border-primary/20">
-          <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
-            <h3 className="font-bold flex items-center gap-2 text-foreground">
-              <Medal className="w-4 h-4 text-primary" />
-              Top Participants
-            </h3>
-          </div>
-
-          {/* Desktop */}
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-14 text-center">Place</TableHead>
-                  <TableHead>Participant</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Group</TableHead>
-                  <TableHead className="text-right w-24">Points</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {participantStandings.length > 0 ? (
-                  participantStandings.map((row, idx) => (
+      {/* Top Scorers Table */}
+      <Card className="p-0 overflow-hidden border">
+        {/* Desktop */}
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader className="bg-muted/30">
+              <TableRow>
+                <TableHead className="w-14 text-center font-semibold text-foreground">
+                  #
+                </TableHead>
+                <TableHead className="font-semibold text-foreground">
+                  Participant
+                </TableHead>
+                <TableHead className="font-semibold text-foreground">
+                  Gender
+                </TableHead>
+                <TableHead className="font-semibold text-foreground">
+                  Group
+                </TableHead>
+                <TableHead className="font-semibold text-foreground">
+                  Category
+                </TableHead>
+                <TableHead className="font-semibold text-foreground text-right w-24">
+                  Offstage
+                </TableHead>
+                <TableHead className="font-semibold text-foreground text-right w-24">
+                  Stage
+                </TableHead>
+                <TableHead className="font-semibold text-foreground text-right w-28">
+                  Total Points
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {participantStandings.length > 0 ? (
+                participantStandings
+                  .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+                  .map((row) => (
                     <TableRow
                       key={row.participantId}
                       className={cn(
-                        idx < 3 && "bg-primary/5",
-                        idx === 0 && "border-l-4 border-l-yellow-500",
-                        idx === 1 && "border-l-4 border-l-gray-400",
-                        idx === 2 && "border-l-4 border-l-amber-600",
+                        "cursor-pointer hover:bg-muted/50 transition-colors",
+                        RANK_STYLES[row.rank - 1]?.row,
                       )}
+                      onClick={() => setSelectedParticipant(row)}
                     >
-                      <TableCell className="text-center font-bold text-muted-foreground">
-                        {row.rank}
+                      <TableCell className="text-center">
+                        <RankBadge rank={row.rank} />
                       </TableCell>
-                      <TableCell className="font-medium">{row.name}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
+                      <TableCell className="font-medium text-foreground">
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {row.gender
+                          ? row.gender.charAt(0).toUpperCase() +
+                            row.gender.slice(1).toLowerCase()
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {row.groupName ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-2 w-2 rounded-full shadow-sm"
+                              style={{
+                                backgroundColor: row.groupColor ?? "#94a3b8",
+                              }}
+                              aria-hidden
+                            />
+                            <span className="text-muted-foreground">
+                              {row.groupName}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
                         {row.categoryName ?? "—"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        <span className="flex items-center gap-2">
-                          {row.groupName ? (
-                            <>
-                              <span
-                                className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/50 shadow-sm"
-                                style={{
-                                  backgroundColor: row.groupColor ?? "#94a3b8",
-                                }}
-                                aria-hidden
-                              />
-                              {row.groupName}
-                            </>
-                          ) : (
-                            "—"
-                          )}
+                      <TableCell className="text-right tabular-nums">
+                        <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-sky-600 dark:text-sky-400 font-medium">
+                          {row.offstage}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">
+                      <TableCell className="text-right tabular-nums">
+                        <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-rose-600 dark:text-rose-400 font-medium">
+                          {row.stage}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-bold tabular-nums text-foreground">
                         {row.points}
                       </TableCell>
                     </TableRow>
                   ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No participant results yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    <Users className="mx-auto h-6 w-6 mb-1.5 text-muted-foreground/30" />
+                    No participant results yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-          {/* Mobile */}
-          <div className="md:hidden p-3 space-y-2">
-            {participantStandings.length > 0 ? (
-              participantStandings.map((row, idx) => (
+        {/* Mobile */}
+        <div className="md:hidden p-3 space-y-2">
+          {participantStandings.length > 0 ? (
+            participantStandings
+              .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+              .map((row) => (
                 <div
                   key={row.participantId}
+                  onClick={() => setSelectedParticipant(row)}
                   className={cn(
-                    "flex items-start justify-between gap-3 rounded-lg border px-3 py-2",
-                    idx < 3
-                      ? "border-primary/25 bg-primary/5"
+                    "flex items-start justify-between gap-3 rounded-xl border px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors",
+                    RANK_STYLES[row.rank - 1]
+                      ? cn("border-transparent", RANK_STYLES[row.rank - 1].row)
                       : "border-border/70 bg-background",
                   )}
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-3">
-                      <div className="w-6 text-center text-xs font-bold text-muted-foreground">
-                        {row.rank}
-                      </div>
+                      <RankBadge rank={row.rank} />
                       <div className="min-w-0">
                         <div className="font-medium truncate">{row.name}</div>
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
@@ -431,19 +479,196 @@ export function LeaderboardClient({
                       </div>
                     </div>
                   </div>
-                  <div className="text-sm font-bold tabular-nums pt-0.5">
-                    {row.points}
+                  <div className="flex flex-col items-end pt-0.5 min-w-[70px]">
+                    <div className="text-sm font-bold tabular-nums">
+                      {row.points}{" "}
+                      <span className="text-[10px] font-normal text-muted-foreground">
+                        pts
+                      </span>
+                    </div>
+                    <div className="text-[10px] flex gap-2 mt-1">
+                      <span
+                        className="text-sky-600 dark:text-sky-400"
+                        title="Offstage Points"
+                      >
+                        Off: {row.offstage}
+                      </span>
+                      <span
+                        className="text-rose-600 dark:text-rose-400"
+                        title="Stage Points"
+                      >
+                        Stg: {row.stage}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No participant results yet.
-              </p>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              No participant results yet.
+            </p>
+          )}
+        </div>
+      </Card>
+
+      {participantStandings.length > pageSize && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pageIndex > 0) setPageIndex((p) => p - 1);
+                }}
+                className={
+                  pageIndex === 0
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if ((pageIndex + 1) * pageSize < participantStandings.length)
+                    setPageIndex((p) => p + 1);
+                }}
+                className={
+                  (pageIndex + 1) * pageSize >= participantStandings.length
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
+      {/* Participant Breakdown Drawer */}
+      <Drawer
+        open={!!selectedParticipant}
+        onOpenChange={(open) => !open && setSelectedParticipant(null)}
+      >
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-2xl max-h-[85vh] flex flex-col">
+            {selectedParticipant && (
+              <>
+                <DrawerHeader className="border-b">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <DrawerTitle className="text-2xl flex items-center gap-3">
+                        <RankBadge rank={selectedParticipant.rank} />
+                        {selectedParticipant.name}
+                      </DrawerTitle>
+                      <DrawerDescription className="mt-2 flex items-center gap-2">
+                        {selectedParticipant.groupName && (
+                          <span className="inline-flex items-center gap-1.5 font-medium">
+                            <span
+                              className="h-2 w-2 rounded-full shadow-sm"
+                              style={{
+                                backgroundColor:
+                                  selectedParticipant.groupColor ?? "#94a3b8",
+                              }}
+                              aria-hidden
+                            />
+                            {selectedParticipant.groupName}
+                          </span>
+                        )}
+                        <span>&bull;</span>
+                        <span>{selectedParticipant.categoryName}</span>
+                      </DrawerDescription>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-black text-violet-600 dark:text-violet-400">
+                        {selectedParticipant.points}
+                      </div>
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+                        Total Pts
+                      </div>
+                    </div>
+                  </div>
+                </DrawerHeader>
+                <ScrollArea className="flex-1 p-4">
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="rounded-xl border bg-sky-500/5 p-4 text-center">
+                      <div className="text-sm font-medium text-sky-600 dark:text-sky-400 mb-1">
+                        Offstage
+                      </div>
+                      <div className="text-2xl font-bold">
+                        {selectedParticipant.offstage}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border bg-rose-500/5 p-4 text-center">
+                      <div className="text-sm font-medium text-rose-600 dark:text-rose-400 mb-1">
+                        Stage
+                      </div>
+                      <div className="text-2xl font-bold">
+                        {selectedParticipant.stage}
+                      </div>
+                    </div>
+                  </div>
+
+                  <h4 className="font-semibold text-lg mb-3">
+                    Scoring Breakdown
+                  </h4>
+                  <div className="border rounded-xl overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead>Programme</TableHead>
+                          <TableHead className="w-24">Type</TableHead>
+                          <TableHead className="w-20 text-right">
+                            Points
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedParticipant.programmes.length > 0 ? (
+                          selectedParticipant.programmes.map((prog, i) => (
+                            <TableRow key={`${prog.id}-${i}`}>
+                              <TableCell className="font-medium">
+                                {prog.name}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "font-normal text-[10px]",
+                                    prog.stageType === "NON_STAGE"
+                                      ? "text-sky-600 border-sky-200 bg-sky-500/10"
+                                      : "text-rose-600 border-rose-200 bg-rose-500/10",
+                                  )}
+                                >
+                                  {prog.stageType === "NON_STAGE"
+                                    ? "Offstage"
+                                    : "Stage"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-bold tabular-nums">
+                                {prog.points}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell
+                              colSpan={3}
+                              className="text-center text-muted-foreground py-6"
+                            >
+                              No programmes found.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ScrollArea>
+              </>
             )}
           </div>
-        </Card>
-      </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

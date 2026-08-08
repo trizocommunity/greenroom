@@ -2,16 +2,16 @@
 
 import type Konva from "konva";
 import { useEffect, useMemo, useState } from "react";
+import { Group, Image as KonvaImage, Layer, Rect, Stage } from "react-konva";
 import {
-  Layer,
-  Rect,
-  Stage,
-  Group,
-  Image as KonvaImage,
-} from "react-konva";
-import { PosterElementRenderer, type ElementDragHandlers } from "@/components/editor/PosterElementRenderer";
-import { documentFontsFromElements, buildGoogleFontsCssUrl } from "@/components/editor/editor-font-catalog";
+  buildGoogleFontsCssUrl,
+  documentFontsFromElements,
+} from "@/components/editor/editor-font-catalog";
 import { applyTextCase } from "@/components/editor/editor-utils";
+import {
+  type ElementDragHandlers,
+  PosterElementRenderer,
+} from "@/components/editor/PosterElementRenderer";
 import type {
   EditorElement,
   PosterEditorDocument,
@@ -49,7 +49,11 @@ function resolveText(el: EditorElement, bindings: PosterBindings): string {
 }
 
 const NO_HOVER = { onMouseEnter: () => {}, onMouseLeave: () => {} };
-const NO_DRAG: ElementDragHandlers = { onDragStart: () => {}, onDragMove: () => {}, onDragEnd: () => {} };
+const NO_DRAG: ElementDragHandlers = {
+  onDragStart: () => {},
+  onDragMove: () => {},
+  onDragEnd: () => {},
+};
 
 // ─── Background renderer ──────────────────────────────────────────────────────
 
@@ -137,11 +141,13 @@ export function PosterExportCanvas({
     () => documentWithBindings(doc, bindings, true),
     [doc, bindings],
   );
-  
+
   // Eagerly load fonts used in this specific document so export renders correctly
   useEffect(() => {
     if (!boundDoc.elements) return;
-    const fonts = documentFontsFromElements(boundDoc.elements).filter(f => f.googleFamily);
+    const fonts = documentFontsFromElements(boundDoc.elements).filter(
+      (f) => f.googleFamily,
+    );
     for (const font of fonts) {
       const id = `greenroom-editor-font-${font.id}`;
       if (!document.getElementById(id)) {
@@ -190,11 +196,12 @@ export function PosterExportCanvas({
             <ExportBackground doc={boundDoc} bgImage={bgImage} />
 
             {sorted.map((el) => {
-              const display = el.type === "text" 
-                ? resolveText(el, bindings) 
-                : el.type === "qr" 
-                ? bindings.qrCode || ""
-                : "";
+              const display =
+                el.type === "text"
+                  ? resolveText(el, bindings)
+                  : el.type === "qr"
+                    ? bindings.qrCode || ""
+                    : "";
 
               return (
                 <PosterElementRenderer

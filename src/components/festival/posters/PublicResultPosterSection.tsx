@@ -43,7 +43,9 @@ export function PublicResultPosterSection({
         festivalSlug={festivalSlug}
         canSwap
         publicMode
-        initialTemplateCode={initialTemplateCode ?? payload.assignedTemplateCode ?? undefined}
+        initialTemplateCode={
+          initialTemplateCode ?? payload.assignedTemplateCode ?? undefined
+        }
       />
     </div>
   );

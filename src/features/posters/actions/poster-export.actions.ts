@@ -151,7 +151,10 @@ export async function getResultPosterExportPayloadAction(
       winners,
     };
 
-    const assignments = await AssignmentRepo.listByKind(festival.id, "RESULT_RANGE");
+    const assignments = await AssignmentRepo.listByKind(
+      festival.id,
+      "RESULT_RANGE",
+    );
 
     let assignedTemplateCode: string | null = null;
     if (programme.resultNumber !== null) {

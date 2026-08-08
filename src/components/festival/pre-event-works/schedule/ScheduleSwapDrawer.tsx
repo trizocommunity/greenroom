@@ -3,7 +3,6 @@
 import { format } from "date-fns";
 import { ArrowRightLeft, Loader2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -20,6 +19,7 @@ import {
   swapScheduleSlots,
 } from "@/features/schedule/actions/schedule.actions";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
+import { toast } from "@/lib/toast";
 
 interface ScheduleSwapDrawerProps {
   festivalId: string;

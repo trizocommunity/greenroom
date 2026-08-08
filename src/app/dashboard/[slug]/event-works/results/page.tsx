@@ -4,14 +4,14 @@ import { ResultsConsoleClient } from "@/components/dashboard/announcement/Result
 import { getSession } from "@/core/auth/session";
 import type { Tier } from "@/core/types/app-enums";
 import {
-  getPublishedResults,
   computeStandings,
+  getProgrammeStatusCounts,
+  getResultsConsoleProgrammes,
   getStandingsContext,
 } from "@/features/announcement/services/announcer.service";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
-
 
 export const metadata: Metadata = {
   title: "Results",
@@ -48,11 +48,13 @@ export default async function ResultsConsolePage({
   );
   if (!canUse) notFound();
 
-  const [published, standingsContext, liveStandings] = await Promise.all([
-    getPublishedResults(festival.id),
-    getStandingsContext(festival.id),
-    computeStandings(festival.id, "published"),
-  ]);
+  const [programmes, standingsContext, liveStandings, statusCounts] =
+    await Promise.all([
+      getResultsConsoleProgrammes(festival.id),
+      getStandingsContext(festival.id),
+      computeStandings(festival.id, "published"),
+      getProgrammeStatusCounts(festival.id),
+    ]);
 
   const canUnpublish =
     context.role === "ADMIN" ||
@@ -71,11 +73,12 @@ export default async function ResultsConsolePage({
       </div>
       <ResultsConsoleClient
         festivalId={festival.id}
-        festivalSlug={slug}
-        published={published}
+        festivalSlug={festival.slug}
+        programmes={programmes}
         liveStandings={liveStandings}
         standingsContext={standingsContext}
         canUnpublish={canUnpublish}
+        statusCounts={statusCounts}
       />
     </div>
   );

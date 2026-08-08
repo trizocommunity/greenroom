@@ -14,17 +14,18 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/core/utils/cn";
 import { scanAndReportParticipantAction } from "@/features/programmes/actions/programme-reporting.actions";
+import { toast } from "@/lib/toast";
 import { QuickAddScanForm } from "./QuickAddScanForm";
 
 interface QrScannerProps {
   festivalId: string;
-  reportingSessionId: string;
-  programmeName: string;
+  reportingSessionId?: string;
+  programmeName?: string;
+  processAction?: (chestNumber: string) => Promise<ScanResult>;
   onScanSuccess?: (result: unknown) => void;
   onScanError?: (error: unknown) => void;
   /** Tighter layout, no footer help — use inside reporting panel */
@@ -138,6 +139,7 @@ export function QrScanner({
   mode = "full",
   autoStart = false,
   hideResults = false,
+  processAction,
 }: QrScannerProps) {
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
@@ -313,11 +315,11 @@ export function QrScanner({
     }
   }, [torchOn]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: startCamera is intentionally omitted
   const toggleCamera = useCallback(() => {
     const nextMode = facingMode === "environment" ? "user" : "environment";
     setFacingMode(nextMode);
     void startCamera("default", nextMode);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: startCamera is intentionally omitted
   }, [facingMode]);
 
   const enterScannerFullscreen = useCallback(() => {
@@ -405,11 +407,13 @@ export function QrScanner({
     setStatus("processing");
 
     try {
-      const result = await scanAndReportParticipantAction(
-        festivalId,
-        reportingSessionId,
-        chestNumber,
-      );
+      const result = processAction
+        ? await processAction(chestNumber)
+        : await scanAndReportParticipantAction(
+            festivalId,
+            reportingSessionId!,
+            chestNumber,
+          );
 
       setLastResult(result);
 
@@ -727,7 +731,7 @@ export function QrScanner({
         mode !== "manual" &&
         typeof document !== "undefined" &&
         createPortal(
-          // biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
+          // biome-ignore lint/a11y/noStaticElementInteractions: scanner surface needs clicks
           <div
             ref={scannerSurfaceRef}
             className="fixed inset-0 z-[100000] flex flex-col bg-black h-[100dvh] w-screen"

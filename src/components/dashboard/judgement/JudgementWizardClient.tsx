@@ -19,11 +19,22 @@ import {
   useState,
   useTransition,
 } from "react";
-import { toast } from "sonner";
 import { queryKeys } from "@/api/client/_query-keys";
+import {
+  useCancelJudgement,
+  useForceCompleteJudgement,
+} from "@/api/client/server-actions";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { useCancelJudgement } from "@/api/client/server-actions";
+import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
+import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
+import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,15 +45,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
-import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,15 +56,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -79,6 +74,7 @@ import {
   startJudgementAction,
 } from "@/features/judgement/actions/judgement.actions";
 import { createJudgeAction } from "@/features/judges/actions/judge.actions";
+import { toast } from "@/lib/toast";
 
 type Judge = { id: string; name: string; description?: string | null };
 type Programme = {
@@ -119,6 +115,7 @@ type ActiveConfig = {
 type JudgedProgrammeCard = {
   configId: string;
   createdAt: string | Date;
+  updatedAt: string | Date;
   programmeId: string;
   programmeName: string;
   programmeStatus: string;
@@ -233,9 +230,14 @@ export function JudgementWizardClient({
   const [isPending, startTransition] = useTransition();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  
-  const cancelJudgementMutation = useCancelJudgement();
-  const [cancelProgrammeId, setCancelProgrammeId] = useState<string | null>(null);
+
+  const { mutate: cancelJudgement, isPending: isCancelling } =
+    useCancelJudgement();
+  const { mutate: completeJudgement, isPending: isCompleting } =
+    useForceCompleteJudgement();
+  const [cancelProgrammeId, setCancelProgrammeId] = useState<string | null>(
+    null,
+  );
 
   const [reportedParticipantsView, setReportedParticipantsView] = useState<{
     programmeName: string;
@@ -347,7 +349,11 @@ export function JudgementWizardClient({
           .toUpperCase()
           .includes("PUBLISHED");
         if (aPublished !== bPublished) return aPublished ? 1 : -1;
-        return b.totalJudgements - a.totalJudgements;
+
+        // Sort by completion time (updatedAt) descending (newest first)
+        const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return bTime - aTime;
       });
   }, [judgedProgrammes]);
 
@@ -651,10 +657,7 @@ export function JudgementWizardClient({
                         {p.name}
                       </CardTitle>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <Badge
-                          variant="secondary"
-                          className="text-[11px]"
-                        >
+                        <Badge variant="secondary" className="text-[11px]">
                           {p.status}
                         </Badge>
                         {isUnscheduled && (
@@ -670,6 +673,9 @@ export function JudgementWizardClient({
                     <p className="text-xs text-muted-foreground">
                       {p.programmeType === "GROUP" ? "Group" : "Individual"}
                       {p.programmeCategory ? ` · ${p.programmeCategory}` : ""}
+                      {p.reportingDetails?.stageName
+                        ? ` · Stage ${p.reportingDetails.stageName}`
+                        : ""}
                     </p>
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col gap-2.5 p-4 pt-0 sm:gap-3 sm:p-5 sm:pt-0">
@@ -685,16 +691,54 @@ export function JudgementWizardClient({
                     ) : null}
                     {active ? (
                       <>
-                        <div className="flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/[0.06] px-2 py-1 text-[10px] font-medium text-primary">
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
-                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-                          </span>
-                          Live · {active.judges.length} judge
-                          {active.judges.length !== 1 ? "s" : ""} ·{" "}
-                          {active.judgingMode}
+                        <div
+                          className={`flex flex-col gap-1.5 rounded-md border px-2 py-1.5 text-[10px] ${
+                            active.judgementStatus === "COMPLETED"
+                              ? "border-green-500/25 bg-green-500/[0.06] text-green-700 dark:text-green-400"
+                              : "border-primary/25 bg-primary/[0.06] text-primary"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 font-medium">
+                            {active.judgementStatus === "COMPLETED" ? (
+                              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                              </span>
+                            ) : (
+                              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
+                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                              </span>
+                            )}
+                            <span>
+                              {active.judgementStatus === "COMPLETED"
+                                ? "Submitted"
+                                : "Live"}{" "}
+                              · {active.judges.length} judge
+                              {active.judges.length !== 1 ? "s" : ""} ·{" "}
+                              {active.judgingMode}
+                            </span>
+                          </div>
+                          {judgedByProgrammeId.get(p.id) && (
+                            <div className="flex flex-col border-t border-primary/10 pt-1.5 mt-0.5">
+                              <span className="font-semibold">
+                                {
+                                  judgedByProgrammeId.get(p.id)!
+                                    .completionSummary
+                                }
+                              </span>
+                              {judgedByProgrammeId.get(p.id)!.pendingJudgeNames
+                                .length > 0 && (
+                                <span className="text-primary/70 line-clamp-1 mt-0.5">
+                                  Pending:{" "}
+                                  {judgedByProgrammeId
+                                    .get(p.id)!
+                                    .pendingJudgeNames.join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="mt-auto pt-1">
+                        <div className="mt-auto pt-1 flex flex-col gap-1 sm:gap-1.5">
                           {(() => {
                             const sid = p.reportingDetails?.stageId;
                             const sname = p.reportingDetails?.stageName ?? null;
@@ -717,15 +761,44 @@ export function JudgementWizardClient({
                               </Button>
                             );
                           })()}
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
-                            onClick={() => setCancelProgrammeId(p.id)}
-                          >
-                            Cancel
-                          </Button>
+                          <div className="flex w-full">
+                            {active.judgementStatus === "COMPLETED" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="default"
+                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs bg-green-600 hover:bg-green-700 text-white"
+                                disabled={isCompleting}
+                                onClick={() => {
+                                  completeJudgement(active.id);
+                                }}
+                              >
+                                Submit
+                              </Button>
+                            ) : active.judgementStatus === "CANCELLED" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs text-green-600 border-green-600 hover:bg-green-50"
+                                onClick={() =>
+                                  openWizardForProgramme(p.id, "rejudge")
+                                }
+                              >
+                                Restart
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+                                onClick={() => setCancelProgrammeId(p.id)}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -1462,7 +1535,7 @@ export function JudgementWizardClient({
           </div>
         </DrawerContent>
       </Drawer>
-      
+
       <AlertDialog
         open={!!cancelProgrammeId}
         onOpenChange={(open) => {
@@ -1473,20 +1546,23 @@ export function JudgementWizardClient({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel judgement?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will abort the active judgement round and lock out all judges instantly. Any partial scores that have not been submitted will be lost. The programme will return to 'Pending Judgment' status.
+              This will abort the active judgement round and lock out all judges
+              instantly. Any partial scores that have not been submitted will be
+              lost. The programme will remain as Cancelled and can be restarted
+              later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelJudgementMutation.isPending}>
+            <AlertDialogCancel disabled={isCancelling}>
               Keep active
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={cancelJudgementMutation.isPending}
+              disabled={isCancelling}
               onClick={(e) => {
                 e.preventDefault();
                 if (cancelProgrammeId) {
-                  cancelJudgementMutation.mutate(
+                  cancelJudgement(
                     {
                       festivalId,
                       programmeId: cancelProgrammeId,
@@ -1496,12 +1572,12 @@ export function JudgementWizardClient({
                         toast.success("Judgement cancelled");
                         setCancelProgrammeId(null);
                       },
-                    }
+                    },
                   );
                 }
               }}
             >
-              {cancelJudgementMutation.isPending ? "Cancelling..." : "Yes, cancel"}
+              {isCancelling ? "Cancelling..." : "Yes, cancel"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

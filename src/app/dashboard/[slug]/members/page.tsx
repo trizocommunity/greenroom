@@ -2,10 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { MembersClient } from "./_components/MembersClient";
 
 export default async function MembersPage({
@@ -30,12 +27,7 @@ export default async function MembersPage({
   const { role: userRole } = festivalContext;
 
   // Feature Access Check
-  if (
-    !FeatureService.isFeatureEnabled(
-      getTierForFeatureCheck(festival.tier),
-      "members",
-    )
-  ) {
+  if (!isEnabled(festival.tier, "members")) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=members`);
   }
 

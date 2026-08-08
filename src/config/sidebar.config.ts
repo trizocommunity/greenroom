@@ -1,4 +1,5 @@
 import {
+  Award,
   BarChart3,
   BookOpen,
   Building2,
@@ -36,6 +37,7 @@ export type FestivalRole =
   | "STAGE_MANAGER"
   | "ANNOUNCER"
   | "MEDIA"
+  | "VOLUNTEER"
   | "OWNER";
 
 export const SUPER_ADMIN_SIDEBAR_ITEMS = [
@@ -233,30 +235,47 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER", "STAGE_MANAGER"] as FestivalRole[],
         },
         {
-          title: "Announcer",
-          href: `${basePath}/event-works/announcer`,
+          title: "Results",
+          href: `${basePath}/event-works/results`,
+          icon: ListChecks,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+          disabled: !canUseResultsPage,
+        },
+        {
+          title: "Announcements",
+          href: `${basePath}/event-works/announcement`,
           icon: Mic2,
           allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
           disabled: !canUseResultsPage,
         },
         {
-          title: "Results",
-          href: `${basePath}/event-works/results`,
-          icon: ListChecks,
-          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
-          disabled: !canUseResultsPage,
+          title: "Top Scorers",
+          href: `${basePath}/event-works/top-scorers`,
+          icon: Trophy,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+        },
+      ],
+    },
+    {
+      title: "Other Works",
+      items: [
+        {
+          title: "General Entries",
+          href: `${basePath}/event-works/general-entries`,
+          icon: Award,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
+        },
+        {
+          title: "Food Entry",
+          href: `${basePath}/event-works/food-entry`,
+          icon: QrCode,
+          allowedRoles: ["ADMIN", "OWNER", "VOLUNTEER"] as FestivalRole[],
         },
         {
           title: "Templates",
           href: `${basePath}/templates`,
           icon: LayoutTemplate,
           allowedRoles: ["ADMIN", "OWNER", "MEDIA"] as FestivalRole[],
-        },
-        {
-          title: "Leaderboard",
-          href: `${basePath}/event-works/leaderboard`,
-          icon: Trophy,
-          allowedRoles: ["ADMIN", "OWNER", "ANNOUNCER"] as FestivalRole[],
         },
         {
           title: "Analytics",
@@ -279,6 +298,7 @@ export const getFestivalDashboardSidebarConfig = (
           title: "Documentation",
           href: `${basePath}/support/docs`,
           icon: BookOpen,
+          allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
       ],
     },

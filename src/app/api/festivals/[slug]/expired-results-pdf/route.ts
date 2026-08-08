@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
-import { FestivalExpirationService } from "@/features/festivals/services/festival-expiration.service";
+import { FestivalResultsPdfService } from "@/features/festivals/services/festival-results-pdf.service";
 
 export async function GET(
   _request: Request,
@@ -26,7 +26,7 @@ export async function GET(
   }
 
   const pdfBuffer =
-    await FestivalExpirationService.generateExpiredResultsPdfBuffer(
+    await FestivalResultsPdfService.generateExpiredResultsPdfBuffer(
       festival.id,
       festival.name,
     );

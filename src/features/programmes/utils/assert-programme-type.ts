@@ -22,8 +22,6 @@ export function requireProgrammeType(
   );
 }
 
-export function isProgrammeType(
-  type: unknown,
-): type is ProgrammeTypeValue {
+export function isProgrammeType(type: unknown): type is ProgrammeTypeValue {
   return type === "INDIVIDUAL" || type === "GROUP";
 }

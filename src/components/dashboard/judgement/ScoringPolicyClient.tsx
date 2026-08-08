@@ -8,7 +8,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import { toast } from "sonner";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveScoringPolicyAction } from "@/features/judgement/actions/judgement.actions";
+import { toast } from "@/lib/toast";
 
 type GradeRule = { grade: string; min: number; max: number };
 type AwardRule = {
@@ -223,9 +223,12 @@ function PositionPointsSection(props: {
   return (
     <Card>
       <CardHeader className="space-y-2 pb-3">
-        <CardTitle className="text-base sm:text-lg">Default Position Points</CardTitle>
+        <CardTitle className="text-base sm:text-lg">
+          Default Position Points
+        </CardTitle>
         <p className="text-xs text-muted-foreground">
-          These points are added on top of the regular grade points for the 1st, 2nd, and 3rd place finishers.
+          These points are added on top of the regular grade points for the 1st,
+          2nd, and 3rd place finishers.
         </p>
       </CardHeader>
       <CardContent>
@@ -410,9 +413,15 @@ export function ScoringPolicyClient({
 
   const [isPending, startTransition] = useTransition();
   const [noGradeBelow, setNoGradeBelow] = useState<number>(policy.noGradeBelow);
-  const [positionPoints1st, setPositionPoints1st] = useState<number>(policy.positionPoints1st);
-  const [positionPoints2nd, setPositionPoints2nd] = useState<number>(policy.positionPoints2nd);
-  const [positionPoints3rd, setPositionPoints3rd] = useState<number>(policy.positionPoints3rd);
+  const [positionPoints1st, setPositionPoints1st] = useState<number>(
+    policy.positionPoints1st,
+  );
+  const [positionPoints2nd, setPositionPoints2nd] = useState<number>(
+    policy.positionPoints2nd,
+  );
+  const [positionPoints3rd, setPositionPoints3rd] = useState<number>(
+    policy.positionPoints3rd,
+  );
   const [gradeRules, setGradeRules] = useState<GradeRule[]>(policy.gradeRules);
   const [addGradeOpen, setAddGradeOpen] = useState(false);
   const [addParticipantOpen, setAddParticipantOpen] = useState(false);
@@ -780,7 +789,14 @@ export function ScoringPolicyClient({
           matrixRows,
         }),
       ),
-    [noGradeBelow, positionPoints1st, positionPoints2nd, positionPoints3rd, gradeRules, matrixRows],
+    [
+      noGradeBelow,
+      positionPoints1st,
+      positionPoints2nd,
+      positionPoints3rd,
+      gradeRules,
+      matrixRows,
+    ],
   );
 
   const hasChanges = initialComparisonKey !== currentComparisonKey;

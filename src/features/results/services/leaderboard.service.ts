@@ -18,12 +18,12 @@ export async function getFestivalLeaderboardDataBySlug(slug: string) {
         with: {
           programmeAssignment: {
             with: {
-              participant: { with: { category: true } },
+              participant: { with: { category: true, group: true } },
               group: true,
             },
           },
           programme: {
-            columns: { id: true, type: true, status: true },
+            columns: { id: true, type: true, status: true, stageType: true },
             with: { category: true },
           },
         },

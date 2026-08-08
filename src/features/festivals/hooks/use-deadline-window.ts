@@ -66,6 +66,7 @@ export function useDeadlineWindow(
   return {
     state,
     isLocked: state !== "OPEN",
+    isUnconfigured: state === "UNCONFIGURED",
     isUpcoming: state === "UPCOMING",
     isClosed: state === "CLOSED",
     justLocked,

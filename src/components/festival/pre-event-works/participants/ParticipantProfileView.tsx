@@ -43,11 +43,11 @@ interface ParticipantProfileViewProps {
     group?: { id?: string; name: string; color?: string | null } | null;
     category?: { name: string } | null;
     profileSlug?: string | null;
-    assignments?: Array<{
-      id: string;
-      programmeId?: string;
-      groupId?: string | null;
-      teamNumber?: number;
+    assignedProgrammes?: Array<{
+      assignmentId: string;
+      programmeId: string;
+      groupId: string | null;
+      teamNumber: number | null;
       programme?: {
         id?: string;
         name: string;
@@ -67,7 +67,7 @@ export function ParticipantProfileView({
   festivalSlug,
   baseUrl,
 }: ParticipantProfileViewProps) {
-  const assignments = participant.assignments ?? [];
+  const assignments = participant.assignedProgrammes ?? [];
   const participantProfileUrl = getParticipantProfileUrl(
     baseUrl,
     festivalSlug,
@@ -106,7 +106,7 @@ export function ParticipantProfileView({
     const teamNumber = assignment.teamNumber ?? 1;
     const groupName = participant.group?.name ?? "—";
     if (!programmeId || !groupId || programme?.type !== "GROUP") return;
-    setLoadingTeamFor(assignment.id);
+    setLoadingTeamFor(assignment.assignmentId);
     try {
       const participants = await getProgrammeTeamMembersAction(
         festivalId,
@@ -328,10 +328,11 @@ export function ParticipantProfileView({
                 <TableBody>
                   {assignments.map((assignment) => {
                     const isGroup = assignment.programme?.type === "GROUP";
-                    const isLoading = loadingTeamFor === assignment.id;
+                    const isLoading =
+                      loadingTeamFor === assignment.assignmentId;
                     return (
                       <TableRow
-                        key={assignment.id}
+                        key={assignment.assignmentId}
                         className={
                           isGroup
                             ? "cursor-pointer hover:bg-muted/50 transition-colors"

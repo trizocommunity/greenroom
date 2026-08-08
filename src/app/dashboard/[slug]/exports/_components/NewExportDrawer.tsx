@@ -2,7 +2,6 @@
 
 import { Check, Loader2, Settings2, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useCreateExport } from "@/api/client/exports";
 import { Button } from "@/components/ui/button";
 import { DrawerFooter } from "@/components/ui/drawer";
@@ -18,6 +17,7 @@ import {
   exportConfigSchema,
 } from "@/features/exports/schemas/export-config.schema";
 import type { ExportFormat } from "@/features/exports/types/export.types";
+import { toast } from "@/lib/toast";
 import {
   EXPORT_TYPES,
   type ExportTypeId,

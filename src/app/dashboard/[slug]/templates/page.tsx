@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { canManageTemplates } from "@/features/posters/auth/poster-access";
 import { listPosterTemplatesAction } from "@/features/posters/actions/poster-template.actions";
 import { listAssignmentsAction } from "@/features/posters/actions/template-assignment.actions";
+import { canManageTemplates } from "@/features/posters/auth/poster-access";
 import { TemplatesPageClient } from "./TemplatesPageClient";
 
 export default async function TemplatesPage({
@@ -34,7 +34,6 @@ export default async function TemplatesPage({
 
   return (
     <div className="pt-4 sm:pt-6 space-y-6">
-
       <TemplatesPageClient
         festivalId={festival.id}
         festivalSlug={festival.slug}

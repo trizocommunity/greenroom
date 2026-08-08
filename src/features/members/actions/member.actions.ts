@@ -45,7 +45,9 @@ export async function updateMemberRolesAction(
   festivalId: string,
   memberId: string,
   roles: string[],
-): Promise<ActionResponse<Awaited<ReturnType<typeof MemberService.updateMemberRoles>>>> {
+): Promise<
+  ActionResponse<Awaited<ReturnType<typeof MemberService.updateMemberRoles>>>
+> {
   try {
     const session = await getSession();
     await assertFestivalAccess(session, festivalId, { requireWritable: true });

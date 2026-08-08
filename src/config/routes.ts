@@ -1,8 +1,9 @@
-export const APP_URL =
+export const APP_URL = (
   process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.NODE_ENV === "production"
     ? "https://greenroomm.vercel.app"
-    : "http://localhost:3000");
+    : "http://localhost:3000")
+).replace(/\/+$/, "");
 
 export const PROTECTED_PATHS = {
   USER: "/profile",

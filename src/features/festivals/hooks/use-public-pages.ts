@@ -33,6 +33,7 @@ export interface PublicPagesState<T> {
    * while the visitor is still on page 1 — the caller must check that.
    */
   refreshFirstPage: () => void;
+  goToPage: (targetPage: number) => void;
 }
 
 /**
@@ -153,6 +154,14 @@ export function usePublicPages<T>({
     void fetchPage(1, paramsRef.current, "silent");
   }, [fetchPage, isLoadingMore, isRefiltering]);
 
+  const goToPage = useCallback(
+    (targetPage: number) => {
+      if (isLoadingMore || isRefiltering || targetPage === page) return;
+      void fetchPage(targetPage, paramsRef.current, "replace");
+    },
+    [fetchPage, isLoadingMore, isRefiltering, page],
+  );
+
   return {
     items,
     total,
@@ -164,5 +173,6 @@ export function usePublicPages<T>({
     loadMore,
     refilter,
     refreshFirstPage,
+    goToPage,
   };
 }

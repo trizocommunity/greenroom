@@ -6,6 +6,7 @@ import { db } from "@/core/database/client";
 import {
   festivalScoringAwardRule as scoringAwardRuleTable,
   festivalScoringPolicy as scoringPolicyTable,
+  user as userTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { AppError } from "@/core/errors/errors";
@@ -157,6 +158,42 @@ const DEFAULT_AWARD_RULES: AwardRule[] = [
     minParticipants: 3,
     maxParticipants: 3,
     awardPoints: 3,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "4-6",
+    grade: "A+",
+    minParticipants: 4,
+    maxParticipants: 6,
+    awardPoints: 20,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "4-6",
+    grade: "A",
+    minParticipants: 4,
+    maxParticipants: 6,
+    awardPoints: 16,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "4-6",
+    grade: "B",
+    minParticipants: 4,
+    maxParticipants: 6,
+    awardPoints: 12,
+    priority: 100,
+  },
+  {
+    criteriaType: "PARTICIPANT_RANGE",
+    rowLabel: "4-6",
+    grade: "C",
+    minParticipants: 4,
+    maxParticipants: 6,
+    awardPoints: 8,
     priority: 100,
   },
 ];
@@ -347,6 +384,13 @@ export async function upsertScoringPolicyActionData(input: {
         } as any)
         .where(eq(scoringPolicyTable.id, existing.id));
     } else {
+      const actorUser = input.updatedBy
+        ? await tx.query.user.findFirst({
+            where: eq(userTable.id, input.updatedBy),
+            columns: { email: true, displayName: true, fullName: true },
+          })
+        : null;
+
       await tx.insert(scoringPolicyTable).values({
         id: policyId,
         festivalId: input.festivalId,
@@ -358,7 +402,12 @@ export async function upsertScoringPolicyActionData(input: {
         positionPoints2nd: Math.round(input.positionPoints2nd),
         positionPoints3rd: Math.round(input.positionPoints3rd),
         gradeRules: normalizedGradeRules,
-        createdBy: input.updatedBy ?? null,
+        createdByName:
+          actorUser?.displayName ||
+          actorUser?.fullName ||
+          actorUser?.email ||
+          null,
+        createdByEmail: actorUser?.email || null,
         createdAt: now,
         updatedAt: now,
       } as any);

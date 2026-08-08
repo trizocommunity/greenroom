@@ -39,12 +39,23 @@ export function useFestival(id: string) {
 
 export function useCreateFestival() {
   const qc = useQueryClient();
-  return useMutation<Festival, Error, CreateFestivalInput>({
+  return useMutation<
+    Festival,
+    Error,
+    CreateFestivalInput & { paymentId?: string }
+  >({
     mutationFn: async (data) => {
-      const response = await apiClient.post<ApiResponse<Festival>>(
-        "/festivals",
-        { data },
-      );
+      const { paymentId, ...rest } = data;
+      // paymentId travels as a query param so the route's pre-existing
+      // createFestivalInput contract (no paymentId in body) keeps working
+      // while the route internally delegates to the server action that
+      // requires paymentId for tier resolution (ISSUE-43 §1).
+      const url = paymentId
+        ? `/festivals?paymentId=${encodeURIComponent(paymentId)}`
+        : "/festivals";
+      const response = await apiClient.post<ApiResponse<Festival>>(url, {
+        data: rest,
+      });
       return handleApiResponse(response.data);
     },
     onSuccess: () => {

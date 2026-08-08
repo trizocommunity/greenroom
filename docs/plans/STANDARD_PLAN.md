@@ -1,8 +1,8 @@
-﻿# STANDARD Plan
+# STANDARD Plan
 
 **Purpose:** Mid-tier festival plan. Single source of truth for spec, behavior, and how it is enforced in the codebase.
 
-**Config source:** `src/config/pricing.ts` (`TIER_CONFIG.STANDARD`). Feature resolution may include Super Admin overrides via `src/server/services/plan-features.service.ts`.
+**Config source:** `src/config/pricing.ts` (`TIER_CONFIG.STANDARD`). Feature resolution may include Super Admin overrides via `src/features/plan-features/services/plan-features.service.ts`.
 
 ---
 
@@ -11,7 +11,7 @@
 | Item | Value |
 |------|--------|
 | **Price** | â‚¹3,000 |
-| **Duration** | 30 days (active) |
+| **Duration** | 90 days (active) |
 
 ### Limits
 
@@ -26,13 +26,13 @@
 
 ### Team
 
-- **Max team members:** 3 (owner + up to 2 additional).
-- **Role-based access:** No granular RBAC (PRO has `roleBasedAccess: true`).
+- **Members:** Enabled (`members: true`).
+- **Role-based access:** Enabled (`roleBasedAccess: true`) — granular permissions per member.
 
 ### Post-expiry
 
 - **Current config:** `postExpiryAccess: "delete"`, `dataRetentionDays: 0` (same as BASIC in current code). Expired festivals redirect to `/profile?error=expired`.
-- **Historical intent:** Some design docs described a 30-day read-only window after expiry for STANDARD; that is not reflected in current `pricing.ts`. If read-only is reintroduced, cleanup cron must be tier-aware (delete only when tier is BASIC or after retention for STANDARD/PRO).
+- **Historical intent:** Some design docs described a read-only window after expiry for STANDARD; that is not reflected in current `pricing.ts`. If read-only is reintroduced, cleanup cron must be tier-aware (delete only when tier is BASIC or after retention for STANDARD/PRO).
 
 ---
 
@@ -62,9 +62,11 @@ STANDARD adds (or expands) the following over BASIC:
 | Settings | Programme assignment deadline | âŒ | âœ… |
 | Certificates | Auto certificates | âŒ | âœ… |
 | Communication | Email notifications | âŒ | âœ… |
-| Support | Support level | whatsapp | email; `supportResponseTime: 12` |
+| Support | Support level | whatsapp | priority; `supportResponseTime: 4` |
 
-STANDARD does **not** include (PRO only): roleBasedAccess, custom domain, white-label, API access, webhooks, live results, multi-festival management, advanced analytics, custom reports, custom certificate templates, bulk certificate generation, landing page builder, SMS/bulk notifications.
+STANDARD also includes (per current `pricing.ts`): role-based access, custom domain, white-label, live results, multi-festival management, advanced analytics, custom reports, SMS notifications, bulk notifications, landing page builder, custom certificate templates, bulk certificate generation, programme team leads, and programme audit drawer.
+
+STANDARD does **not** include (per current `pricing.ts`): API access, webhooks.
 
 ---
 
@@ -73,7 +75,7 @@ STANDARD does **not** include (PRO only): roleBasedAccess, custom domain, white-
 ### 3.1 Config and feature resolution
 
 - **Tier + limits:** `TIER_CONFIG.STANDARD` in `src/config/pricing.ts`.
-- **Effective features:** Same pattern as BASIC: server uses `getEffectiveFeatureEnabled(tier, feature)` / `getEffectiveTierFeatures(tier)` from `plan-features.service.ts` (config + Super Admin overrides). Dashboard layout passes `effectiveFeatures` into `FestivalProvider`; client `useFeature()` / `useFeatures()` use context first, then config.
+- **Effective features:** Same pattern as BASIC: server uses `getEffectiveFeatureEnabled(tier, feature)` / `getEffectiveTierFeatures(tier)` from `src/features/plan-features/services/plan-features.service.ts` (config + Super Admin overrides). Dashboard layout passes `effectiveFeatures` into `FestivalProvider`; client `useFeature()` / `useFeatures()` use context first, then config.
 
 ### 3.2 Client (UI) gating
 
@@ -82,7 +84,7 @@ STANDARD does **not** include (PRO only): roleBasedAccess, custom domain, white-
 
 ### 3.3 Server-side enforcement
 
-- **Pages:** Routes for settings, members, media, news, stage-management, schedule, sessions, qr-codes, leaderboard, and participant profile (dashboard and public) check access via `getEffectiveFeatureEnabled(festival.tier, feature)` or `FeatureService.isFeatureEnabled(festival.tier, feature)` and redirect or `notFound()` when disabled.
+- **Pages:** Routes for settings, members, media, news, stage-management, schedule, sessions, qr-codes, leaderboard, food-entry, exports, analytics, and participant profile (dashboard and public) check access via `getEffectiveFeatureEnabled(festival.tier, feature)` or `FeatureService.isFeatureEnabled(festival.tier, feature)` and redirect or `notFound()` when disabled.
 - **Actions:** Excel export (`participant.actions.ts`), media, news, schedule, QR, team/member actions validate tier/feature and limits.
 - **Limits:** Participants, programmes, events, stages, categories use `TIER_CONFIG[tier].limits` and services such as `usage-counter.service.ts`, `participant.service.ts`, `category.service.ts`.
 
@@ -113,12 +115,12 @@ Same as BASIC, plus any STANDARD-specific action or page that gates on tier/feat
 |------|--------|
 | Tier & limits | `src/config/pricing.ts` |
 | Feature flags (config) | `src/lib/features.ts` |
-| Effective features (config + overrides) | `src/server/services/plan-features.service.ts` |
-| Client hooks | `src/hooks/useFeature.ts` |
+| Effective features (config + overrides) | `src/features/plan-features/services/plan-features.service.ts` |
+| Client hooks | `src/features/plan-features/hooks/use-feature.ts` |
 | Sidebar | `src/components/festival/dashboard/FestivalDashboardSidebar.tsx` |
-| Team/member limits | `src/server/actions/team.actions.ts`, `src/server/services/member.service.ts` |
-| Excel export | `src/server/actions/participant.actions.ts` |
-| Media / News / Schedule / QR / Leaderboard | Corresponding actions and dashboard pages |
+| Team/member limits | `src/features/team/actions/team.actions.ts`, `src/features/members/services/member.service.ts` |
+| Excel export | `src/features/participants/actions/participant.actions.ts` |
+| Media / News / Schedule / QR / Leaderboard / Food Entry / Exports | Corresponding actions and dashboard pages |
 
 ---
 

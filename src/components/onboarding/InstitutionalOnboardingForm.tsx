@@ -1,6 +1,6 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -29,7 +29,7 @@ const institutionalOnboardingSchema = z.object({
   affiliation: z.string().optional(),
   city: z.string().optional(),
   sizeRange: z.string().optional(),
-  timezone: z.string().min(1, "Please pick a timezone"),
+  timezone: z.string(),
 });
 
 type FormData = z.infer<typeof institutionalOnboardingSchema>;

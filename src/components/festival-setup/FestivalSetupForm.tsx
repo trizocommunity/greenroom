@@ -1,6 +1,6 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
@@ -16,9 +16,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useCreateFestival } from "@/api/client/festivals";
+import { checkFestivalSlugAvailability } from "@/features/festivals/actions/festival-crud.actions";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ import {
   type CreateFestivalInput,
   createFestivalSchema,
 } from "@/features/festivals/schemas/festival.schema";
+import { toast } from "@/lib/toast";
 
 type FormData = Omit<CreateFestivalInput, "startDate" | "endDate"> & {
   startDate?: string | Date;
@@ -105,6 +106,7 @@ export function FestivalSetupForm({
     getValues,
     setValue,
     watch,
+    setError,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(createFestivalSchema) as any,
@@ -148,6 +150,21 @@ export function FestivalSetupForm({
     }
 
     if (currentStep === "basics") {
+      const data = getValues();
+      const slugToCheck =
+        data.festivalSlug ||
+        data.festivalName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      
+      const availability = await checkFestivalSlugAvailability(slugToCheck);
+      if (availability.success && !availability.data.available) {
+        setError("festivalSlug", { type: "server", message: "This subdomain is already taken. Please choose another." });
+        toast.error("Please fix the errors in the form.");
+        return;
+      }
+      
       goTo(showInstitutionStep ? "institution" : "dates");
     } else if (currentStep === "institution") {
       goTo("dates");
@@ -162,9 +179,11 @@ export function FestivalSetupForm({
           .replace(/^-+|-+$/g, "");
       try {
         const festival = await createFestival.mutateAsync({
+          paymentId,
           name: data.festivalName,
           slug,
           location: data.location || undefined,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           startDate:
             data.startDate instanceof Date
               ? data.startDate.toISOString()
@@ -189,11 +208,10 @@ export function FestivalSetupForm({
         if (
           message.toLowerCase().includes("subdomain") ||
           message.toLowerCase().includes("slug") ||
-          message.toLowerCase().includes("taken")
+          message.toLowerCase().includes("taken") ||
+          message.toLowerCase().includes("unique")
         ) {
-          toast.error(
-            "This subdomain is already taken. Please choose another.",
-          );
+          setError("festivalSlug", { type: "server", message: "This subdomain is already taken. Please choose another." });
         } else {
           toast.error(message || "Failed to create festival");
         }

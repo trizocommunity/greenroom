@@ -9,10 +9,11 @@ import { db } from "@/core/database/client";
 import { festivalNews } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
+import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { StorageUsageService } from "@/features/festivals/services/storage-usage.service";
-import { UsageCounterService } from "@/features/festivals/services/usage-counter.service";
-import { getEffectiveFeatureEnabled } from "@/features/plan-features/services/plan-features.service";
+import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 
 export async function getNewsPostsAction(festivalId: string) {
   const session = await getSession();
@@ -41,25 +42,28 @@ export async function createNewsPostAction(
   const festival = await findFestivalById(festivalId);
   if (!festival) return { success: false, error: "Festival not found" };
 
-  const canManage = await getEffectiveFeatureEnabled(festival.tier, "news");
+  const effectiveFeatures = await loadFeatureOverrides(festival.tier as Tier);
+  const canManage = isEnabled(festival.tier, "news", effectiveFeatures);
   if (!canManage) {
     return { success: false, error: "News is not available on your plan." };
   }
 
-  const addedMb = await StorageUsageService.getUrlSizeMB(data.imageUrl);
-  await db.insert(festivalNews).values({
-    id: randomUUID(),
-    updatedAt: serverNowIso(),
+  await StorageBackedFieldService.mutateUrls({
     festivalId,
-    title: data.title,
-    excerpt: data.excerpt ?? null,
-    content: data.content,
-    imageUrl: data.imageUrl ?? null,
-    publishedAt: parseInstant(data.publishedAt)?.toISOString() ?? null,
+    add: [data.imageUrl],
+    operation: async (tx) => {
+      await tx.insert(festivalNews).values({
+        id: randomUUID(),
+        updatedAt: serverNowIso(),
+        festivalId,
+        title: data.title,
+        excerpt: data.excerpt ?? null,
+        content: data.content,
+        imageUrl: data.imageUrl ?? null,
+        publishedAt: parseInstant(data.publishedAt)?.toISOString() ?? null,
+      });
+    },
   });
-  if (addedMb > 0) {
-    await UsageCounterService.incrementUsage(festivalId, "storage", addedMb);
-  }
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);
@@ -94,32 +98,26 @@ export async function updateNewsPostAction(
 
   const nextImageUrl =
     data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl;
-  const [addedMb, removedMb] = await Promise.all([
-    data.imageUrl !== undefined && data.imageUrl !== existing.imageUrl
-      ? StorageUsageService.getUrlSizeMB(nextImageUrl)
-      : Promise.resolve(0),
-    data.imageUrl !== undefined && data.imageUrl !== existing.imageUrl
-      ? StorageUsageService.getUrlSizeMB(existing.imageUrl)
-      : Promise.resolve(0),
-  ]);
-  const deltaMb = addedMb - removedMb;
 
-  await db
-    .update(festivalNews)
-    .set({
-      ...(data.title !== undefined && { title: data.title }),
-      ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
-      ...(data.content !== undefined && { content: data.content }),
-      ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
-      ...(data.publishedAt !== undefined && {
-        publishedAt: parseInstant(data.publishedAt)?.toISOString() ?? null,
-      }),
-    })
-    .where(eq(festivalNews.id, existing.id));
-
-  if (deltaMb !== 0) {
-    await UsageCounterService.incrementUsage(festivalId, "storage", deltaMb);
-  }
+  await StorageBackedFieldService.mutateSingleUrl({
+    festivalId,
+    currentUrl: existing.imageUrl,
+    nextUrl: nextImageUrl,
+    operation: async (tx) => {
+      await tx
+        .update(festivalNews)
+        .set({
+          ...(data.title !== undefined && { title: data.title }),
+          ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
+          ...(data.content !== undefined && { content: data.content }),
+          ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+          ...(data.publishedAt !== undefined && {
+            publishedAt: parseInstant(data.publishedAt)?.toISOString() ?? null,
+          }),
+        })
+        .where(eq(festivalNews.id, existing.id));
+    },
+  });
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);
@@ -141,11 +139,13 @@ export async function deleteNewsPostAction(festivalId: string, postId: string) {
     columns: { id: true, imageUrl: true },
   });
   if (!existing) return { success: false, error: "News post not found" };
-  const removedMb = await StorageUsageService.getUrlSizeMB(existing.imageUrl);
-  await db.delete(festivalNews).where(eq(festivalNews.id, existing.id));
-  if (removedMb > 0) {
-    await UsageCounterService.incrementUsage(festivalId, "storage", -removedMb);
-  }
+  await StorageBackedFieldService.mutateUrls({
+    festivalId,
+    remove: [existing.imageUrl],
+    operation: async (tx) => {
+      await tx.delete(festivalNews).where(eq(festivalNews.id, existing.id));
+    },
+  });
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);

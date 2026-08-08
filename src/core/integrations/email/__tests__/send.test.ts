@@ -32,20 +32,25 @@ describe("sendEmail — global toggle", () => {
     mockSetEnabled.mockResolvedValue(undefined);
   });
 
+  // Cold-importing `../send` pulls in `@react-email/render` and the email
+  // templates, which takes ~3s on a hot cache and ~4s on a cold one.
+  // The default 5s vitest timeout is too tight under parallel-runner
+  // load (the auth.test.ts better-auth constructor also slows things
+  // down). Bump the timeout to 15s for the whole suite.
   it("returns kindDisabled result when toggle is off", async () => {
     mockIsEnabled.mockResolvedValue(false);
     const { sendEmail } = await import("../send");
 
     const result = await sendEmail({
       to: "x@example.com",
-      kind: { kind: "magic_link", token: "tok" },
+      kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
     });
 
     expect("kindDisabled" in result).toBe(true);
     if ("kindDisabled" in result) {
-      expect(result.id).toBe("skipped-magic_link");
+      expect(result.id).toBe("skipped-sign_in_otp");
     }
-  });
+  }, 15_000);
 
   it("proceeds to Resend when toggle is on", async () => {
     mockIsEnabled.mockResolvedValue(true);
@@ -55,7 +60,7 @@ describe("sendEmail — global toggle", () => {
     const { sendEmail } = await import("../send");
     const result = await sendEmail({
       to: "x@example.com",
-      kind: { kind: "magic_link", token: "tok" },
+      kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
     });
 
     expect("kindDisabled" in result).toBe(false);
@@ -73,7 +78,7 @@ describe("sendEmail — global toggle", () => {
 
     const result = await sendEmail({
       to: "x@example.com",
-      kind: { kind: "magic_link", token: "tok" },
+      kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
     });
 
     expect("id" in result).toBe(true);
@@ -96,7 +101,7 @@ describe("sendEmail — global toggle", () => {
 
     await sendEmail({
       to: ["alice@example.com", "bob@example.com"],
-      kind: { kind: "magic_link", token: "tok" },
+      kind: { kind: "sign_in_otp", otp: "1234", email: "alice@example.com" },
     });
 
     const allWarned = warnSpy.mock.calls
@@ -115,11 +120,12 @@ describe("sendEmail — global toggle", () => {
 });
 
 describe("EMAIL_KINDS registry", () => {
-  it("contains exactly the 4 production kinds", () => {
+  it("contains exactly the 5 production kinds (ISSUE-42 PR C drops magic_link)", () => {
     expect(EMAIL_KINDS).toEqual([
-      "magic_link",
+      "sign_in_otp",
       "festival_invitation",
       "team_leader_otp",
+      "two_factor_otp",
       "festival_expiring_soon",
     ]);
   });

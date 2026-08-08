@@ -24,7 +24,8 @@ vi.mock("@/core/auth/session", () => ({
 }));
 
 vi.mock("@/core/auth/assert-festival-access", () => ({
-  assertFestivalAccess: (...args: unknown[]) => mockAssertFestivalAccess(...args),
+  assertFestivalAccess: (...args: unknown[]) =>
+    mockAssertFestivalAccess(...args),
 }));
 
 vi.mock("@/core/database/client", () => {

@@ -1,20 +1,6 @@
 "use client";
 
-import { LayoutList, Users, TrendingUp } from "lucide-react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription,
-  CardFooter,
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+import { LayoutList, TrendingUp, Users } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -25,6 +11,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 
 const categoryChartConfig = {
   count: {
@@ -41,14 +41,22 @@ const teamChartConfig = {
 
 interface DashboardChartsProps {
   teamChartData: { name: string; count: number; fill: string }[];
-  categoryChartData: { name: string; type?: string; count: number; fill: string }[];
+  categoryChartData: {
+    name: string;
+    type?: string;
+    count: number;
+    fill: string;
+  }[];
 }
 
 export function DashboardCharts({
   teamChartData,
   categoryChartData,
 }: DashboardChartsProps) {
-  const totalTeamParticipants = teamChartData.reduce((acc, curr) => acc + curr.count, 0);
+  const totalTeamParticipants = teamChartData.reduce(
+    (acc, curr) => acc + curr.count,
+    0,
+  );
 
   return (
     <>
@@ -88,7 +96,7 @@ export function DashboardCharts({
         </CardContent>
         <CardFooter className="flex-col gap-2 text-sm mt-auto">
           <div className="flex items-center gap-2 leading-none font-medium">
-             Total of {totalTeamParticipants} participants grouped by team
+            Total of {totalTeamParticipants} participants grouped by team
           </div>
         </CardFooter>
       </Card>

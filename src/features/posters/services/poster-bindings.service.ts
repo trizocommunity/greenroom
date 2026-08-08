@@ -29,17 +29,17 @@ export function buildResultPosterBindings(
     resultNo:
       input.resultNumber != null
         ? String(input.resultNumber)
-        : (input.programmeResultCode?.trim() ||
-          String(input.winners[0]?.position ?? "")),
+        : input.programmeResultCode?.trim() ||
+          String(input.winners[0]?.position ?? ""),
   };
 
-  const sorted = [...input.winners].sort((a, b) => a.position - b.position);
+  const sorted = [...input.winners]
+    .sort((a, b) => a.position - b.position)
+    .slice(0, 3);
   sorted.forEach((w, i) => {
     const n = i + 1;
     bindings[`winner${n}Name`] = w.name;
     bindings[`winner${n}Team`] = w.team;
-    bindings[`winner${n}Grade`] = w.grade ?? "—";
-    bindings[`winner${n}Points`] = String(w.points);
     if (n === 1) {
       bindings.winnerName = w.name;
       bindings.placeName = w.team;

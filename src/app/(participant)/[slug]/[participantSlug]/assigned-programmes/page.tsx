@@ -7,10 +7,7 @@ import { programmeReportingSession as sessionTable } from "@/core/database/schem
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
-import {
-  FeatureService,
-  getTierForFeatureCheck,
-} from "@/features/plan-features/services/features";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
@@ -34,10 +31,7 @@ export default async function AssignedProgrammesPage({
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
-  const canViewProfile = FeatureService.isFeatureEnabled(
-    getTierForFeatureCheck(festival.tier as any),
-    "publicParticipantProfile",
-  );
+  const canViewProfile = isEnabled(festival.tier, "publicParticipantProfile");
   if (!canViewProfile) notFound();
 
   const participant = await findParticipantByFestivalAndProfileSlug(
@@ -45,8 +39,6 @@ export default async function AssignedProgrammesPage({
     participantSlug,
   );
   if (!participant) notFound();
-
-  if (participant.isTeamLeader) notFound();
 
   const programmeById = new Map<
     string,
@@ -59,7 +51,7 @@ export default async function AssignedProgrammesPage({
     }
   >();
 
-  for (const a of participant.assignments ?? []) {
+  for (const a of participant.assignedProgrammes ?? []) {
     const p = a.programme;
     if (!p?.id) continue;
     if (!p.status) continue;
@@ -67,7 +59,7 @@ export default async function AssignedProgrammesPage({
     programmeById.set(p.id, {
       programmeId: p.id,
       name: p.name,
-      categoryName: (p as any).category?.name ?? null,
+      categoryName: p.category?.name ?? null,
       status: p.status as ProgrammeStatus,
       programmeType: p.type,
     });
@@ -81,9 +73,9 @@ export default async function AssignedProgrammesPage({
   });
 
   const assignmentIdByProgrammeId = new Map<string, string>();
-  for (const a of participant.assignments ?? []) {
+  for (const a of participant.assignedProgrammes ?? []) {
     const pid = a.programme?.id;
-    if (pid) assignmentIdByProgrammeId.set(pid, a.id);
+    if (pid) assignmentIdByProgrammeId.set(pid, a.assignmentId);
   }
 
   const programmeIds = programmes.map((p) => p.programmeId);

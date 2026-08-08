@@ -19,20 +19,20 @@ interface Stage {
   id: string;
   name: string;
   description: string | null;
-  createdBy: string | null;
+  createdByName: string | null;
+  createdByEmail: string | null;
   isOffStage?: boolean;
 }
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { useMembers } from "@/api/client/members";
+import { useProvisionOffStage } from "@/api/client/server-actions";
 import {
   useAssignStageManager,
   useStageAssignments,
   useUnassignStageManager,
 } from "@/api/client/stage-assignments";
 import { useDeleteStage } from "@/api/client/stages";
-import { useProvisionOffStage } from "@/api/client/server-actions";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { StageAssignmentToggleDialog } from "@/components/festival/stage-assignment/StageAssignmentToggleDialog";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
@@ -56,6 +56,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { toast } from "@/lib/toast";
 import { StageDialog } from "./StageDialog";
 
 interface StagesClientProps {
@@ -242,9 +243,9 @@ export function StagesClient({
                 Off-Stage stage is missing
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Programmes without a scheduled time slot cannot be judged
-                until the Off-Stage stage is provisioned. Click to create it
-                with a portal credential.
+                Programmes without a scheduled time slot cannot be judged until
+                the Off-Stage stage is provisioned. Click to create it with a
+                portal credential.
               </p>
             </div>
           </div>
@@ -308,7 +309,10 @@ export function StagesClient({
                           {stage.name}
                         </h3>
                         {stage.isOffStage && (
-                          <Badge variant="secondary" className="shrink-0 text-[10px] font-medium uppercase tracking-wide">
+                          <Badge
+                            variant="secondary"
+                            className="shrink-0 text-[10px] font-medium uppercase tracking-wide"
+                          >
                             Virtual
                           </Badge>
                         )}
@@ -374,7 +378,11 @@ export function StagesClient({
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-muted-foreground">Created by:</span>
                     <span className="font-medium text-foreground">
-                      {stage.createdBy || "System"}
+                      {stage.createdByName
+                        ? stage.createdByEmail
+                          ? `${stage.createdByName} (${stage.createdByEmail})`
+                          : stage.createdByName
+                        : "System"}
                     </span>
                   </div>
                 </div>

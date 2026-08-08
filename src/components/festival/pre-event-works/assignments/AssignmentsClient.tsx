@@ -3,7 +3,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
@@ -11,7 +10,10 @@ import { useParticipants } from "@/api/client/participants";
 import { useProgrammes } from "@/api/client/programmes";
 import { StatusPill } from "@/components/app/AppSection";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
+import {
+  ProgrammeStatusBadge,
+  STATUS_LABELS,
+} from "@/components/festival/ProgrammeStatusBadge";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,13 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -48,6 +57,8 @@ import {
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
+import { toast } from "@/lib/toast";
+import { ProgrammeActivityTimeline } from "../programmes/ProgrammeActivityTimeline";
 import { AssignmentModal } from "./AssignmentModal";
 
 type IndividualAssignmentRow = {
@@ -83,6 +94,7 @@ type ProgrammeCardRow = {
   programmeType: "INDIVIDUAL" | "GROUP";
   categoryName: string | null;
   categoryId: string | null;
+  status: string | null;
   attendeesCount: number;
   teamCount: number;
   assignedAt: string | null;
@@ -95,7 +107,9 @@ type ProgrammeCardRow = {
 
 function ProgrammeCard({
   programmeName,
+  programmeType,
   categoryName,
+  status,
   assignedAt,
   progress,
   progressLabel,
@@ -103,7 +117,9 @@ function ProgrammeCard({
   onViewDetails,
 }: {
   programmeName: string;
+  programmeType: "INDIVIDUAL" | "GROUP";
   categoryName: string | null;
+  status: string | null;
   assignedAt: string | null;
   progress: number;
   progressLabel: string;
@@ -122,16 +138,17 @@ function ProgrammeCard({
           <span className="block font-semibold truncate text-sm">
             {programmeName}
           </span>
-          {categoryName ? (
-            <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
-              {categoryName}
-            </span>
-          ) : (
-            <span className="block text-[11px] text-muted-foreground mt-0.5">
-              Uncategorized
-            </span>
-          )}
+          <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
+            {categoryName || "Uncategorized"}
+            {programmeType === "GROUP" ? " · Group" : " · Individual"}
+          </span>
         </div>
+        {status && (
+          <ProgrammeStatusBadge
+            status={status as any}
+            className="text-[10px] shrink-0"
+          />
+        )}
       </div>
       <div className="p-3 space-y-3">
         {/* Progress Bar */}
@@ -253,7 +270,15 @@ export function AssignmentsClient({
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [filterType, setFilterType] = useState<string>("ALL");
+  const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 15;
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [filterGroup, filterCategory, filterType, filterStatus, searchQuery]);
 
   // The assignment deadline gates Team Leaders only — organisers can always
   // assign from the dashboard, so only the festival lifecycle locks this view.
@@ -278,6 +303,9 @@ export function AssignmentsClient({
       if (filterType !== "ALL") {
         if (a.programme?.type !== filterType) return false;
       }
+      if (filterStatus !== "ALL") {
+        if (a.programme?.status !== filterStatus) return false;
+      }
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const participantName = a.participant?.name?.toLowerCase() || "";
@@ -294,7 +322,14 @@ export function AssignmentsClient({
       }
       return true;
     });
-  }, [assignments, filterGroup, filterCategory, filterType, searchQuery]);
+  }, [
+    assignments,
+    filterGroup,
+    filterCategory,
+    filterType,
+    filterStatus,
+    searchQuery,
+  ]);
 
   const tableRows = useMemo<AssignmentTableRow[]>(() => {
     const rows: AssignmentTableRow[] = [];
@@ -398,6 +433,7 @@ export function AssignmentsClient({
                 row.assignment.programme?.category?.name
               : row.category?.name || row.programme?.category?.name) ?? null,
           categoryId: catId,
+          status: programme.status ?? null,
           attendeesCount: 0,
           teamCount: 0,
           assignedAt: null,
@@ -562,12 +598,14 @@ export function AssignmentsClient({
     filterGroup !== "ALL" ||
     filterCategory !== "ALL" ||
     filterType !== "ALL" ||
+    filterStatus !== "ALL" ||
     searchQuery.trim() !== "";
 
   const clearFilters = () => {
     setFilterGroup("ALL");
     setFilterCategory("ALL");
     setFilterType("ALL");
+    setFilterStatus("ALL");
     setSearchQuery("");
   };
 
@@ -627,8 +665,8 @@ export function AssignmentsClient({
             onClick={() => setAssignmentModalOpen(true)}
             disabled={isReadOnlyMode}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            New assignment
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">New assignment</span>
           </Button>
         </div>
       </div>
@@ -683,6 +721,19 @@ export function AssignmentsClient({
                 <SelectItem value="GROUP">Group</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {hasFilters && (
               <Button
                 variant="ghost"
@@ -718,22 +769,60 @@ export function AssignmentsClient({
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {programmeCards.map((card) => (
-            <ProgrammeCard
-              key={card.programmeId}
-              programmeName={card.programmeName}
-              categoryName={card.categoryName}
-              assignedAt={card.assignedAt}
-              progress={card.progress}
-              progressLabel={card.progressLabel}
-              groupBreakdown={card.groupBreakdown}
-              onViewDetails={() => {
-                setDetailsSearch("");
-                setSelectedProgrammeCard(card);
-              }}
-            />
-          ))}
+          {programmeCards
+            .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+            .map((card) => (
+              <ProgrammeCard
+                key={card.programmeId}
+                programmeName={card.programmeName}
+                programmeType={card.programmeType}
+                categoryName={card.categoryName}
+                status={card.status}
+                assignedAt={card.assignedAt}
+                progress={card.progress}
+                progressLabel={card.progressLabel}
+                groupBreakdown={card.groupBreakdown}
+                onViewDetails={() => {
+                  setDetailsSearch("");
+                  setSelectedProgrammeCard(card);
+                }}
+              />
+            ))}
         </div>
+      )}
+
+      {programmeCards.length > pageSize && (
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (pageIndex > 0) setPageIndex((p) => p - 1);
+                }}
+                className={
+                  pageIndex === 0
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                onClick={(e) => {
+                  e.preventDefault();
+                  if ((pageIndex + 1) * pageSize < programmeCards.length)
+                    setPageIndex((p) => p + 1);
+                }}
+                className={
+                  (pageIndex + 1) * pageSize >= programmeCards.length
+                    ? "pointer-events-none opacity-50"
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       )}
 
       {/* Delete Dialogs */}
@@ -1174,7 +1263,9 @@ export function AssignmentsClient({
                             <div className="mb-2 flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-semibold text-heading">
-                                  {canUseTeamLead && lead ? `${lead.participantName} & Team` : "Team"}
+                                  {canUseTeamLead && lead
+                                    ? `${lead.participantName} & Team`
+                                    : "Team"}
                                 </h3>
                                 <span className="text-[11px] text-muted-foreground border-l border-border pl-2">
                                   {row.groupName} · Team {row.teamNumber}

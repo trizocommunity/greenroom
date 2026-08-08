@@ -3,10 +3,10 @@
 import { ExternalLink, Power, Rocket } from "lucide-react";
 import party from "party-js";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { cn } from "@/core/utils/cn";
 import { setPublicSiteEnabledAction } from "@/features/festivals/actions/festival-crud.actions";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
+import { toast } from "@/lib/toast";
 
 interface FestivalLiveClientProps {
   festivalId: string;
@@ -27,7 +27,9 @@ export function FestivalLiveClient({
 }: FestivalLiveClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
   const [enabled, setEnabled] = useState(publicSiteEnabled);
-  const [phase, setPhase] = useState<Phase>(publicSiteEnabled ? "live" : "buzzer");
+  const [phase, setPhase] = useState<Phase>(
+    publicSiteEnabled ? "live" : "buzzer",
+  );
   const [iframeReady, setIframeReady] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -143,7 +145,11 @@ export function FestivalLiveClient({
           </button>
 
           <p className="text-xs text-muted-foreground/60">
-            Press <kbd className="px-1.5 py-0.5 rounded border bg-muted text-[10px] font-mono">Esc</kbd> to go back
+            Press{" "}
+            <kbd className="px-1.5 py-0.5 rounded border bg-muted text-[10px] font-mono">
+              Esc
+            </kbd>{" "}
+            to go back
           </p>
         </div>
       )}
@@ -166,7 +172,9 @@ export function FestivalLiveClient({
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 rounded-full bg-background/80 backdrop-blur-md border shadow-lg px-2 py-1.5">
             <span className="flex items-center gap-2 px-3 text-sm font-mono text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="hidden sm:inline truncate max-w-[200px]">{fullPublicUrl}</span>
+              <span className="hidden sm:inline truncate max-w-[200px]">
+                {fullPublicUrl}
+              </span>
               <span className="sm:hidden">Live</span>
             </span>
             <a

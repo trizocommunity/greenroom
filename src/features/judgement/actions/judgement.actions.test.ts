@@ -129,7 +129,9 @@ vi.mock("@/features/schedule/utils/festival-schedule-days", () => ({
 }));
 
 vi.mock("@/features/stages/services/judge-stage-assignment.service", () => ({
-  JudgeStageAssignmentService: { listForFestival: vi.fn().mockResolvedValue([]) },
+  JudgeStageAssignmentService: {
+    listForFestival: vi.fn().mockResolvedValue([]),
+  },
 }));
 
 vi.mock("@/features/stages/services/stage-assignment.service", () => ({
@@ -260,13 +262,15 @@ describe("getJudgementWizardDataAction — stage scoping (ISSUE-16 Slice 4)", ()
 
     const judgeWhere = mockProgrammeFindMany.mock.calls[0]?.[0]?.where;
     const str = sqlToString(judgeWhere);
-    // Outer status filter — "STARTED" must be present as a literal.
-    expect(str).toContain("STARTED");
+    // Outer status filter — "PENDING_JUDGMENT" must be present as a literal.
+    expect(str).toContain("PENDING_JUDGMENT");
     // Inner status filter on the reporting session — "CLOSED" must be present.
     expect(str).toContain("CLOSED");
+    // Stage scoping must apply (either schedule entry OR reporting session has the stage)
+    expect(str).toContain(STAGE_A);
   });
 
-  it("preserves the rejudge status semantics (JUDGED ∪ ENDED) when scoping", async () => {
+  it("preserves the rejudge status semantics (PENDING_PUBLICATION ∪ JUDGING) when scoping", async () => {
     mockGetSession.mockResolvedValue(stageManagerSession("sm-1"));
     mockGetAccessibleStageIds.mockResolvedValue([STAGE_A]);
 
@@ -274,8 +278,8 @@ describe("getJudgementWizardDataAction — stage scoping (ISSUE-16 Slice 4)", ()
 
     const rejudgeWhere = mockProgrammeFindMany.mock.calls[1]?.[0]?.where;
     const str = sqlToString(rejudgeWhere);
-    expect(str).toContain("JUDGED");
-    expect(str).toContain("ENDED");
+    expect(str).toContain("PENDING_PUBLICATION");
+    expect(str).toContain("JUDGING");
     expect(str).toContain(STAGE_A);
   });
 

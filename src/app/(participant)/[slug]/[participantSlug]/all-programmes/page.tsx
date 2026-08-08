@@ -1,4 +1,14 @@
-import { and, asc, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  not,
+  or,
+  sql,
+} from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { APP_CONTAINER, AppPageHeader } from "@/components/app/AppSection";
 import { AllProgrammesClient } from "@/components/participant/team-leader/AllProgrammesClient";
@@ -9,6 +19,7 @@ import {
   programmeCodeLetterRecipient as codeLetterRecipientTable,
   programmeCodeLetter as codeLetterTable,
   group as groupTable,
+  participant as participantTable,
   programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
   programmeReportedParticipant as reportedParticipantTable,
@@ -121,7 +132,9 @@ export default async function AllProgrammesPage({
 
   /* Counted straight from the assignment table for this leader's group.
      Deriving it from `myParticipants` under-reported INDIVIDUAL programmes,
-     because that list is scoped more narrowly than the group itself. */
+     because that list is scoped more narrowly than the group itself.
+     Includes both GROUP-shape (assignment.groupId = leader.groupId) AND
+     INDIVIDUAL-shape where the assigned participant is in the leader's group. */
   const groupAssignmentCountsRaw =
     programmes.length > 0 && participant.groupId
       ? await db
@@ -130,10 +143,17 @@ export default async function AllProgrammesPage({
             count: sql`count(*)`,
           })
           .from(assignmentTable)
+          .leftJoin(
+            participantTable,
+            eq(participantTable.id, assignmentTable.participantId),
+          )
           .where(
             and(
               eq(assignmentTable.festivalId, festival.id),
-              eq(assignmentTable.groupId, participant.groupId),
+              or(
+                eq(assignmentTable.groupId, participant.groupId),
+                eq(participantTable.groupId, participant.groupId),
+              ),
               inArray(
                 assignmentTable.programmeId,
                 programmes.map((p) => p.id),
@@ -191,7 +211,9 @@ export default async function AllProgrammesPage({
   /* INDIVIDUAL programmes used to be read from `myAssignments`, which is
      scoped to `getTeamLeaderMyParticipants` — a narrower set than the group.
      GROUP programmes already had their own group-scoped query, which is why
-     only individual programmes came back empty. Both are group-scoped now. */
+     only individual programmes came back empty. Both are group-scoped now.
+     For INDIVIDUAL shape, match participants whose groupId equals the
+     leader's groupId (since programmeAssignment.groupId is null). */
   const individualProgrammeIds = programmes
     .filter((p) => p.type !== "GROUP")
     .map((p) => p.id);
@@ -202,8 +224,14 @@ export default async function AllProgrammesPage({
           where: and(
             eq(assignmentTable.festivalId, festival.id),
             inArray(assignmentTable.programmeId, individualProgrammeIds),
-            eq(assignmentTable.groupId, participant.groupId),
             isNotNull(assignmentTable.participantId),
+            inArray(
+              assignmentTable.participantId,
+              db
+                .select({ id: participantTable.id })
+                .from(participantTable)
+                .where(eq(participantTable.groupId, participant.groupId)),
+            ),
           ),
           with: {
             participant: {
@@ -369,7 +397,9 @@ export default async function AllProgrammesPage({
               for (const m of a.members ?? []) {
                 if (!m?.participant) continue;
                 if (
-                  teamBucket.members.some((mm: any) => mm.id === m.participant.id)
+                  teamBucket.members.some(
+                    (mm: any) => mm.id === m.participant.id,
+                  )
                 )
                   continue;
                 teamBucket.members.push({

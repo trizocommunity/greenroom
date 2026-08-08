@@ -1,54 +1,22 @@
+import { TIER_CONFIG } from "@/config/pricing";
 import type { Tier } from "@/core/types/app-enums";
-import type { FeaturePath } from "@/features/plan-features/services/features";
+import type {
+  BooleanFeaturePath,
+  FeaturePath,
+} from "@/features/plan-features/services/feature-gate";
 
-/** Keys in TierFeatures that are boolean and can be toggled by Super Admin. */
-export const PLAN_FEATURE_TOGGLE_KEYS = [
-  "categories",
-  "groups",
-  "participants",
-  "programmes",
-  "assignments",
-  "chestNumbers",
-  "results",
-  "stageManagement",
-  "schedule",
-  "members",
-  "roleBasedAccess",
-  "participantImport",
-  "participantBulkUpload",
-  "programmeBulkUpload",
-  "pdfExport",
-  "excelExport",
-  "emailNotifications",
-  "whatsappSupport",
-  "smsNotifications",
-  "bulkNotifications",
-  "advancedAnalytics",
-  "customReports",
-  "qrCodes",
-  "autoCertificates",
-  "customCertificateTemplates",
-  "bulkCertificateGeneration",
-  "publicLandingPage",
-  "fullLandingPage",
-  "landingPageBuilder",
-  "media",
-  "news",
-  "customUrl",
-  "customDomain",
-  "logoUpload",
-  "customColors",
-  "whiteLabel",
-  "apiAccess",
-  "webhooks",
-  "liveScoreboard",
-  "liveResults",
-  "multiFestivalManagement",
-  "festivalSettings",
-  "advancedSettings",
-  "programmeAssignmentDeadline",
-  "participantCreationDeadline",
-] as const satisfies readonly FeaturePath[];
+/**
+ * Boolean feature paths that can be toggled by Super Admin.
+ * Derived from TierFeatures so the list cannot drift.
+ */
+export const PLAN_FEATURE_TOGGLE_KEYS = Object.keys(
+  TIER_CONFIG.BASIC.features,
+).filter(
+  (key): key is BooleanFeaturePath =>
+    typeof TIER_CONFIG.BASIC.features[
+      key as keyof typeof TIER_CONFIG.BASIC.features
+    ] === "boolean",
+);
 
 /** Human-readable labels for the plan features matrix. */
 export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
@@ -64,6 +32,7 @@ export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   results: "Results",
   stageManagement: "Stage Management",
   schedule: "Schedule",
+  foodHall: "Food Hall",
   members: "Members",
   roleBasedAccess: "Role-based Access",
   participantImport: "Participant Import",

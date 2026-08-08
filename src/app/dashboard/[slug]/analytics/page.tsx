@@ -5,7 +5,7 @@ import {
   getFestivalAnalyticsData,
 } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { getEffectiveTierFeatures } from "@/features/plan-features/services/plan-features.service";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 import { AnalyticsView } from "./_components/AnalyticsView";
 
@@ -27,9 +27,7 @@ export default async function AnalyticsPage({
     globalRole: session.role,
   });
   if (!context || context.role === "NONE") redirect("/");
-  const features = await getEffectiveTierFeatures(
-    getResolvedTier(festival.tier),
-  );
+  const features = await loadFeatureOverrides(getResolvedTier(festival.tier));
   if (!features.advancedAnalytics) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=analytics`);
   }

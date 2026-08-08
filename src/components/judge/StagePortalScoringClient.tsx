@@ -10,7 +10,6 @@ import {
   UserX,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
 import { useMarkCodeLetterAbsence } from "@/api/client/server-actions";
 import { StatusPill } from "@/components/app/AppSection";
 import { Button } from "@/components/ui/button";
@@ -24,12 +23,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { humanizeError } from "@/core/errors/humanize";
 import { cn } from "@/core/utils/cn";
 import {
   previewJudgeSubmissionSummaryAction,
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
 } from "@/features/judgement/actions/judgement.actions";
+import { toast } from "@/lib/toast";
 
 function AbsentToggle({
   isAbsent,
@@ -293,18 +294,10 @@ function SubmissionReviewView({
                 <div className="flex items-center gap-3 text-right">
                   <div>
                     <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Normalised
+                      Average
                     </p>
                     <p className="text-sm font-bold tabular-nums text-primary">
                       {policy?.points ?? "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Points
-                    </p>
-                    <p className="text-sm font-bold tabular-nums text-heading">
-                      {policy?.awardPoints ?? "—"}
                     </p>
                   </div>
                 </div>
@@ -449,10 +442,12 @@ export function StagePortalScoringClient({
   stageName,
   payload,
   onDone,
+  onSubmitted,
 }: {
   stageName: string;
   payload: StagePortalLivePayload;
   onDone: () => void;
+  onSubmitted?: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [submissionPhase, setSubmissionPhase] =
@@ -713,17 +708,6 @@ export function StagePortalScoringClient({
     setRemarksByKey((prev) => ({ ...prev, [`${judgeId}:${codeLetterId}`]: v }));
   };
 
-  const humanizeSubmitError = (message: string) => {
-    const normalized = message.toLowerCase();
-    if (
-      normalized.includes("scoring policy has no matching grade rule") ||
-      normalized.includes("scoring policy has no matching award rule")
-    ) {
-      return "Scores were saved, but result mapping failed because the scoring policy does not cover this case yet. Ask an admin to update the scoring policy and submit again.";
-    }
-    return message;
-  };
-
   const onStartReview = () => {
     setSubmitError(null);
     if (!canSubmit) {
@@ -761,9 +745,8 @@ export function StagePortalScoringClient({
         setSubmissionPhase("review");
       } catch (error: any) {
         setSubmitError(
-          humanizeSubmitError(
-            error?.message ?? "Failed to compute policy summary for review.",
-          ),
+          humanizeError(error).message ||
+            "Failed to compute policy summary for review.",
         );
       }
     });
@@ -813,11 +796,11 @@ export function StagePortalScoringClient({
           });
           setSummaryVariant("complete");
         }
+        onSubmitted?.();
         setSubmissionPhase("summary");
       } catch (error: any) {
-        const message = humanizeSubmitError(
-          error?.message ?? "Failed to submit scores.",
-        );
+        const message =
+          humanizeError(error).message || "Failed to submit scores.";
         setSubmitError(message);
         toast.error(message);
       }

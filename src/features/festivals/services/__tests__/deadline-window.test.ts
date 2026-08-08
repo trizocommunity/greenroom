@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { instantToWallClockParts, wallClockToInstant } from "@/core/datetime";
 import {
   isDeadlineWindowOpen,
+  isTeamLeaderActionWindowOpen,
   nextDeadlineWindowTransition,
   resolveDeadlineWindow,
 } from "../deadline-window";
@@ -12,10 +13,10 @@ const END = "2026-08-20T17:00:00.000Z";
 const at = (iso: string) => new Date(iso);
 
 describe("resolveDeadlineWindow", () => {
-  it("is open when neither bound is set (legacy festivals)", () => {
+  it("is unconfigured when neither bound is set", () => {
     const { state, isLocked } = resolveDeadlineWindow({}, at(END));
-    expect(state).toBe("OPEN");
-    expect(isLocked).toBe(false);
+    expect(state).toBe("UNCONFIGURED");
+    expect(isLocked).toBe(true);
   });
 
   it("is upcoming before the start", () => {
@@ -63,17 +64,90 @@ describe("resolveDeadlineWindow", () => {
 });
 
 describe("isDeadlineWindowOpen", () => {
-  it("mirrors the resolved state", () => {
+  it("is true inside a configured window", () => {
     expect(
       isDeadlineWindowOpen(
         { start: START, end: END },
         at("2026-08-10T00:00:00.000Z"),
       ),
     ).toBe(true);
+  });
+
+  it("is false after the deadline", () => {
     expect(
       isDeadlineWindowOpen(
         { start: START, end: END },
         at("2026-08-25T00:00:00.000Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("is false before the start", () => {
+    expect(
+      isDeadlineWindowOpen(
+        { start: START, end: END },
+        at("2026-08-01T00:00:00.000Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps the legacy 'no deadline = open' semantics", () => {
+    expect(isDeadlineWindowOpen({}, at(START))).toBe(true);
+    expect(
+      isDeadlineWindowOpen({ start: START }, at("2027-01-01T00:00:00.000Z")),
+    ).toBe(true);
+    expect(
+      isDeadlineWindowOpen({ end: END }, at("2020-01-01T00:00:00.000Z")),
+    ).toBe(true);
+  });
+});
+
+describe("isTeamLeaderActionWindowOpen", () => {
+  it("is true only between an explicitly-set start and end", () => {
+    expect(
+      isTeamLeaderActionWindowOpen(
+        { start: START, end: END },
+        at("2026-08-10T00:00:00.000Z"),
+      ),
+    ).toBe(true);
+  });
+
+  it("is false before the start", () => {
+    expect(
+      isTeamLeaderActionWindowOpen(
+        { start: START, end: END },
+        at("2026-08-01T00:00:00.000Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("is false after the end", () => {
+    expect(
+      isTeamLeaderActionWindowOpen(
+        { start: START, end: END },
+        at("2026-08-25T00:00:00.000Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("is false when neither bound is set (no deadline configured)", () => {
+    expect(isTeamLeaderActionWindowOpen({}, at(END))).toBe(false);
+  });
+
+  it("is false when only the start is set", () => {
+    expect(
+      isTeamLeaderActionWindowOpen(
+        { start: START },
+        at("2026-08-10T00:00:00.000Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("is false when only the end is set", () => {
+    expect(
+      isTeamLeaderActionWindowOpen(
+        { end: END },
+        at("2026-08-10T00:00:00.000Z"),
       ),
     ).toBe(false);
   });
@@ -108,6 +182,10 @@ describe("nextDeadlineWindowTransition", () => {
         at("2026-08-25T00:00:00.000Z"),
       ),
     ).toBeNull();
+  });
+
+  it("is null when unconfigured — no scheduled flip until bounds are set", () => {
+    expect(nextDeadlineWindowTransition(null, null, at(END))).toBeNull();
   });
 });
 

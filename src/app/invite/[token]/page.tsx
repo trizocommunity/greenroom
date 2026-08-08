@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
 import { Button } from "@/components/ui/button";
+import { signOut, useSession } from "@/core/auth/better-auth/client";
 import { api } from "@/lib/api-client";
 
 type InviteDetails = {
@@ -91,23 +92,17 @@ export default function InvitePage() {
   }, [router, token]);
 
   // Step 1: figure out who (if anyone) is signed in.
+  const { data: betterSession, isPending: sessionLoading } = useSession();
+
   useEffect(() => {
     if (!token) {
       setError("Invalid invitation link");
       return;
     }
-    api.auth
-      .v1Me()
-      .then((res) => {
-        const authed = res.status >= 200 && res.status < 300;
-        setIsAuthenticated(authed);
-        setSignedInEmail(authed ? (res.body?.data?.email ?? null) : null);
-      })
-      .catch(() => {
-        setIsAuthenticated(false);
-        setSignedInEmail(null);
-      });
-  }, [token]);
+    if (sessionLoading) return;
+    setIsAuthenticated(!!betterSession?.user);
+    setSignedInEmail(betterSession?.user?.email ?? null);
+  }, [betterSession, sessionLoading, token]);
 
   // Step 2: load the invitation itself.
   useEffect(() => {
@@ -140,7 +135,7 @@ export default function InvitePage() {
   const handleUseInvitedEmail = useCallback(async () => {
     setSwitchingAccount(true);
     try {
-      await api.auth.v1Logout();
+      await signOut();
     } catch {
       // Even if logout fails we let them retry from the login page.
     }

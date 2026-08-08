@@ -13,6 +13,7 @@ import {
   deleteParticipant,
   findParticipantById,
   findParticipantsByFestival,
+  findParticipantsByFestivalPaginated,
   updateParticipant,
 } from "@/features/participants/repositories/participant.repository";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
@@ -20,6 +21,22 @@ import { getResolvedTier } from "@/features/plan-features/services/tier";
 export const ParticipantService = {
   async getAll(festivalId: string, groupId?: string) {
     return findParticipantsByFestival(festivalId, groupId);
+  },
+
+  async getAllPaginated(
+    festivalId: string,
+    options: {
+      page: number;
+      pageSize: number;
+      sort?: string;
+      order?: "asc" | "desc";
+      groupId?: string;
+      categoryId?: string;
+      search?: string;
+      isTeamLeader?: boolean;
+    },
+  ) {
+    return findParticipantsByFestivalPaginated(festivalId, options);
   },
 
   async create(
@@ -34,7 +51,9 @@ export const ParticipantService = {
       dateOfBirth: string;
       standard?: string;
     },
+    tx?: typeof db,
   ) {
+    const client = tx ?? db;
     const festival = await findFestivalById(festivalId);
     if (!festival) throw new AppError(ERROR_MESSAGES.FESTIVAL_NOT_FOUND);
     if (festival.status === "EXPIRED")
@@ -42,7 +61,7 @@ export const ParticipantService = {
 
     // Global uniqueness check: Name must be unique within the festival (all groups/categories)
     const normalizedName = data.name.trim();
-    const existingName = await db.query.participant.findFirst({
+    const existingName = await client.query.participant.findFirst({
       where: and(
         eq(participants.festivalId, festivalId),
         ilike(participants.name, normalizedName),
@@ -67,7 +86,7 @@ export const ParticipantService = {
       throw new AppError(ERROR_MESSAGES.PARTICIPANT_INVALID_CATEGORY);
 
     // 3. Limit Check & Increment (Atomic)
-    const [{ participantCount }] = await db
+    const [{ participantCount }] = await client
       .select({ participantCount: count() })
       .from(participants)
       .where(eq(participants.festivalId, festivalId));
@@ -78,20 +97,23 @@ export const ParticipantService = {
       throw new AppError(ERROR_MESSAGES.PARTICIPANT_LIMIT_REACHED);
     }
 
-    await UsageCounterService.incrementUsage(festivalId, "participants", 1);
+    await UsageCounterService.incrementUsage(festivalId, "participants", 1, tx);
 
     // 4. Create (no profileSlug yet — set after we have id)
-    const created = await createParticipant({
-      festivalId,
-      groupId: data.groupId,
-      categoryId: data.categoryId,
-      name: normalizedName,
-      gender: data.gender ?? "MALE",
-      email: data.email || undefined,
-      phone: data.phone,
-      dateOfBirth: data.dateOfBirth,
-      standard: data.standard,
-    });
+    const created = await createParticipant(
+      {
+        festivalId,
+        groupId: data.groupId,
+        categoryId: data.categoryId,
+        name: normalizedName,
+        gender: data.gender ?? "MALE",
+        email: data.email || undefined,
+        phone: data.phone,
+        dateOfBirth: data.dateOfBirth,
+        standard: data.standard,
+      },
+      tx,
+    );
 
     // 5. Set unique profileSlug for public URL /{festivalSlug}/{profileSlug}
     let profileSlug = generateProfileSlug(
@@ -99,7 +121,7 @@ export const ParticipantService = {
       created.id,
       created.chestNumber,
     );
-    let slugExists = await db.query.participant.findFirst({
+    let slugExists = await client.query.participant.findFirst({
       where: and(
         eq(participants.festivalId, festivalId),
         eq(participants.profileSlug, profileSlug),
@@ -109,7 +131,7 @@ export const ParticipantService = {
     let suffix = 2;
     while (slugExists) {
       profileSlug = `${generateProfileSlug(created.name, created.id, created.chestNumber)}-${suffix}`;
-      slugExists = await db.query.participant.findFirst({
+      slugExists = await client.query.participant.findFirst({
         where: and(
           eq(participants.festivalId, festivalId),
           eq(participants.profileSlug, profileSlug),
@@ -119,7 +141,7 @@ export const ParticipantService = {
       suffix++;
     }
 
-    return updateParticipant(created.id, { profileSlug });
+    return updateParticipant(created.id, { profileSlug }, tx);
   },
 
   async update(

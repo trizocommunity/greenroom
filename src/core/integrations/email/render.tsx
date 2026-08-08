@@ -5,11 +5,12 @@ import {
   FestivalInvitationEmail,
   festivalInvitationSubject,
 } from "./kinds/festival-invitation";
-import { MagicLinkEmail } from "./kinds/magic-link";
+import { SignInOtpEmail, signInOtpSubject } from "./kinds/sign-in-otp";
 import {
   TeamLeaderOtpEmail,
   teamLeaderOtpSubject,
 } from "./kinds/team-leader-otp";
+import { TwoFactorOTPEmail, twoFactorOTPSubject } from "./kinds/two-factor-otp";
 import type { EmailKind, EmailTheme } from "./types";
 
 /**
@@ -22,19 +23,17 @@ export type RenderedEmail = {
   text: string;
 };
 
-const DEFAULT_MAGIC_LINK_EXPIRY_MINUTES = 30;
+const DEFAULT_SIGN_IN_OTP_EXPIRY_MINUTES = 5;
 const DEFAULT_INVITATION_EXPIRY_HOURS = 48;
 const DEFAULT_OTP_EXPIRY_MINUTES = 10;
+const DEFAULT_TWO_FACTOR_OTP_EXPIRY_MINUTES = 5;
 
-const BASE_URL =
+const BASE_URL = (
   process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.NODE_ENV === "production"
     ? "https://greenroomm.vercel.app"
-    : "http://localhost:3000");
-
-function magicLinkUrl(token: string) {
-  return `${BASE_URL}/login/verify/${token}`;
-}
+    : "http://localhost:3000")
+).replace(/\/+$/, "");
 
 function inviteUrl(token: string) {
   return `${BASE_URL}/invite/${token}`;
@@ -48,8 +47,9 @@ export function resolveTheme(
   switch (kind.kind) {
     case "festival_invitation":
       return "light";
-    case "magic_link":
+    case "sign_in_otp":
     case "team_leader_otp":
+    case "two_factor_otp":
     case "festival_expiring_soon":
       return "dark";
     default: {
@@ -73,17 +73,18 @@ export async function renderEmail(
   let subject: string;
 
   switch (kind.kind) {
-    case "magic_link": {
+    case "sign_in_otp": {
       element = (
-        <MagicLinkEmail
-          url={magicLinkUrl(kind.token)}
+        <SignInOtpEmail
+          otp={kind.otp}
+          email={kind.email}
           expiresInMinutes={
-            kind.expiresInMinutes ?? DEFAULT_MAGIC_LINK_EXPIRY_MINUTES
+            kind.expiresInMinutes ?? DEFAULT_SIGN_IN_OTP_EXPIRY_MINUTES
           }
           theme={effectiveTheme}
         />
       );
-      subject = "[Greenroom] Your sign-in link";
+      subject = signInOtpSubject();
       break;
     }
     case "festival_invitation": {
@@ -111,6 +112,20 @@ export async function renderEmail(
         />
       );
       subject = teamLeaderOtpSubject(kind.festivalName);
+      break;
+    }
+    case "two_factor_otp": {
+      element = (
+        <TwoFactorOTPEmail
+          otp={kind.otp}
+          email={kind.email}
+          expiresInMinutes={
+            kind.expiresInMinutes ?? DEFAULT_TWO_FACTOR_OTP_EXPIRY_MINUTES
+          }
+          theme={effectiveTheme}
+        />
+      );
+      subject = twoFactorOTPSubject();
       break;
     }
     case "festival_expiring_soon": {

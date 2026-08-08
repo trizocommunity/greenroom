@@ -1,16 +1,15 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { queryKeys } from "@/api/client/_query-keys";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
-import {
-  useBulkCreateParticipants,
-  useValidateParticipants,
-} from "@/api/client/participants";
+import { useValidateParticipants } from "@/api/client/participants";
 import {
   BulkUploadFlow,
   type ParsedItem,
@@ -33,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { bulkCreateParticipantsAction } from "@/features/participants/actions/participant.actions";
 
 // --- Types & Schema ---
 
@@ -206,8 +206,8 @@ export function BulkUploadParticipantsModal({
   const { data: groups = [], isLoading: loadingGroups } = useGroups(festivalId);
   const { data: categories = [], isLoading: loadingCategories } =
     useCategories(festivalId);
-  const bulkCreateParticipants = useBulkCreateParticipants();
   const validateParticipants = useValidateParticipants();
+  const qc = useQueryClient();
 
   // Parsing Logic defined inside to access hooks
   const parseParticipantRow = (
@@ -334,15 +334,17 @@ export function BulkUploadParticipantsModal({
       gender: s.gender,
     }));
 
-    const result = await bulkCreateParticipants.mutateAsync({
+    const result = await bulkCreateParticipantsAction(
       festivalId,
-      data: { participants: participantsToCreate },
-    });
+      participantsToCreate,
+    );
+
+    qc.invalidateQueries({ queryKey: queryKeys.participants.all(festivalId) });
 
     return {
-      success: true,
-      count: result.length,
-      error: undefined,
+      success: result.success,
+      successCount: result.successCount,
+      errors: result.errors,
     };
   };
 
@@ -360,6 +362,7 @@ export function BulkUploadParticipantsModal({
     <BulkUploadFlow<ParticipantData>
       trigger={trigger}
       title="Bulk Upload Participants"
+      description="Up to 1000 rows per upload."
       templateName="participants_template.xlsx"
       templateHeaders={["Name", "Group", "Category", "Gender (Optional)"]}
       templateData={[

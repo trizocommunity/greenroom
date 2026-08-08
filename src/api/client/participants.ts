@@ -1,5 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import type { PaginatedResponse } from "@/api/contracts/_shared";
 import type {
   BulkCreateParticipantInput,
   CreateParticipantInput,
@@ -12,6 +17,7 @@ import type {
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { STALE_TIME } from "@/lib/query-utils";
+import { toast } from "@/lib/toast";
 import { queryKeys } from "./_query-keys";
 
 export function useParticipants(festivalId: string) {
@@ -25,6 +31,47 @@ export function useParticipants(festivalId: string) {
     },
     enabled: !!festivalId,
     staleTime: STALE_TIME.standard,
+  });
+}
+
+export function useParticipantsPaginated(
+  festivalId: string,
+  params: {
+    page: number;
+    pageSize: number;
+    sort?: string;
+    order?: "asc" | "desc";
+    search?: string;
+    groupId?: string;
+    categoryId?: string;
+    isTeamLeader?: boolean;
+  },
+) {
+  return useQuery({
+    queryKey: queryKeys.participants.paginated(festivalId, params),
+    queryFn: async () => {
+      const searchParams = new URLSearchParams({
+        festivalId,
+        page: params.page.toString(),
+        pageSize: params.pageSize.toString(),
+      });
+      if (params.sort) searchParams.append("sort", params.sort);
+      if (params.order) searchParams.append("order", params.order);
+      if (params.search) searchParams.append("search", params.search);
+      if (params.groupId && params.groupId !== "ALL")
+        searchParams.append("groupId", params.groupId);
+      if (params.categoryId && params.categoryId !== "ALL")
+        searchParams.append("categoryId", params.categoryId);
+      if (params.isTeamLeader !== undefined)
+        searchParams.append("isTeamLeader", params.isTeamLeader.toString());
+
+      const response = await apiClient.get<
+        ApiResponse<PaginatedResponse<Participant>>
+      >(`/participants?${searchParams.toString()}`);
+      return handleApiResponse(response.data);
+    },
+    enabled: !!festivalId,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -167,10 +214,9 @@ export function useValidateParticipants() {
     mutationFn: async ({ festivalId, data }) => {
       const response = await apiClient.post<
         ApiResponse<ValidateParticipantsResponse>
-      >(
-        `/participants/validate?festivalId=${encodeURIComponent(festivalId)}`,
-        { data },
-      );
+      >(`/participants/validate?festivalId=${encodeURIComponent(festivalId)}`, {
+        data,
+      });
       return handleApiResponse(response.data);
     },
   });
