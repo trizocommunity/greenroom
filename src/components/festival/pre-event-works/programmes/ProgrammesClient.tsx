@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCategories } from "@/api/client/categories";
-import { useDeleteProgramme, useProgrammes } from "@/api/client/programmes";
 import { FeatureGate } from "@/components/common/FeatureGate";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import {
@@ -72,6 +71,11 @@ import {
 import { BulkUploadProgrammesModal } from "./BulkUploadProgrammesModal";
 import { ProgrammeDialog } from "./ProgrammeDialog";
 
+import {
+  useDeleteProgramme,
+  useProgrammesPaginated,
+} from "@/api/client/programmes";
+
 interface ProgrammesClientProps {
   festivalId: string;
   festivalTier?: string | null;
@@ -85,7 +89,6 @@ export function ProgrammesClient({
   groupCount,
   children,
 }: ProgrammesClientProps) {
-  const { data: programmes = [], isLoading } = useProgrammes(festivalId);
   const { isReadOnly } = useFestivalReadOnly();
   const { data: categories = [] } = useCategories(festivalId);
   const deleteProgramme = useDeleteProgramme();
@@ -100,36 +103,39 @@ export function ProgrammesClient({
     action: "view" | "edit" | "delete";
   } | null>(null);
 
-  const [pageIndex, setPageIndex] = useState(0);
-  const pageSize = 15;
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 15,
+  });
+
+  const { data: paginatedData, isLoading } = useProgrammesPaginated(
+    festivalId,
+    {
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+      categoryId: categoryFilter === "ALL" ? undefined : categoryFilter,
+      search: searchQuery || undefined,
+      type: typeFilter === "ALL" ? undefined : typeFilter,
+      stageType: stageTypeFilter === "ALL" ? undefined : stageTypeFilter,
+      status: statusFilter === "ALL" ? undefined : statusFilter,
+    }
+  );
+
+  const programmes = paginatedData?.data ?? [];
+  const totalItems = paginatedData?.total ?? 0;
+  const pageCount = Math.ceil(totalItems / pagination.pageSize);
 
   useEffect(() => {
-    setPageIndex(0);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
   }, [categoryFilter, stageTypeFilter, typeFilter, statusFilter, searchQuery]);
 
-  if (isLoading) {
+  if (isLoading && programmes.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
-
-  const filteredProgrammes = programmes.filter((p: any) => {
-    if (categoryFilter !== "ALL" && p.category?.id !== categoryFilter)
-      return false;
-    if (stageTypeFilter !== "ALL" && p.stageType !== stageTypeFilter)
-      return false;
-    if (typeFilter !== "ALL" && p.type !== typeFilter) return false;
-    if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      const name = (p.name || "").toLowerCase();
-      const catName = (p.category?.name || "").toLowerCase();
-      if (!name.includes(q) && !catName.includes(q)) return false;
-    }
-    return true;
-  });
 
   const hasFilters =
     categoryFilter !== "ALL" ||
@@ -298,15 +304,14 @@ export function ProgrammesClient({
               </Button>
             )}
             <span className="text-xs text-muted-foreground sm:ml-auto">
-              {filteredProgrammes.length} row
-              {filteredProgrammes.length !== 1 ? "s" : ""}
+              {totalItems} row
+              {totalItems !== 1 ? "s" : ""}
             </span>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {/* Mobile: user-friendly programme cards */}
           <div className="block md:hidden p-3 sm:p-4 space-y-3">
-            {filteredProgrammes.length === 0 ? (
+            {programmes.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center text-muted-foreground rounded-xl border border-dashed bg-muted/20">
                 <FileText className="h-10 w-10 text-muted-foreground/50" />
                 <p className="font-medium">No programmes found</p>
@@ -315,9 +320,7 @@ export function ProgrammesClient({
                 </p>
               </div>
             ) : (
-              filteredProgrammes
-                .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
-                .map((programme: any) => (
+              programmes.map((programme: any) => (
                   <div
                     key={programme.id}
                     className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all active:scale-[0.99] hover:shadow-md hover:border-primary/25"
@@ -467,9 +470,7 @@ export function ProgrammesClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProgrammes
-                  .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
-                  .map((programme: any) => (
+                {programmes.map((programme: any) => (
                     <TableRow key={programme.id}>
                       <TableCell className="font-medium">
                         {programme.name}
@@ -589,7 +590,7 @@ export function ProgrammesClient({
                       </TableCell>
                     </TableRow>
                   ))}
-                {filteredProgrammes.length === 0 && (
+                {programmes.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={6}
@@ -606,7 +607,7 @@ export function ProgrammesClient({
             </Table>
           </div>
 
-          {filteredProgrammes.length > pageSize && (
+          {pageCount > 1 && (
             <div className="p-4 border-t">
               <Pagination>
                 <PaginationContent>
@@ -614,10 +615,11 @@ export function ProgrammesClient({
                     <PaginationPrevious
                       onClick={(e) => {
                         e.preventDefault();
-                        if (pageIndex > 0) setPageIndex((p) => p - 1);
+                        if (pagination.pageIndex > 0)
+                          setPagination((p) => ({ ...p, pageIndex: p.pageIndex - 1 }));
                       }}
                       className={
-                        pageIndex === 0
+                        pagination.pageIndex === 0
                           ? "pointer-events-none opacity-50"
                           : "cursor-pointer"
                       }
@@ -627,14 +629,11 @@ export function ProgrammesClient({
                     <PaginationNext
                       onClick={(e) => {
                         e.preventDefault();
-                        if (
-                          (pageIndex + 1) * pageSize <
-                          filteredProgrammes.length
-                        )
-                          setPageIndex((p) => p + 1);
+                        if (pagination.pageIndex < pageCount - 1)
+                          setPagination((p) => ({ ...p, pageIndex: p.pageIndex + 1 }));
                       }}
                       className={
-                        (pageIndex + 1) * pageSize >= filteredProgrammes.length
+                        pagination.pageIndex >= pageCount - 1
                           ? "pointer-events-none opacity-50"
                           : "cursor-pointer"
                       }

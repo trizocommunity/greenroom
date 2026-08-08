@@ -16,12 +16,28 @@ import {
   findProgrammesByFestival,
   findProgrammeWithAssignments,
   updateProgramme,
+  findProgrammesByFestivalPaginated,
 } from "@/features/programmes/repositories/programme.repository";
 import { assertProgrammePreReporting } from "./programme-status.service";
 
 export const ProgrammeService = {
   async getAll(festivalId: string, categoryId?: string) {
     return findProgrammesByFestival(festivalId, categoryId);
+  },
+
+  async getAllPaginated(
+    festivalId: string,
+    options: {
+      page: number;
+      pageSize: number;
+      categoryId?: string;
+      search?: string;
+      type?: string;
+      stageType?: string;
+      status?: string;
+    },
+  ) {
+    return findProgrammesByFestivalPaginated(festivalId, options);
   },
 
   async getDetails(id: string, festivalId: string) {

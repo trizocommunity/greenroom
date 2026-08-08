@@ -283,7 +283,6 @@ export async function getJudgementWizardDataAction(festivalId: string) {
     }
   }
 
-  // Assigned-unit counts per programme (GROUP → distinct group+team; else rows).
   const assignedUnitsByProgramme = new Map<string, number>();
   if (programmeIds.length > 0) {
     const assignmentRows = await db.query.programmeAssignment.findMany({
@@ -624,9 +623,6 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
         })
       : [];
 
-  // Build a lookup from (programmeId, participantId) -> assignmentId.
-  // This mirrors the logic in recomputeConfigResults so the completed-judgement
-  // drawer maps code letters to the same results shown in the result roster.
   const assignmentIdByParticipant = new Map<string, string>();
   for (const a of allAssignments) {
     if (a.participantId) {
@@ -670,7 +666,6 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
       if (assignmentId) assignmentIds.add(assignmentId);
     }
 
-    // A code letter should map to exactly one assignment under the XOR invariant.
     if (assignmentIds.size === 1) {
       const assignmentId = Array.from(assignmentIds)[0]!;
       const result = allResults.find((r) => r.assignmentId === assignmentId);
@@ -836,7 +831,6 @@ export async function getJudgementDashboardDataAction(festivalId: string) {
       JudgeStageAssignmentService.listForFestival(festivalId),
     ]);
 
-  // Default judge panel per stage — pre-fills the Start Judgement dialog.
   const judgesByStageId: Record<string, string[]> = {};
   for (const a of stageAssignments) {
     const list = judgesByStageId[a.stageId] ?? [];
@@ -1020,9 +1014,6 @@ export async function startJudgementAction(input: {
     throw new AppError("No closed reporting session found for this programme.");
   }
 
-  // Resolve the stageId: scheduled programmes keep theirs; unscheduled
-  // programmes are routed through the festival's Off-Stage stage so the
-  // judge portal still has a stage to pin to.
   const { stageId, autoAssigned } = await resolveStageIdForJudgement(
     input.festivalId,
     latestClosedReportingSession.stageId,
@@ -1380,7 +1371,6 @@ export async function getStagePortalBoardAction(day?: string) {
   });
   const festivalTz = festival?.timezone ?? "UTC";
 
-  // Off-stage portals skip day-based filtering entirely.
   const dayKeySet = isOffStage
     ? null
     : (getFestivalDateKeySet(
@@ -1398,7 +1388,6 @@ export async function getStagePortalBoardAction(day?: string) {
         : (days[days.length - 1] ?? today);
   if (days.length === 0) selectedDay = today;
 
-  // All LIVE configs on this stage (off-stage allows multiple).
   const liveConfigRows = await db
     .select({
       id: judgementConfigTable.id,
@@ -1425,8 +1414,7 @@ export async function getStagePortalBoardAction(day?: string) {
   }>;
 
   if (isOffStage) {
-    // For off-stage, list all programmes that have a reporting session on
-    // this stage instead of schedule entries (they have none).
+
     const offStageReportingSessions =
       await db.query.programmeReportingSession.findMany({
         where: and(
@@ -1512,15 +1500,12 @@ export async function getStagePortalBoardAction(day?: string) {
       });
   }
 
-  // Build live payloads for all LIVE configs.
   const liveConfigs: StagePortalLiveConfig[] = [];
   for (const row of liveConfigRows) {
     const payload = await buildLivePayload(row.id);
     if (payload) liveConfigs.push(payload);
   }
 
-  // Backward compat: `live` is the first live config (regular stages only
-  // ever have one).
   const live = liveConfigs[0] ?? null;
 
   return { stage, days, selectedDay, programmes, live, liveConfigs };
@@ -1625,24 +1610,21 @@ async function recomputeConfigResults(
         });
         assignmentId = assignment?.id;
       } else {
-        const member = await exec.query.programmeAssignmentMember.findFirst({
-          where: eq(
-            assignmentMemberTable.participantId,
-            recipient.participantId,
-          ),
-          with: {
-            assignment: {
-              columns: {
-                id: true,
-                programmeId: true,
-              },
-            },
-          },
-        });
-        assignmentId =
-          member?.assignment?.programmeId === config.programmeId
-            ? member.assignment.id
-            : undefined;
+        const members = await exec
+          .select({ assignmentId: assignmentMemberTable.assignmentId })
+          .from(assignmentMemberTable)
+          .innerJoin(
+            assignmentTable,
+            eq(assignmentTable.id, assignmentMemberTable.assignmentId),
+          )
+          .where(
+            and(
+              eq(assignmentMemberTable.participantId, recipient.participantId),
+              eq(assignmentTable.programmeId, config.programmeId),
+            ),
+          )
+          .limit(1);
+        assignmentId = members[0]?.assignmentId;
       }
       if (assignmentId) assignmentPoints.set(assignmentId, avg);
     }
@@ -1717,7 +1699,6 @@ async function recomputeConfigResults(
         });
     }
 
-    // Prune result rows for assignments no longer judged (e.g. now-absent).
     if (judgedAssignmentIds.length > 0) {
       await tx
         .delete(resultTable)
@@ -1733,11 +1714,6 @@ async function recomputeConfigResults(
         .where(eq(resultTable.programmeId, config.programmeId));
     }
 
-    // Recompute programme status in the SAME transaction so the
-    // status-update read of `resultTable` sees the rows we just wrote.
-    // Running this on a separate connection would miss them under Postgres
-    // READ COMMITTED isolation and the programme status would never advance
-    // past PENDING_JUDGMENT.
     await updateProgrammeStatus(
       config.programmeId,
       config.reportingSessionId,
@@ -1798,8 +1774,6 @@ export async function markCodeLetterAbsenceAction(input: {
       } as any)
       .where(eq(codeLetterTable.id, input.codeLetterId));
 
-    // Marking absent drops any scores already entered for this code so a
-    // stale score can't linger or count.
     if (input.isAbsent) {
       await tx
         .delete(judgementScoreTable)
@@ -1811,9 +1785,6 @@ export async function markCodeLetterAbsenceAction(input: {
         );
     }
 
-    // Recompute inside the same transaction so a missing scoring-policy rule
-    // rolls back the absence flag (and the score delete) instead of leaving
-    // the round in a half-updated state.
     await recomputeConfigResults(
       {
         id: config.id,
@@ -1875,8 +1846,6 @@ export async function submitJudgeScoresAction(
   });
   if (codeLetters.length === 0) throw new AppError("No code letters found.");
 
-  // Absent code letters (participant reported but did not perform) are
-  // excluded from scoring, averages, results and completion entirely.
   const activeCodeLetters = codeLetters.filter((c) => !c.isAbsent);
   const codeLetterIds = new Set(codeLetters.map((c) => c.id));
   for (const [codeLetterId, score] of Object.entries(
@@ -1920,7 +1889,6 @@ export async function submitJudgeScoresAction(
     }
   });
 
-  // No admin session here — judge auth is the stage-portal cookie + judgeId.
   await createAuditLog({
     action: "SUBMIT_JUDGE_SCORES",
     targetType: "JUDGEMENT_SCORE",
@@ -1951,20 +1919,27 @@ export async function submitJudgeScoresAction(
   }
 
   if (shouldComplete) {
-    await db
-      .update(judgementConfigTable)
-      .set({
-        status: "SUBMITTED",
-        endedAt: now,
-        endedBy: input.judgeId,
-        updatedAt: now,
-      } as any)
-      .where(eq(judgementConfigTable.id, config.id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(judgementConfigTable)
+        .set({
+          status: "COMPLETED",
+          endedAt: now,
+          endedBy: input.judgeId,
+          updatedAt: now,
+        } as any)
+        .where(eq(judgementConfigTable.id, config.id));
 
-    // recomputeConfigResults intentionally NOT called here — result rows are
-    // computed only when the admin force-completes the round. This keeps a
-    // missing/incomplete scoring policy from blocking the judge's submit, and
-    // lets the admin fix the policy before the round is finalised.
+      await recomputeConfigResults(
+        {
+          id: config.id,
+          programmeId: config.programmeId,
+          reportingSessionId: config.reportingSessionId,
+        },
+        now,
+        tx,
+      );
+    });
   }
 
   return { success: true as const, judgementComplete: shouldComplete };
@@ -2257,10 +2232,6 @@ export async function forceCompleteJudgementAction(configId: string) {
       } as any)
       .where(eq(judgementConfigTable.id, config.id));
 
-    // Recompute inside the same transaction so a missing scoring-policy rule
-    // rolls status back to SUBMITTED instead of leaving the round stuck in
-    // COMPLETED with no result rows. The admin can then fix the policy and
-    // click Complete again.
     await recomputeConfigResults(
       {
         id: config.id,

@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import type { PaginatedResponse } from "@/api/contracts/_shared";
 import type {
   CreateProgrammeInput,
   Programme,
@@ -22,6 +28,43 @@ export function useProgrammes(festivalId: string, categoryId?: string) {
       return handleApiResponse(response.data);
     },
     enabled: !!festivalId,
+    staleTime: STALE_TIME.standard,
+  });
+}
+
+export function useProgrammesPaginated(
+  festivalId: string,
+  params: {
+    page: number;
+    pageSize: number;
+    categoryId?: string;
+    search?: string;
+    type?: string;
+    stageType?: string;
+    status?: string;
+  },
+) {
+  return useQuery<PaginatedResponse<Programme>>({
+    queryKey: queryKeys.programmes.paginated(festivalId, params),
+    queryFn: async () => {
+      const searchParams = new URLSearchParams({
+        festivalId,
+        page: params.page.toString(),
+        pageSize: params.pageSize.toString(),
+      });
+      if (params.categoryId) searchParams.set("categoryId", params.categoryId);
+      if (params.search) searchParams.set("search", params.search);
+      if (params.type) searchParams.set("type", params.type);
+      if (params.stageType) searchParams.set("stageType", params.stageType);
+      if (params.status) searchParams.set("status", params.status);
+      
+      const response = await apiClient.get<
+        ApiResponse<PaginatedResponse<Programme>>
+      >(`/programmes?${searchParams}`);
+      return handleApiResponse(response.data);
+    },
+    enabled: !!festivalId,
+    placeholderData: keepPreviousData,
     staleTime: STALE_TIME.standard,
   });
 }

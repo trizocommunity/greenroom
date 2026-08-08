@@ -24,15 +24,23 @@ export const queryKeys = {
       ["programmes", festivalId, categoryId] as const,
     detail: (festivalId: string, programmeId: string) =>
       ["programmes", festivalId, programmeId] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["programmes", festivalId, "paginated", params] as const,
   },
   assignments: {
     all: (festivalId: string) => ["assignments", festivalId] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["assignments", festivalId, "paginated", params] as const,
   },
   judges: {
     all: (festivalId: string) => ["judges", festivalId] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["judges", festivalId, "paginated", params] as const,
   },
   members: {
     all: (festivalId: string) => ["members", festivalId] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["members", festivalId, "paginated", params] as const,
   },
   stages: {
     all: (festivalId: string) => ["stages", festivalId] as const,
@@ -47,10 +55,14 @@ export const queryKeys = {
   schedule: {
     all: (festivalId: string, typeFilter?: string) =>
       ["schedule", festivalId, typeFilter] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["schedule", festivalId, "paginated", params] as const,
   },
   results: {
     all: (festivalId: string, programmeId?: string) =>
       ["results", festivalId, programmeId] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["results", festivalId, "paginated", params] as const,
   },
   judgement: {
     dashboard: (festivalId: string) =>
@@ -70,9 +82,13 @@ export const queryKeys = {
   media: {
     all: (festivalId: string) => ["media", festivalId] as const,
     videos: (festivalId: string) => ["media", "videos", festivalId] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["media", festivalId, "paginated", params] as const,
   },
   news: {
     all: (festivalId: string) => ["news", festivalId] as const,
+    paginated: (festivalId: string, params: unknown) =>
+      ["news", festivalId, "paginated", params] as const,
   },
   exports: {
     all: (festivalId: string) => ["exports", festivalId] as const,
