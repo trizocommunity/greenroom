@@ -318,7 +318,7 @@ function toProgrammeResults(
       const display = assignment
         ? displayByAssignment.get(assignment.id)
         : undefined;
-      winner = display?.name ? `${display.name} and team` : "Team";
+      winner = display?.name ? `${display.name} and party` : "Party";
       chestNo = display?.chestNumber ?? null;
     } else {
       winner = assignment?.participant?.name || "Unknown";

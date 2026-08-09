@@ -1264,11 +1264,11 @@ export function AssignmentsClient({
                               <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-semibold text-heading">
                                   {canUseTeamLead && lead
-                                    ? `${lead.participantName} & Team`
-                                    : "Team"}
+                                    ? `${lead.participantName} & Party`
+                                    : "Party"}
                                 </h3>
                                 <span className="text-[11px] text-muted-foreground border-l border-border pl-2">
-                                  {row.groupName} · Team {row.teamNumber}
+                                  {row.groupName} · Party {row.teamNumber}
                                 </span>
                               </div>
                               {!isReadOnlyMode ? (

@@ -237,7 +237,7 @@ async function loadKeepTablesForFestival(
       const pid = leadPid ?? firstMemberByAssignment.get(a.id);
       participantNameByAssignmentId.set(
         a.id,
-        pid ? (participantNameById.get(pid) ?? "—") : "Team",
+        pid ? (participantNameById.get(pid) ?? "—") : "Party",
       );
     } else {
       participantNameByAssignmentId.set(a.id, "—");

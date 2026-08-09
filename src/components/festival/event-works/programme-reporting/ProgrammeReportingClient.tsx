@@ -528,8 +528,8 @@ export function ProgrammeReportingClient({
               return {
                 label:
                   lead?.teamNumber && lead.teamNumber > 0
-                    ? `${lead.groupName ?? "Group"} · Team ${lead.teamNumber}`
-                    : (lead?.groupName ?? "Team"),
+                    ? `${lead.groupName ?? "Group"} · Party ${lead.teamNumber}`
+                    : (lead?.groupName ?? "Party"),
                 group: lead?.groupName ?? "—",
                 code:
                   (firstParticipantId
@@ -578,8 +578,8 @@ export function ProgrammeReportingClient({
                 ? (spunAtByParticipantId.get(firstParticipantId) ?? null)
                 : null;
               const teamLabel = lead?.teamNumber
-                ? `Team ${lead.teamNumber}`
-                : "Team";
+                ? `Party ${lead.teamNumber}`
+                : "Party";
 
               return {
                 key: teamKey,
@@ -805,8 +805,8 @@ export function ProgrammeReportingClient({
           teamParticipantIds,
           nameColumn:
             teamNumber > 0
-              ? `${lead.groupName ?? "Group"} · Team ${teamNumber}`
-              : (lead.groupName ?? "Team"),
+              ? `${lead.groupName ?? "Group"} · Party ${teamNumber}`
+              : (lead.groupName ?? "Party"),
           groupName: lead.groupName,
           teamCell: teamNumber,
           isReported: members.some((m) => m.isReported),
