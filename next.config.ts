@@ -1,6 +1,40 @@
+import withSerwistInit from "@serwist/next";
 import type { NextConfig } from "next";
 
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  // No service worker outside production builds — avoids stale caches while
+  // iterating in development.
+  disable: process.env.NODE_ENV !== "production",
+  // Precache the offline fallback page so the service worker can serve it
+  // when a navigation fails while offline (wired up in src/app/sw.ts).
+  additionalPrecacheEntries: [
+    {
+      url: "/offline",
+      // Next.js renders this page identically on every build, so a static
+      // revision is fine; bump it if the offline page design changes.
+      revision: "1",
+    },
+  ],
+});
+
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        // The service worker must never be cached by the browser/CDN,
+        // otherwise updates to sw.js would not roll out.
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       {
@@ -22,4 +56,4 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pg"],
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

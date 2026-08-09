@@ -5,7 +5,10 @@ export const InviteMemberSchema = z
   .object({
     email: z.string().email("Please enter a valid email address"),
     role: memberRoleEnum,
-    stageIds: z.array(z.string()).default([]),
+    // No .default() here: the form always supplies stageIds via
+    // defaultValues, and a default would make zod's input type optional,
+    // which breaks the zodResolver/useForm type contract.
+    stageIds: z.array(z.string()),
   })
   .superRefine((data, ctx) => {
     if (data.role === "STAGE_MANAGER" && data.stageIds.length === 0) {
