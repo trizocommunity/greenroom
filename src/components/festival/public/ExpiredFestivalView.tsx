@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, FileDown } from "lucide-react";
+import { ArrowRight, FileDown, Trophy } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -13,18 +13,17 @@ interface ExpiredFestivalViewProps {
 }
 
 /**
- * The last page a festival ever shows. It has one job — say the festival is
- * over and hand over the result book — so it is a single centred column with
- * nothing else on it.
+ * Slim post-expiry landing: festival ended + entry points to results/standings
+ * (and optional result-book PDF). News/media/login are hidden elsewhere.
  */
 export function ExpiredFestivalView({
   festivalName,
-  festivalSlug: _festivalSlug,
+  festivalSlug,
   hasPdf,
   downloadPdfUrl,
 }: ExpiredFestivalViewProps) {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
+    <div className="relative flex min-h-[70vh] flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="bg-grid mask-radial-fade absolute inset-0" />
       </div>
@@ -47,14 +46,25 @@ export function ExpiredFestivalView({
         </h1>
 
         <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-          This festival has ended and its portal is now closed. Thank you to
-          everyone who took part — see you at the next edition.
+          This festival has ended. Results and standings remain available
+          below.
         </p>
 
-        {hasPdf && (
-          <div className="mt-9">
+        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <Button
+            className="h-12 rounded-full px-7 text-base font-medium"
+            asChild
+          >
+            <Link href={`/${festivalSlug}/results`}>
+              <Trophy className="mr-2 h-4 w-4" />
+              View results &amp; standings
+            </Link>
+          </Button>
+
+          {hasPdf && (
             <Button
-              className="h-12 rounded-full px-7 text-base font-medium shadow-primary-glow"
+              variant="outline"
+              className="h-12 rounded-full px-7 text-base font-medium"
               asChild
             >
               <Link
@@ -63,11 +73,11 @@ export function ExpiredFestivalView({
                 rel="noopener noreferrer"
               >
                 <FileDown className="mr-2 h-4 w-4" />
-                Download the result book
+                Download result book
               </Link>
             </Button>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="mt-10 border-t border-border pt-6">
           <Link

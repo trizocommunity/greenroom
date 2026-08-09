@@ -4,6 +4,8 @@ import {
   PublicSection,
   SectionHeader,
 } from "@/components/festival/public/PublicSection";
+import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getPublicNewsData } from "@/features/news/loaders/news-public.loader";
 import { PublicNewsView } from "./PublicNewsView";
 
@@ -11,6 +13,10 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const festival = await findFestivalBySlug(slug);
+  if (!festival || isFestivalExpired(festival)) {
+    return { title: "News Not Found" };
+  }
   const data = await getPublicNewsData(slug);
   if (!data) return { title: "News Not Found" };
   const title = `News - ${data.festival.name}`;
@@ -39,6 +45,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function NewsPage({ params }: Props) {
   const { slug } = await params;
+  const festival = await findFestivalBySlug(slug);
+  if (!festival || isFestivalExpired(festival)) return notFound();
+
   const data = await getPublicNewsData(slug);
   if (!data) return notFound();
 

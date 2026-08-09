@@ -4,6 +4,7 @@ import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { ParticipantNavbar } from "@/components/participant/ParticipantNavbar";
 import { UserTimezoneProviderClient } from "@/components/providers/user-timezone-provider-client";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
+import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
@@ -31,6 +32,10 @@ export default async function ParticipantLayout({
 
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
+
+  if (isFestivalExpired(festival) || !festival.publicSiteEnabled) {
+    notFound();
+  }
 
   const canViewProfile = isEnabled(festival.tier, "publicParticipantProfile");
   if (!canViewProfile) notFound();

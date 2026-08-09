@@ -1,7 +1,9 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ParticipantLoginClient } from "@/components/festival/public/ParticipantLoginClient";
-import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
+import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
 
 export default async function ParticipantLoginPage({
   params,
@@ -9,8 +11,14 @@ export default async function ParticipantLoginPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const festival = await findFestivalBySlug(slug);
+  const hdrs = await headers();
+  const institutionId = hdrs.get("x-institution-id");
+  const festival = await findFestivalBySlugForPublic(slug, institutionId);
   if (!festival) notFound();
+
+  if (isFestivalExpired(festival) || !festival.publicSiteEnabled) {
+    notFound();
+  }
 
   return (
     <AuthLayout

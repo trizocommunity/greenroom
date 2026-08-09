@@ -202,6 +202,10 @@ export const institution = pgTable(
     city: text(),
     sizeRange: text(),
     ownerId: text().notNull(),
+    /** Apex domain for branded festival hosts, e.g. "ahlussuffa.in". */
+    customDomain: text(),
+    /** Set when DNS TXT + wildcard CNAME verify succeeds. */
+    verifiedAt: tzTimestamp(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
@@ -209,6 +213,10 @@ export const institution = pgTable(
     uniqueIndex("institution_ownerId_key").using(
       "btree",
       table.ownerId.asc().nullsLast(),
+    ),
+    uniqueIndex("institution_customDomain_key").using(
+      "btree",
+      table.customDomain.asc().nullsLast(),
     ),
   ],
 );

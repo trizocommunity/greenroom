@@ -20,6 +20,7 @@ const withSerwist = withSerwistInit({
 });
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["ahlussuffa.test", "*.ahlussuffa.test"],
   async headers() {
     return [
       {

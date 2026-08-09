@@ -31,3 +31,8 @@ _Avoid_: Feature flag (too broad), FeatureService.
 **Effective Features**:
 The merged view of a tier’s configured features and any Super Admin overrides stored in system configuration.
 _Avoid_: Feature matrix, override map.
+
+**Custom Domain**:
+An institution apex hostname (e.g. `ahlussuffa.in`) whose wildcard subdomains serve festival public surfaces as `{festivalSlug}.{customDomain}`. Gated by plan feature `customDomain` (PRO). Requires DNS verify (`verifiedAt`); HTTPS attachment on Vercel is Phase 2 automation.
+_Avoid_: Custom URL (that is the Greenroom path `/{slug}` / slug branding), subdomain alone without the institution apex.
+

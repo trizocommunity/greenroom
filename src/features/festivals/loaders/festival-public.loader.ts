@@ -21,6 +21,8 @@ export type PublicFestivalData = {
     founderMessage: string | null;
     branding: any;
     status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
+    expiresAt: string | null;
+    resultPdfUrl: string | null;
     tier: "BASIC" | "STANDARD" | "PRO" | null;
     participantCreationStartDate: string | null;
     participantCreationDeadline: string | null;
@@ -62,6 +64,7 @@ export async function getPublicFestivalData(
       isLocked: true,
       createdAt: true,
       expiresAt: true,
+      resultPdfUrl: true,
       location: true,
       participantCreationStartDate: true,
       participantCreationDeadline: true,

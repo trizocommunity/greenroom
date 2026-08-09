@@ -7,6 +7,7 @@ import {
   ChevronUp,
   ClipboardList,
   Gavel,
+  Globe,
   Hash,
   ListTodo,
   Rocket,
@@ -25,6 +26,9 @@ import { OffStageProvisionDrawer } from "./OffStageProvisionDrawer";
 interface FestSetupWidgetProps {
   festivalSlug: string;
   festivalId: string;
+  /** Institutional PRO festivals show the soft "Verify custom subdomain" step. */
+  showVerifySubdomainStep?: boolean;
+  subdomainVerified?: boolean;
   setupStatus: {
     hasCategories: boolean;
     hasGroups: boolean;
@@ -42,6 +46,8 @@ interface FestSetupWidgetProps {
 export function FestSetupWidget({
   festivalSlug,
   festivalId,
+  showVerifySubdomainStep = false,
+  subdomainVerified = false,
   setupStatus,
 }: FestSetupWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -67,13 +73,19 @@ export function FestSetupWidget({
         setupStatus.hasParticipants &&
         setupStatus.hasChestNumbers &&
         setupStatus.hasOffStageTasks &&
+        (!showVerifySubdomainStep || subdomainVerified) &&
         setupStatus.isLaunched;
 
       if (allCompleted) {
         setIsExpanded(false);
       }
     }
-  }, [festivalSlug, setupStatus]);
+  }, [
+    festivalSlug,
+    setupStatus,
+    showVerifySubdomainStep,
+    subdomainVerified,
+  ]);
 
   const handleScoringClick = () => {
     localStorage.setItem(`visited_scoring_${festivalSlug}`, "true");
@@ -138,6 +150,18 @@ export function FestSetupWidget({
       isComplete: setupStatus.hasOffStageTasks,
       onClick: () => setOffStageDrawerOpen(true),
     },
+    ...(showVerifySubdomainStep
+      ? [
+          {
+            id: "verify_subdomain",
+            title: "Verify custom subdomain",
+            mobileTitle: "Verify branded domain DNS",
+            icon: Globe,
+            isComplete: subdomainVerified,
+            href: `/dashboard/${festivalSlug}/settings?tab=festival-live`,
+          },
+        ]
+      : []),
     {
       id: "launch",
       title: "Launch Festival",

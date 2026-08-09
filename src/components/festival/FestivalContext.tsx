@@ -37,6 +37,8 @@ export type FestivalPublicData = {
   programmeAssignmentDeadline: string | Date | null;
   /** Admin overrides for plan features (from Super Admin). When set, useFeature uses these instead of config. */
   effectiveFeatures?: Partial<Record<FeaturePath, boolean>>;
+  /** Public site past festival expiry — hide news/media/login. */
+  isExpired?: boolean;
 };
 
 const FestivalContext = createContext<FestivalPublicData | null>(null);

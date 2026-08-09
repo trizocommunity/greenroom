@@ -34,7 +34,7 @@ export function LaunchFestivalDrawer({
     // (e.g. enabling public site, changing status)
     onOpenChange(false);
     toast.success("Navigating to settings to configure launch...");
-    router.push(`/dashboard/${festivalSlug}/settings`);
+    router.push(`/dashboard/${festivalSlug}/settings?tab=festival-live`);
   };
 
   return (

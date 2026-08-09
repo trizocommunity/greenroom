@@ -3,7 +3,6 @@
 import {
   Gavel,
   Globe,
-  LayoutTemplate,
   Settings2,
   Sparkles,
 } from "lucide-react";
@@ -20,6 +19,15 @@ interface SettingsTabsProps {
   categories: any[];
   programmes: any[];
   publicUrl: string;
+  previewPath: string;
+  customDomain: {
+    institutionId: string | null;
+    customDomain: string | null;
+    verifiedAt: string | null;
+    isOwner: boolean;
+    isPro: boolean;
+    isInstitutional: boolean;
+  };
   canManageScoring: boolean;
   canManageFestivalLive: boolean;
 }
@@ -38,6 +46,8 @@ export function SettingsTabs({
   categories,
   programmes,
   publicUrl,
+  previewPath,
+  customDomain,
   canManageScoring,
   canManageFestivalLive,
 }: SettingsTabsProps) {
@@ -153,6 +163,8 @@ export function SettingsTabs({
             festivalSlug={festival.slug}
             publicSiteEnabled={festival.publicSiteEnabled ?? false}
             publicUrl={publicUrl}
+            previewPath={previewPath}
+            customDomain={customDomain}
             onExit={() => handleTabChange("general")}
           />
         )}
