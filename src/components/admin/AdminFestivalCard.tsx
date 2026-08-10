@@ -77,12 +77,12 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
               {format(new Date(festival.createdAt), "MMM yyyy")}
             </div>
           </div>
-          <CardTitle className="text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors duration-300 truncate pr-2">
+          <CardTitle className="text-xl sm:text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors duration-300 truncate pr-2">
             {festival.name}
           </CardTitle>
-          <div className="text-xs font-medium text-muted-foreground/80 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-            {festival.user.email}
+          <div className="text-xs font-medium text-muted-foreground/80 flex items-center gap-1.5 min-w-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
+            <span className="truncate">{festival.user.email}</span>
           </div>
         </div>
 
@@ -91,7 +91,7 @@ export function AdminFestivalCard({ festival }: AdminFestivalCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-300"
+              className="h-9 w-9 shrink-0 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-300"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>

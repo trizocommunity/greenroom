@@ -47,7 +47,7 @@
 - **Import/Export:** Participant import, Participant bulk upload, Programme bulk upload, PDF export, Excel export, Exports.
 - **Landing & Content:** Basic public page, Full landing page, Landing page builder, Media, News.
 - **Certificates & QR:** QR Codes, Auto certificates, Custom certificate templates, Bulk certificate generation.
-- **Branding:** Logo upload, Custom URL, Custom domain, Custom colors, White-label.
+- **Branding:** Logo upload, Custom URL, **Custom domain** (wildcard `{slug}.{apex}` — see [CUSTOM_DOMAIN.md](../features/CUSTOM_DOMAIN.md)), Custom colors, White-label.
 - **Communication:** Email notifications, WhatsApp support, SMS notifications, Bulk notifications.
 - **Reporting:** Advanced analytics, Custom reports.
 - **Advanced:** API access, Webhooks, Live scoreboard, Live results, Multi-festival management.
@@ -73,8 +73,8 @@ PRO adds (or expands) the following over STANDARD:
 | Reporting | Advanced analytics | âœ… | âœ… |
 | Reporting | Custom reports | âœ… | âœ… |
 | Certificates | Custom certificate templates | âœ… | âœ… |
-| Branding | Custom domain | âœ… | âœ… |
-| Branding | White-label | âœ… | âœ… |
+| Branding | Custom domain | ❌ (path `/{slug}` only) | ✅ `customDomain` |
+| Branding | White-label | ✅ | ✅ |
 | Communication | SMS notifications | âœ… | âœ… |
 | Communication | Bulk notifications | âœ… | âœ… |
 | Advanced | API access | âŒ | âœ… |
@@ -83,7 +83,7 @@ PRO adds (or expands) the following over STANDARD:
 | Advanced | Multi-festival management | âœ… | âœ… |
 | Support | Priority support | priority (4h) | priority (4h) |
 
-> Note: Current `TIER_CONFIG` enables most PRO-marketed features for STANDARD as well. The only features PRO truly adds over STANDARD in the current code are **API access** and **webhooks**.
+> Note: Current `TIER_CONFIG` enables many PRO-marketed features for STANDARD as well. Features PRO truly owns in code include **API access**, **webhooks**, and **custom domain** (`features.customDomain`: STANDARD `false`, PRO `true`).
 
 ---
 
@@ -111,7 +111,21 @@ PRO adds (or expands) the following over STANDARD:
 
 ### 4.4 Public landing page
 
-- **Logic:** Public festival page `src/app/(festivalPublic)/[slug]/page.tsx` chooses full landing page builder when tier has `landingPageBuilder: true` (PRO); PRO users can customize their public festival URL with custom domain and white-label options.
+- **Logic:** Public festival page `src/app/(festivalPublic)/[slug]/page.tsx` chooses full landing page builder when tier has `landingPageBuilder: true` (PRO); PRO institutional users can configure a **custom domain** on Festival Live (see below).
+
+### 4.5 Custom domain (Phase 1 shipped · Phase 2 planned)
+
+| Item | Detail |
+|------|--------|
+| Flag | `features.customDomain` (PRO `true`) |
+| Doc | [DOCS/features/CUSTOM_DOMAIN.md](../features/CUSTOM_DOMAIN.md) |
+| UI | Settings → Launch Website — apex save, DNS instructions, Verify |
+| APIs | `PUT/POST …/profile/institution/custom-domain[+ /verify]` |
+| Runtime | `src/proxy.ts` rewrite + path→subdomain redirect; 60s domain cache |
+| Phase 1 | DNS TXT + wildcard CNAME verify → `institution.verifiedAt` |
+| Phase 2 | Vercel Domains API auto-attach + TLS wait (not built) |
+
+Enforcement uses `isEnabled(tier, "customDomain")` (not a bare tier string check), so Super Admin overrides apply.
 
 ---
 
@@ -131,24 +145,25 @@ PRO adds (or expands) the following over STANDARD:
 | Role-based access | `src/features/team/services/team.service.ts`, `src/features/members/services/member.service.ts` |
 | API endpoints | `src/app/api/` |
 | Webhooks | `src/features/festivals/services/public-api-access.service.ts` |
+| Custom domain | `src/features/institutions/**`, `src/proxy.ts`, [CUSTOM_DOMAIN.md](../features/CUSTOM_DOMAIN.md) |
 
 ---
 
 ## 6. User Journey (Summary)
 
-1. **Purchase:** User selects PRO (â‚¹6,000) â†’ payment â†’ festival created with 90-day validity.
-2. **Setup:** Configure landing page builder â†’ import participants (bulk CSV) â†’ create programmes â†’ assign team members with roles.
-3. **Configuration:** Set up custom domain, white-label branding, schedule with sessions, QR codes, media/news content.
-4. **Event:** Configure scoring â†’ enter scores per programme â†’ view live results and leaderboard â†’ generate bulk certificates.
-5. **Post-event:** Export advanced analytics and custom reports â†’ share via API/webhooks.
+1. **Purchase:** User selects PRO (₹6,000) → payment → festival created with 90-day validity.
+2. **Setup:** Configure landing page builder → import participants (bulk CSV) → create programmes → assign team members with roles.
+3. **Configuration:** (Institutional) set custom domain + DNS verify → white-label branding → schedule with sessions → QR codes → media/news.
+4. **Event:** Configure scoring → enter scores per programme → view live results and leaderboard → generate bulk certificates.
+5. **Post-event:** Export advanced analytics and custom reports → share via API/webhooks. Public results/standings remain after expiry; news/media/login/portal blocked.
 6. **Expiry:** After 90 days, access redirects to profile; tier-aware cleanup may delete PRO festival data.
 
 ---
 
 ## 7. Related Documentation
 
-- [TIER.md](../TIER.md) - Unified tier comparison
-- [BASIC_PLAN.md](./BASIC_PLAN.md) - Entry-level plan
-- [STANDARD_PLAN.md](./STANDARD_PLAN.md) - Mid-tier plan
+- [CUSTOM_DOMAIN.md](../features/CUSTOM_DOMAIN.md) — Wildcard custom domain Phase 1 + Phase 2
+- [BASIC_PLAN.md](./BASIC_PLAN.md) — Entry-level plan
+- [STANDARD_PLAN.md](./STANDARD_PLAN.md) — Mid-tier plan
 
 This document reflects the current architecture: single source for PRO plan spec and enforcement.

@@ -121,6 +121,7 @@ export default async function AssignProgrammesPage({
           id: p.id,
           name: p.name,
           type: p.type as any,
+          stageType: p.stageType as any,
           status: p.status as any,
           maxTeamsPerGroup: p.maxTeamsPerGroup,
           maxParticipantsPerTeam: p.maxParticipantsPerTeam,

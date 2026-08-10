@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
-  CodeLettersReset,
+  CheckoutCompleted,
   ParticipantMarked,
   ParticipantUnmarked,
   ReportingClosed,
@@ -9,7 +9,6 @@ import type {
   ReportingReset,
   ReportingStarted,
   ReportingUnlockedForScheduleChange,
-  SpinCodesAssigned,
 } from "./reporting-events";
 
 export type ReportingStatus =
@@ -49,6 +48,11 @@ export type CodeLetter = {
   code: string;
   issuedAt: string;
   issuedBy: string | null;
+  /** Checkout scan order of the participant this tile belongs to. */
+  queuePosition: number | null;
+  /** null while the tile is still unscratched. */
+  revealedAt: string | null;
+  revealedBy: string | null;
   recipients: Array<{
     participantId: string;
     assignmentMemberId: string | null;
@@ -69,6 +73,11 @@ export type ReportingSessionState = {
   startedBy: string | null;
   endedAt: string | null;
   endedBy: string | null;
+  /**
+   * Set once, when checkout (step 1) completes and code letters are generated.
+   * Gates the scratch step and lets the client resume after a refresh.
+   */
+  checkoutCompletedAt: string | null;
   programmeType: ProgrammeType;
   programmeStatus: string;
   programmeName: string;
@@ -136,6 +145,10 @@ export class ReportingSession {
 
   get endedBy(): string | null {
     return this.state.endedBy;
+  }
+
+  get checkoutCompletedAt(): string | null {
+    return this.state.checkoutCompletedAt;
   }
 
   get reportedParticipants(): readonly ReportedParticipant[] {
@@ -459,27 +472,8 @@ export class ReportingSession {
     if (this.state.status !== "IN_PROGRESS") {
       throw new Error("Only in-progress reporting can be submitted");
     }
-
-    const reportedWithParticipant = this.state.reportedParticipants.filter(
-      (p): p is ReportedParticipant & { participantId: string } =>
-        Boolean(p.participantId),
-    );
-
-    if (reportedWithParticipant.length > 0) {
-      const participantIdsWithCode = new Set<string>();
-      for (const letter of this.state.codeLetters) {
-        for (const recipient of letter.recipients) {
-          participantIdsWithCode.add(recipient.participantId);
-        }
-      }
-
-      for (const reported of reportedWithParticipant) {
-        if (!participantIdsWithCode.has(reported.participantId)) {
-          throw new Error(
-            "Assign a code letter to every reported participant (spin for each present row) before submitting.",
-          );
-        }
-      }
+    if (!this.state.checkoutCompletedAt) {
+      throw new Error("Complete checkout before submitting reporting.");
     }
 
     const endedAt = effectiveEndedAt ?? new Date().toISOString();
@@ -512,6 +506,7 @@ export class ReportingSession {
     this.state.startedBy = null;
     this.state.endedAt = now;
     this.state.endedBy = actorName;
+    this.state.checkoutCompletedAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 
@@ -541,6 +536,7 @@ export class ReportingSession {
     this.state.startedBy = null;
     this.state.endedAt = now;
     this.state.endedBy = actorName;
+    this.state.checkoutCompletedAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 
@@ -554,98 +550,50 @@ export class ReportingSession {
     });
   }
 
-  assignCodesWithSpin(
-    codeAssignments: Array<{
-      teamNumber: number | null;
-      groupId: string | null;
-      participantId: string | null;
-      code: string;
-    }>,
+  /**
+   * Ends checkout (step 1) and opens scratching (step 2).
+   *
+   * The caller supplies one entry per scratchable unit, already shuffled and
+   * already stamped with its checkout-order queue position. The aggregate only
+   * records that the gate has been crossed; the read side turns the event into
+   * code letter rows.
+   */
+  completeCheckout(
     actorName: string,
+    shuffledCodeAssignments: Array<{
+      code: string;
+      queuePosition: number;
+      participantId: string | null;
+      groupId: string | null;
+      teamNumber: number | null;
+    }>,
   ): void {
     if (this.state.isLocked) {
-      throw new Error("Reporting is already locked");
+      throw new Error("Reporting is locked");
     }
     if (this.state.status !== "IN_PROGRESS") {
-      throw new Error("Only in-progress reporting can be submitted");
+      throw new Error("Only in-progress reporting can complete checkout");
+    }
+    if (this.state.checkoutCompletedAt) {
+      throw new Error("Checkout has already been completed");
+    }
+    if (shuffledCodeAssignments.length === 0) {
+      throw new Error(
+        "Check out at least one participant before completing checkout",
+      );
     }
 
-    const now = new Date().toISOString();
-
-    for (const assignment of codeAssignments) {
-      const recipients: Array<{
-        participantId: string;
-        assignmentMemberId: string | null;
-      }> = [];
-
-      if (assignment.participantId) {
-        recipients.push({
-          participantId: assignment.participantId,
-          assignmentMemberId: null,
-        });
-      } else if (
-        this.state.programmeType === "GROUP" &&
-        assignment.groupId &&
-        assignment.teamNumber != null
-      ) {
-        const teamMembers = this.state.reportedParticipants.filter(
-          (p) =>
-            p.groupId === assignment.groupId &&
-            p.teamNumber === assignment.teamNumber &&
-            p.participantId,
-        );
-        for (const member of teamMembers) {
-          if (member.participantId) {
-            recipients.push({
-              participantId: member.participantId,
-              assignmentMemberId: member.assignmentMemberId,
-            });
-          }
-        }
-      }
-
-      if (recipients.length > 0) {
-        this.state.codeLetters.push({
-          id: randomUUID(),
-          code: assignment.code,
-          issuedAt: now,
-          issuedBy: actorName,
-          recipients,
-        });
-      }
-    }
+    this.state.checkoutCompletedAt = new Date().toISOString();
 
     this.record({
-      type: "SPIN_CODES_ASSIGNED",
+      type: "CHECKOUT_COMPLETED",
       festivalId: this.state.festivalId,
       reportingSessionId: this.state.id,
       programmeId: this.state.programmeId,
       programmeType: this.state.programmeType,
       actorName,
-      codeAssignments,
-    });
-  }
-
-  resetSpinCodeLetters(actorName: string): void {
-    if (this.state.isLocked) {
-      throw new Error(
-        "Cannot reset code letters for a closed reporting session",
-      );
-    }
-    if (this.state.status !== "IN_PROGRESS") {
-      throw new Error(
-        "Code letters can only be reset while reporting is in progress",
-      );
-    }
-
-    this.state.codeLetters = [];
-
-    this.record({
-      type: "CODE_LETTERS_RESET",
-      festivalId: this.state.festivalId,
-      reportingSessionId: this.state.id,
-      programmeId: this.state.programmeId,
-      actorName,
+      candidateCount: shuffledCodeAssignments.length,
+      shuffledCodeAssignments,
     });
   }
 
@@ -656,6 +604,7 @@ export class ReportingSession {
     this.state.startedBy = null;
     this.state.endedAt = null;
     this.state.endedBy = null;
+    this.state.checkoutCompletedAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 
@@ -673,6 +622,11 @@ export class ReportingSession {
     }
     if (this.state.status !== "IN_PROGRESS") {
       throw new Error("Reporting must be in progress to mark participants");
+    }
+    if (this.state.checkoutCompletedAt) {
+      throw new Error(
+        "Checkout is complete — attendance can no longer be changed",
+      );
     }
   }
 

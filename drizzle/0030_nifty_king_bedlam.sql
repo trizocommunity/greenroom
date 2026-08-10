@@ -1,0 +1,1 @@
+ALTER TABLE "institution" ADD COLUMN "httpsReadyAt" timestamp(3) with time zone;

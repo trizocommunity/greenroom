@@ -303,7 +303,7 @@ export async function getParticipantOngoingProgrammesAction(
       programme: { columns: { id: true, name: true, status: true } },
       stage: { columns: { id: true, name: true } },
       programmeCodeLetters: {
-        where: sql`EXISTS (SELECT 1 FROM programme_code_letter_recipient WHERE code_letter_id = programme_code_letter.id AND participant_id = ${participantId})`,
+        where: sql`revealed_at IS NOT NULL AND EXISTS (SELECT 1 FROM programme_code_letter_recipient WHERE code_letter_id = programme_code_letter.id AND participant_id = ${participantId})`,
         orderBy: [desc(sql`issued_at`)],
         limit: 8,
         with: {
@@ -495,22 +495,19 @@ export async function getReportingStatsAction(
   return { success: true, data: stats };
 }
 
-export async function assignCodeLettersWithSpinAction(
+/**
+ * Step 1 → step 2 of the reporting drawer. Closes checkout, deals every
+ * checked-out unit a shuffled code letter, and opens the scratch grid.
+ */
+export async function completeCheckoutAction(
   festivalId: string,
   reportingSessionId: string,
-  codeAssignments: Array<{
-    teamNumber: number | null;
-    groupId?: string | null;
-    participantId?: string | null;
-    code: string;
-  }>,
 ) {
   const stageId = await getStageIdForReportingSession(reportingSessionId);
   const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
 
-  const result = await ProgrammeReportingService.assignCodesWithSpin(
+  const result = await ProgrammeReportingService.completeCheckout(
     reportingSessionId,
-    codeAssignments,
     actorName,
   );
   await createAuditLog({
@@ -519,7 +516,7 @@ export async function assignCodeLettersWithSpinAction(
     targetId: reportingSessionId,
     metadata: {
       festivalId,
-      count: codeAssignments.length,
+      count: result.tileCount,
       programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
     },
   }).catch((err) => console.error("[AuditLog] ISSUE_CODE_LETTER failed", err));
@@ -528,16 +525,49 @@ export async function assignCodeLettersWithSpinAction(
   return { success: true, data: result };
 }
 
-export async function resetSpinCodeLettersAction(
+/** Scratches a single tile and returns the letter underneath it. */
+export async function revealScratchCodeAction(
+  festivalId: string,
+  reportingSessionId: string,
+  codeLetterId: string,
+) {
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
+
+  const result = await ProgrammeReportingService.revealScratchCode(
+    reportingSessionId,
+    codeLetterId,
+    actorName,
+  );
+  await revalidateProgrammeReporting(festivalId, "reporting");
+
+  return { success: true, data: result };
+}
+
+/** Escape hatch: reveals every tile still unscratched. */
+export async function revealAllRemainingAction(
   festivalId: string,
   reportingSessionId: string,
 ) {
   const stageId = await getStageIdForReportingSession(reportingSessionId);
   const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
-  const result = await ProgrammeReportingService.resetSpinCodeLetters(
+
+  const result = await ProgrammeReportingService.revealAllRemaining(
     reportingSessionId,
     actorName,
   );
+  await createAuditLog({
+    action: "ISSUE_CODE_LETTER",
+    targetType: "REPORTING_SESSION",
+    targetId: reportingSessionId,
+    metadata: {
+      festivalId,
+      count: result.revealedCount,
+      revealedAll: true,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
+  }).catch((err) => console.error("[AuditLog] ISSUE_CODE_LETTER failed", err));
   await revalidateProgrammeReporting(festivalId, "reporting");
+
   return { success: true, data: result };
 }

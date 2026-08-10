@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { ExploreNav } from "@/components/festival/landing/ExploreNav";
 import { HeroSection } from "@/components/festival/landing/HeroSection";
@@ -7,6 +8,10 @@ import { MediaPreview } from "@/components/festival/landing/MediaPreview";
 import { NewsPreview } from "@/components/festival/landing/NewsPreview";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { TeamStandingsSection } from "@/components/festival/landing/TeamStandingsSection";
+import { ExpiredFestivalView } from "@/components/festival/public/ExpiredFestivalView";
+import { db } from "@/core/database/client";
+import { result as resultTable } from "@/core/database/schema";
+import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
 import {
   getPublicProgrammeResults,
@@ -56,6 +61,28 @@ export default async function FestivalPage({
   }
 
   const { festival, event } = data;
+
+  if (isFestivalExpired(festival)) {
+    const [countResult] = await db
+      .select({ count: sql`count(*)` })
+      .from(resultTable)
+      .where(eq(resultTable.festivalId, festival.id));
+    const count = Number(countResult.count);
+    const hasResults = count > 0;
+    const hasPdf = !!festival.resultPdfUrl || hasResults;
+    const downloadPdfUrl = festival.resultPdfUrl
+      ? festival.resultPdfUrl
+      : `/api/festivals/${festival.slug}/expired-results-pdf`;
+
+    return (
+      <ExpiredFestivalView
+        festivalName={festival.name}
+        festivalSlug={festival.slug}
+        hasPdf={hasPdf}
+        downloadPdfUrl={downloadPdfUrl}
+      />
+    );
+  }
 
   // Check Feature Access
   const fullLandingPage = isEnabled(festival.tier, "fullLandingPage");

@@ -1,6 +1,5 @@
 import { Heading, Text } from "@react-email/components";
 import { EmailButton } from "../components/Button";
-import { EmailCopyableLink } from "../components/CopyableLink";
 import { EmailFooter } from "../components/Footer";
 import { BrandedLayout } from "../components/Layout";
 import { EmailWordmark } from "../components/Wordmark";
@@ -42,11 +41,6 @@ export function FestivalInvitationEmail({
         <span className="text-fg font-semibold">{role}</span>.
       </Text>
       <EmailButton href={url}>Accept Invitation</EmailButton>
-      <EmailCopyableLink
-        url={url}
-        helper="Or copy and share this invitation:"
-        shareSubject={`Invitation to ${festivalName} on Greenroom`}
-      />
       <EmailFooter
         note={`This invitation expires in ${expiresInHours} hours. If you weren't expecting this, you can ignore the email.`}
       />

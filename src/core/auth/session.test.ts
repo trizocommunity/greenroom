@@ -40,6 +40,7 @@ vi.mock("@/core/database/schema", () => ({
 }));
 
 import {
+  appendSetCookieHeaders,
   createSession,
   decrypt,
   deleteSession,
@@ -155,7 +156,9 @@ describe("createSession — backwards-compat shim", () => {
   it("looks up the user by id and delegates to signInUserByEmail", async () => {
     mockUserFindFirst.mockResolvedValueOnce({ email: "alice@example.com" });
     mockCreateVerificationOTP.mockResolvedValueOnce("1234");
-    mockSignInEmailOTP.mockResolvedValueOnce({ token: "session-token" });
+    mockSignInEmailOTP.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
 
     await createSession("user-1", "USER");
 
@@ -175,10 +178,15 @@ describe("createSession — backwards-compat shim", () => {
 describe("signInUserByEmail — silent session mint (ISSUE-42)", () => {
   it("mints an OTP via createVerificationOTP and consumes it via signInEmailOTP", async () => {
     mockCreateVerificationOTP.mockResolvedValueOnce("9876");
-    mockSignInEmailOTP.mockResolvedValueOnce({ token: "session-token" });
+    const fakeResponse = new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Set-Cookie": "better-auth.session_token=abc; Path=/" },
+    });
+    mockSignInEmailOTP.mockResolvedValueOnce(fakeResponse);
 
-    await signInUserByEmail("  Bob@Example.COM ");
+    const result = await signInUserByEmail("  Bob@Example.COM ");
 
+    expect(result).toBe(fakeResponse);
     expect(mockCreateVerificationOTP).toHaveBeenCalledTimes(1);
     const createBody = mockCreateVerificationOTP.mock.calls[0]?.[0]?.body;
     expect(createBody).toEqual({
@@ -187,11 +195,12 @@ describe("signInUserByEmail — silent session mint (ISSUE-42)", () => {
     });
 
     expect(mockSignInEmailOTP).toHaveBeenCalledTimes(1);
-    const signInBody = mockSignInEmailOTP.mock.calls[0]?.[0]?.body;
-    expect(signInBody).toEqual({
+    const signInArgs = mockSignInEmailOTP.mock.calls[0]?.[0];
+    expect(signInArgs?.body).toEqual({
       email: "bob@example.com",
       otp: "9876",
     });
+    expect(signInArgs?.asResponse).toBe(true);
   });
 
   it("throws when createVerificationOTP returns an unexpected shape", async () => {
@@ -201,10 +210,43 @@ describe("signInUserByEmail — silent session mint (ISSUE-42)", () => {
       /unexpected shape/,
     );
   });
+
+  it("throws when signInEmailOTP returns a non-OK response", async () => {
+    mockCreateVerificationOTP.mockResolvedValueOnce("9876");
+    mockSignInEmailOTP.mockResolvedValueOnce(
+      new Response("nope", { status: 401 }),
+    );
+
+    await expect(signInUserByEmail("bob@example.com")).rejects.toThrow(
+      /signInEmailOTP failed/,
+    );
+  });
 });
 
 describe("decrypt — deprecated", () => {
   it("returns null (the JWT path is gone)", async () => {
     await expect(decrypt("any-token")).resolves.toBeNull();
+  });
+});
+
+describe("appendSetCookieHeaders", () => {
+  it("forwards getSetCookie() values onto the target response", () => {
+    const target = {
+      headers: { append: vi.fn() },
+    };
+    const source = new Headers();
+    // Undici/Node Headers exposes getSetCookie for multi Set-Cookie.
+    const withCookies = source as Headers & {
+      getSetCookie: () => string[];
+    };
+    withCookies.getSetCookie = () => [
+      "a=1; Path=/",
+      "b=2; Path=/",
+    ];
+
+    appendSetCookieHeaders(target as never, withCookies);
+
+    expect(target.headers.append).toHaveBeenCalledWith("Set-Cookie", "a=1; Path=/");
+    expect(target.headers.append).toHaveBeenCalledWith("Set-Cookie", "b=2; Path=/");
   });
 });

@@ -36,6 +36,8 @@ export type ReportingBoardItem = {
     updatedAt?: string | null;
     windowEndsAt: Date | null;
     isLocked: boolean;
+    /** Set when checkout closed; gates step 2 of the drawer. */
+    checkoutCompletedAt?: string | null;
     programmeReportedParticipants: Array<{
       assignmentId: string;
       participantId: string | null;
@@ -45,11 +47,29 @@ export type ReportingBoardItem = {
       reportedBy: string | null;
     }>;
     programmeCodeLetters: Array<{
+      id?: string;
       code: string;
       issuedAt?: string;
+      /** Checkout scan order — drives whose turn it is to scratch. */
+      queuePosition?: number | null;
+      /** null while the tile is still unscratched. */
+      revealedAt?: string | null;
+      revealedBy?: string | null;
       programmeCodeLetterRecipients: Array<{ participantId: string }>;
     }>;
   } | null;
+};
+
+/** One tile in the scratch grid. `code` is withheld until revealed. */
+export type ScratchTile = {
+  codeLetterId: string;
+  queuePosition: number;
+  /** Present only once the tile has been scratched. */
+  code: string | null;
+  revealedAt: string | null;
+  label: string;
+  subLabel: string | null;
+  participantIds: string[];
 };
 
 export type AssignmentWithReported = ProgrammeReportingAssignmentRow & {

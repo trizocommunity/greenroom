@@ -12,13 +12,15 @@ export default async function SuperAdminDashboard() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-3xl font-semibold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+          Dashboard
+        </h2>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Overview of your platform statistics
         </p>
       </div>
 
-      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+      <div className="grid auto-rows-min gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -69,7 +71,7 @@ export default async function SuperAdminDashboard() {
         </Card>
 
         {/* Placeholder for future charts/grids */}
-        <div className="aspect-video rounded-2xl border border-dashed border-border bg-muted/30 md:col-span-3 min-h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+        <div className="aspect-video rounded-2xl border border-dashed border-border bg-muted/30 sm:col-span-2 lg:col-span-3 min-h-[200px] sm:min-h-[300px] flex items-center justify-center text-center px-4 text-muted-foreground text-sm">
           Analytics charts placeholder
         </div>
       </div>

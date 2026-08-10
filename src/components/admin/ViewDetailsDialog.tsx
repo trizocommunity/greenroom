@@ -67,7 +67,9 @@ export function ViewDetailsDialog({
                       {key.replace(/([A-Z])/g, " $1").trim()}
                     </h4>
                     <div className="rounded-md border bg-muted/50 p-3 font-mono text-xs overflow-auto max-h-60">
-                      <pre>{JSON.stringify(value, null, 2)}</pre>
+                      <pre className="whitespace-pre-wrap wrap-break-word">
+                        {JSON.stringify(value, null, 2)}
+                      </pre>
                     </div>
                   </div>
                 );
@@ -76,12 +78,12 @@ export function ViewDetailsDialog({
               return (
                 <div
                   key={key}
-                  className="grid grid-cols-3 gap-4 items-start pb-4 border-b last:border-0 last:pb-0"
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 items-start pb-4 border-b last:border-0 last:pb-0"
                 >
                   <h4 className="text-sm font-medium text-muted-foreground capitalize">
                     {key.replace(/([A-Z])/g, " $1").trim()}
                   </h4>
-                  <div className="col-span-2 text-sm font-medium wrap-break-word">
+                  <div className="sm:col-span-2 text-sm font-medium wrap-break-word">
                     {formatValue(key, value)}
                   </div>
                 </div>

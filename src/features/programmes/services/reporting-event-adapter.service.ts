@@ -62,9 +62,8 @@ export const ReportingEventAdapter = {
       }
 
       case "REPORTING_CLOSED": {
-        const participantCodes =
-          await CodeLetterAdapter.onReportingClosed(event);
-
+        // Code letters were generated and revealed during the drawer flow, so
+        // closing only announces the transition.
         await NotificationService.dispatch({
           eventType: "REPORTING_CLOSED",
           festivalId: event.festivalId,
@@ -106,6 +105,9 @@ export const ReportingEventAdapter = {
         });
 
         const isGroup = event.programmeType === "GROUP";
+        const participantCodes = await CodeLetterAdapter.listRevealedCodes(
+          event.reportingSessionId,
+        );
         const notifyByParticipant = new Map<string, string>();
         for (const { participantId, code } of participantCodes) {
           notifyByParticipant.set(participantId, code);
@@ -133,6 +135,8 @@ export const ReportingEventAdapter = {
       }
 
       case "REPORTING_RESET": {
+        await CodeLetterAdapter.onReportingReset(event);
+
         await NotificationService.dispatch({
           eventType: "PROGRAMME_STATUS_CHANGED",
           festivalId: event.festivalId,
@@ -266,47 +270,29 @@ export const ReportingEventAdapter = {
         return { participantCodes: [] };
       }
 
-      case "SPIN_CODES_ASSIGNED": {
-        const participantCodes =
-          await CodeLetterAdapter.onSpinCodesAssigned(event);
+      case "CHECKOUT_COMPLETED": {
+        await CodeLetterAdapter.onCheckoutCompleted(event);
 
-        for (const { participantId, code } of participantCodes) {
-          await NotificationService.dispatch({
-            eventType: "CODE_LETTER_ISSUED",
-            festivalId: event.festivalId,
-            targets: { participantIds: [participantId] },
-            context: {
-              title: "Code letter issued",
-              body: `Your programme reporting code letter is ${code}.`,
-              payload: {
-                reportingSessionId: event.reportingSessionId,
-                programmeId: event.programmeId,
-                codeLetter: code,
-              },
-            },
-            channels: ["IN_APP"],
-          });
-        }
-        return { participantCodes };
-      }
-
-      case "CODE_LETTERS_RESET": {
-        await CodeLetterAdapter.onCodeLettersReset(event);
-
+        // Deliberately no CODE_LETTER_ISSUED notifications here: the codes
+        // exist but are still under the scratch surface. Telling participants
+        // their letter now would defeat the draw. They learn it by scratching.
         await NotificationService.dispatch({
-          eventType: "REPORTING_RESET",
+          eventType: "REPORTING_PARTICIPANT_MARKED",
           festivalId: event.festivalId,
           targets: {
             programmeId: event.programmeId,
             includeTeamLeadersForProgramme: true,
           },
           context: {
-            title: "Code letters reset",
-            body: "All issued code letters were cleared. Stage manager will re-spin and assign fresh letters.",
+            title: "Checkout complete",
+            body:
+              event.programmeType === "GROUP"
+                ? "Checkout has closed. Each team will now draw its code letter."
+                : "Checkout has closed. Reported participants will now draw their code letters.",
             payload: {
               reportingSessionId: event.reportingSessionId,
               programmeId: event.programmeId,
-              actionBy: event.actorName,
+              candidateCount: event.candidateCount,
             },
           },
           channels: ["IN_APP"],

@@ -35,10 +35,10 @@ export default async function SuperAdminAnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-semibold tracking-tight">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
           User behaviour analytics
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-sm sm:text-base text-muted-foreground">
           Purchase history, login activity, and category preferences. Charts
           refresh every minute with live data.
         </p>

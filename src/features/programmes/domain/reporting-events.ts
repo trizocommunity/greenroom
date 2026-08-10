@@ -6,8 +6,7 @@ export type ReportingDomainEvent =
   | ReportingUnlockedForScheduleChange
   | ParticipantMarked
   | ParticipantUnmarked
-  | SpinCodesAssigned
-  | CodeLettersReset;
+  | CheckoutCompleted;
 
 export type ReportingStarted = {
   type: "REPORTING_STARTED";
@@ -80,25 +79,29 @@ export type ParticipantUnmarked = {
   actorName: string;
 };
 
-export type SpinCodesAssigned = {
-  type: "SPIN_CODES_ASSIGNED";
+/**
+ * Raised when the stage manager finishes checkout (step 1 of the reporting
+ * drawer). This is the moment every code letter for the session is generated.
+ *
+ * Each entry is one scratchable tile — one participant for INDIVIDUAL
+ * programmes, one team for GROUP. `code` is already shuffled by the caller, so
+ * the letter a unit ends up with is unrelated to when they checked in.
+ * `queuePosition` is checkout scan order and drives whose turn it is to
+ * scratch; it deliberately does NOT correlate with `code`.
+ */
+export type CheckoutCompleted = {
+  type: "CHECKOUT_COMPLETED";
   festivalId: string;
   reportingSessionId: string;
   programmeId: string;
   programmeType: "INDIVIDUAL" | "GROUP";
   actorName: string;
-  codeAssignments: Array<{
-    teamNumber: number | null;
-    groupId: string | null;
-    participantId: string | null;
+  candidateCount: number;
+  shuffledCodeAssignments: Array<{
     code: string;
+    queuePosition: number;
+    participantId: string | null;
+    groupId: string | null;
+    teamNumber: number | null;
   }>;
-};
-
-export type CodeLettersReset = {
-  type: "CODE_LETTERS_RESET";
-  festivalId: string;
-  reportingSessionId: string;
-  programmeId: string;
-  actorName: string;
 };

@@ -56,6 +56,7 @@ STANDARD adds (or expands) the following over BASIC:
 | Landing & Content | News | âŒ | âœ… |
 | Branding | Custom URL | âŒ | âœ… |
 | Branding | Custom colors | âŒ | âœ… |
+| Branding | Custom domain | âŒ | âŒ (PRO only — `features.customDomain`) |
 | Event-Works | Live scoreboard / Leaderboard | âŒ | âœ… |
 | Settings | Festival settings | âŒ | âœ… |
 | Settings | Advanced settings | âŒ | âœ… |
@@ -64,9 +65,9 @@ STANDARD adds (or expands) the following over BASIC:
 | Communication | Email notifications | âŒ | âœ… |
 | Support | Support level | whatsapp | priority; `supportResponseTime: 4` |
 
-STANDARD also includes (per current `pricing.ts`): role-based access, custom domain, white-label, live results, multi-festival management, advanced analytics, custom reports, SMS notifications, bulk notifications, landing page builder, custom certificate templates, bulk certificate generation, programme team leads, and programme audit drawer.
+STANDARD also includes (per current `pricing.ts`): role-based access, white-label, live results, multi-festival management, advanced analytics, custom reports, SMS notifications, bulk notifications, landing page builder, custom certificate templates, bulk certificate generation, programme team leads, and programme audit drawer.
 
-STANDARD does **not** include (per current `pricing.ts`): API access, webhooks.
+STANDARD does **not** include (per current `pricing.ts`): API access, webhooks, **custom domain** (`features.customDomain: false` — see [CUSTOM_DOMAIN.md](../features/CUSTOM_DOMAIN.md)).
 
 ---
 

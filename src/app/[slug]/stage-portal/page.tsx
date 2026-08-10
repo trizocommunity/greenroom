@@ -1,11 +1,11 @@
-import { eq } from "drizzle-orm";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { StagePortalHomeClient } from "@/components/judge/StagePortalHomeClient";
 import { StagePortalLoginClient } from "@/components/judge/StagePortalLoginClient";
 import { getStagePortalSessionFromCookie } from "@/core/auth/stage-portal-session";
-import { db } from "@/core/database/client";
-import { festival as festivalTable } from "@/core/database/schema";
+import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
+import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
 
 export const metadata: Metadata = {
@@ -18,12 +18,15 @@ export default async function StagePortalPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const hdrs = await headers();
+  const institutionId = hdrs.get("x-institution-id");
 
-  const festival = await db.query.festival.findFirst({
-    where: eq(festivalTable.slug, slug),
-    columns: { id: true, tier: true },
-  });
+  const festival = await findFestivalBySlugForPublic(slug, institutionId);
   if (!festival) return notFound();
+
+  if (isFestivalExpired(festival)) {
+    return notFound();
+  }
 
   const canUseJudging = await getEffectiveFeatureTagEnabled(
     (festival.tier ?? "STANDARD") as any,

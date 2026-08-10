@@ -1,5 +1,4 @@
 import { and, asc, eq } from "drizzle-orm";
-import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
@@ -9,6 +8,8 @@ import {
   programme as programmeTable,
 } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getPublicFestivalBaseUrl } from "@/features/institutions/lib/custom-domain";
+import { findInstitutionById } from "@/features/institutions/repositories/institution.repository";
 import { getScoringPolicyAction } from "@/features/judgement/actions/judgement.actions";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { isBasicTier } from "@/features/plan-features/services/tier";
@@ -26,12 +27,10 @@ export default async function SettingsPage({
   const festival = await findFestivalBySlug(slug);
   if (!festival) return notFound();
 
-  // Feature Access Check
   if (!isEnabled(festival.tier, "festivalSettings")) {
     redirect(`/dashboard/${slug}?error=upgrade_required&feature=settings`);
   }
 
-  // Access check: Owner or ADMIN member
   const isOwner = festival.ownerId === session.userId;
   const isSuperAdmin = session.role === "SUPER_ADMIN";
   let userRole = isSuperAdmin ? "SUPER_ADMIN" : isOwner ? "OWNER" : "";
@@ -51,12 +50,10 @@ export default async function SettingsPage({
     userRole = "ADMIN";
   }
 
-  // Permissions
-  const canManageScoring = true; // Settings is only accessible to ADMIN/OWNER, who can manage scoring
+  const canManageScoring = true;
   const canManageFestivalLive = !isBasicTier(festival.tier as any);
 
-  // Fetch Data for Tabs
-  const [policy, categories, programmes] = await Promise.all([
+  const [policy, categories, programmes, institution] = await Promise.all([
     canManageScoring
       ? getScoringPolicyAction(festival.id)
       : Promise.resolve(null),
@@ -74,16 +71,25 @@ export default async function SettingsPage({
           orderBy: [asc(programmeTable.name)],
         })
       : Promise.resolve([]),
+    festival.institutionId
+      ? findInstitutionById(festival.institutionId)
+      : Promise.resolve(null),
   ]);
 
-  // Public URL for Festival Live
-  const headersList = await headers();
-  const host = headersList.get("host") || "";
-  const protocol = headersList.get("x-forwarded-proto") || "http";
-  const baseUrl = host
-    ? `${protocol}://${host}`
-    : process.env.NEXT_PUBLIC_APP_URL || "";
-  const publicUrl = baseUrl ? `${baseUrl}/${festival.slug}` : "";
+  const publicUrl = getPublicFestivalBaseUrl({
+    slug: festival.slug,
+    institution: institution
+      ? {
+          customDomain: institution.customDomain,
+          verifiedAt: institution.verifiedAt,
+          httpsReadyAt: institution.httpsReadyAt,
+        }
+      : null,
+  });
+
+  const previewPath = `/${festival.slug}`;
+  const isInstitutionOwner =
+    !!institution && institution.ownerId === session.userId;
 
   return (
     <SettingsTabs
@@ -92,6 +98,16 @@ export default async function SettingsPage({
       categories={categories}
       programmes={programmes}
       publicUrl={publicUrl}
+      previewPath={previewPath}
+      customDomain={{
+        institutionId: institution?.id ?? null,
+        customDomain: institution?.customDomain ?? null,
+        verifiedAt: institution?.verifiedAt ?? null,
+        httpsReadyAt: institution?.httpsReadyAt ?? null,
+        isOwner: isInstitutionOwner || isSuperAdmin,
+        isPro: isEnabled(festival.tier, "customDomain"),
+        isInstitutional: !!festival.institutionId,
+      }}
       canManageScoring={canManageScoring}
       canManageFestivalLive={canManageFestivalLive}
     />

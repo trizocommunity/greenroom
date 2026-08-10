@@ -56,3 +56,7 @@ next-env.d.ts
 # local env files
 .env*.local
 
+# serwist / pwa (generated at build time)
+/public/sw.js
+/public/sw.js.map
+

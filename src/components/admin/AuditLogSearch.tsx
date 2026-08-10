@@ -28,7 +28,7 @@ export function AuditLogSearch() {
   }, [term, pathname, replace, searchParams]);
 
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-auto">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
         className="pl-10 w-full sm:w-[300px]"

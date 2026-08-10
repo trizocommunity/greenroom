@@ -97,7 +97,6 @@ export {
   useUpdateScheduleItem,
 } from "./schedule";
 export {
-  useAssignCodeLettersWithSpin,
   useBulkCreateProgrammes,
   useClearAllPosterTemplates,
   useCloseProgrammeReporting,
@@ -122,7 +121,6 @@ export {
   useReorderScheduleEntries,
   useReportingStats,
   useResetProgrammeReporting,
-  useResetSpinCodeLetters,
   useResetStagePortalCredential,
   useRestartJudgement,
   useSaveBasicProgrammeScores,

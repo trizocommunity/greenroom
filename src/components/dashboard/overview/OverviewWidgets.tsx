@@ -26,7 +26,10 @@ import {
 } from "@/components/ui/card";
 import type { festival as festivalSchema } from "@/core/database/schema";
 import { getDashboardOverviewData } from "@/features/festivals/repositories/festival.repository";
+import { getPublicFestivalBaseUrl } from "@/features/institutions/lib/custom-domain";
+import { findInstitutionById } from "@/features/institutions/repositories/institution.repository";
 import type { BooleanFeaturePath } from "@/features/plan-features/services/feature-gate";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { isFeatureTagEnabled } from "@/features/plan-features/services/features-tags";
 import { loadAllFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
@@ -63,6 +66,23 @@ export default async function OverviewWidgets({
   const tier = getResolvedTier(festival.tier);
   const slug = festival.slug;
   const festivalTz = festival.timezone ?? "UTC";
+
+  const institution = festival.institutionId
+    ? await findInstitutionById(festival.institutionId)
+    : null;
+  const publicBaseUrl = getPublicFestivalBaseUrl({
+    slug,
+    institution: institution
+      ? {
+          customDomain: institution.customDomain,
+          verifiedAt: institution.verifiedAt,
+          httpsReadyAt: institution.httpsReadyAt,
+        }
+      : null,
+  });
+  const showVerifySubdomainStep =
+    !!festival.institutionId && isEnabled(festival.tier, "customDomain");
+  const subdomainVerified = !!institution?.verifiedAt;
 
   const matrix = await loadAllFeatureOverrides();
   const features = matrix[tier] ?? {};
@@ -226,6 +246,8 @@ export default async function OverviewWidgets({
       <FestSetupWidget
         festivalSlug={slug}
         festivalId={festival.id}
+        showVerifySubdomainStep={showVerifySubdomainStep}
+        subdomainVerified={subdomainVerified}
         setupStatus={{
           hasCategories: overviewData.hasCategories,
           hasProgrammes: overviewData.hasProgrammes,
@@ -432,7 +454,7 @@ export default async function OverviewWidgets({
 
       {/* Live links */}
       <LiveLinksCard
-        slug={slug}
+        publicBaseUrl={publicBaseUrl}
         publicSiteEnabled={festival.publicSiteEnabled ?? false}
       />
 

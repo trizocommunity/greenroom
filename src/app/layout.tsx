@@ -1,6 +1,6 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Outfit } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
 import { GlobalErrorRegion } from "@/components/errors";
@@ -30,6 +30,20 @@ export const metadata: Metadata = {
   title: "Greenroom | Paperless Festival Management",
   description:
     "A premium, reliable platform to run large-scale festivals without chaos.",
+  applicationName: "Greenroom",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Greenroom",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#d72626",
 };
 
 export default function RootLayout({

@@ -98,7 +98,7 @@ export function formatParticipantLabel(
   display: DisplayInfo | undefined,
 ): string | null {
   if (programmeType === "GROUP") {
-    return display?.name ? `${display.name} and team` : "Team";
+    return display?.name ? `${display.name} and party` : "Party";
   }
   return display?.name ?? null;
 }

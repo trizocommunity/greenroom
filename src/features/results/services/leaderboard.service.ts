@@ -23,7 +23,13 @@ export async function getFestivalLeaderboardDataBySlug(slug: string) {
             },
           },
           programme: {
-            columns: { id: true, type: true, status: true, stageType: true },
+            columns: {
+              id: true,
+              name: true,
+              type: true,
+              status: true,
+              stageType: true,
+            },
             with: { category: true },
           },
         },

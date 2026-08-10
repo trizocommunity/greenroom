@@ -291,9 +291,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       media: true,
       news: true,
 
-      // Branding — white-label + custom domain
+      // Branding — custom URL/colors; wildcard custom domain is PRO-only
       customUrl: true,
-      customDomain: true,
+      customDomain: false,
       logoUpload: true,
       customColors: true,
       whiteLabel: true,
@@ -390,9 +390,9 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       media: true,
       news: true,
 
-      // Branding — white-label + custom domain
+      // Branding — white-label + custom domain (PRO)
       customUrl: true,
-      customDomain: true,
+      customDomain: true, // Phase 1: DNS verify + proxy; Phase 2: Vercel Domains/TLS API — see DOCS/features/CUSTOM_DOMAIN.md
       logoUpload: true,
       customColors: true,
       whiteLabel: true,

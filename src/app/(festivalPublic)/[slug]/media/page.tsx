@@ -4,6 +4,8 @@ import {
   PublicSection,
   SectionHeader,
 } from "@/components/festival/public/PublicSection";
+import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
+import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getPublicMediaData } from "@/features/media/loaders/media-public.loader";
 import { PublicMediaView } from "./PublicMediaView";
 
@@ -11,6 +13,10 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const festival = await findFestivalBySlug(slug);
+  if (!festival || isFestivalExpired(festival)) {
+    return { title: "Media Not Found" };
+  }
   const data = await getPublicMediaData(slug);
   if (!data) return { title: "Media Not Found" };
   const title = `Media - ${data.festival.name}`;
@@ -25,6 +31,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function MediaPage({ params }: Props) {
   const { slug } = await params;
+  const festival = await findFestivalBySlug(slug);
+  if (!festival || isFestivalExpired(festival)) return notFound();
+
   const data = await getPublicMediaData(slug);
   if (!data) return notFound();
 

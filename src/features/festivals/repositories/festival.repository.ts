@@ -42,12 +42,83 @@ export async function findFestivalBySlug(slug: string) {
   });
 }
 
+/**
+ * Public/portal festival lookup. When `institutionId` is set (custom host),
+ * require matching institution and the customDomain plan feature.
+ */
+export async function findFestivalBySlugForPublic(
+  slug: string,
+  institutionId?: string | null,
+) {
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivals.slug, slug),
+    with: { user: true, institution: true },
+  });
+  if (!festival) return null;
+
+  if (institutionId) {
+    if (festival.institutionId !== institutionId) return null;
+    const { isEnabled } = await import(
+      "@/features/plan-features/services/feature-gate"
+    );
+    if (!isEnabled(festival.tier, "customDomain")) return null;
+  }
+
+  return festival;
+}
+
+/** For path→subdomain redirects: verified institution domain when feature + live. */
+export async function findBrandedRedirectTarget(slug: string): Promise<{
+  customDomain: string;
+  festivalSlug: string;
+} | null> {
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivals.slug, slug),
+    columns: {
+      slug: true,
+      tier: true,
+      publicSiteEnabled: true,
+      institutionId: true,
+    },
+    with: {
+      institution: {
+        columns: {
+          customDomain: true,
+          verifiedAt: true,
+          httpsReadyAt: true,
+        },
+      },
+    },
+  });
+
+  if (!festival?.slug || !festival.publicSiteEnabled) return null;
+  // httpsReadyAt (not verifiedAt) is the gate: redirecting to a branded host
+  // whose certificate is not serving yet would make working path URLs look dead.
+  if (
+    !festival.institution?.customDomain ||
+    !festival.institution.verifiedAt ||
+    !festival.institution.httpsReadyAt
+  ) {
+    return null;
+  }
+
+  const { isEnabled } = await import(
+    "@/features/plan-features/services/feature-gate"
+  );
+  if (!isEnabled(festival.tier, "customDomain")) return null;
+
+  return {
+    festivalSlug: festival.slug,
+    customDomain: festival.institution.customDomain,
+  };
+}
+
 export async function isSlugTaken(slug: string, excludeId?: string) {
   const strippedSlug = slug.replace(/-/g, "");
   const whereClause = excludeId
     ? and(
         eq(sql`replace(${festivals.slug}, '-', '')`, strippedSlug),
-        sql`${festivals.id} != ${excludeId}`
+        sql`${festivals.id} != ${excludeId}`,
       )
     : eq(sql`replace(${festivals.slug}, '-', '')`, strippedSlug);
 

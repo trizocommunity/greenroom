@@ -59,18 +59,18 @@ export default async function AdminFestivalDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
+      <div className="flex items-start gap-2 sm:gap-4">
+        <Button variant="ghost" size="icon" asChild className="shrink-0">
           <Link href="/super-admin/festivals">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div className="flex-1">
-          <h2 className="text-3xl font-semibold tracking-tight flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">
             {festival.name}
           </h2>
-          <div className="text-muted-foreground flex items-center gap-2">
-            /{festival.slug}
+          <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+            <span className="truncate">/{festival.slug}</span>
             <Badge
               variant={
                 derivedStatus === "EXPIRED"
@@ -99,30 +99,30 @@ export default async function AdminFestivalDetailPage({
           <CardHeader>
             <CardTitle>Festival details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between">
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
               <span className="text-muted-foreground">Owner</span>
-              <span className="font-medium">
+              <span className="font-medium break-all text-right">
                 {festival.user.fullName || festival.user.email}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
               <span className="text-muted-foreground">Created At</span>
-              <span>
+              <span className="text-right">
                 {formatDate(festival.createdAt, {
                   tz: festivalTz,
                   style: "medium",
                 })}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
               <span className="text-muted-foreground">Category</span>
-              <span>{festival.category || "-"}</span>
+              <span className="text-right">{festival.category || "-"}</span>
             </div>
             {isExpired && festival.expiredAt && (
-              <div className="flex justify-between">
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
                 <span className="text-muted-foreground">Expired At</span>
-                <span>
+                <span className="text-right">
                   {formatDate(festival.expiredAt, {
                     tz: festivalTz,
                     style: "medium",
@@ -137,12 +137,12 @@ export default async function AdminFestivalDetailPage({
           <CardHeader>
             <CardTitle>Quick stats</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between">
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
               <span className="text-muted-foreground">Status</span>
               <span className="font-medium">{derivedStatus}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
               <span className="text-muted-foreground">Tier</span>
               <span className="font-medium">{festival.tier}</span>
             </div>
@@ -151,7 +151,7 @@ export default async function AdminFestivalDetailPage({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2 rounded-full font-medium"
+                  className="gap-2 rounded-full font-medium w-full sm:w-auto"
                   asChild
                 >
                   <Link
@@ -183,7 +183,7 @@ export default async function AdminFestivalDetailPage({
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto max-h-64 overflow-y-auto rounded-xl border border-border">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[520px] text-sm">
                   <thead className="bg-muted/50 sticky top-0">
                     <tr>
                       <th className="text-left p-2">Programme ID</th>
@@ -196,10 +196,10 @@ export default async function AdminFestivalDetailPage({
                   <tbody>
                     {expiredResults.map((r) => (
                       <tr key={r.id} className="border-t">
-                        <td className="p-2 font-mono text-xs">
+                        <td className="p-2 font-mono text-xs whitespace-nowrap">
                           {r.programmeId}
                         </td>
-                        <td className="p-2 font-mono text-xs">
+                        <td className="p-2 font-mono text-xs whitespace-nowrap">
                           {r.assignmentId}
                         </td>
                         <td className="p-2">{r.position ?? "—"}</td>
@@ -225,7 +225,10 @@ export default async function AdminFestivalDetailPage({
             <CardContent>
               <ul className="space-y-2">
                 {lifecycleEvents.map((ev) => (
-                  <li key={ev.id} className="flex items-center gap-3 text-sm">
+                  <li
+                    key={ev.id}
+                    className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm"
+                  >
                     <Badge variant="outline">{ev.event}</Badge>
                     <span className="text-muted-foreground">
                       {formatDateTime(ev.occurredAt, {

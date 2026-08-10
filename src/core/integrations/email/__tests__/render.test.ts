@@ -16,23 +16,36 @@ describe("renderEmail — festival_invitation", () => {
     expect(result.html).toContain("Accept Invitation");
     expect(result.html).toContain("rgb(247,248,250)"); // light canvas
     expect(result.html).toMatch(/invite\/tok/);
+    expect(result.text).toContain("invite/tok");
   });
 
-  it("renders a copyable invite URL block + copy button + share-via-email mailto link", async () => {
+  it("Accept Invitation href is an absolute /invite/{token} URL (no festival slug)", async () => {
+    const token = "1b6d5374-5d69-4838-901a-03400f34ae4e";
+    const result = await renderEmail({
+      kind: "festival_invitation",
+      token,
+      festivalName: "Test Fest",
+      role: "STAGE_MANAGER",
+    });
+    // Button must point at /invite/{token}, never /dashboard/{slug}/...
+    expect(result.html).toMatch(
+      new RegExp(`href="[^"]*/invite/${token}"`),
+    );
+    expect(result.html).not.toMatch(/href="[^"]*\/dashboard\/[^"]*invite/);
+    expect(result.text).toContain(`/invite/${token}`);
+  });
+
+  it("does not render copy-link or share-via-email affordances", async () => {
     const result = await renderEmail({
       kind: "festival_invitation",
       token: "tok",
       festivalName: "Ahlussuffa IGS",
       role: "JUDGE",
     });
-    expect(result.html).toContain("Or copy and share this invitation:");
-    expect(result.html).toContain("Copy link");
-    expect(result.html).toContain("Share via email");
-    expect(result.html).toContain(
-      "mailto:?subject=Invitation%20to%20Ahlussuffa%20IGS%20on%20Greenroom",
-    );
-    expect(result.html).toContain(encodeURIComponent("invite/tok"));
-    expect(result.text).toContain("invite/tok");
+    expect(result.html).not.toContain("Or copy and share this invitation:");
+    expect(result.html).not.toContain("Copy link");
+    expect(result.html).not.toContain("Share via email");
+    expect(result.html).not.toContain("mailto:?subject=");
   });
 });
 

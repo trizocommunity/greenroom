@@ -145,7 +145,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium">Top spenders</CardTitle>
@@ -332,7 +332,7 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium">

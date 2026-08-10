@@ -15,8 +15,10 @@ export default async function PlanFeaturesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-semibold tracking-tight">Plan features</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+          Plan features
+        </h2>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Enable or disable features per plan (BASIC, STANDARD, PRO). Changes
           apply to all festivals on that plan.
         </p>
@@ -25,7 +27,7 @@ export default async function PlanFeaturesPage() {
       <Card className="rounded-2xl">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-xl">
+            <div className="p-2 bg-primary/10 rounded-xl shrink-0">
               <Layers className="w-5 h-5 text-primary" />
             </div>
             <div>
@@ -37,7 +39,7 @@ export default async function PlanFeaturesPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           <PlanFeaturesClient tagMatrix={tagMatrix} />
         </CardContent>
       </Card>

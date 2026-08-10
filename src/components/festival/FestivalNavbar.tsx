@@ -36,12 +36,22 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
   const currentPage = pathname.replace(linkBase, "") || "/";
 
   const isBasic = isBasicTier(festival.tier);
-  const activeNavItems = isBasic
-    ? [
+  const expired = !!festival.isExpired;
+  const activeNavItems = (() => {
+    if (isBasic) {
+      return [
         { name: "Home", href: "/" },
         { name: "Results", href: "#results" },
-      ]
-    : navItems;
+      ];
+    }
+    if (expired) {
+      return [
+        { name: "Home", href: "/" },
+        { name: "Results", href: "/results" },
+      ];
+    }
+    return navItems;
+  })();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -119,12 +129,14 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
         </nav>
 
         <div className="hidden shrink-0 items-center md:flex">
-          <Link
-            href={`/${festival.slug}/login`}
-            className="text-sm font-medium text-primary transition-opacity hover:opacity-70"
-          >
-            Participant login
-          </Link>
+          {!expired && (
+            <Link
+              href={`/${festival.slug}/login`}
+              className="text-sm font-medium text-primary transition-opacity hover:opacity-70"
+            >
+              Participant login
+            </Link>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -168,13 +180,15 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
                     </Link>
                   );
                 })}
-                <Link
-                  href={`/${festival.slug}/login`}
-                  onClick={() => setIsOpen(false)}
-                  className="block py-3 text-[15px] font-medium text-primary"
-                >
-                  Participant login
-                </Link>
+                {!expired && (
+                  <Link
+                    href={`/${festival.slug}/login`}
+                    onClick={() => setIsOpen(false)}
+                    className="block py-3 text-[15px] font-medium text-primary"
+                  >
+                    Participant login
+                  </Link>
+                )}
               </nav>
             </div>
           </motion.div>

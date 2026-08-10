@@ -3,7 +3,11 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { getSession, signInUserByEmail } from "@/core/auth/session";
+import {
+  appendSetCookieHeaders,
+  getSession,
+  signInUserByEmail,
+} from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { generateId } from "@/core/database/ids";
 import {
@@ -55,6 +59,7 @@ export const POST = async (req: Request) => {
     // signed in yet, log them into (or create) the account for that email
     // instead of forcing a separate manual sign-in round trip.
     let session = await getSession();
+    let signInResponse: Response | null = null;
 
     if (!session?.userId) {
       let dbUser = await db.query.user.findFirst({
@@ -80,12 +85,10 @@ export const POST = async (req: Request) => {
         );
       }
 
-      // Mint a session via Better Auth. This writes the session row and
-      // the session cookie (`nextCookies` propagates the Set-Cookie).
-      // No email is sent — the user already proved ownership by
-      // presenting the invitation token.
+      // Mint a session via Better Auth. Keep the Response so we can
+      // forward Set-Cookie onto our JSON reply for the browser fetch.
       try {
-        await signInUserByEmail(dbUser.email);
+        signInResponse = await signInUserByEmail(dbUser.email);
       } catch (err) {
         console.error("[invitations/accept] signInUserByEmail failed", err);
         return NextResponse.json(
@@ -95,10 +98,15 @@ export const POST = async (req: Request) => {
       }
       session = await getSession();
       if (!session?.userId) {
-        return NextResponse.json(
-          { success: false, error: "Could not establish session" },
-          { status: 500 },
-        );
+        // nextCookies may have written the session for this request even
+        // when getSession still cannot see it — fall back to the user we
+        // just signed in for.
+        session = {
+          userId: dbUser.id,
+          role: "USER",
+          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          email: dbUser.email,
+        };
       }
     }
 
@@ -111,10 +119,14 @@ export const POST = async (req: Request) => {
     });
 
     if (existingMember) {
-      return NextResponse.json(
+      const alreadyMember = NextResponse.json(
         { success: false, error: "You are already a member of this festival" },
         { status: 400 },
       );
+      if (signInResponse) {
+        appendSetCookieHeaders(alreadyMember, signInResponse.headers);
+      }
+      return alreadyMember;
     }
 
     const [newMember] = await db
@@ -168,12 +180,16 @@ export const POST = async (req: Request) => {
 
     revalidatePath("/", "layout");
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       festivalId: invitation.festivalId,
       festivalSlug: festivalRecord?.slug ?? invitation.festivalId,
       requiresOnboarding: !acceptedUser?.fullName,
     });
+    if (signInResponse) {
+      appendSetCookieHeaders(response, signInResponse.headers);
+    }
+    return response;
   } catch (error) {
     console.error("[invitations/accept POST]", error);
     return NextResponse.json(

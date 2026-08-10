@@ -35,7 +35,10 @@ import { findParticipantByFestivalAndProfileSlug } from "@/features/participants
 import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getBadgePayloadAction } from "@/features/posters/actions/badge.actions";
-import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
+import {
+  indexReportingSessionsByProgramme,
+  revealedCodeLettersOnly,
+} from "@/features/programmes/services/programme-reporting-display";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
 const RESERVED_SLUGS = new Set([
@@ -195,6 +198,7 @@ export default async function ParticipantMainPage({
             stage: { columns: { name: true } },
             programmeReportedParticipants: { columns: { assignmentId: true } },
             programmeCodeLetters: {
+              where: revealedCodeLettersOnly,
               with: {
                 programmeCodeLetterRecipients: {
                   columns: { participantId: true },

@@ -44,6 +44,7 @@ function mapDbSessionToState(
     startedBy: (session.startedBy as string | null) ?? null,
     endedAt: (session.endedAt as string | null) ?? null,
     endedBy: (session.endedBy as string | null) ?? null,
+    checkoutCompletedAt: (session.checkoutCompletedAt as string | null) ?? null,
     programmeType: programme.type,
     programmeStatus: programme.status,
     programmeName: programme.name,
@@ -75,6 +76,9 @@ function mapCodeLetter(row: Record<string, unknown>): CodeLetter {
     code: row.code as string,
     issuedAt: row.issuedAt as string,
     issuedBy: (row.issuedBy as string | null) ?? null,
+    queuePosition: (row.queuePosition as number | null) ?? null,
+    revealedAt: (row.revealedAt as string | null) ?? null,
+    revealedBy: (row.revealedBy as string | null) ?? null,
     recipients:
       (row.programmeCodeLetterRecipients as Array<{
         participantId: string;
@@ -227,6 +231,7 @@ export const ReportingSessionRepository = {
       startedBy: null,
       endedAt: null,
       endedBy: null,
+      checkoutCompletedAt: null,
       programmeType: programme.type,
       programmeStatus: programme.status,
       programmeName: programme.name,
@@ -330,6 +335,7 @@ export const ReportingSessionRepository = {
         startedBy: state.startedBy,
         endedAt: state.endedAt,
         endedBy: state.endedBy,
+        checkoutCompletedAt: state.checkoutCompletedAt,
         windowEndsAt: null,
         updatedAt: nowStr,
       };
