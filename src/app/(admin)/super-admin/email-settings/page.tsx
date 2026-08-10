@@ -26,10 +26,10 @@ export default async function EmailSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-semibold tracking-tight">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
           Email settings
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-sm sm:text-base text-muted-foreground">
           Globally enable or disable each kind of transactional email the
           platform sends. Disabled kinds are silently skipped at send time — the
           caller still receives a success result with{" "}

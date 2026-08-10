@@ -72,6 +72,11 @@ interface QueueItem {
 
 type ModalView = "SELECTION" | "REVIEW";
 
+/** Matches the wording used on the manager-side programme cards. */
+function stageTypeLabel(stageType?: string | null): string {
+  return stageType === "NON_STAGE" ? "Off stage" : "On stage";
+}
+
 /** Programme limits, spelled out the way an organiser would say them. */
 function describeLimits(p: any) {
   if (p.type === "INDIVIDUAL") {
@@ -880,7 +885,7 @@ export function AssignmentModal({
                             </Badge>
                           </div>
                           <span className="text-[11px] text-muted-foreground">
-                            {describeLimits(p)}
+                            {stageTypeLabel(p.stageType)} · {describeLimits(p)}
                           </span>
                         </button>
                       ))}

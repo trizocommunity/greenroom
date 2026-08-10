@@ -8,6 +8,7 @@ import {
   MoreHorizontal,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Users2,
   X,
 } from "lucide-react";
@@ -68,29 +69,31 @@ import { formatDateTime, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
 import {
-  assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
+  completeCheckoutAction,
   markProgrammeAssignmentsBulkAction,
   markProgrammeParticipantAction,
   reopenProgrammeReportingAction,
   resetProgrammeReportingAction,
-  resetSpinCodeLettersAction,
+  revealAllRemainingAction,
+  revealScratchCodeAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
 import { getCodeForParticipantFromLetters } from "@/features/programmes/services/programme-reporting-code";
 import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import { toast } from "@/lib/toast";
-import { CodeLetterSpinWheel } from "./CodeLetterSpinWheel";
 import { QrScanner } from "./QrScanner";
 import { ReportingBoardList } from "./ReportingBoardList";
 import { ReportingQuickAddSection } from "./ReportingQuickAddSection";
 import { ReportingRosterTable } from "./ReportingRosterTable";
 import { type ScanEntry, ScanResponseFooter } from "./ScanResponseFooter";
+import { ScratchGrid } from "./ScratchGrid";
 import type {
   AssignmentWithReported,
   ProgrammeReportingAssignmentRow,
   ReportingBoardItem,
   RosterTableRow,
+  ScratchTile,
 } from "./types";
 
 /** User-facing labels: RESET = window stopped without submit; CLOSED = submit & codes issued. */
@@ -125,22 +128,6 @@ function getUiReportingStatus(
     return "TIMED_OUT";
   }
   return status ?? "NOT_STARTED";
-}
-
-function generateCodeLetters(count: number): string[] {
-  const safeCount = Math.max(1, count);
-  const letters: string[] = [];
-  for (let i = 1; i <= safeCount; i++) {
-    let n = i;
-    let value = "";
-    while (n > 0) {
-      const rem = (n - 1) % 26;
-      value = String.fromCharCode(65 + rem) + value;
-      n = Math.floor((n - 1) / 26);
-    }
-    letters.push(value);
-  }
-  return letters;
 }
 
 function formatHistoryTime(value: Date | string | null, tz: string): string {
@@ -206,22 +193,19 @@ export function ProgrammeReportingClient({
     | "close"
     | "mark"
     | "reopen"
-    | "reset-codes"
-    | "random-spin"
+    | "complete-checkout"
+    | "reveal-all"
   >(null);
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
   const [optimisticReportedBySession, setOptimisticReportedBySession] =
     useState<Record<string, Set<string>>>({});
   const [isEntrySwitching, setIsEntrySwitching] = useState(false);
   const [markingIds, setMarkingIds] = useState<Set<string>>(new Set());
-  const [activeSpinRow, setActiveSpinRow] = useState<RosterTableRow | null>(
-    null,
+  /** Which step of the reporting drawer is showing. */
+  const [wizardStep, setWizardStep] = useState<"checkout" | "scratch">(
+    "checkout",
   );
-  const [isSpinWheelOpen, setIsSpinWheelOpen] = useState(false);
-  const [spinPendingAssignmentId, setSpinPendingAssignmentId] = useState<
-    string | null
-  >(null);
-  const [spinAssignRequested, setSpinAssignRequested] = useState(false);
+  const [isRevealing, setIsRevealing] = useState(false);
   const [historyDetailOpenId, setHistoryDetailOpenId] = useState<string | null>(
     null,
   );
@@ -843,28 +827,6 @@ export function ProgrammeReportingClient({
 
   const session = selected?.reportingSession;
 
-  /** Submit is allowed only when every present participant has a spun code letter. */
-  const allReportedHaveCodeLetters = useMemo(() => {
-    const letters = session?.programmeCodeLetters ?? [];
-
-    const hasCodeForRow = (row: RosterTableRow) => {
-      if (row.mode === "team") {
-        return row.teamParticipantIds.some(
-          (sid) => getCodeForParticipantFromLetters(letters, sid) != null,
-        );
-      }
-      return row.participantId
-        ? getCodeForParticipantFromLetters(letters, row.participantId) != null
-        : false;
-    };
-
-    for (const row of rosterTableRows) {
-      if (!row.isReported) continue;
-      if (!hasCodeForRow(row)) return false;
-    }
-    return true;
-  }, [rosterTableRows, session?.programmeCodeLetters]);
-
   const sessionStatus = getUiReportingStatus(
     session?.status,
     session?.windowEndsAt ?? null,
@@ -879,56 +841,64 @@ export function ProgrammeReportingClient({
     isTimedOut;
   const isInProgress = sessionStatus === "IN_PROGRESS";
   const isClosed = sessionStatus === "CLOSED";
+  const checkoutCompletedAt = session?.checkoutCompletedAt ?? null;
 
-  // Collect all already assigned codes to prevent duplicates during spin
-  const alreadyAssignedCodes = useMemo(() => {
-    if (!session?.programmeCodeLetters) return [];
-    return session.programmeCodeLetters.map((cl) => cl.code);
-  }, [session?.programmeCodeLetters]);
+  // Resume where the session actually is, so a refresh mid-draw doesn't drop
+  // the stage manager back into checkout.
+  useEffect(() => {
+    setWizardStep(checkoutCompletedAt ? "scratch" : "checkout");
+  }, [checkoutCompletedAt]);
 
-  const handleSpinResult = async (code: string) => {
-    if (!activeSpinRow || !session) return;
-    setSpinAssignRequested(true);
+  /**
+   * Tiles for the scratch grid, ordered by queue position so the layout is
+   * stable across reveals. Names come from the roster rows the tile's
+   * recipients belong to.
+   */
+  const scratchTiles = useMemo<ScratchTile[]>(() => {
+    const letters = session?.programmeCodeLetters ?? [];
+    if (letters.length === 0) return [];
 
-    try {
-      const assignment = {
-        teamNumber:
-          activeSpinRow.mode === "team" ? activeSpinRow.teamNumber : null,
-        groupId: activeSpinRow.mode === "team" ? activeSpinRow.groupId : null,
-        participantId:
-          activeSpinRow.mode === "individual"
-            ? activeSpinRow.participantId
-            : null,
-        code,
-      };
-
-      const result = await assignCodeLettersWithSpinAction(
-        festivalId,
-        session.id,
-        [assignment],
-      );
-
-      if (result.success) {
-        toast.success(`Code ${code} · ${activeSpinRow.nameColumn}`);
-        router.refresh();
+    const rowByParticipantId = new Map<string, RosterTableRow>();
+    for (const row of rosterTableRows) {
+      if (row.mode === "team") {
+        for (const pid of row.teamParticipantIds) {
+          rowByParticipantId.set(pid, row);
+        }
+      } else if (row.participantId) {
+        rowByParticipantId.set(row.participantId, row);
       }
-    } catch (error) {
-      toast.error("Failed to assign code");
-      console.error(error);
-      setSpinPendingAssignmentId(null);
     }
-  };
 
-  const handleSpinWheelOpenChange = (open: boolean) => {
-    setIsSpinWheelOpen(open);
-    if (!open) {
-      if (!spinAssignRequested) {
-        setSpinPendingAssignmentId(null);
-      }
-      setActiveSpinRow(null);
-      setSpinAssignRequested(false);
-    }
-  };
+    return letters
+      .map((letter, index) => {
+        const participantIds = letter.programmeCodeLetterRecipients.map(
+          (r) => r.participantId,
+        );
+        const row = participantIds
+          .map((pid) => rowByParticipantId.get(pid))
+          .find(Boolean);
+
+        return {
+          codeLetterId: letter.id ?? `tile-${index}`,
+          queuePosition: letter.queuePosition ?? index + 1,
+          code: letter.revealedAt ? letter.code : null,
+          revealedAt: letter.revealedAt ?? null,
+          label: row?.nameColumn ?? "Unknown",
+          subLabel: row?.groupName ?? null,
+          participantIds,
+        };
+      })
+      .sort((a, b) => a.queuePosition - b.queuePosition);
+  }, [session?.programmeCodeLetters, rosterTableRows]);
+
+  /** Lowest queue position still unscratched — whose turn it is. */
+  const currentQueuePosition = useMemo(() => {
+    const next = scratchTiles.find((t) => !t.revealedAt);
+    return next ? next.queuePosition : null;
+  }, [scratchTiles]);
+
+  const allTilesRevealed =
+    scratchTiles.length > 0 && currentQueuePosition === null;
 
   function getIssuedCodeForRow(row: RosterTableRow): string | null {
     const letters = session?.programmeCodeLetters ?? [];
@@ -943,36 +913,6 @@ export function ProgrammeReportingClient({
       ? getCodeForParticipantFromLetters(letters, row.participantId)
       : null;
   }
-
-  useEffect(() => {
-    if (!spinPendingAssignmentId) return;
-
-    const pendingRow = rosterTableRows.find(
-      (row) => row.assignmentId === spinPendingAssignmentId,
-    );
-    if (!pendingRow) {
-      setSpinPendingAssignmentId(null);
-      return;
-    }
-
-    const letters = session?.programmeCodeLetters ?? [];
-    const hasIssuedCode =
-      pendingRow.mode === "team"
-        ? pendingRow.teamParticipantIds.some(
-            (participantId) =>
-              getCodeForParticipantFromLetters(letters, participantId) != null,
-          )
-        : pendingRow.participantId != null
-          ? getCodeForParticipantFromLetters(
-              letters,
-              pendingRow.participantId,
-            ) != null
-          : false;
-
-    if (hasIssuedCode) {
-      setSpinPendingAssignmentId(null);
-    }
-  }, [spinPendingAssignmentId, rosterTableRows, session?.programmeCodeLetters]);
 
   const onStart = () => {
     if (!selected) return;
@@ -1004,29 +944,32 @@ export function ProgrammeReportingClient({
     });
   };
 
-  const onResetCodeLetters = () => {
+  /**
+   * Ends checkout and deals the tiles. After this the roster is frozen — the
+   * server refuses further attendance changes, so warn before crossing.
+   */
+  const onCompleteCheckout = () => {
     if (!session?.id) return;
-    setActiveAction("reset-codes");
+    setActiveAction("complete-checkout");
     startTransition(async () => {
       try {
-        const res = await resetSpinCodeLettersAction(festivalId, session.id);
+        const res = await completeCheckoutAction(festivalId, session.id);
         if (res.success) {
-          setSpinPendingAssignmentId(null);
-          setSpinAssignRequested(false);
-          setIsSpinWheelOpen(false);
-          setActiveSpinRow(null);
           toast.success(
-            "All code letters cleared. You can re-spin for everyone.",
+            `Checkout complete — ${res.data.tileCount} code letter${
+              res.data.tileCount === 1 ? "" : "s"
+            } ready to draw.`,
           );
+          setWizardStep("scratch");
           router.refresh();
         } else {
-          toast.error("Failed to reset code letters");
+          toast.error("Failed to complete checkout");
         }
       } catch (error) {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to reset code letters",
+            : "Failed to complete checkout",
         );
       } finally {
         setActiveAction(null);
@@ -1034,65 +977,59 @@ export function ProgrammeReportingClient({
     });
   };
 
-  const onRandomSpinAll = () => {
+  const onScratchTile = (codeLetterId: string) => {
     if (!session?.id) return;
-
-    const reportedRows = rosterTableRows.filter((row) => row.isReported);
-    const rowsNeedingCode = reportedRows.filter(
-      (row) => !getIssuedCodeForRow(row),
-    );
-    if (!rowsNeedingCode.length) {
-      toast.info("All reported rows already have code letters.");
-      return;
-    }
-
-    const existingCodes = new Set(alreadyAssignedCodes);
-    const allCodes = generateCodeLetters(reportedRows.length);
-    let availableCodes = allCodes.filter((code) => !existingCodes.has(code));
-
-    if (availableCodes.length < rowsNeedingCode.length) {
-      const expandedCodes = generateCodeLetters(
-        reportedRows.length + rowsNeedingCode.length,
-      );
-      availableCodes = expandedCodes.filter((code) => !existingCodes.has(code));
-    }
-
-    if (availableCodes.length < rowsNeedingCode.length) {
-      toast.error(
-        "Not enough unique code letters available for random assignment.",
-      );
-      return;
-    }
-
-    const shuffledCodes = [...availableCodes].sort(() => Math.random() - 0.5);
-    const assignments = rowsNeedingCode.map((row, index) => ({
-      teamNumber: row.mode === "team" ? row.teamNumber : null,
-      groupId: row.mode === "team" ? row.groupId : null,
-      participantId: row.mode === "individual" ? row.participantId : null,
-      code: shuffledCodes[index]!,
-    }));
-
-    setActiveAction("random-spin");
+    setIsRevealing(true);
     startTransition(async () => {
       try {
-        const res = await assignCodeLettersWithSpinAction(
+        const res = await revealScratchCodeAction(
           festivalId,
           session.id,
-          assignments,
+          codeLetterId,
         );
         if (res.success) {
+          if (confettiRef.current) {
+            party.confetti(confettiRef.current, {
+              count: party.variation.range(20, 30),
+              size: party.variation.range(0.6, 1),
+            });
+          }
+          toast.success(`Code ${res.data.code}`);
+          router.refresh();
+        } else {
+          toast.error("Failed to reveal code");
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to reveal code",
+        );
+      } finally {
+        setIsRevealing(false);
+      }
+    });
+  };
+
+  const onRevealAllRemaining = () => {
+    if (!session?.id) return;
+    setActiveAction("reveal-all");
+    startTransition(async () => {
+      try {
+        const res = await revealAllRemainingAction(festivalId, session.id);
+        if (res.success) {
           toast.success(
-            `Random spin assigned ${assignments.length} code letter${assignments.length > 1 ? "s" : ""}.`,
+            `Revealed ${res.data.revealedCount} remaining code letter${
+              res.data.revealedCount === 1 ? "" : "s"
+            }.`,
           );
           router.refresh();
         } else {
-          toast.error("Failed to assign random code letters");
+          toast.error("Failed to reveal remaining codes");
         }
       } catch (error) {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to assign random code letters",
+            : "Failed to reveal remaining codes",
         );
       } finally {
         setActiveAction(null);
@@ -1116,8 +1053,8 @@ export function ProgrammeReportingClient({
           }
           toast.success(
             programmeType === "GROUP"
-              ? "Reporting ended — each reported team received one code letter."
-              : "Reporting ended — code letters issued to reported participants.",
+              ? "Reporting submitted — every team that drew a tile is reported."
+              : "Reporting submitted — everyone who drew a tile is reported.",
           );
           // Fast hand-off: if the programme is on a stage, jump straight to the
           // Judgement screen with the Start Judgement dialog pre-opened.
@@ -1439,37 +1376,65 @@ export function ProgrammeReportingClient({
                     <div className="flex flex-wrap items-center gap-2">
                       {isInProgress ? (
                         <>
-                          <Button
-                            size="sm"
-                            className="rounded-lg font-semibold"
-                            onClick={onClose}
-                            title={
-                              reportedUnitsCount === 0
-                                ? "Mark at least one participant/team as present before submitting."
-                                : !allReportedHaveCodeLetters
-                                  ? "Assign a code letter to each present participant (spin per person) before submitting."
+                          {wizardStep === "checkout" ? (
+                            <Button
+                              size="sm"
+                              className="rounded-lg font-semibold"
+                              onClick={onCompleteCheckout}
+                              title={
+                                reportedUnitsCount === 0
+                                  ? "Check out at least one participant/team before drawing codes."
+                                  : "Freezes attendance and deals the code letters."
+                              }
+                              disabled={
+                                isPending ||
+                                activeAction != null ||
+                                !session?.id ||
+                                session.isLocked ||
+                                !isInProgress ||
+                                assignmentsWithReported.length === 0 ||
+                                reportedUnitsCount === 0
+                              }
+                            >
+                              {activeAction === "complete-checkout" ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Preparing draw…
+                                </span>
+                              ) : (
+                                "Complete checkout"
+                              )}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="rounded-lg font-semibold"
+                              onClick={onClose}
+                              title={
+                                !allTilesRevealed
+                                  ? "Every code letter must be drawn before submitting."
                                   : undefined
-                            }
-                            disabled={
-                              isPending ||
-                              activeAction != null ||
-                              !session?.id ||
-                              session.isLocked ||
-                              !isInProgress ||
-                              assignmentsWithReported.length === 0 ||
-                              reportedUnitsCount === 0 ||
-                              !allReportedHaveCodeLetters
-                            }
-                          >
-                            {activeAction === "close" ? (
-                              <span className="inline-flex items-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Submitting…
-                              </span>
-                            ) : (
-                              "Submit & notify"
-                            )}
-                          </Button>
+                              }
+                              disabled={
+                                isPending ||
+                                activeAction != null ||
+                                isRevealing ||
+                                !session?.id ||
+                                session.isLocked ||
+                                !isInProgress ||
+                                !allTilesRevealed
+                              }
+                            >
+                              {activeAction === "close" ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Submitting…
+                                </span>
+                              ) : (
+                                "Submit & notify"
+                              )}
+                            </Button>
+                          )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -1486,7 +1451,7 @@ export function ProgrammeReportingClient({
                                 disabled={
                                   isPending ||
                                   activeAction === "mark" ||
-                                  activeAction === "random-spin" ||
+                                  wizardStep === "scratch" ||
                                   !session?.id ||
                                   session.isLocked ||
                                   !isInProgress ||
@@ -1525,17 +1490,19 @@ export function ProgrammeReportingClient({
                               <DropdownMenuItem
                                 disabled={
                                   isPending ||
-                                  activeAction === "random-spin" ||
+                                  activeAction === "reveal-all" ||
+                                  isRevealing ||
                                   !session?.id ||
                                   session.isLocked ||
                                   !isInProgress ||
-                                  reportedUnitsCount === 0
+                                  wizardStep !== "scratch" ||
+                                  allTilesRevealed
                                 }
-                                onClick={onRandomSpinAll}
+                                onClick={onRevealAllRemaining}
                               >
-                                {activeAction === "random-spin"
-                                  ? "Random spinning..."
-                                  : "Random spin all codes"}
+                                {activeAction === "reveal-all"
+                                  ? "Revealing…"
+                                  : "Reveal remaining codes"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
@@ -1547,22 +1514,7 @@ export function ProgrammeReportingClient({
                                 }
                                 onClick={onReset}
                               >
-                                Stop without codes
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={
-                                  isPending ||
-                                  activeAction === "reset-codes" ||
-                                  !session?.id ||
-                                  session.isLocked ||
-                                  !isInProgress ||
-                                  !session.programmeCodeLetters?.length
-                                }
-                                onClick={onResetCodeLetters}
-                              >
-                                {activeAction === "reset-codes"
-                                  ? "Resetting code letters..."
-                                  : "Reset all code letters"}
+                                Stop and clear the draw
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1636,7 +1588,10 @@ export function ProgrammeReportingClient({
                 {/* Camera-first: while checking in, the scanner is the main
                     viewboard with a live response footer; manual marking is a
                     fallback below. */}
-                {isInProgress && selected && session?.id ? (
+                {isInProgress &&
+                wizardStep === "checkout" &&
+                selected &&
+                session?.id ? (
                   <div className="space-y-3">
                     <QrScanner
                       variant="embedded"
@@ -1658,8 +1613,31 @@ export function ProgrammeReportingClient({
                   </div>
                 ) : null}
 
+                {isInProgress && wizardStep === "scratch" ? (
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="inline-flex items-center gap-1.5 font-semibold text-sm tracking-tight">
+                        <Sparkles className="h-4 w-4 text-muted-foreground" />
+                        Step 2 · Draw code letters
+                      </h3>
+                      <p className="text-muted-foreground text-xs">
+                        Checkout is closed. Each participant scratches one tile
+                        in turn to reveal their code letter.
+                      </p>
+                    </div>
+                    <ScratchGrid
+                      tiles={scratchTiles}
+                      currentQueuePosition={currentQueuePosition}
+                      isRevealing={isRevealing}
+                      onScratch={onScratchTile}
+                      onRevealAll={onRevealAllRemaining}
+                      isRevealingAll={activeAction === "reveal-all"}
+                    />
+                  </div>
+                ) : null}
+
                 {selected.programme ? (
-                  isInProgress ? (
+                  isInProgress && wizardStep === "checkout" ? (
                     <ReportingQuickAddSection
                       open={manualRosterOpen}
                       onOpenChange={setManualRosterOpen}
@@ -1692,13 +1670,6 @@ export function ProgrammeReportingClient({
                           isInProgress={isInProgress}
                           isClosed={isClosed}
                           onMark={onMarkRow}
-                          onSpin={(row) => {
-                            setSpinPendingAssignmentId(row.assignmentId);
-                            setSpinAssignRequested(false);
-                            setActiveSpinRow(row);
-                            setIsSpinWheelOpen(true);
-                          }}
-                          spinPendingAssignmentId={spinPendingAssignmentId}
                           markingIds={markingIds}
                           getIssuedCodeForRow={getIssuedCodeForRow}
                           programmeType={selected.programme.type}
@@ -1716,16 +1687,10 @@ export function ProgrammeReportingClient({
                         isInProgress={isInProgress}
                         isClosed={isClosed}
                         onMark={onMarkRow}
-                        onSpin={(row) => {
-                          setSpinPendingAssignmentId(row.assignmentId);
-                          setSpinAssignRequested(false);
-                          setActiveSpinRow(row);
-                          setIsSpinWheelOpen(true);
-                        }}
-                        spinPendingAssignmentId={spinPendingAssignmentId}
                         markingIds={markingIds}
                         getIssuedCodeForRow={getIssuedCodeForRow}
                         programmeType={selected.programme.type}
+                        disabled={wizardStep === "scratch"}
                       />
                     </div>
                   )
@@ -1866,16 +1831,6 @@ export function ProgrammeReportingClient({
           </SheetFooter>
         </SheetContent>
       </Sheet>
-
-      {/* Code Letter Spin Wheel Modal */}
-      <CodeLetterSpinWheel
-        open={isSpinWheelOpen}
-        onOpenChange={handleSpinWheelOpenChange}
-        targetName={activeSpinRow?.nameColumn || "Participant"}
-        participantCount={Math.max(1, reportedUnitsCount)}
-        alreadyAssignedCodes={alreadyAssignedCodes}
-        onResult={handleSpinResult}
-      />
 
       <AlertDialog
         open={isReopenConfirmOpen}

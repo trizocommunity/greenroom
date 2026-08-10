@@ -1,19 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  extractFestivalSlugFromPath,
+  getDomainOwnershipToken,
+  getPublicFestivalBaseUrl,
+  isCustomDomainPhasePending,
+  isValidCustomDomainShape,
+  normalizeCustomDomain,
+  parseCustomFestivalHost,
+} from "./custom-domain";
+import {
   __resetCustomDomainCacheForTests,
   getCachedVerifiedInstitution,
   getCustomDomainCacheTtlMs,
   invalidateCustomDomainCache,
   setCachedVerifiedInstitution,
 } from "./custom-domain-cache";
-import {
-  extractFestivalSlugFromPath,
-  getDomainOwnershipToken,
-  getPublicFestivalBaseUrl,
-  isValidCustomDomainShape,
-  normalizeCustomDomain,
-  parseCustomFestivalHost,
-} from "./custom-domain";
 
 describe("custom-domain helpers", () => {
   const prevAppUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -25,7 +26,10 @@ describe("custom-domain helpers", () => {
   });
 
   it("parses suffamehil.ahlussuffa.in into slug + apex", () => {
-    const parsed = parseCustomFestivalHost("suffamehil.ahlussuffa.in", new Set());
+    const parsed = parseCustomFestivalHost(
+      "suffamehil.ahlussuffa.in",
+      new Set(),
+    );
     expect(parsed).toEqual({
       festivalSlug: "suffamehil",
       customDomain: "ahlussuffa.in",
@@ -39,12 +43,25 @@ describe("custom-domain helpers", () => {
     expect(parseCustomFestivalHost("www.ahlussuffa.in", appHosts)).toBeNull();
   });
 
-  it("getPublicFestivalBaseUrl uses subdomain only when verified", () => {
+  it("getPublicFestivalBaseUrl uses subdomain only when HTTPS is ready", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://greenroomm.vercel.app";
     expect(
       getPublicFestivalBaseUrl({
         slug: "suffamehil",
         institution: { customDomain: "ahlussuffa.in", verifiedAt: null },
+      }),
+    ).toBe("https://greenroomm.vercel.app/suffamehil");
+
+    // DNS verified but the certificate is not serving yet: the branded host
+    // would fail in a browser, so keep advertising the path URL.
+    expect(
+      getPublicFestivalBaseUrl({
+        slug: "suffamehil",
+        institution: {
+          customDomain: "ahlussuffa.in",
+          verifiedAt: "2026-01-01T00:00:00.000Z",
+          httpsReadyAt: null,
+        },
       }),
     ).toBe("https://greenroomm.vercel.app/suffamehil");
 
@@ -54,9 +71,37 @@ describe("custom-domain helpers", () => {
         institution: {
           customDomain: "ahlussuffa.in",
           verifiedAt: "2026-01-01T00:00:00.000Z",
+          httpsReadyAt: "2026-01-01T00:05:00.000Z",
         },
       }),
     ).toBe("https://suffamehil.ahlussuffa.in");
+  });
+
+  it("getPublicFestivalBaseUrl falls back when no institution or domain", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomm.vercel.app";
+    expect(
+      getPublicFestivalBaseUrl({ slug: "suffamehil", institution: null }),
+    ).toBe("https://greenroomm.vercel.app/suffamehil");
+
+    expect(
+      getPublicFestivalBaseUrl({
+        slug: "suffamehil",
+        institution: {
+          customDomain: null,
+          verifiedAt: "2026-01-01T00:00:00.000Z",
+          httpsReadyAt: "2026-01-01T00:05:00.000Z",
+        },
+      }),
+    ).toBe("https://greenroomm.vercel.app/suffamehil");
+  });
+
+  it("isCustomDomainPhasePending covers only the waiting phases", () => {
+    expect(isCustomDomainPhasePending("provisioning")).toBe(true);
+    expect(isCustomDomainPhasePending("manual-attach")).toBe(true);
+    expect(isCustomDomainPhasePending("no-domain")).toBe(false);
+    expect(isCustomDomainPhasePending("awaiting-dns")).toBe(false);
+    expect(isCustomDomainPhasePending("https-ready")).toBe(false);
+    expect(isCustomDomainPhasePending("error")).toBe(false);
   });
 
   it("normalizes and validates domain shape", () => {

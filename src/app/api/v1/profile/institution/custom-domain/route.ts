@@ -2,14 +2,12 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import {
-  badRequest,
-  createProtectedHandler,
-  forbidden,
-  ok,
-} from "@/api/lib";
+import { badRequest, createProtectedHandler, forbidden, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
-import { festival as festivals, user as usersTable } from "@/core/database/schema";
+import {
+  festival as festivals,
+  user as usersTable,
+} from "@/core/database/schema";
 import {
   isValidCustomDomainShape,
   normalizeCustomDomain,
@@ -18,6 +16,7 @@ import {
   findInstitutionById,
   updateInstitutionCustomDomain,
 } from "@/features/institutions/repositories/institution.repository";
+import { detachWildcard } from "@/features/institutions/services/custom-domain-provisioning.service";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 
 const bodySchema = z.object({
@@ -94,10 +93,18 @@ const handler = createProtectedHandler({
     }
 
     try {
-      const updated = await updateInstitutionCustomDomain({
-        institutionId: user.institutionId,
-        customDomain: nextDomain,
-      });
+      const { institution: updated, previousDomain } =
+        await updateInstitutionCustomDomain({
+          institutionId: user.institutionId,
+          customDomain: nextDomain,
+        });
+
+      // Release the old wildcard on Vercel so it can be claimed elsewhere.
+      // Best-effort by design: the domain change has already been persisted.
+      if (previousDomain) {
+        await detachWildcard(previousDomain);
+      }
+
       const fresh = await findInstitutionById(user.institutionId);
       return ok(fresh ?? updated);
     } catch (err) {

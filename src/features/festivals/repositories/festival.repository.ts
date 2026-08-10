@@ -82,13 +82,23 @@ export async function findBrandedRedirectTarget(slug: string): Promise<{
     },
     with: {
       institution: {
-        columns: { customDomain: true, verifiedAt: true },
+        columns: {
+          customDomain: true,
+          verifiedAt: true,
+          httpsReadyAt: true,
+        },
       },
     },
   });
 
   if (!festival?.slug || !festival.publicSiteEnabled) return null;
-  if (!festival.institution?.customDomain || !festival.institution.verifiedAt) {
+  // httpsReadyAt (not verifiedAt) is the gate: redirecting to a branded host
+  // whose certificate is not serving yet would make working path URLs look dead.
+  if (
+    !festival.institution?.customDomain ||
+    !festival.institution.verifiedAt ||
+    !festival.institution.httpsReadyAt
+  ) {
     return null;
   }
 
@@ -108,7 +118,7 @@ export async function isSlugTaken(slug: string, excludeId?: string) {
   const whereClause = excludeId
     ? and(
         eq(sql`replace(${festivals.slug}, '-', '')`, strippedSlug),
-        sql`${festivals.id} != ${excludeId}`
+        sql`${festivals.id} != ${excludeId}`,
       )
     : eq(sql`replace(${festivals.slug}, '-', '')`, strippedSlug);
 

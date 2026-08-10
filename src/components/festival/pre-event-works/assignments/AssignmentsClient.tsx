@@ -61,6 +61,11 @@ import { toast } from "@/lib/toast";
 import { ProgrammeActivityTimeline } from "../programmes/ProgrammeActivityTimeline";
 import { AssignmentModal } from "./AssignmentModal";
 
+/** Matches the wording used on the manager-side programme cards. */
+function stageTypeLabel(stageType?: string | null): string {
+  return stageType === "NON_STAGE" ? "Off stage" : "On stage";
+}
+
 type IndividualAssignmentRow = {
   kind: "individual";
   assignment: any;
@@ -92,6 +97,7 @@ type ProgrammeCardRow = {
   programmeId: string;
   programmeName: string;
   programmeType: "INDIVIDUAL" | "GROUP";
+  stageType: string | null;
   categoryName: string | null;
   categoryId: string | null;
   status: string | null;
@@ -108,6 +114,7 @@ type ProgrammeCardRow = {
 function ProgrammeCard({
   programmeName,
   programmeType,
+  stageType,
   categoryName,
   status,
   assignedAt,
@@ -118,6 +125,7 @@ function ProgrammeCard({
 }: {
   programmeName: string;
   programmeType: "INDIVIDUAL" | "GROUP";
+  stageType: string | null;
   categoryName: string | null;
   status: string | null;
   assignedAt: string | null;
@@ -141,6 +149,7 @@ function ProgrammeCard({
           <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
             {categoryName || "Uncategorized"}
             {programmeType === "GROUP" ? " · Group" : " · Individual"}
+            {` · ${stageTypeLabel(stageType)}`}
           </span>
         </div>
         {status && (
@@ -427,6 +436,7 @@ export function AssignmentsClient({
           programmeId: programme.id,
           programmeName: programme.name ?? "—",
           programmeType: programme.type,
+          stageType: null,
           categoryName:
             (row.kind === "individual"
               ? row.assignment.category?.name ||
@@ -480,6 +490,7 @@ export function AssignmentsClient({
 
       // Find the source programme object to get maxParticipantsPerGroup/maxTeamsPerGroup
       const progInfo = programmes.find((p) => p.id === c.programmeId);
+      c.stageType = (progInfo as any)?.stageType ?? null;
       const catInfo = categories.find((cat: any) => cat.id === c.categoryId);
       const isGeneral = catInfo?.type === "GENERAL";
 
@@ -776,6 +787,7 @@ export function AssignmentsClient({
                 key={card.programmeId}
                 programmeName={card.programmeName}
                 programmeType={card.programmeType}
+                stageType={card.stageType}
                 categoryName={card.categoryName}
                 status={card.status}
                 assignedAt={card.assignedAt}
@@ -889,7 +901,9 @@ export function AssignmentsClient({
                     selectedProgrammeCard.programmeType === "GROUP"
                       ? "Team programme"
                       : "Individual programme"
-                  } · ${selectedProgrammeCard.attendeesCount} assigned${
+                  } · ${stageTypeLabel(selectedProgrammeCard.stageType)} · ${
+                    selectedProgrammeCard.attendeesCount
+                  } assigned${
                     selectedProgrammeCard.programmeType === "GROUP"
                       ? ` · ${selectedProgrammeCard.teamCount} teams`
                       : ""

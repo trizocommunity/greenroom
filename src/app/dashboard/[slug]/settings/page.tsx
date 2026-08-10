@@ -82,6 +82,7 @@ export default async function SettingsPage({
       ? {
           customDomain: institution.customDomain,
           verifiedAt: institution.verifiedAt,
+          httpsReadyAt: institution.httpsReadyAt,
         }
       : null,
   });
@@ -102,6 +103,7 @@ export default async function SettingsPage({
         institutionId: institution?.id ?? null,
         customDomain: institution?.customDomain ?? null,
         verifiedAt: institution?.verifiedAt ?? null,
+        httpsReadyAt: institution?.httpsReadyAt ?? null,
         isOwner: isInstitutionOwner || isSuperAdmin,
         isPro: isEnabled(festival.tier, "customDomain"),
         isInstitutional: !!festival.institutionId,

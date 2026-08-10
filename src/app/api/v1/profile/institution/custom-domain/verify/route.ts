@@ -2,19 +2,21 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import {
-  badRequest,
-  createProtectedHandler,
-  forbidden,
-  ok,
-} from "@/api/lib";
+import { badRequest, createProtectedHandler, forbidden, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
-import { festival as festivals, user as usersTable } from "@/core/database/schema";
-import { verifyCustomDomainDns } from "@/features/institutions/services/custom-domain-verify.service";
+import {
+  festival as festivals,
+  user as usersTable,
+} from "@/core/database/schema";
 import {
   findInstitutionById,
   markInstitutionDomainVerified,
 } from "@/features/institutions/repositories/institution.repository";
+import {
+  ensureWildcardAttached,
+  syncCustomDomainStatus,
+} from "@/features/institutions/services/custom-domain-provisioning.service";
+import { verifyCustomDomainDns } from "@/features/institutions/services/custom-domain-verify.service";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 
 const bodySchema = z.object({
@@ -53,10 +55,7 @@ const handler = createProtectedHandler({
     }
 
     if (!user.institution.customDomain) {
-      return badRequest(
-        "NO_DOMAIN",
-        "Save a custom domain before verifying",
-      );
+      return badRequest("NO_DOMAIN", "Save a custom domain before verifying");
     }
 
     // Plan feature gate: features.customDomain (PRO)
@@ -105,8 +104,16 @@ const handler = createProtectedHandler({
     }
 
     const updated = await markInstitutionDomainVerified(user.institutionId);
+
+    // Phase 2: DNS is proven, so claim the wildcard on Vercel immediately.
+    // Attach failures are surfaced through the status payload, not thrown —
+    // verification itself already succeeded and must not be rolled back.
+    await ensureWildcardAttached(updated.customDomain ?? "");
+
+    const status = await syncCustomDomainStatus(user.institutionId);
     const fresh = await findInstitutionById(user.institutionId);
-    return ok(fresh ?? updated);
+
+    return ok({ ...(fresh ?? updated), status });
   },
 });
 

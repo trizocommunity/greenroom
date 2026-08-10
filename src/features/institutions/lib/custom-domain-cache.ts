@@ -37,7 +37,9 @@ export function setCachedVerifiedInstitution(
 }
 
 /** Invalidate one apex or clear the whole map when domain is omitted. */
-export function invalidateCustomDomainCache(customDomain?: string | null): void {
+export function invalidateCustomDomainCache(
+  customDomain?: string | null,
+): void {
   if (!customDomain) {
     cache.clear();
     return;

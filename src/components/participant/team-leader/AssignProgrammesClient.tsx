@@ -51,6 +51,7 @@ import type {
   CategoryType,
   ProgrammeStatus,
   ProgrammeType,
+  StageType,
 } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
@@ -61,12 +62,18 @@ type ProgrammeForAssignment = {
   id: string;
   name: string;
   type: ProgrammeType;
+  stageType: StageType;
   status: ProgrammeStatus;
   maxTeamsPerGroup: number;
   maxParticipantsPerTeam: number;
   maxParticipantsPerGroup: number;
   category: { id: string; name: string; type: CategoryType | null };
 };
+
+/** Matches the wording used on the manager-side programme cards. */
+function stageTypeLabel(stageType?: StageType | null): string {
+  return stageType === "NON_STAGE" ? "Off stage" : "On stage";
+}
 
 type MyParticipantForAssignment = {
   id: string;
@@ -1218,6 +1225,7 @@ export function AssignProgrammesClient({
                               </div>
                               <p className="mt-0.5 truncate text-xs text-muted-foreground">
                                 {p.category.name} ·{" "}
+                                {stageTypeLabel(p.stageType)} ·{" "}
                                 {p.type === "GROUP"
                                   ? `Team · ${p.maxTeamsPerGroup} teams of ${p.maxParticipantsPerTeam}`
                                   : `Individual · max ${p.maxParticipantsPerGroup}`}
@@ -1353,6 +1361,9 @@ export function AssignProgrammesClient({
                     const memberCount = row.assignments.length;
                     const categoryName =
                       details?.category?.name ?? row.programme?.category?.name;
+                    const stageLabel = stageTypeLabel(
+                      details?.stageType ?? row.programme?.stageType,
+                    );
 
                     return (
                       <li key={row.programmeId}>
@@ -1376,6 +1387,7 @@ export function AssignProgrammesClient({
                             </div>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {categoryName ? `${categoryName} · ` : ""}
+                              {stageLabel} ·{" "}
                               {isGroup
                                 ? `${row.teams.size} team${row.teams.size === 1 ? "" : "s"} · ${memberCount} participant${memberCount === 1 ? "" : "s"}`
                                 : `${memberCount} participant${memberCount === 1 ? "" : "s"}`}
@@ -1507,6 +1519,7 @@ export function AssignProgrammesClient({
                 </SheetTitle>
                 <SheetDescription className="text-xs">
                   {selectedProgramme.category.name} ·{" "}
+                  {stageTypeLabel(selectedProgramme.stageType)} ·{" "}
                   {selectedProgramme.type === "GROUP"
                     ? "Team programme"
                     : "Individual programme"}
@@ -1820,6 +1833,11 @@ export function AssignProgrammesClient({
                     ?.name ??
                     drawerRow.programme?.category?.name ??
                     "Uncategorised"}{" "}
+                  ·{" "}
+                  {stageTypeLabel(
+                    programmeDetailsById.get(drawerRow.programmeId)
+                      ?.stageType ?? drawerRow.programme?.stageType,
+                  )}{" "}
                   ·{" "}
                   {drawerRow.programme?.type === "GROUP"
                     ? "Team programme"

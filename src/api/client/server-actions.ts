@@ -35,15 +35,16 @@ import {
 } from "@/features/posters/actions/poster-template.actions";
 import { bulkCreateProgrammesAction } from "@/features/programmes/actions/programme.actions";
 import {
-  assignCodeLettersWithSpinAction,
   closeProgrammeReportingAction,
+  completeCheckoutAction,
   getReportingStatsAction,
   markProgrammeAssignmentsBulkAction,
   markProgrammeParticipantAction,
   reopenProgrammeReportingAction,
   reopenProgrammeReportingByProgrammeAction,
   resetProgrammeReportingAction,
-  resetSpinCodeLettersAction,
+  revealAllRemainingAction,
+  revealScratchCodeAction,
   scanAndReportParticipantAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
@@ -348,24 +349,14 @@ export function useReopenProgrammeReporting() {
   });
 }
 
-export function useAssignCodeLettersWithSpin() {
+export function useCompleteCheckout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
       festivalId: string;
       reportingSessionId: string;
-      codeAssignments: Array<{
-        teamNumber: number | null;
-        groupId?: string | null;
-        participantId?: string | null;
-        code: string;
-      }>;
     }) => {
-      return assignCodeLettersWithSpinAction(
-        input.festivalId,
-        input.reportingSessionId,
-        input.codeAssignments,
-      );
+      return completeCheckoutAction(input.festivalId, input.reportingSessionId);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -432,14 +423,43 @@ export function useResetProgrammeReporting() {
   });
 }
 
-export function useResetSpinCodeLetters() {
+export function useRevealScratchCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      festivalId: string;
+      reportingSessionId: string;
+      codeLetterId: string;
+    }) => {
+      return revealScratchCodeAction(
+        input.festivalId,
+        input.reportingSessionId,
+        input.codeLetterId,
+      );
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({
+        queryKey: [
+          "reporting-stats",
+          input.festivalId,
+          input.reportingSessionId,
+        ],
+      });
+    },
+  });
+}
+
+export function useRevealAllRemaining() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
       festivalId: string;
       reportingSessionId: string;
     }) => {
-      return resetSpinCodeLettersAction(
+      return revealAllRemainingAction(
         input.festivalId,
         input.reportingSessionId,
       );

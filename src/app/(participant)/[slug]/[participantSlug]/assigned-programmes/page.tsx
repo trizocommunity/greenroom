@@ -8,7 +8,10 @@ import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
-import { indexReportingSessionsByProgramme } from "@/features/programmes/services/programme-reporting-display";
+import {
+  indexReportingSessionsByProgramme,
+  revealedCodeLettersOnly,
+} from "@/features/programmes/services/programme-reporting-display";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
 const RESERVED_SLUGS = new Set([
@@ -86,6 +89,7 @@ export default async function AssignedProgrammesPage({
           with: {
             programmeReportedParticipants: { columns: { assignmentId: true } },
             programmeCodeLetters: {
+              where: revealedCodeLettersOnly,
               with: {
                 programmeCodeLetterRecipients: {
                   columns: { participantId: true },

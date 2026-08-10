@@ -589,7 +589,7 @@ export function LeaderboardClient({
                     </div>
                   </div>
                 </DrawerHeader>
-                <ScrollArea className="flex-1 p-4">
+                <ScrollArea className="flex-1 py-4">
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="rounded-xl border bg-sky-500/5 p-4 text-center">
                       <div className="text-sm font-medium text-sky-600 dark:text-sky-400 mb-1">

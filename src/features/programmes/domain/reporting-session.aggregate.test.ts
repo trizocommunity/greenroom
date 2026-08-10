@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   type Assignment,
   type AssignmentMember,
+  type CodeLetter,
   ReportingSession,
   type ReportingSessionState,
 } from "./reporting-session.aggregate";
@@ -21,6 +22,7 @@ function makeState(
     startedBy: null,
     endedAt: null,
     endedBy: null,
+    checkoutCompletedAt: null,
     programmeType: "INDIVIDUAL",
     programmeStatus: "SCHEDULED",
     programmeName: "Test Programme",
@@ -49,6 +51,21 @@ function makeMember(
     id: "member-1",
     assignmentId: "assign-1",
     participantId: "part-1",
+    ...overrides,
+  };
+}
+
+/** A tile that has already been scratched, unless overridden. */
+function makeCodeLetter(overrides: Partial<CodeLetter> = {}): CodeLetter {
+  return {
+    id: "cl-1",
+    code: "A",
+    issuedAt: new Date().toISOString(),
+    issuedBy: "Stage Manager",
+    queuePosition: 1,
+    revealedAt: new Date().toISOString(),
+    revealedBy: "Stage Manager",
+    recipients: [{ participantId: "part-1", assignmentMemberId: null }],
     ...overrides,
   };
 }
@@ -203,7 +220,7 @@ describe("ReportingSession aggregate", () => {
   });
 
   describe("close", () => {
-    it("throws when a reported participant has no code letter", () => {
+    it("throws when checkout has not been completed", () => {
       const session = new ReportingSession(
         makeState({
           status: "IN_PROGRESS",
@@ -223,14 +240,15 @@ describe("ReportingSession aggregate", () => {
         }),
       );
       expect(() => session.close("Stage Manager")).toThrow(
-        /Assign a code letter/,
+        /Complete checkout/i,
       );
     });
 
-    it("succeeds when every reported participant has a code letter", () => {
+    it("succeeds once checkout is complete", () => {
       const session = new ReportingSession(
         makeState({
           status: "IN_PROGRESS",
+          checkoutCompletedAt: new Date().toISOString(),
           reportedParticipants: [
             {
               id: "rp-1",
@@ -242,17 +260,6 @@ describe("ReportingSession aggregate", () => {
               assignmentMemberId: null,
               reportedBy: "Stage Manager",
               reportedAt: new Date().toISOString(),
-            },
-          ],
-          codeLetters: [
-            {
-              id: "cl-1",
-              code: "A",
-              issuedAt: new Date().toISOString(),
-              issuedBy: "Stage Manager",
-              recipients: [
-                { participantId: "part-1", assignmentMemberId: null },
-              ],
             },
           ],
         }),
@@ -266,7 +273,10 @@ describe("ReportingSession aggregate", () => {
     it("uses the provided effective ended at timestamp", () => {
       const endedAt = "2026-08-15T10:00:00.000Z";
       const session = new ReportingSession(
-        makeState({ status: "IN_PROGRESS" }),
+        makeState({
+          status: "IN_PROGRESS",
+          checkoutCompletedAt: new Date().toISOString(),
+        }),
       );
       session.close("Stage Manager", endedAt);
       expect(session.endedAt).toBe(endedAt);
@@ -279,6 +289,7 @@ describe("ReportingSession aggregate", () => {
         makeState({
           status: "IN_PROGRESS",
           programmeStatus: "REPORTING",
+          checkoutCompletedAt: new Date().toISOString(),
           reportedParticipants: [
             {
               id: "rp-1",
@@ -292,23 +303,14 @@ describe("ReportingSession aggregate", () => {
               reportedAt: new Date().toISOString(),
             },
           ],
-          codeLetters: [
-            {
-              id: "cl-1",
-              code: "A",
-              issuedAt: new Date().toISOString(),
-              issuedBy: "Stage Manager",
-              recipients: [
-                { participantId: "part-1", assignmentMemberId: null },
-              ],
-            },
-          ],
+          codeLetters: [makeCodeLetter()],
         }),
       );
       session.reset("Stage Manager");
       expect(session.status).toBe("RESET");
       expect(session.reportedParticipants).toHaveLength(0);
       expect(session.codeLetters).toHaveLength(0);
+      expect(session.checkoutCompletedAt).toBeNull();
       expect(session.getEvents()[0]?.type).toBe("REPORTING_RESET");
     });
 
@@ -340,6 +342,7 @@ describe("ReportingSession aggregate", () => {
           status: "CLOSED",
           isLocked: true,
           programmeStatus: "PENDING_JUDGMENT",
+          checkoutCompletedAt: new Date().toISOString(),
           reportedParticipants: [
             {
               id: "rp-1",
@@ -353,17 +356,7 @@ describe("ReportingSession aggregate", () => {
               reportedAt: new Date().toISOString(),
             },
           ],
-          codeLetters: [
-            {
-              id: "cl-1",
-              code: "A",
-              issuedAt: new Date().toISOString(),
-              issuedBy: "Stage Manager",
-              recipients: [
-                { participantId: "part-1", assignmentMemberId: null },
-              ],
-            },
-          ],
+          codeLetters: [makeCodeLetter()],
         }),
       );
       session.reopen("Admin");
@@ -371,6 +364,7 @@ describe("ReportingSession aggregate", () => {
       expect(session.isLocked).toBe(false);
       expect(session.reportedParticipants).toHaveLength(0);
       expect(session.codeLetters).toHaveLength(0);
+      expect(session.checkoutCompletedAt).toBeNull();
       expect(session.getEvents()[0]?.type).toBe("REPORTING_REOPENED");
     });
 
@@ -382,67 +376,77 @@ describe("ReportingSession aggregate", () => {
     });
   });
 
-  describe("assignCodesWithSpin", () => {
-    it("records a spin codes assigned event and updates state", () => {
+  describe("completeCheckout", () => {
+    const codeAssignments = [
+      {
+        code: "C",
+        queuePosition: 1,
+        participantId: "part-1",
+        groupId: null,
+        teamNumber: null,
+      },
+      {
+        code: "A",
+        queuePosition: 2,
+        participantId: "part-2",
+        groupId: null,
+        teamNumber: null,
+      },
+    ];
+
+    it("stamps checkout and records the shuffled assignments", () => {
       const session = new ReportingSession(
         makeState({ status: "IN_PROGRESS" }),
       );
-      session.assignCodesWithSpin(
-        [
-          {
-            teamNumber: null,
-            groupId: null,
-            participantId: "part-1",
-            code: "X",
-          },
-        ],
-        "Stage Manager",
-      );
+      session.completeCheckout("Stage Manager", codeAssignments);
+
+      expect(session.checkoutCompletedAt).not.toBeNull();
       const event = session.getEvents()[0];
-      expect(event?.type).toBe("SPIN_CODES_ASSIGNED");
+      expect(event?.type).toBe("CHECKOUT_COMPLETED");
       expect(
-        event && "codeAssignments" in event && event.codeAssignments,
-      ).toHaveLength(1);
-      expect(session.codeLetters).toHaveLength(1);
-      expect(session.codeLetters[0]?.recipients[0]?.participantId).toBe(
-        "part-1",
-      );
+        event &&
+          "shuffledCodeAssignments" in event &&
+          event.shuffledCodeAssignments,
+      ).toHaveLength(2);
     });
 
-    it("allows close after spin-assigned codes cover all reported participants", () => {
-      const assignment = makeAssignment();
+    it("unblocks close", () => {
       const session = new ReportingSession(
-        makeState({
-          status: "IN_PROGRESS",
-          reportedParticipants: [
-            {
-              id: "rp-1",
-              reportingSessionId: "rs-1",
-              assignmentId: assignment.id,
-              participantId: assignment.participantId,
-              groupId: null,
-              teamNumber: null,
-              assignmentMemberId: null,
-              reportedBy: "Stage Manager",
-              reportedAt: new Date().toISOString(),
-            },
-          ],
-        }),
+        makeState({ status: "IN_PROGRESS" }),
       );
-      session.markParticipant(assignment, [], "Stage Manager");
-      session.assignCodesWithSpin(
-        [
-          {
-            teamNumber: null,
-            groupId: null,
-            participantId: assignment.participantId!,
-            code: "A",
-          },
-        ],
-        "Stage Manager",
-      );
+      session.completeCheckout("Stage Manager", codeAssignments);
       session.close("Stage Manager");
       expect(session.status).toBe("CLOSED");
+    });
+
+    it("freezes attendance once complete", () => {
+      const assignment = makeAssignment();
+      const session = new ReportingSession(
+        makeState({ status: "IN_PROGRESS" }),
+      );
+      session.completeCheckout("Stage Manager", codeAssignments);
+      expect(() =>
+        session.markParticipant(assignment, [], "Stage Manager"),
+      ).toThrow(/Checkout is complete/i);
+    });
+
+    it("throws when run twice", () => {
+      const session = new ReportingSession(
+        makeState({ status: "IN_PROGRESS" }),
+      );
+      session.completeCheckout("Stage Manager", codeAssignments);
+      expect(() =>
+        session.completeCheckout("Stage Manager", codeAssignments),
+      ).toThrow(/already been completed/i);
+    });
+
+    it("throws when nobody was checked out", () => {
+      const session = new ReportingSession(
+        makeState({ status: "IN_PROGRESS" }),
+      );
+      expect(() => session.completeCheckout("Stage Manager", [])).toThrow(
+        /at least one participant/i,
+      );
     });
 
     it("throws when reporting is locked", () => {
@@ -450,40 +454,8 @@ describe("ReportingSession aggregate", () => {
         makeState({ status: "IN_PROGRESS", isLocked: true }),
       );
       expect(() =>
-        session.assignCodesWithSpin(
-          [
-            {
-              teamNumber: null,
-              groupId: null,
-              participantId: "part-1",
-              code: "X",
-            },
-          ],
-          "Stage Manager",
-        ),
+        session.completeCheckout("Stage Manager", codeAssignments),
       ).toThrow(/locked/i);
-    });
-  });
-
-  describe("resetSpinCodeLetters", () => {
-    it("clears in-memory code letters", () => {
-      const session = new ReportingSession(
-        makeState({
-          status: "IN_PROGRESS",
-          codeLetters: [
-            {
-              id: "cl-1",
-              code: "A",
-              issuedAt: new Date().toISOString(),
-              issuedBy: "Stage Manager",
-              recipients: [],
-            },
-          ],
-        }),
-      );
-      session.resetSpinCodeLetters("Stage Manager");
-      expect(session.codeLetters).toHaveLength(0);
-      expect(session.getEvents()[0]?.type).toBe("CODE_LETTERS_RESET");
     });
   });
 

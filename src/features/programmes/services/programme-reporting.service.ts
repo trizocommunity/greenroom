@@ -21,7 +21,9 @@ import {
   type AccessSession,
   StageAssignmentService,
 } from "@/features/stages/services/stage-assignment.service";
+import { shuffleInPlace } from "./code-letter-adapter.service";
 import { ReportingEventAdapter } from "./reporting-event-adapter.service";
+import { groupIntoUnits, planScratchCodes } from "./scratch-code-plan";
 
 async function getOrCreateSessionByProgramme(
   programmeId: string,
@@ -205,7 +207,7 @@ export const ProgrammeReportingService = {
             },
             programmeReportedParticipants: true,
             programmeCodeLetters: {
-              orderBy: [asc(codeLetterTable.issuedAt)],
+              orderBy: [asc(codeLetterTable.queuePosition)],
               with: {
                 programmeCodeLetterRecipients: {
                   columns: { participantId: true },
@@ -262,12 +264,20 @@ export const ProgrammeReportingService = {
             updatedAt: reportingSession.updatedAt,
             windowEndsAt: parseInstant(reportingSession.windowEndsAt),
             isLocked: reportingSession.isLocked,
+            checkoutCompletedAt: reportingSession.checkoutCompletedAt,
             programmeReportedParticipants:
               reportingSession.programmeReportedParticipants ?? [],
+            // The code under an unscratched tile is withheld even from the
+            // stage manager's own payload — otherwise the draw is readable in
+            // devtools before anyone has scratched.
             programmeCodeLetters:
               reportingSession.programmeCodeLetters?.map((cl) => ({
-                code: cl.code,
+                id: cl.id,
+                code: cl.revealedAt ? cl.code : "",
                 issuedAt: cl.issuedAt,
+                queuePosition: cl.queuePosition,
+                revealedAt: cl.revealedAt,
+                revealedBy: cl.revealedBy,
                 programmeCodeLetterRecipients:
                   cl.programmeCodeLetterRecipients ?? [],
               })) ?? [],
@@ -649,44 +659,107 @@ export const ProgrammeReportingService = {
     };
   },
 
-  async assignCodesWithSpin(
-    reportingSessionId: string,
-    codeAssignments: Array<{
-      teamNumber: number | null;
-      groupId?: string | null;
-      participantId?: string | null;
-      code: string;
-    }>,
-    actorName: string,
-  ) {
+  /**
+   * Ends checkout (step 1) and opens scratching (step 2).
+   *
+   * The shuffle happens here, once, server-side: every checked-out unit is
+   * dealt a code letter and a queue position in the same breath. Nothing is
+   * revealed yet — the tiles exist, all unscratched.
+   */
+  async completeCheckout(reportingSessionId: string, actorName: string) {
     const session =
       await ReportingSessionRepository.loadById(reportingSessionId);
 
-    const normalizedAssignments = codeAssignments.map((a) => ({
-      teamNumber: a.teamNumber,
-      groupId: a.groupId ?? null,
-      participantId: a.participantId ?? null,
-      code: a.code,
-    }));
+    const units = groupIntoUnits(
+      session.reportedParticipants.map((p) => ({
+        participantId: p.participantId,
+        groupId: p.groupId,
+        teamNumber: p.teamNumber,
+        assignmentMemberId: p.assignmentMemberId,
+        reportedAt: p.reportedAt,
+      })),
+      session.programmeType,
+    );
 
-    session.assignCodesWithSpin(normalizedAssignments, actorName);
-    const events = await ReportingSessionRepository.save(session);
-    const { participantCodes } = await ReportingEventAdapter.dispatch(events);
+    const assignments = planScratchCodes(units, shuffleInPlace);
 
-    return {
-      success: true,
-      codesAssigned: codeAssignments.length,
-      participantsNotified: participantCodes.length,
-    };
-  },
-
-  async resetSpinCodeLetters(reportingSessionId: string, actorName: string) {
-    const session =
-      await ReportingSessionRepository.loadById(reportingSessionId);
-    session.resetSpinCodeLetters(actorName);
+    session.completeCheckout(actorName, assignments);
     const events = await ReportingSessionRepository.save(session);
     await ReportingEventAdapter.dispatch(events);
 
-    return { success: true };
+    return { success: true, tileCount: assignments.length };
+  },
+
+  /**
+   * Scratches one tile. Idempotent: re-revealing an already-scratched tile
+   * returns the same code rather than failing, so a double-tap or a retried
+   * request can't look like an error to the participant standing at the desk.
+   */
+  async revealScratchCode(
+    reportingSessionId: string,
+    codeLetterId: string,
+    actorName: string,
+  ) {
+    const nowStr = serverNowIso();
+
+    return db.transaction(async (tx) => {
+      const tile = await tx.query.programmeCodeLetter.findFirst({
+        where: and(
+          eq(codeLetterTable.id, codeLetterId),
+          eq(codeLetterTable.reportingSessionId, reportingSessionId),
+        ),
+        columns: {
+          id: true,
+          code: true,
+          queuePosition: true,
+          revealedAt: true,
+          revealedBy: true,
+        },
+      });
+      if (!tile) throw new Error("Code letter not found for this session");
+
+      if (tile.revealedAt) {
+        return {
+          success: true,
+          code: tile.code,
+          queuePosition: tile.queuePosition,
+          alreadyRevealed: true,
+        };
+      }
+
+      await tx
+        .update(codeLetterTable)
+        .set({ revealedAt: nowStr, revealedBy: actorName })
+        .where(eq(codeLetterTable.id, codeLetterId));
+
+      return {
+        success: true,
+        code: tile.code,
+        queuePosition: tile.queuePosition,
+        alreadyRevealed: false,
+      };
+    });
+  },
+
+  /**
+   * Reveals every tile still unscratched — the escape hatch for when the queue
+   * stalls (participant left, tile skipped) and the stage manager needs to
+   * finish. Reveal is the act of reporting, so these units count as reported.
+   */
+  async revealAllRemaining(reportingSessionId: string, actorName: string) {
+    const nowStr = serverNowIso();
+
+    const revealed = await db
+      .update(codeLetterTable)
+      .set({ revealedAt: nowStr, revealedBy: actorName })
+      .where(
+        and(
+          eq(codeLetterTable.reportingSessionId, reportingSessionId),
+          sql`${codeLetterTable.revealedAt} is null`,
+        ),
+      )
+      .returning({ id: codeLetterTable.id, code: codeLetterTable.code });
+
+    return { success: true, revealedCount: revealed.length };
   },
 };

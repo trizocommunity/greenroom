@@ -5,11 +5,13 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  Gavel,
   Globe,
   Loader2,
   Pencil,
   Power,
   Rocket,
+  UserRound,
   X,
 } from "lucide-react";
 import party from "party-js";
@@ -23,8 +25,11 @@ import { cn } from "@/core/utils/cn";
 import { setPublicSiteEnabledAction } from "@/features/festivals/actions/festival-crud.actions";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
+  type CustomDomainPhase,
+  type CustomDomainStatus,
   getDomainOwnershipToken,
   getDomainOwnershipTxtName,
+  isCustomDomainPhasePending,
   VERCEL_DNS_CNAME_TARGET,
 } from "@/features/institutions/lib/custom-domain";
 import { toast } from "@/lib/toast";
@@ -33,6 +38,7 @@ export type CustomDomainState = {
   institutionId: string | null;
   customDomain: string | null;
   verifiedAt: string | null;
+  httpsReadyAt: string | null;
   isOwner: boolean;
   isPro: boolean;
   isInstitutional: boolean;
@@ -50,7 +56,7 @@ interface FestivalLiveClientProps {
   onExit: () => void;
 }
 
-type Phase = "idle" | "launching" | "live" | "taking-offline" | "preview";
+type Phase = "idle" | "live" | "taking-offline";
 
 type DnsRow = {
   id: string;
@@ -58,6 +64,61 @@ type DnsRow = {
   hostname: string;
   value: string;
 };
+
+/** How often to re-check while a certificate is still being issued. */
+const STATUS_POLL_MS = 15_000;
+
+/** Derive the phase from server fields, for first paint before polling. */
+function phaseFromState(state: CustomDomainState): CustomDomainPhase {
+  if (!state.customDomain) return "no-domain";
+  if (!state.verifiedAt) return "awaiting-dns";
+  if (!state.httpsReadyAt) return "provisioning";
+  return "https-ready";
+}
+
+function phaseBadge(phase: CustomDomainPhase): {
+  label: string;
+  className: string;
+  variant: "default" | "secondary" | "outline";
+} {
+  switch (phase) {
+    case "https-ready":
+      return {
+        label: "HTTPS ready",
+        variant: "default",
+        className: "bg-green-600 hover:bg-green-600",
+      };
+    case "provisioning":
+      return {
+        label: "Provisioning HTTPS…",
+        variant: "outline",
+        className:
+          "border-blue-500/40 bg-blue-500/10 text-blue-800 dark:text-blue-300",
+      };
+    case "manual-attach":
+      return {
+        label: "DNS verified — awaiting HTTPS",
+        variant: "outline",
+        className:
+          "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+      };
+    case "awaiting-dns":
+      return {
+        label: "Awaiting DNS verification",
+        variant: "outline",
+        className:
+          "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+      };
+    case "error":
+      return {
+        label: "Needs attention",
+        variant: "outline",
+        className: "border-destructive/40 bg-destructive/10 text-destructive",
+      };
+    default:
+      return { label: "Not configured", variant: "secondary", className: "" };
+  }
+}
 
 function CopyIconButton({
   value,
@@ -118,7 +179,21 @@ export function FestivalLiveClient({
     publicSiteEnabled ? "live" : "idle",
   );
   const [iframeReady, setIframeReady] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  /**
+   * One fullscreen surface serves both jobs: it shows the buzzer while the
+   * site is offline and swaps to the live preview the moment it goes live.
+   */
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  /** Busts the iframe cache so a pre-launch 404 is never what loads. */
+  const [previewNonce, setPreviewNonce] = useState(0);
+  const [justLaunched, setJustLaunched] = useState(false);
+  /**
+   * The public layout 404s while `publicSiteEnabled` is false, so mounting the
+   * frame optimistically would race the write and flash a 404. Gate the `src`
+   * on the server's confirmation instead — the celebration still fires on the
+   * click, so the press feels instant without a spinner in between.
+   */
+  const [siteConfirmed, setSiteConfirmed] = useState(publicSiteEnabled);
 
   const [domainInput, setDomainInput] = useState(
     initialDomain.customDomain ?? "",
@@ -132,23 +207,87 @@ export function FestivalLiveClient({
   );
   const domainInputRef = useRef<HTMLInputElement>(null);
 
+  const [status, setStatus] = useState<CustomDomainStatus>(() => ({
+    phase: phaseFromState(initialDomain),
+    customDomain: initialDomain.customDomain,
+    verifiedAt: initialDomain.verifiedAt,
+    httpsReadyAt: initialDomain.httpsReadyAt,
+  }));
+
+  const closeOverlay = useCallback(() => {
+    setOverlayOpen(false);
+    setIframeReady(false);
+    setJustLaunched(false);
+  }, []);
+
   useEffect(() => {
-    if (!showPreview) return;
+    if (!overlayOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setShowPreview(false);
-        setIframeReady(false);
-      }
+      if (e.key === "Escape") closeOverlay();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showPreview]);
+    // Body scroll would otherwise bleed behind the fullscreen surface.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [overlayOpen, closeOverlay]);
 
   useEffect(() => {
     if (!editingDomain) return;
     domainInputRef.current?.focus();
     domainInputRef.current?.select();
   }, [editingDomain]);
+
+  const refreshStatus =
+    useCallback(async (): Promise<CustomDomainStatus | null> => {
+      try {
+        const res = await fetch(
+          "/api/v1/profile/institution/custom-domain/status",
+          { cache: "no-store" },
+        );
+        const json = await res.json();
+        if (!res.ok || !json.success) return null;
+        const next = json.data as CustomDomainStatus;
+        setStatus(next);
+        setDomainState((s) => ({
+          ...s,
+          customDomain: next.customDomain,
+          verifiedAt: next.verifiedAt,
+          httpsReadyAt: next.httpsReadyAt,
+        }));
+        return next;
+      } catch {
+        return null;
+      }
+    }, []);
+
+  /**
+   * Poll only while a certificate is still being issued (or ops has yet to
+   * attach the wildcard). Terminal phases stop the timer so an idle settings
+   * tab makes no background requests.
+   */
+  useEffect(() => {
+    if (!domainState.isInstitutional || !domainState.isPro) return;
+    if (!isCustomDomainPhasePending(status.phase)) return;
+
+    let cancelled = false;
+    const timer = window.setInterval(() => {
+      if (!cancelled) void refreshStatus();
+    }, STATUS_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    status.phase,
+    domainState.isInstitutional,
+    domainState.isPro,
+    refreshStatus,
+  ]);
 
   const fireConfetti = useCallback(() => {
     const burst = (count: number, speed: number) =>
@@ -159,26 +298,43 @@ export function FestivalLiveClient({
   }, []);
 
   const handleLaunch = async () => {
-    if (isReadOnly) return;
-    setPhase("launching");
+    if (isReadOnly || enabled) return;
+    // Celebrate on the click so the buzzer feels instant, but keep the frame's
+    // `src` unset until the write confirms — see `siteConfirmed`.
+    setOverlayOpen(true);
+    setEnabled(true);
+    setPhase("live");
+    setJustLaunched(true);
+    setIframeReady(false);
+    setSiteConfirmed(false);
+    fireConfetti();
+
+    const rollback = (msg: string) => {
+      setEnabled(false);
+      setPhase("idle");
+      setJustLaunched(false);
+      setIframeReady(false);
+      setSiteConfirmed(false);
+      toast.error(msg);
+    };
+
     try {
       const result = await setPublicSiteEnabledAction(festivalId, true);
       if (result?.success) {
-        setEnabled(true);
-        setPhase("live");
-        fireConfetti();
+        // Write has landed: the public route now resolves, so mount the frame
+        // with a fresh src that cannot replay a cached pre-launch 404.
+        setPreviewNonce((n) => n + 1);
+        setSiteConfirmed(true);
         toast.success("Website is live.");
       } else {
-        setPhase("idle");
-        const msg =
+        rollback(
           result && "error" in result && typeof result.error === "string"
             ? result.error
-            : "Failed to launch.";
-        toast.error(msg);
+            : "Failed to launch.",
+        );
       }
     } catch {
-      setPhase("idle");
-      toast.error("Failed to launch.");
+      rollback("Failed to launch.");
     }
   };
 
@@ -190,7 +346,9 @@ export function FestivalLiveClient({
       if (result?.success) {
         setEnabled(false);
         setIframeReady(false);
-        setShowPreview(false);
+        setOverlayOpen(false);
+        setJustLaunched(false);
+        setSiteConfirmed(false);
         setPhase("idle");
         toast.success("Website is now offline.");
       } else {
@@ -257,7 +415,14 @@ export function FestivalLiveClient({
         ...s,
         customDomain: nextDomain,
         verifiedAt: inst.verifiedAt ?? null,
+        httpsReadyAt: inst.httpsReadyAt ?? null,
       }));
+      setStatus({
+        phase: nextDomain ? "awaiting-dns" : "no-domain",
+        customDomain: nextDomain,
+        verifiedAt: inst.verifiedAt ?? null,
+        httpsReadyAt: inst.httpsReadyAt ?? null,
+      });
       setDomainInput(nextDomain ?? "");
       setEditingDomain(!nextDomain);
       toast.success(
@@ -294,8 +459,18 @@ export function FestivalLiveClient({
         ...s,
         customDomain: inst.customDomain ?? null,
         verifiedAt: inst.verifiedAt ?? null,
+        httpsReadyAt: inst.httpsReadyAt ?? null,
       }));
-      toast.success("Domain verified.");
+      // The verify route attaches the wildcard and reconciles TLS before
+      // responding, so its status is fresher than anything we could derive.
+      if (inst.status) {
+        setStatus(inst.status as CustomDomainStatus);
+      }
+      toast.success(
+        inst.httpsReadyAt
+          ? "Domain verified. HTTPS is ready."
+          : "Domain verified. Issuing the certificate — this can take a few minutes.",
+      );
     } catch {
       toast.error("DNS verification failed");
     } finally {
@@ -335,35 +510,42 @@ export function FestivalLiveClient({
         ]
       : [];
 
-  const shareLinks = [
-    { key: "site", label: "Public site", url: fullPublicUrl, always: true },
-    ...(domainState.verifiedAt && domainState.customDomain
+  const shareLinks: {
+    key: string;
+    label: string;
+    url: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    { key: "site", label: "Public site", url: fullPublicUrl, icon: Globe },
+    // Branded portal links appear once HTTPS actually serves — before that
+    // `fullPublicUrl` is still the path URL and these would just duplicate it.
+    ...(domainState.httpsReadyAt && domainState.customDomain
       ? [
           {
             key: "login",
             label: "Participant login",
             url: loginUrl,
-            always: true,
+            icon: UserRound,
           },
           {
             key: "portal",
             label: "Stage portal",
             url: stagePortalUrl,
-            always: true,
+            icon: Gavel,
           },
         ]
       : []),
   ];
 
   return (
-    <div className="w-full space-y-5 sm:space-y-8 pb-24 sm:pb-0">
+    <div className="w-full space-y-4 sm:space-y-6 pb-24 sm:pb-0">
       {/* Header */}
       <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold tracking-tight sm:text-xl">
             Launch Website
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Publish your festival site and share links with participants.
           </p>
         </div>
@@ -382,180 +564,166 @@ export function FestivalLiveClient({
         )}
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Go live — primary interactive block (mobile first) */}
-        <section
+      {/* Status + share links — one compact card */}
+      <section
+        className={cn(
+          "overflow-hidden rounded-xl border shadow-sm",
+          enabled ? "border-green-600/25 bg-card" : "bg-card",
+        )}
+      >
+        {/* Status strip */}
+        <div
           className={cn(
-            "overflow-hidden rounded-2xl border shadow-sm",
-            enabled
-              ? "border-green-600/20 bg-gradient-to-br from-green-500/10 via-card to-card"
-              : "bg-card",
+            "flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-3 py-2.5 sm:px-4",
+            enabled ? "bg-green-500/5" : "bg-muted/30",
           )}
         >
-          <div className="p-4 sm:p-6">
-            {!enabled ? (
-              <div className="flex flex-col gap-5">
-                <div className="space-y-2 text-center sm:text-left">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary sm:mx-0">
-                    <Rocket className="h-7 w-7" />
-                  </div>
-                  <h3 className="text-base font-semibold sm:text-lg">
-                    Ready to go live?
-                  </h3>
-                  <p className="text-sm text-muted-foreground mx-auto max-w-md sm:mx-0">
-                    Turn on the public site instantly. You can take it offline
-                    anytime. Domain verify is optional for path URLs.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="lg"
-                  className="h-12 w-full text-base sm:w-auto sm:min-w-48"
-                  onClick={handleLaunch}
-                  disabled={phase === "launching" || isReadOnly}
-                >
-                  {phase === "launching" ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Rocket className="h-4 w-4 mr-2" />
-                  )}
-                  {phase === "launching" ? "Launching…" : "Launch website"}
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-500/15 text-green-700 dark:text-green-400">
-                    <CheckCircle2 className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0 space-y-1">
-                    <h3 className="text-base font-semibold">
-                      Your site is live
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Visitors can open the public URL. Preview before sharing,
-                      or take it offline.
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="outline"
-                    className="h-11 w-full justify-center"
-                    onClick={() => {
-                      setShowPreview(true);
-                      setIframeReady(false);
-                    }}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Preview site
-                  </Button>
-                  <Button
-                    type="button"
-                    size="lg"
-                    variant="outline"
-                    className="h-11 w-full justify-center text-destructive hover:text-destructive"
-                    onClick={handleTakeOffline}
-                    disabled={phase === "taking-offline" || isReadOnly}
-                  >
-                    {phase === "taking-offline" ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Power className="h-4 w-4 mr-2" />
-                    )}
-                    {phase === "taking-offline" ? "Stopping…" : "Take offline"}
-                  </Button>
-                </div>
-              </div>
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+              enabled
+                ? "bg-green-500/15 text-green-700 dark:text-green-400"
+                : "bg-primary/10 text-primary",
             )}
-          </div>
-        </section>
+          >
+            {enabled ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <Rocket className="h-4 w-4" />
+            )}
+          </span>
 
-        {/* Public festival URL — share sheet style */}
-        <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-          <div className="flex items-center gap-2 border-b px-4 py-3 sm:px-5">
-            <Globe className="h-4 w-4 text-primary shrink-0" />
-            <h3 className="text-sm font-semibold">Public festival URL</h3>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">
+              {enabled ? "Your site is live" : "Ready to go live?"}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {enabled
+                ? "Share the links below, or take it offline anytime."
+                : "Turn on the public site instantly — no domain setup needed."}
+            </p>
           </div>
-          <div className="space-y-3 p-4 sm:p-5">
-            {shareLinks.map((row) => {
-              const locked = row.key === "site" && !enabled;
-              return (
-                <div
-                  key={row.key}
-                  className={cn(
-                    "rounded-xl border bg-muted/25 p-3 transition-colors",
-                    locked && "opacity-70",
-                  )}
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {row.label}
-                    </p>
-                    {locked && (
-                      <span className="text-[11px] text-muted-foreground">
-                        Launch to share
-                      </span>
-                    )}
-                  </div>
+
+          {enabled ? (
+            <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1 sm:flex-none"
+                onClick={() => {
+                  setOverlayOpen(true);
+                  setIframeReady(false);
+                  // Already-live site: bump the nonce so the preview reflects
+                  // content edits rather than replaying a cached page.
+                  setPreviewNonce((n) => n + 1);
+                }}
+              >
+                <Eye className="h-3.5 w-3.5 mr-1.5" />
+                Preview
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1 text-destructive hover:text-destructive sm:flex-none"
+                onClick={handleTakeOffline}
+                disabled={phase === "taking-offline" || isReadOnly}
+              >
+                {phase === "taking-offline" ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Power className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {phase === "taking-offline" ? "Stopping…" : "Take offline"}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              className="hidden h-9 shrink-0 sm:inline-flex"
+              onClick={() => setOverlayOpen(true)}
+              disabled={isReadOnly}
+            >
+              <Rocket className="h-3.5 w-3.5 mr-1.5" />
+              Launch website
+            </Button>
+          )}
+        </div>
+
+        {/* Share links */}
+        <div className="divide-y">
+          {shareLinks.map((row) => {
+            const locked = row.key === "site" && !enabled;
+            return (
+              <div
+                key={row.key}
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4",
+                  locked && "opacity-60",
+                )}
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <row.icon className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-muted-foreground">
+                    {locked ? "Launch to share" : row.label}
+                  </p>
                   <button
                     type="button"
                     onClick={() => copyText(row.url)}
-                    className="mb-3 w-full rounded-lg border bg-background px-3 py-2.5 text-left font-mono text-xs break-all active:bg-muted sm:text-sm"
+                    className="block w-full truncate text-left font-mono text-xs text-foreground hover:text-primary sm:text-sm"
                     title="Tap to copy"
                   >
                     {row.url}
                   </button>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-11"
-                      onClick={() => copyText(row.url)}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy
-                    </Button>
-                    {locked ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11"
-                        disabled
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Open
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11"
-                        asChild
-                      >
-                        <a
-                          href={row.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open
-                        </a>
-                      </Button>
-                    )}
-                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-      </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={() => copyText(row.url)}
+                    title={`Copy ${row.label}`}
+                    aria-label={`Copy ${row.label}`}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    disabled={locked}
+                    asChild={!locked}
+                    title={`Open ${row.label}`}
+                    aria-label={`Open ${row.label}`}
+                  >
+                    {locked ? (
+                      <ExternalLink className="h-4 w-4" />
+                    ) : (
+                      <a
+                        href={row.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Custom subdomain — institutional PRO */}
       {domainState.isInstitutional && domainState.isPro && (
-        <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div className="min-w-0 space-y-1">
               <h3 className="text-sm font-semibold">Custom subdomain</h3>
@@ -567,23 +735,23 @@ export function FestivalLiveClient({
                 after DNS verify.
               </p>
             </div>
-            {domainState.verifiedAt ? (
-              <Badge className="w-fit gap-1.5 bg-green-600 hover:bg-green-600">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Verified
-              </Badge>
-            ) : domainState.customDomain ? (
-              <Badge
-                variant="outline"
-                className="w-fit border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
-              >
-                Awaiting DNS verification
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="w-fit">
-                Not configured
-              </Badge>
-            )}
+            {(() => {
+              const badge = phaseBadge(status.phase);
+              return (
+                <Badge
+                  variant={badge.variant}
+                  className={cn("w-fit gap-1.5", badge.className)}
+                >
+                  {status.phase === "https-ready" && (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  )}
+                  {isCustomDomainPhasePending(status.phase) && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  )}
+                  {badge.label}
+                </Badge>
+              );
+            })()}
           </div>
 
           <div className="space-y-6 p-4 sm:p-5">
@@ -778,18 +946,73 @@ export function FestivalLiveClient({
                   </Button>
                 )}
 
-                <Alert>
-                  <AlertTitle>HTTPS / Vercel attach (Phase 1)</AlertTitle>
-                  <AlertDescription>
-                    DNS verify alone is not enough for browsers until Greenroom
-                    adds{" "}
-                    <span className="font-mono">
-                      *.{domainState.customDomain}
-                    </span>{" "}
-                    on the Vercel project. Ask Greenroom to attach your domain,
-                    or wait for automated provisioning (Phase 2).
-                  </AlertDescription>
-                </Alert>
+                {status.phase === "https-ready" ? (
+                  <Alert className="border-green-600/30 bg-green-500/5">
+                    <AlertTitle className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      HTTPS ready
+                    </AlertTitle>
+                    <AlertDescription>
+                      <span className="font-mono">{brandedPreviewHost}</span> is
+                      serving over HTTPS. Branded links are live above and on
+                      the dashboard overview.
+                    </AlertDescription>
+                  </Alert>
+                ) : status.phase === "provisioning" ? (
+                  <Alert>
+                    <AlertTitle className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Provisioning HTTPS…
+                    </AlertTitle>
+                    <AlertDescription>
+                      DNS is verified and{" "}
+                      <span className="font-mono">
+                        *.{domainState.customDomain}
+                      </span>{" "}
+                      has been attached. The certificate usually issues within a
+                      few minutes — this page checks automatically. Path URLs
+                      keep working meanwhile.
+                      {status.detail && (
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {status.detail}
+                        </span>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                ) : status.phase === "manual-attach" ? (
+                  <Alert>
+                    <AlertTitle>Awaiting wildcard attach</AlertTitle>
+                    <AlertDescription>
+                      DNS is verified, but browsers need{" "}
+                      <span className="font-mono">
+                        *.{domainState.customDomain}
+                      </span>{" "}
+                      added to the Greenroom project before HTTPS works. Ask
+                      Greenroom support to attach it — this page goes green on
+                      its own once the certificate serves.
+                    </AlertDescription>
+                  </Alert>
+                ) : status.phase === "error" ? (
+                  <Alert variant="destructive">
+                    <AlertTitle>Domain needs attention</AlertTitle>
+                    <AlertDescription>
+                      {status.detail ||
+                        "We could not confirm the domain setup. Re-check the DNS records above and verify again."}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert>
+                    <AlertTitle>Verify DNS to continue</AlertTitle>
+                    <AlertDescription>
+                      Add both records at your DNS provider, then press Verify
+                      DNS. Greenroom attaches{" "}
+                      <span className="font-mono">
+                        *.{domainState.customDomain}
+                      </span>{" "}
+                      and issues the certificate right after.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             )}
           </div>
@@ -797,64 +1020,136 @@ export function FestivalLiveClient({
       )}
 
       {/* Mobile sticky launch bar when offline */}
-      {!enabled && (
+      {!enabled && !overlayOpen && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:hidden">
           <Button
             type="button"
             size="lg"
             className="h-12 w-full text-base"
-            onClick={handleLaunch}
-            disabled={phase === "launching" || isReadOnly}
+            onClick={() => setOverlayOpen(true)}
+            disabled={isReadOnly}
           >
-            {phase === "launching" ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Rocket className="h-4 w-4 mr-2" />
-            )}
-            {phase === "launching" ? "Launching…" : "Launch website"}
+            <Rocket className="h-4 w-4 mr-2" />
+            Launch website
           </Button>
         </div>
       )}
 
-      {/* Fullscreen preview overlay (same-origin iframe) */}
-      {showPreview && enabled && (
+      {/* Fullscreen launch buzzer / live preview */}
+      {overlayOpen && (
         <div className="fixed inset-0 z-50 bg-background">
-          {!iframeReady && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background">
-              <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          {enabled ? (
+            <>
+              {/* Covers both the confirmation gap (write in flight) and the
+                  frame's own load, so the site is revealed already-painted
+                  instead of flashing blank. No spinner — the buzzer's glow
+                  carries the moment. */}
+              {(!siteConfirmed || !iframeReady) && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden bg-background">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full bg-primary/10 blur-3xl"
+                  />
+                  <span className="relative flex h-32 w-32 items-center justify-center sm:h-40 sm:w-40">
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute h-full w-full rounded-full bg-primary/15 animate-ping"
+                    />
+                    <span className="relative flex h-full w-full items-center justify-center rounded-full bg-gradient-to-b from-primary to-primary-hover text-primary-foreground shadow-[0_18px_40px_-12px_var(--primary)] ring-1 ring-white/20">
+                      <Rocket className="h-11 w-11 sm:h-14 sm:w-14" />
+                    </span>
+                  </span>
+                </div>
+              )}
+              {justLaunched && (
+                <div className="absolute inset-x-3 top-4 z-20 mx-auto flex max-w-lg items-center gap-2 rounded-full border border-green-600/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-800 shadow-lg backdrop-blur dark:text-green-300 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    Your festival website is live!
+                  </span>
+                </div>
+              )}
+              {siteConfirmed && (
+                <iframe
+                  key={previewNonce}
+                  src={`${previewPath}${previewNonce ? `?v=${previewNonce}` : ""}`}
+                  className="h-full w-full"
+                  title="Festival website preview"
+                  onLoad={() => setIframeReady(true)}
+                />
+              )}
+              <div className="absolute inset-x-3 bottom-4 z-20 flex max-w-lg mx-auto items-center gap-1 rounded-full border bg-background/90 px-1.5 py-1.5 shadow-lg backdrop-blur sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-6 sm:px-2">
+                <span className="flex min-w-0 flex-1 items-center gap-2 px-2 text-sm font-mono text-muted-foreground sm:px-3">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-green-500 animate-pulse" />
+                  <span className="truncate">{fullPublicUrl}</span>
+                </span>
+                <a
+                  href={fullPublicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Open
+                </a>
+                <button
+                  type="button"
+                  onClick={closeOverlay}
+                  className="shrink-0 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
+                >
+                  Close
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6">
+              {/* Ambient glow behind the buzzer */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full bg-primary/10 blur-3xl"
+              />
+
+              <div className="relative flex h-56 w-56 items-center justify-center sm:h-72 sm:w-72">
+                {/* Concentric halos, offset so they read as a radar sweep */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute h-full w-full rounded-full bg-primary/10 animate-ping"
+                />
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute h-3/4 w-3/4 rounded-full bg-primary/15 animate-ping [animation-delay:400ms]"
+                />
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute h-full w-full rounded-full border border-primary/20"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleLaunch}
+                  disabled={isReadOnly}
+                  aria-label="Launch festival website"
+                  className="group relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-b from-primary to-primary-hover text-primary-foreground shadow-[0_18px_40px_-12px_var(--primary)] ring-1 ring-white/20 transition-all duration-150 hover:scale-105 hover:shadow-[0_22px_55px_-10px_var(--primary)] active:scale-95 active:duration-75 disabled:pointer-events-none disabled:opacity-50 sm:h-40 sm:w-40"
+                >
+                  {/* Specular highlight for the physical-button feel */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-3 top-2 h-1/3 rounded-full bg-white/25 blur-md"
+                  />
+                  <Rocket className="relative h-11 w-11 transition-transform duration-200 group-hover:-translate-y-0.5 sm:h-14 sm:w-14" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeOverlay}
+                aria-label="Close"
+                className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground sm:right-6 sm:top-6"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           )}
-          <iframe
-            src={previewPath}
-            className="h-full w-full"
-            title="Festival website preview"
-            onLoad={() => setIframeReady(true)}
-          />
-          <div className="absolute inset-x-3 bottom-4 z-20 flex max-w-lg mx-auto items-center gap-1 rounded-full border bg-background/90 px-1.5 py-1.5 shadow-lg backdrop-blur sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-6 sm:px-2">
-            <span className="flex min-w-0 flex-1 items-center gap-2 px-2 text-sm font-mono text-muted-foreground sm:px-3">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-green-500 animate-pulse" />
-              <span className="truncate">{fullPublicUrl}</span>
-            </span>
-            <a
-              href={fullPublicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open
-            </a>
-            <button
-              type="button"
-              onClick={() => {
-                setShowPreview(false);
-                setIframeReady(false);
-              }}
-              className="shrink-0 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
-            >
-              Close
-            </button>
-          </div>
         </div>
       )}
     </div>

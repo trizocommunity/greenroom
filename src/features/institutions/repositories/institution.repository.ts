@@ -2,12 +2,12 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { institution } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+import { normalizeCustomDomain } from "@/features/institutions/lib/custom-domain";
 import {
   getCachedVerifiedInstitution,
   invalidateCustomDomainCache,
   setCachedVerifiedInstitution,
 } from "@/features/institutions/lib/custom-domain-cache";
-import { normalizeCustomDomain } from "@/features/institutions/lib/custom-domain";
 
 export { invalidateCustomDomainCache };
 
@@ -43,10 +43,18 @@ export async function findVerifiedInstitutionByCustomDomain(
   return value;
 }
 
+/**
+ * Persist a domain change. Returns the previous domain so callers can detach
+ * it on Vercel — the repository stays free of network side effects (it is
+ * imported by `src/proxy.ts`, which must not bundle an HTTP client).
+ */
 export async function updateInstitutionCustomDomain(opts: {
   institutionId: string;
   customDomain: string | null;
-}): Promise<typeof institution.$inferSelect> {
+}): Promise<{
+  institution: typeof institution.$inferSelect;
+  previousDomain: string | null;
+}> {
   const existing = await findInstitutionById(opts.institutionId);
   if (!existing) {
     throw new Error("Institution not found");
@@ -63,6 +71,8 @@ export async function updateInstitutionCustomDomain(opts: {
       customDomain: nextDomain,
       // Domain change/clear always drops verification (grilled decision A).
       verifiedAt: null,
+      // Phase 2: TLS readiness is also invalidated on domain change.
+      httpsReadyAt: null,
       updatedAt: serverNowIso(),
     })
     .where(eq(institution.id, opts.institutionId))
@@ -71,7 +81,11 @@ export async function updateInstitutionCustomDomain(opts: {
   if (previousDomain) invalidateCustomDomainCache(previousDomain);
   if (nextDomain) invalidateCustomDomainCache(nextDomain);
 
-  return updated;
+  return {
+    institution: updated,
+    previousDomain:
+      previousDomain && previousDomain !== nextDomain ? previousDomain : null,
+  };
 }
 
 export async function markInstitutionDomainVerified(
@@ -95,6 +109,52 @@ export async function markInstitutionDomainVerified(
   return updated;
 }
 
+/**
+ * Phase 2: mark TLS as ready after Vercel confirms the wildcard cert is good.
+ */
+export async function markInstitutionHttpsReady(
+  institutionId: string,
+): Promise<typeof institution.$inferSelect> {
+  const existing = await findInstitutionById(institutionId);
+  if (!existing?.customDomain) {
+    throw new Error("Institution has no custom domain");
+  }
+
+  const [updated] = await db
+    .update(institution)
+    .set({
+      httpsReadyAt: serverNowIso(),
+      updatedAt: serverNowIso(),
+    })
+    .where(eq(institution.id, institutionId))
+    .returning();
+
+  invalidateCustomDomainCache(existing.customDomain);
+  return updated;
+}
+
+/**
+ * Phase 2: clear TLS readiness (e.g. after Vercel status changes to not-ready).
+ */
+export async function clearInstitutionHttpsReady(
+  institutionId: string,
+): Promise<void> {
+  const existing = await findInstitutionById(institutionId);
+  if (!existing) return;
+
+  await db
+    .update(institution)
+    .set({
+      httpsReadyAt: null,
+      updatedAt: serverNowIso(),
+    })
+    .where(eq(institution.id, institutionId));
+
+  if (existing.customDomain) {
+    invalidateCustomDomainCache(existing.customDomain);
+  }
+}
+
 export async function clearInstitutionDomainVerification(
   institutionId: string,
 ): Promise<void> {
@@ -105,6 +165,7 @@ export async function clearInstitutionDomainVerification(
     .update(institution)
     .set({
       verifiedAt: null,
+      httpsReadyAt: null,
       updatedAt: serverNowIso(),
     })
     .where(eq(institution.id, institutionId));

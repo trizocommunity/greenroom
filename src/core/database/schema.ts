@@ -206,6 +206,8 @@ export const institution = pgTable(
     customDomain: text(),
     /** Set when DNS TXT + wildcard CNAME verify succeeds. */
     verifiedAt: tzTimestamp(),
+    /** Set when Vercel wildcard TLS is ready (Phase 2). Null until HTTPS works. */
+    httpsReadyAt: tzTimestamp(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
@@ -1331,6 +1333,7 @@ export const programmeReportingSession = pgTable(
     startedBy: text(),
     endedAt: tzTimestamp(),
     endedBy: text(),
+    checkoutCompletedAt: tzTimestampNamed("checkout_completed_at"),
     windowEndsAt: tzTimestamp(),
     isLocked: boolean().default(false).notNull(),
     closedAtScheduleStart: boolean().default(true).notNull(),
@@ -1403,9 +1406,7 @@ export const programmeReportedParticipant = pgTable(
       "btree",
       table.groupId.asc().nullsLast(),
     ),
-    uniqueIndex(
-      "programme_reported_participant_unique_member",
-    ).using(
+    uniqueIndex("programme_reported_participant_unique_member").using(
       "btree",
       table.reportingSessionId.asc().nullsLast(),
       table.assignmentId.asc().nullsLast(),
@@ -1472,6 +1473,9 @@ export const programmeCodeLetter = pgTable(
     isAbsent: boolean("is_absent").default(false).notNull(),
     absentBy: text("absent_by"),
     absentAt: tzTimestampNamed("absent_at"),
+    queuePosition: integer("queue_position"),
+    revealedAt: tzTimestampNamed("revealed_at"),
+    revealedBy: text("revealed_by"),
   },
   (table) => [
     index("programme_code_letter_festivalId_issuedAt_idx").using(
@@ -1487,6 +1491,21 @@ export const programmeCodeLetter = pgTable(
       "btree",
       table.reportingSessionId.asc().nullsLast(),
       table.code.asc().nullsLast(),
+    ),
+    // One tile per queue slot in a session. Partial so legacy rows issued by
+    // the old flow — which have no queue position — do not collide.
+    uniqueIndex("programme_code_letter_session_queue_position_key")
+      .using(
+        "btree",
+        table.reportingSessionId.asc().nullsLast(),
+        table.queuePosition.asc().nullsLast(),
+      )
+      .where(sql`${table.queuePosition} is not null`),
+    // Drives the "how many tiles are still unscratched" lookup on every reveal.
+    index("programme_code_letter_session_revealed_at_idx").using(
+      "btree",
+      table.reportingSessionId.asc().nullsLast(),
+      table.revealedAt.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.festivalId],

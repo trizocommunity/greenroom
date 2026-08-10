@@ -59,7 +59,53 @@ export function PlanFeaturesClient({ tagMatrix }: { tagMatrix: TagMatrix }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      {/* Mobile: one card per feature tag with a toggle per plan */}
+      <div className="grid grid-cols-1 gap-3 md:hidden">
+        {FEATURE_TAGS.map((tag) => (
+          <div
+            key={tag}
+            className="rounded-xl border border-border bg-card p-4 space-y-3"
+          >
+            <div className="font-medium text-sm">{getFeatureTagLabel(tag)}</div>
+            <div className="grid grid-cols-3 gap-2">
+              {PLANS.map((tier) => {
+                const enabled = Boolean(tagMatrix[tier]?.[tag]);
+                const isPending = pendingCell === cellKey(tier, tag);
+                const disabled = isTagToggleDisabled(tier, tag);
+
+                return (
+                  <button
+                    key={tier}
+                    type="button"
+                    disabled={!!pendingCell || disabled}
+                    onClick={() => handleToggleTag(tier, tag, enabled)}
+                    className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-2 py-2.5 transition-colors disabled:opacity-50 enabled:hover:bg-muted/60"
+                    title={
+                      disabled
+                        ? "Not applicable for this tier"
+                        : `${enabled ? "Disable" : "Enable"} for ${tier}`
+                    }
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {tier}
+                    </span>
+                    {isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : enabled ? (
+                      <Check className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Square className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: matrix table */}
+      <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">

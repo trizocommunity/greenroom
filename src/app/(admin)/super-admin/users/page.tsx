@@ -17,11 +17,74 @@ export default async function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-semibold tracking-tight">Users</h2>
-        <p className="text-muted-foreground">View all registered users</p>
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+          Users
+        </h2>
+        <p className="text-sm sm:text-base text-muted-foreground">
+          View all registered users
+        </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      {/* Mobile: stacked cards */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {users.map((user) => (
+          <div
+            key={user.id}
+            className="rounded-2xl border border-border bg-card p-4 space-y-3"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col min-w-0">
+                <span className="font-medium truncate">
+                  {user.fullName || user.displayName || "N/A"}
+                </span>
+                <span className="text-xs text-muted-foreground break-all">
+                  {user.email}
+                </span>
+              </div>
+              <div className="shrink-0">
+                <ViewDetailsDialog
+                  title="User Details"
+                  description={`User ID: ${user.id}`}
+                  data={user}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant={
+                  user.globalRole === "SUPER_ADMIN" ? "destructive" : "outline"
+                }
+              >
+                {user.globalRole}
+              </Badge>
+              <Badge variant={user.isActive ? "default" : "secondary"}>
+                {user.isActive ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-muted-foreground">Festival</span>
+                <span className="font-medium truncate">
+                  {user.festivals && user.festivals.length > 0
+                    ? user.festivals[0].name
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-muted-foreground">Joined</span>
+                <span className="font-medium">
+                  {formatDate(user.createdAt, { tz: "UTC", style: "medium" })}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -64,7 +127,7 @@ export default async function AdminUsersPage() {
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   {formatDate(user.createdAt, { tz: "UTC", style: "medium" })}
                 </TableCell>
                 <TableCell>

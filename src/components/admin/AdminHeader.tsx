@@ -15,12 +15,25 @@ export function AdminHeader() {
   const pathname = usePathname();
 
   // Simple logic to determine page name
-  const isUsers = pathname.includes("/users");
-  const pageName = isUsers ? "Users" : "Dashboard";
+  const pageName = pathname.includes("/users")
+    ? "Users"
+    : pathname.includes("/festivals")
+      ? "Festivals"
+      : pathname.includes("/analytics")
+        ? "Analytics"
+        : pathname.includes("/payments")
+          ? "Payments"
+          : pathname.includes("/audit-logs")
+            ? "Audit logs"
+            : pathname.includes("/plan-features")
+              ? "Plan features"
+              : pathname.includes("/email-settings")
+                ? "Email settings"
+                : "Dashboard";
 
   return (
     <header className="sticky top-0 z-10 w-full bg-background/80 backdrop-blur-xl flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b border-border">
-      <div className="flex items-center gap-2 px-7">
+      <div className="flex items-center gap-2 px-4 sm:px-7">
         <SidebarTrigger className="-ml-1" />
         <Separator
           orientation="vertical"
@@ -34,7 +47,7 @@ export function AdminHeader() {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-      <div className="flex items-center gap-2 px-7">
+      <div className="flex items-center gap-2 px-4 sm:px-7">
         <ThemeToggle />
       </div>
     </header>

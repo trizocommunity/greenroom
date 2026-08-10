@@ -1,6 +1,6 @@
 # Custom Domain (wildcard branded hosts)
 
-**Status:** Phase 1 shipped · Phase 2 planned  
+**Status:** Phase 1 shipped · Phase 2 shipped  
 **App host (prod):** `https://greenroomm.vercel.app`  
 **Tier gate:** `TIER_CONFIG.*.features.customDomain` — **PRO only** (`src/config/pricing.ts`)  
 **Plan label:** Super Admin matrix → “Custom Domain” (`src/config/plan-features.config.ts`)  
@@ -31,7 +31,7 @@ https://{festivalSlug}.{customDomain}/stage-portal
 | Dashboard (always app host) | `https://greenroomm.vercel.app/dashboard/suffamehil` |
 
 Until the domain is **DNS-verified**, public URLs stay on the Greenroom path form.  
-Until **TLS is attached** on Vercel (Phase 1 = manual; Phase 2 = automated), browsers cannot reliably use HTTPS on the branded host.
+Until **HTTPS is proven** on the branded host, public URLs *also* stay on the path form — Greenroom only advertises `{slug}.{domain}` once a real TLS handshake has succeeded (`institution.httpsReadyAt`).
 
 Dashboard always stays on the Greenroom app host. Requests to `/dashboard/*` on a custom host redirect to `getAppBaseUrl() + pathname`.
 
@@ -81,7 +81,7 @@ flowchart LR
 
 ## 4. End-to-end who does what
 
-### Phase 1 (today)
+### Phase 1 (superseded)
 
 ```text
 1. Greenroom eng     → ship/deploy Phase 1 code + migration + PRO gate
@@ -90,12 +90,15 @@ flowchart LR
 4. Public users      → Use branded HTTPS URLs
 ```
 
-### Phase 2 (planned)
+Still the live path on deployments **without** Vercel API credentials — see
+“manual-attach” in §9.
+
+### Phase 2 (today)
 
 ```text
-1. Greenroom eng     → Vercel Domains API + TLS status in UI
-2. Institution owner → Save → DNS → Verify (same) — no “ask Greenroom” step
-3. System            → Auto-attach *.{domain}, poll TLS, show “HTTPS ready”
+1. Greenroom eng     → set VERCEL_TOKEN / VERCEL_PROJECT_ID / VERCEL_TEAM_ID
+2. Institution owner → Save → DNS → Verify — no “ask Greenroom” step
+3. System            → Auto-attach *.{domain}, probe HTTPS, show “HTTPS ready”
 4. Public users      → Use branded HTTPS URLs
 ```
 
@@ -110,8 +113,7 @@ flowchart LR
 | 1 | `https://greenroomm.vercel.app/dashboard/{slug}/settings` → **Launch Website** | Enter apex only (e.g. `ahlussuffa.in`) → **Save domain**. Not `www`, not a full URL. |
 | 2 | Same screen → **DNS records** | At the domain DNS provider, add the two records shown in the UI (see below). |
 | 3 | Same screen | Click **Verify DNS**. Status becomes **Verified** when both records resolve correctly. |
-| 4a | **Phase 1** | Contact Greenroom / wait — ops must attach `*.{domain}` on Vercel and wait for certificate. UI alerts: DNS verify alone is not enough for browsers. |
-| 4b | **Phase 2** | UI shows “Provisioning TLS…” then “HTTPS ready” — no ops ticket. |
+| 4 | Same screen | UI shows **Provisioning HTTPS…** and polls every 15s, then flips to **HTTPS ready**. No ops ticket. If the deployment has no Vercel credentials the badge reads **DNS verified — awaiting HTTPS** instead, and the alert asks Greenroom to attach the wildcard — that is the Phase 1 manual path. |
 | 5 | Launch Website | **Go live** if not already. Path launch works **without** verify. |
 | 6 | Share | After HTTPS ready: `https://{slug}.{domain}`, `/login`, `/stage-portal`. |
 
@@ -196,12 +198,12 @@ Public / portals (D–G)
 ### 6.4 `FestivalLiveClient` UI blocks (in order)
 
 1. **Header** — “Launch Website”  
-2. **Public festival URL** — mono URL, Copy, Open (when live); shows login/stage URLs when verified  
+2. **Public festival URL** — mono URL, Copy, Open (when live); adds login/stage URLs once **HTTPS is ready**  
 3. **Custom subdomain** (only if `isInstitutional && isPro`)  
-   - Status: none / “awaiting DNS verification” / “Verified for {domain}”  
+   - Phase badge: Not configured / Awaiting DNS verification / Provisioning HTTPS… / DNS verified — awaiting HTTPS / HTTPS ready / Needs attention  
    - Owner: apex `Input`, **Save domain**, **Verify DNS** (when saved & not verified)  
    - Non-owner: read-only note  
-   - DNS records list + **HTTPS / Vercel attach** alert (Phase 1)  
+   - DNS records list + phase-specific alert (see §9)  
 4. **Go live** — launch / take offline  
 5. **Preview** — same-origin iframe of `previewPath` (`/{slug}`)
 
@@ -211,17 +213,13 @@ Public / portals (D–G)
 |-----------|--------|-------|
 | Save / clear domain | `PUT` | `/api/v1/profile/institution/custom-domain` |
 | Verify DNS | `POST` | `/api/v1/profile/institution/custom-domain/verify` |
+| Poll TLS status | `GET` | `/api/v1/profile/institution/custom-domain/status` |
 | Launch / unpublish | (existing festival live toggle inside `FestivalLiveClient`) | festival public-site APIs already used by Launch Website |
 
-### 6.6 Phase 2 UI additions (planned)
-
-Same screen (**Launch Website** / `FestivalLiveClient`), extra status in the Custom subdomain block:
-
-- DNS verified  
-- Provisioning TLS…  
-- HTTPS ready  
-
-No new top-level settings tab planned — extend this component + optional small badge on Overview live links.
+The status route is readable by any institution member (managers get view
+access); only save/clear/verify are owner-gated. `FestivalLiveClient` polls it
+every 15s **only** while the phase is `provisioning` or `manual-attach`, so a
+settled tab makes no background requests.
 
 ---
 
@@ -232,14 +230,27 @@ No new top-level settings tab planned — extend this component + optional small
 1. Deploy Greenroom so it serves **`https://greenroomm.vercel.app`**.
 2. Vercel env (minimum related to this feature):
    - `NEXT_PUBLIC_APP_URL=https://greenroomm.vercel.app`
+   - `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` — enables Phase 2 automation. All three or none; a partial set is treated as unset.
    - Leave `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` **unset/false** until at least one customer has working wildcard HTTPS.
 3. Confirm PRO has `customDomain: true` in `src/config/pricing.ts`.
-4. Apply schema migration: `drizzle/0029_unusual_phantom_reporter.sql` (`institution.customDomain`, `verifiedAt`, unique index).
+4. Apply schema migrations: `drizzle/0029_unusual_phantom_reporter.sql` (`institution.customDomain`, `verifiedAt`, unique index) and `drizzle/0030_nifty_king_bedlam.sql` (`institution.httpsReadyAt`).
 5. Confirm Settings → Launch Website shows **Custom subdomain** for PRO institutional festivals.
 
-### 7.2 Per customer — Phase 1 ops (manual TLS)
+### 7.2 Per customer — Phase 2 (automated, default)
 
-After the owner clicks **Verify DNS** successfully:
+Nothing to do. When the owner clicks **Verify DNS**:
+
+1. Greenroom verifies the TXT + wildcard CNAME records.
+2. `ensureWildcardAttached` POSTs `*.{domain}` to the Vercel project (409 “already attached” is treated as success).
+3. `syncCustomDomainStatus` probes `https://_gr-tls-probe.{domain}/`; the first successful handshake stamps `institution.httpsReadyAt`.
+4. Festival Live polls the status route and flips to **HTTPS ready** on its own.
+
+Ops involvement is token health and monitoring only.
+
+### 7.3 Per customer — manual fallback (no Vercel credentials)
+
+If `VERCEL_TOKEN` / `VERCEL_PROJECT_ID` / `VERCEL_TEAM_ID` are unset, the status
+reports `manual-attach` and the owner sees “Awaiting wildcard attach”. Then:
 
 1. Note their apex (e.g. `ahlussuffa.in`) from Festival Live or DB.
 2. Vercel → Project → **Settings → Domains** → add **`*.ahlussuffa.in`** (wildcard).
@@ -249,22 +260,17 @@ After the owner clicks **Verify DNS** successfully:
    - `https://{slug}.ahlussuffa.in/login`
    - `https://{slug}.ahlussuffa.in/stage-portal`
    - `https://{slug}.ahlussuffa.in/dashboard/...` → redirects to `greenroomm.vercel.app/dashboard/...`
-5. Optional: only after the above works, set `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` if you want app-host `/{slug}` to 302 to the branded host.
+5. No DB edit needed — the probe notices the working certificate and stamps `httpsReadyAt` on the next status poll.
+6. Optional: only after the above works, set `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` if you want app-host `/{slug}` to 302 to the branded host.
 
-**Do not** enable canonical redirect before step 3–4 — path URLs would redirect to a host that cannot serve TLS and look “dead” while logs still show 2xx/3xx.
-
-### 7.3 Per customer — Phase 2 (automated; planned)
-
-No manual Domains click. After Verify (or Save — product choice at build time):
-
-1. Backend calls Vercel Domains API to add `*.{customDomain}` (and apex if required).
-2. Poll certificate / domain ready state.
-3. Festival Live shows provisioning → HTTPS ready.
-4. Canonical redirect may be turned on by default once TLS status is ready (product choice).
+**Do not** enable canonical redirect before HTTPS is confirmed — path URLs would
+redirect to a host that cannot serve TLS and look “dead” while logs still show
+2xx/3xx. `findBrandedRedirectTarget` guards this by requiring `httpsReadyAt`,
+but the env flag is still the outer switch.
 
 ---
 
-## 8. Phase 1 — shipped technical reference
+## 8. Technical reference
 
 ### Data model
 
@@ -272,102 +278,125 @@ No manual Domains click. After Verify (or Save — product choice at build time)
 
 - `customDomain` — apex string, unique when set  
 - `verifiedAt` — set after successful DNS verify  
+- `httpsReadyAt` — set once a TLS handshake against the branded host succeeds; cleared if it later stops serving  
 
-Migration: `drizzle/0029_unusual_phantom_reporter.sql`
+Migrations: `drizzle/0029_unusual_phantom_reporter.sql`, `drizzle/0030_nifty_king_bedlam.sql`
+
+`verifiedAt` and `httpsReadyAt` are independent on purpose. A TLS failure never
+clears DNS verification — only a domain change does.
 
 ### Key code
 
 | Area | Path |
 |------|------|
-| Helpers + public URL builder | `src/features/institutions/lib/custom-domain.ts` |
+| Helpers + public URL builder + phase types | `src/features/institutions/lib/custom-domain.ts` |
 | 60s in-process cache | `src/features/institutions/lib/custom-domain-cache.ts` |
 | Repository + invalidate | `src/features/institutions/repositories/institution.repository.ts` |
 | DNS verify | `src/features/institutions/services/custom-domain-verify.service.ts` |
+| Vercel Domains API client | `src/features/institutions/services/vercel-domains.service.ts` |
+| Attach + probe + status orchestration | `src/features/institutions/services/custom-domain-provisioning.service.ts` |
 | Host rewrite / redirect | `src/proxy.ts` |
 | Save domain API | `PUT /api/v1/profile/institution/custom-domain` |
 | Verify API | `POST /api/v1/profile/institution/custom-domain/verify` |
+| Status API | `GET /api/v1/profile/institution/custom-domain/status` |
 | Festival Live UI | `src/app/dashboard/[slug]/settings/_components/FestivalLiveClient.tsx` |
 | Feature flag | `features.customDomain` in `src/config/pricing.ts` |
+
+`src/proxy.ts` imports the institution repository, so that repository must stay
+free of network side effects. Vercel calls live in the services above and are
+invoked from route handlers only — this is why `updateInstitutionCustomDomain`
+returns `previousDomain` for the route to detach rather than detaching itself.
 
 ### Proxy behavior (important)
 
 - Host routing runs for page navigations (matcher covers app routes).
 - **CSRF / CSP security headers apply only to `/api/*`** — not to HTML documents. Applying strict CSP to all pages previously returned **200 with a blank/broken UI**.
-- Canonical path→branded redirect is gated by `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` + production + non-localhost.
-
-### Phase 1 gap (ops)
-
-DNS Verify does **not** add the domain to the Vercel project. HTTPS still requires Greenroom to attach `*.{domain}` (and wait for TLS) in the Vercel dashboard until Phase 2 ships.
+- Canonical path→branded redirect is gated by `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` + production + non-localhost, **and** by `institution.httpsReadyAt` in `findBrandedRedirectTarget`.
 
 ---
 
-## 9. Phase 2 — planned (not built)
+## 9. Phase 2 — shipped
 
-**Goal:** Remove the manual Vercel attach step so institution owners get working HTTPS after DNS verify without asking Greenroom ops.
+**Goal (met):** Remove the manual Vercel attach step so institution owners get
+working HTTPS after DNS verify without asking Greenroom ops.
 
-### Scope
+### Phase machine
 
-1. Call **Vercel Domains API** when an institution saves and/or verifies a domain:
-   - Add `{customDomain}` and/or `*.{customDomain}` to the Greenroom Vercel project.
-2. Poll / wait until **TLS certificates** are ready.
-3. Persist or derive status (e.g. `dnsVerified` vs `httpsReady`) and surface it in Festival Live:
-   - “DNS verified”
-   - “Provisioning TLS…”
-   - “HTTPS ready”
-4. Product choice at implementation time:
-   - Refuse to treat branded links as primary until HTTPS ready, and/or
-   - Auto-enable canonical redirect only when HTTPS ready.
-5. Env + secrets (document in deploy runbook):
-   - Vercel API token (scoped)
-   - Project ID / Team ID
-   - Failure, retry, and “ask support” UX if attach fails
-6. Invalidate caches and clear TLS state when domain is changed/cleared (same as `verifiedAt` today).
+`CustomDomainPhase` in `src/features/institutions/lib/custom-domain.ts`:
 
-### Suggested owner UX after Phase 2
+| Phase | Meaning | UI |
+|-------|---------|-----|
+| `no-domain` | No apex saved | “Not configured” |
+| `awaiting-dns` | Apex saved, `verifiedAt` null | “Awaiting DNS verification” + records |
+| `provisioning` | DNS verified, wildcard attached on Vercel, certificate not serving yet | “Provisioning HTTPS…”, polls |
+| `manual-attach` | DNS verified but no Vercel credentials — ops must attach | “DNS verified — awaiting HTTPS”, polls |
+| `https-ready` | TLS handshake succeeded; `httpsReadyAt` set | “HTTPS ready”, branded links appear |
+| `error` | Institution missing / unrecoverable | “Needs attention” + detail |
+
+`isCustomDomainPhasePending` marks the two phases worth polling.
+
+### Why an HTTPS probe, not the Vercel API
+
+Vercel can report a domain as `verified` with `misconfigured: false` while the
+certificate is still being issued, and manual-attach deployments have no API to
+query at all. A successful TLS handshake against `https://_gr-tls-probe.{domain}/`
+means the same thing in both modes and is exactly what a visitor's browser does.
+Any HTTP response — including our own 404 for that non-slug label — proves the
+handshake; only transport/TLS failures count as not-ready.
+
+### Flow
 
 ```text
 Save domain
-  → show DNS records
+  → phase awaiting-dns, DNS records shown
+  → (domain changed?) detachWildcard(previousDomain), verifiedAt cleared, cache invalidated
 Verify DNS
-  → “DNS verified” + “Provisioning HTTPS…”
-  → (background) Vercel attach + cert
-  → “HTTPS ready” + copy branded links
+  → TXT + CNAME checked
+  → markInstitutionDomainVerified
+  → ensureWildcardAttached  → POST *.{domain} to Vercel (409 = already attached)
+  → syncCustomDomainStatus  → probe → stamp httpsReadyAt
+  → phase provisioning | manual-attach | https-ready
+GET .../custom-domain/status  (polled every 15s while pending)
+  → same probe + reconcile → phase https-ready
 ```
 
-### Out of Phase 2
+### Guarantees
+
+- **Idempotent.** Re-verify and re-attach are safe; a 409 from Vercel is read back as the existing record.
+- **Attach failure never rolls back DNS verification.** It surfaces as `status.detail` and the owner can retry.
+- **Self-healing both ways.** The probe sets `httpsReadyAt` when the certificate starts serving and clears it if the certificate stops, so branded URLs stop being advertised rather than 404ing visitors.
+- **No network in the proxy path.** Probing and Vercel calls happen in route handlers, never in `src/proxy.ts`'s import graph.
+- **Bounded.** Vercel calls time out at 10s, the probe at 8s; `checkAttachStatus` never throws, so an outage degrades to “can't tell yet”.
+
+### Out of scope (unchanged)
 
 - Per-institution slug uniqueness (slugs stay globally unique)
 - Institution-level tier column
 - Enabling `customDomain` for STANDARD (gate remains PRO / `features.customDomain`)
+- Auto-enabling `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` — still a deliberate ops switch
 
-### Success criteria
+### Tests
 
-- Owner completes Save → DNS records → Verify without a human opening Vercel Domains.
-- `{slug}.{domain}` serves HTTPS for public, login, and stage portal.
-- Ops runbook shrinks to “token + monitoring,” not per-customer domain clicks.
-- Path URLs never get stuck redirecting to a host without TLS.
-
-### Implementation sketch (when building)
-
-| Piece | Notes |
-|-------|--------|
-| Service | e.g. `custom-domain-vercel.service.ts` — add domain, get config, poll cert |
-| Trigger | After successful DNS verify (preferred) or on Save |
-| UI | Festival Live status machine; disable “primary branded” until ready |
-| Env | `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` (names TBD) |
-| Idempotency | Re-verify / re-attach safe if domain already on project |
-| Errors | Surface Vercel error text; allow retry; never clear DNS verify on TLS failure alone |
+| File | Covers |
+|------|--------|
+| `src/features/institutions/lib/custom-domain.test.ts` | URL builder gating on `httpsReadyAt`, phase-pending helper, host parsing, cache |
+| `src/features/institutions/services/custom-domain-provisioning.service.test.ts` | Probe semantics, attach/detach failure handling, every `syncCustomDomainStatus` phase, `httpsReadyAt` set/clear |
 
 ---
 
 ## 10. Environment variables
 
-| Variable | Phase | Purpose |
-|----------|-------|---------|
-| `NEXT_PUBLIC_APP_URL` | 1+ | App origin for redirects, emails, dashboard bounce from custom hosts. Prod: `https://greenroomm.vercel.app` |
-| `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` | 1+ | Set `true` only in production after wildcard HTTPS works. Redirects `/{slug}/…` → branded host. |
-| `VERCEL_URL` | 1+ | Auto-included in app-host allowlist on Vercel deployments |
-| `VERCEL_TOKEN` / project / team | **2** | Domains API (planned) |
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_APP_URL` | App origin for redirects, emails, dashboard bounce from custom hosts. Prod: `https://greenroomm.vercel.app` |
+| `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` | Set `true` only in production after wildcard HTTPS works. Redirects `/{slug}/…` → branded host. |
+| `VERCEL_URL` | Auto-included in app-host allowlist on Vercel deployments |
+| `VERCEL_TOKEN` | Domains API token, scoped to the team. Required for automated attach. |
+| `VERCEL_PROJECT_ID` | Target project (`prj_…`). Required for automated attach. |
+| `VERCEL_TEAM_ID` | Team (`team_…`). Required for automated attach. |
+
+All three Vercel vars must be present together. With any missing, the app stays
+on the manual-attach path and reports `manual-attach` rather than erroring.
 
 ---
 
@@ -397,7 +426,16 @@ For a **PRO** institutional festival:
 
 - Set `institution.customDomain` (e.g. `ahlussuffa.test`)
 - Set `institution.verifiedAt` to now
+- Set `institution.httpsReadyAt` to now — the proxy does not need it, but
+  `getPublicFestivalBaseUrl` and the branded redirect do, so leaving it null is
+  the right way to test the “still on path URLs” half of the feature
 - Optionally `festival.publicSiteEnabled = true`
+
+Do **not** expect the status route to reach `https-ready` locally: the probe
+requires a real certificate on a public host, and `*.ahlussuffa.test` has none.
+Locally the phase settles on `manual-attach` (no Vercel env) — which is itself
+worth confirming, since it is the same code path a credential-less production
+deployment takes.
 
 ### 11.3 Run app + probe (PowerShell)
 

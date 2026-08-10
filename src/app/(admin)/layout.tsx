@@ -22,9 +22,11 @@ export default async function AdminLayout({
   return (
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0 overflow-x-hidden">
         <AdminHeader />
-        <div className="flex flex-1 flex-col gap-4 p-8">{children}</div>
+        <div className="flex min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6 lg:p-8">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -9,9 +9,7 @@ const APP_HOST_EXTRAS = ["localhost", "127.0.0.1", "greenroomm.vercel.app"];
  * Hostnames that serve the Greenroom app itself (not institution custom domains).
  */
 export function getAppHosts(): Set<string> {
-  const hosts = new Set<string>(
-    APP_HOST_EXTRAS.map((h) => h.toLowerCase()),
-  );
+  const hosts = new Set<string>(APP_HOST_EXTRAS.map((h) => h.toLowerCase()));
 
   try {
     const base = getAppBaseUrl();
@@ -89,10 +87,41 @@ export function parseCustomFestivalHost(
 export type InstitutionDomainFields = {
   customDomain: string | null;
   verifiedAt: string | Date | null;
+  httpsReadyAt?: string | Date | null;
 };
 
 /**
- * Public base URL for a festival: branded subdomain when verified, else path on app.
+ * Lifecycle of a custom domain, shared by the API and the Festival Live UI.
+ *
+ * `provisioning` and `manual-attach` are both "DNS verified, HTTPS not proven"
+ * — they differ only in who does the attaching, which changes the UI copy.
+ */
+export type CustomDomainPhase =
+  | "no-domain"
+  | "awaiting-dns"
+  | "provisioning"
+  | "manual-attach"
+  | "https-ready"
+  | "error";
+
+export type CustomDomainStatus = {
+  phase: CustomDomainPhase;
+  customDomain: string | null;
+  verifiedAt: string | null;
+  httpsReadyAt: string | null;
+  /** Human-readable context for the current phase (shown under the badge). */
+  detail?: string;
+};
+
+/** Phases where polling the status endpoint can still change the outcome. */
+export function isCustomDomainPhasePending(phase: CustomDomainPhase): boolean {
+  return phase === "provisioning" || phase === "manual-attach";
+}
+
+/**
+ * Public base URL for a festival: branded subdomain only when HTTPS is ready
+ * (Phase 2). Falls back to the Greenroom path URL while DNS-verified but
+ * TLS is still provisioning, or when the domain is unverified.
  */
 export function getPublicFestivalBaseUrl(opts: {
   slug: string;
@@ -102,9 +131,9 @@ export function getPublicFestivalBaseUrl(opts: {
   const domain = opts.institution?.customDomain
     ? normalizeCustomDomain(opts.institution.customDomain)
     : null;
-  const verified = !!opts.institution?.verifiedAt && !!domain;
+  const httpsReady = !!opts.institution?.httpsReadyAt && !!domain;
 
-  if (verified && domain) {
+  if (httpsReady && domain) {
     return `https://${slug}.${domain}`;
   }
 

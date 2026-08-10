@@ -62,14 +62,14 @@ isProject: false
 
 Example: slug `suffamehil` · apex `ahlussuffa.in`
 
-| Surface | Before | After (verified) | After (not verified) |
-| --- | --- | --- | --- |
-| Dashboard | `greenroomm.vercel.app/dashboard/suffamehil` | Still Greenroom; custom-host `/dashboard/*` **redirects** to app base | same |
-| Public site | `…/suffamehil` | `suffamehil.ahlussuffa.in` | `…/suffamehil` |
-| Stage portal | `…/suffamehil/stage-portal` | `suffamehil.ahlussuffa.in/stage-portal` | path on Greenroom |
-| Participant login | `…/suffamehil/login` | `suffamehil.ahlussuffa.in/login` | path on Greenroom |
-| Live links UI | path URLs | subdomain URLs | path URLs |
-| Old path after verify | n/a | **Redirect** path → subdomain (canonical) | path stays |
+| Surface               | Before                                       | After (verified)                                                      | After (not verified) |
+| --------------------- | -------------------------------------------- | --------------------------------------------------------------------- | -------------------- |
+| Dashboard             | `greenroomm.vercel.app/dashboard/suffamehil` | Still Greenroom; custom-host `/dashboard/*` **redirects** to app base | same                 |
+| Public site           | `…/suffamehil`                               | `suffamehil.ahlussuffa.in`                                            | `…/suffamehil`       |
+| Stage portal          | `…/suffamehil/stage-portal`                  | `suffamehil.ahlussuffa.in/stage-portal`                               | path on Greenroom    |
+| Participant login     | `…/suffamehil/login`                         | `suffamehil.ahlussuffa.in/login`                                      | path on Greenroom    |
+| Live links UI         | path URLs                                    | subdomain URLs                                                        | path URLs            |
+| Old path after verify | n/a                                          | **Redirect** path → subdomain (canonical)                             | path stays           |
 
 Proxy rewrite when Host is custom + institution **verified**: path `P` → `/${festivalSlug}${P}` (e.g. `/login` → `/suffamehil/login`). Leave `/api/*` as-is on same origin. Unverified custom Host → 404 (do not rewrite).
 
@@ -164,12 +164,12 @@ Every visit to `xyz.college.ac.in` needs “who owns `college.ac.in`?” (~10–
 
 ### Surfaces (same rewrite)
 
-| Custom-host URL | Internal |
-| --- | --- |
-| `/` | [`(festivalPublic)/[slug]`](../src/app/(festivalPublic)/[slug]/page.tsx) |
-| `/stage-portal` | [`[slug]/stage-portal`](../src/app/[slug]/stage-portal/page.tsx) |
-| `/login` | [`[slug]/login`](../src/app/[slug]/login/page.tsx) |
-| `/{participantSlug}/…` | [`(participant)/…`](../src/app/(participant)/[slug]/[participantSlug]/page.tsx) |
+| Custom-host URL        | Internal                                                                          |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `/`                    | [`(festivalPublic)/[slug]`](<../src/app/(festivalPublic)/[slug]/page.tsx>)        |
+| `/stage-portal`        | [`[slug]/stage-portal`](../src/app/[slug]/stage-portal/page.tsx)                  |
+| `/login`               | [`[slug]/login`](../src/app/[slug]/login/page.tsx)                                |
+| `/{participantSlug}/…` | [`(participant)/…`](<../src/app/(participant)/[slug]/[participantSlug]/page.tsx>) |
 
 ### Lookup
 
@@ -181,17 +181,17 @@ Today: expired → only [`ExpiredFestivalView`](../src/components/festival/publi
 
 **New rule** (path URL and custom subdomain alike):
 
-| After expiry | Behavior |
-| --- | --- |
-| Results / standings | **Still available** on the same public URL (do not wipe public data) |
-| News | **Hidden** (404 or omit from nav) |
-| Media | **Hidden** |
-| Participant login + participant app | **Hidden / blocked** |
-| Stage portal | **Blocked** (404 / ended) |
-| Participant login + participant app | **Hidden / blocked** |
-| Landing | Slim “ended” chrome with standings/results entry points only |
+| After expiry                        | Behavior                                                             |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| Results / standings                 | **Still available** on the same public URL (do not wipe public data) |
+| News                                | **Hidden** (404 or omit from nav)                                    |
+| Media                               | **Hidden**                                                           |
+| Participant login + participant app | **Hidden / blocked**                                                 |
+| Stage portal                        | **Blocked** (404 / ended)                                            |
+| Participant login + participant app | **Hidden / blocked**                                                 |
+| Landing                             | Slim “ended” chrome with standings/results entry points only         |
 
-Implement in [`(festivalPublic)/[slug]/layout.tsx`](../src/app/(festivalPublic)/[slug]/layout.tsx) and child routes / nav: stop short-circuiting the entire tree to `ExpiredFestivalView`; instead gate sections. Update [`ExpiredFestivalView`](../src/components/festival/public/ExpiredFestivalView.tsx) or replace with an “ended” banner + results/standings.
+Implement in [`(festivalPublic)/[slug]/layout.tsx`](<../src/app/(festivalPublic)/[slug]/layout.tsx>) and child routes / nav: stop short-circuiting the entire tree to `ExpiredFestivalView`; instead gate sections. Update [`ExpiredFestivalView`](../src/components/festival/public/ExpiredFestivalView.tsx) or replace with an “ended” banner + results/standings.
 
 Also gate [`[slug]/login`](../src/app/[slug]/login/page.tsx) and participant guards when festival expired.
 
@@ -230,7 +230,7 @@ Also gate [`[slug]/login`](../src/app/[slug]/login/page.tsx) and participant gua
 
 ## Step 4.5: Vercel domain + TLS provisioning (Phase 2 — flag now)
 
-**Canonical feature doc:** [`DOCS/features/CUSTOM_DOMAIN.md`](./features/CUSTOM_DOMAIN.md) (Phase 1 shipped + Phase 2 scope).
+**Canonical feature doc:** [`DOCS/CUSTOM_DOMAIN.md`](./CUSTOM_DOMAIN.md) (Phase 1 shipped + Phase 2 scope).
 
 **TODO (defer implementation, document in Phase 1):**
 
@@ -295,16 +295,16 @@ curl -sI -H "Host: suffamehil.ahlussuffa.test" http://127.0.0.1:3000/dashboard/s
 
 ## Implementation order
 
-1. Schema + migration  
-2. Domain helpers + **60s cache** + invalidation hooks  
-3. Proxy rewrite + **dashboard redirect** via `getAppBaseUrl() + pathname`  
-4. Public/portal institution+PRO gate  
-5. **Post-expiry** results/standings keep; hide news/media/participant login  
-6. **Festival Live tab** refactor (inline subdomain + launch; fullscreen preview only)  
-7. Verify API + live URL helper (subdomain iff verified)  
-8. Overview checklist step → `settings?tab=festival-live`  
-9. Document **Step 4.5** Phase 2 Vercel Domains/TLS TODO in UI/docs  
-10. Manual / Host-header tests  
+1. Schema + migration
+2. Domain helpers + **60s cache** + invalidation hooks
+3. Proxy rewrite + **dashboard redirect** via `getAppBaseUrl() + pathname`
+4. Public/portal institution+PRO gate
+5. **Post-expiry** results/standings keep; hide news/media/participant login
+6. **Festival Live tab** refactor (inline subdomain + launch; fullscreen preview only)
+7. Verify API + live URL helper (subdomain iff verified)
+8. Overview checklist step → `settings?tab=festival-live`
+9. Document **Step 4.5** Phase 2 Vercel Domains/TLS TODO in UI/docs
+10. Manual / Host-header tests
 
 ## Out of scope / Phase 2
 

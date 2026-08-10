@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Gavel,
-  Globe,
-  Settings2,
-  Sparkles,
-} from "lucide-react";
+import { Gavel, Globe, Settings2, Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
 import { ScoringPolicyClient } from "@/components/dashboard/judgement/ScoringPolicyClient";
@@ -24,6 +19,7 @@ interface SettingsTabsProps {
     institutionId: string | null;
     customDomain: string | null;
     verifiedAt: string | null;
+    httpsReadyAt: string | null;
     isOwner: boolean;
     isPro: boolean;
     isInstitutional: boolean;

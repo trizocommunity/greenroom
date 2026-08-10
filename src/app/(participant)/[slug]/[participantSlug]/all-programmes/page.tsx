@@ -32,6 +32,7 @@ import {
   mapSessionCodeLettersForLookup,
 } from "@/features/programmes/services/programme-reporting-code";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
+import { revealedCodeLettersOnly } from "@/features/programmes/services/programme-reporting-display";
 
 function isSessionTimedOut(session: any): boolean {
   return Boolean(
@@ -109,6 +110,7 @@ export default async function AllProgrammesPage({
           with: {
             programmeReportedParticipants: { columns: { assignmentId: true } },
             programmeCodeLetters: {
+              where: revealedCodeLettersOnly,
               with: {
                 programmeCodeLetterRecipients: {
                   columns: { participantId: true },

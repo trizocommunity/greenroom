@@ -76,6 +76,7 @@ export default async function OverviewWidgets({
       ? {
           customDomain: institution.customDomain,
           verifiedAt: institution.verifiedAt,
+          httpsReadyAt: institution.httpsReadyAt,
         }
       : null,
   });

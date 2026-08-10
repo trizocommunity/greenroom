@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, Dices, Loader2 } from "lucide-react";
+import { Check, Crown, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/core/utils/cn";
 import type { RosterTableRow } from "./types";
@@ -10,12 +10,11 @@ interface ReportingRosterTableProps {
   isInProgress: boolean;
   isClosed: boolean;
   onMark: (row: RosterTableRow, checked: boolean) => Promise<void>;
-  onSpin: (row: RosterTableRow) => void;
-  /** While set, that roster row’s Spin control shows loading until code is assigned / flow ends */
-  spinPendingAssignmentId: string | null;
   markingIds: Set<string>;
   getIssuedCodeForRow: (row: RosterTableRow) => string | null;
   programmeType: "INDIVIDUAL" | "GROUP";
+  /** Set once checkout is complete — attendance is frozen for the draw. */
+  disabled?: boolean;
 }
 
 export function ReportingRosterTable({
@@ -23,12 +22,13 @@ export function ReportingRosterTable({
   isInProgress,
   isClosed,
   onMark,
-  onSpin,
-  spinPendingAssignmentId,
   markingIds,
   getIssuedCodeForRow,
   programmeType,
+  disabled = false,
 }: ReportingRosterTableProps) {
+  const canMark = isInProgress && !disabled;
+
   return (
     <div className="rounded-xl border border-border/70 overflow-hidden bg-card/60">
       {/* Desktop roster (column layout) */}
@@ -39,14 +39,13 @@ export function ReportingRosterTable({
             {programmeType === "GROUP" ? "Team" : "Participant"}
           </div>
           <div className="col-span-2">Group</div>
-          <div className="col-span-3 text-right">Code (spin)</div>
+          <div className="col-span-3 text-right">Code</div>
         </div>
         <div className="divide-y divide-border/40">
           {rows.map((row) => {
             const issuedCode = getIssuedCodeForRow(row);
             const showCode = (isClosed || !!issuedCode) && row.isReported;
             const isMarking = markingIds.has(row.assignmentId);
-            const isSpinPending = spinPendingAssignmentId === row.assignmentId;
 
             return (
               <div
@@ -57,7 +56,7 @@ export function ReportingRosterTable({
                 )}
               >
                 <div className="col-span-1 flex justify-center">
-                  {isInProgress ? (
+                  {canMark ? (
                     isMarking ? (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     ) : (
@@ -104,26 +103,6 @@ export function ReportingRosterTable({
                     <span className="inline-flex items-center rounded-md border border-purple/30 bg-purple/10 px-2 py-0.5 text-purple font-bold">
                       {issuedCode}
                     </span>
-                  ) : row.isReported && isInProgress ? (
-                    <button
-                      type="button"
-                      onClick={() => onSpin(row)}
-                      disabled={isSpinPending}
-                      aria-busy={isSpinPending}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple hover:bg-purple/90 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
-                    >
-                      {isSpinPending ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Getting code…
-                        </>
-                      ) : (
-                        <>
-                          <Dices className="h-3 w-3" />
-                          Spin
-                        </>
-                      )}
-                    </button>
                   ) : (
                     <span className="text-muted-foreground/40">—</span>
                   )}
@@ -145,7 +124,6 @@ export function ReportingRosterTable({
               ? `${row.groupName ?? "—"} · Lead: ${row.teamLeadName}`
               : (row.groupName ?? "—");
           const isMarking = markingIds.has(row.assignmentId);
-          const isSpinPending = spinPendingAssignmentId === row.assignmentId;
 
           return (
             <div
@@ -155,31 +133,32 @@ export function ReportingRosterTable({
                 row.isReported && "bg-success/[0.06]",
               )}
             >
-              {isInProgress ? (
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => !isMarking && onMark(row, !row.isReported)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      if (!isMarking) onMark(row, !row.isReported);
-                    }
-                  }}
+              {canMark ? (
+                <button
+                  type="button"
+                  disabled={isMarking}
+                  onClick={() => onMark(row, !row.isReported)}
                   className={cn(
                     "-my-3 flex min-w-0 flex-1 items-center gap-4 py-3 text-left cursor-pointer",
-                    isMarking &&
-                      "opacity-50 cursor-not-allowed pointer-events-none",
+                    isMarking && "opacity-50 cursor-not-allowed",
                   )}
                 >
                   <span className="shrink-0">
                     {isMarking ? (
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     ) : (
-                      <Checkbox
-                        checked={row.isReported}
-                        className="pointer-events-none h-6 w-6 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-                      />
+                      // Decorative only — the whole row is the tap target, and a
+                      // real Checkbox here would nest a button inside a button.
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-sm border",
+                          row.isReported
+                            ? "border-green-600 bg-green-600 text-primary-foreground"
+                            : "border-primary",
+                        )}
+                      >
+                        {row.isReported ? <Check className="h-4 w-4" /> : null}
+                      </span>
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -197,7 +176,7 @@ export function ReportingRosterTable({
                       {subtitle}
                     </span>
                   </span>
-                </div>
+                </button>
               ) : (
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   <div className="shrink-0">
@@ -230,26 +209,6 @@ export function ReportingRosterTable({
                   <span className="inline-flex items-center rounded-md border border-purple/30 bg-purple/10 px-2 py-1 text-purple font-bold">
                     {issuedCode}
                   </span>
-                ) : row.isReported && isInProgress ? (
-                  <button
-                    type="button"
-                    onClick={() => onSpin(row)}
-                    disabled={isSpinPending}
-                    aria-busy={isSpinPending}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple hover:bg-purple/90 disabled:pointer-events-none disabled:opacity-70 text-white text-[10px] font-bold transition-all shadow-sm active:scale-95"
-                  >
-                    {isSpinPending ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Getting code…
-                      </>
-                    ) : (
-                      <>
-                        <Dices className="h-3 w-3" />
-                        Spin
-                      </>
-                    )}
-                  </button>
                 ) : (
                   <span className="text-muted-foreground/30">—</span>
                 )}
