@@ -20,6 +20,11 @@ export const queryKeys = {
     all: (festivalId: string) => ["categories", festivalId] as const,
   },
   programmes: {
+    // Festival-scoped prefix that matches every programme query (list, paginated,
+    // detail). Use this for invalidation — `all(festivalId)` carries a trailing
+    // `undefined` from the optional categoryId, which breaks prefix-matching
+    // against the paginated key and would leave the list stale after mutations.
+    byFestival: (festivalId: string) => ["programmes", festivalId] as const,
     all: (festivalId: string, categoryId?: string) =>
       ["programmes", festivalId, categoryId] as const,
     detail: (festivalId: string, programmeId: string) =>
