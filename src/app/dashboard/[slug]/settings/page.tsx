@@ -6,6 +6,7 @@ import {
   category as categoryTable,
   festivalMember as memberTable,
   programme as programmeTable,
+  user as userTable,
 } from "@/core/database/schema";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getPublicFestivalBaseUrl } from "@/features/institutions/lib/custom-domain";
@@ -53,28 +54,35 @@ export default async function SettingsPage({
   const canManageScoring = true;
   const canManageFestivalLive = !isBasicTier(festival.tier as any);
 
-  const [policy, categories, programmes, institution] = await Promise.all([
-    canManageScoring
-      ? getScoringPolicyAction(festival.id)
-      : Promise.resolve(null),
-    canManageScoring
-      ? db.query.category.findMany({
-          where: eq(categoryTable.festivalId, festival.id),
-          columns: { id: true, name: true },
-          orderBy: [asc(categoryTable.name)],
-        })
-      : Promise.resolve([]),
-    canManageScoring
-      ? db.query.programme.findMany({
-          where: eq(programmeTable.festivalId, festival.id),
-          columns: { id: true, name: true, categoryId: true },
-          orderBy: [asc(programmeTable.name)],
-        })
-      : Promise.resolve([]),
-    festival.institutionId
-      ? findInstitutionById(festival.institutionId)
-      : Promise.resolve(null),
-  ]);
+  const [policy, categories, programmes, institution, viewer] =
+    await Promise.all([
+      canManageScoring
+        ? getScoringPolicyAction(festival.id)
+        : Promise.resolve(null),
+      canManageScoring
+        ? db.query.category.findMany({
+            where: eq(categoryTable.festivalId, festival.id),
+            columns: { id: true, name: true },
+            orderBy: [asc(categoryTable.name)],
+          })
+        : Promise.resolve([]),
+      canManageScoring
+        ? db.query.programme.findMany({
+            where: eq(programmeTable.festivalId, festival.id),
+            columns: { id: true, name: true, categoryId: true },
+            orderBy: [asc(programmeTable.name)],
+          })
+        : Promise.resolve([]),
+      festival.institutionId
+        ? findInstitutionById(festival.institutionId)
+        : Promise.resolve(null),
+      // Drives the personal-account notice below: a personal account has no
+      // institution, and custom domains hang off `institution`.
+      db.query.user.findFirst({
+        where: eq(userTable.id, session.userId),
+        columns: { accountType: true },
+      }),
+    ]);
 
   const publicUrl = getPublicFestivalBaseUrl({
     slug: festival.slug,
@@ -82,9 +90,9 @@ export default async function SettingsPage({
       ? {
           customDomain: institution.customDomain,
           verifiedAt: institution.verifiedAt,
-          httpsReadyAt: institution.httpsReadyAt,
         }
       : null,
+    domainHttpsReadyAt: festival.domainHttpsReadyAt,
   });
 
   const previewPath = `/${festival.slug}`;
@@ -103,10 +111,14 @@ export default async function SettingsPage({
         institutionId: institution?.id ?? null,
         customDomain: institution?.customDomain ?? null,
         verifiedAt: institution?.verifiedAt ?? null,
-        httpsReadyAt: institution?.httpsReadyAt ?? null,
+        // This festival's own certificate, not the institution's — hosts are
+        // certified one at a time.
+        httpsReadyAt: festival.domainHttpsReadyAt ?? null,
         isOwner: isInstitutionOwner || isSuperAdmin,
         isPro: isEnabled(festival.tier, "customDomain"),
         isInstitutional: !!festival.institutionId,
+        isFestivalOwner: isOwner,
+        isPersonalAccount: viewer?.accountType !== "INSTITUTIONAL",
       }}
       canManageScoring={canManageScoring}
       canManageFestivalLive={canManageFestivalLive}

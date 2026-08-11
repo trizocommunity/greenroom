@@ -44,19 +44,59 @@ export function normalizeCustomDomain(input: string): string {
 
 /** Basic hostname shape: labels, no spaces, at least one dot. */
 export function isValidCustomDomainShape(domain: string): boolean {
+  return describeCustomDomainProblem(domain) === null;
+}
+
+/**
+ * Why an apex domain is unusable, phrased for the person typing it — or null
+ * when it is fine. `isValidCustomDomainShape` is the boolean form of exactly
+ * these rules, so the Festival Live field can reject bad input before the
+ * request and the API still enforces the same thing.
+ *
+ * Note the input is normalized first: a pasted `https://www.example.com/` is
+ * accepted and cleaned up rather than rejected, which is what people actually
+ * paste out of a browser bar.
+ */
+export function describeCustomDomainProblem(domain: string): string | null {
+  const raw = domain.trim();
+  if (!raw) return "Enter your domain, for example ahlussuffa.in";
+
   const normalized = normalizeCustomDomain(domain);
-  if (!normalized || normalized.includes("..")) return false;
-  if (normalized.length > 253) return false;
-  // Reject IPs and single-label hosts
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(normalized)) return false;
+
+  if (!normalized) {
+    return "Enter your domain, for example ahlussuffa.in";
+  }
+  if (normalized.includes(" ")) {
+    return "A domain can't contain spaces.";
+  }
+  if (normalized.includes("..")) {
+    return "Remove the double dot — each part must be separated by a single dot.";
+  }
+  if (normalized.length > 253) {
+    return "That domain is too long.";
+  }
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(normalized)) {
+    return "Enter a domain name, not an IP address.";
+  }
+
   const labels = normalized.split(".");
-  if (labels.length < 2) return false;
-  return labels.every(
-    (label) =>
-      label.length > 0 &&
-      label.length <= 63 &&
-      /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(label),
-  );
+  if (labels.length < 2) {
+    return `Add the extension too, for example ${normalized}.in`;
+  }
+  if (labels.some((label) => label.length === 0)) {
+    return "A domain can't start or end with a dot.";
+  }
+  if (labels.some((label) => label.length > 63)) {
+    return "Each part of a domain must be 63 characters or fewer.";
+  }
+  if (labels.some((label) => label.startsWith("-") || label.endsWith("-"))) {
+    return "A domain part can't start or end with a hyphen.";
+  }
+  if (labels.some((label) => !/^[a-z0-9-]+$/.test(label))) {
+    return "Use only letters, numbers, and hyphens.";
+  }
+
+  return null;
 }
 
 /**
@@ -84,10 +124,33 @@ export function parseCustomFestivalHost(
   return { festivalSlug, customDomain };
 }
 
+/**
+ * The branded host for one festival, e.g. `suffamehil.ahlussuffa.in` — or null
+ * when either half is unusable.
+ *
+ * This is the unit Vercel now knows about: each festival host is attached to the
+ * project on its own and gets its own HTTP-01 certificate. There is no
+ * `*.{apex}` domain on the project anymore (see vercel-domains.service for why),
+ * so anything that talks to Vercel or probes TLS builds its host here.
+ */
+export function buildFestivalHost(
+  slug: string,
+  customDomain: string,
+): string | null {
+  const apex = normalizeCustomDomain(customDomain);
+  if (!apex || !isValidCustomDomainShape(apex)) return null;
+
+  const label = slug.trim().toLowerCase();
+  if (!label || !/^[a-z0-9-]+$/.test(label)) return null;
+  if (label.startsWith("-") || label.endsWith("-")) return null;
+  if (label.length > 63) return null;
+
+  return `${label}.${apex}`;
+}
+
 export type InstitutionDomainFields = {
   customDomain: string | null;
   verifiedAt: string | Date | null;
-  httpsReadyAt?: string | Date | null;
 };
 
 /**
@@ -108,9 +171,19 @@ export type CustomDomainStatus = {
   phase: CustomDomainPhase;
   customDomain: string | null;
   verifiedAt: string | null;
+  /** TLS readiness of *this festival's* host, not of the institution. */
   httpsReadyAt: string | null;
   /** Human-readable context for the current phase (shown under the badge). */
   detail?: string;
+  /**
+   * DNS records Vercel requires to complete its own domain challenge.
+   * Shown alongside Greenroom's records so the user can finish both in one pass.
+   *
+   * Should be rare on the HTTP-01 path — it appears when Vercel cannot settle
+   * ownership itself, e.g. the apex is claimed by another Vercel team. Carrying
+   * the records is what keeps that case actionable instead of a silent spinner.
+   */
+  vercelVerification?: { type: string; domain: string; value: string }[];
 };
 
 /** Phases where polling the status endpoint can still change the outcome. */
@@ -119,22 +192,26 @@ export function isCustomDomainPhasePending(phase: CustomDomainPhase): boolean {
 }
 
 /**
- * Public base URL for a festival: branded subdomain only when HTTPS is ready
- * (Phase 2). Falls back to the Greenroom path URL while DNS-verified but
- * TLS is still provisioning, or when the domain is unverified.
+ * Public base URL for a festival: the branded host only once *that host* has
+ * served a real certificate. Falls back to the Greenroom path URL otherwise.
+ *
+ * The gate is `domainHttpsReadyAt` on the festival, not on the institution:
+ * certificates are issued per host over HTTP-01, so a verified apex says nothing
+ * about whether this particular festival's host is serving yet. Advertising a
+ * branded URL before then hands out a link that fails to connect.
  */
 export function getPublicFestivalBaseUrl(opts: {
   slug: string;
   institution?: InstitutionDomainFields | null;
+  domainHttpsReadyAt?: string | Date | null;
 }): string {
   const slug = opts.slug.trim();
-  const domain = opts.institution?.customDomain
-    ? normalizeCustomDomain(opts.institution.customDomain)
+  const host = opts.institution?.customDomain
+    ? buildFestivalHost(slug, opts.institution.customDomain)
     : null;
-  const httpsReady = !!opts.institution?.httpsReadyAt && !!domain;
 
-  if (httpsReady && domain) {
-    return `https://${slug}.${domain}`;
+  if (host && opts.domainHttpsReadyAt) {
+    return `https://${host}`;
   }
 
   return `${getAppBaseUrl()}/${slug}`;

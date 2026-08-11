@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Building2,
   CheckCircle2,
   Copy,
   ExternalLink,
@@ -27,6 +28,7 @@ import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-rea
 import {
   type CustomDomainPhase,
   type CustomDomainStatus,
+  describeCustomDomainProblem,
   getDomainOwnershipToken,
   getDomainOwnershipTxtName,
   isCustomDomainPhasePending,
@@ -42,6 +44,10 @@ export type CustomDomainState = {
   isOwner: boolean;
   isPro: boolean;
   isInstitutional: boolean;
+  /** Whether the viewer owns the festival — only they can upgrade its account. */
+  isFestivalOwner: boolean;
+  /** Viewer is on a PERSONAL account, so no institution exists to hold a domain. */
+  isPersonalAccount: boolean;
 };
 
 interface FestivalLiveClientProps {
@@ -198,6 +204,11 @@ export function FestivalLiveClient({
   const [domainInput, setDomainInput] = useState(
     initialDomain.customDomain ?? "",
   );
+  /**
+   * Inline reason the typed apex is unusable. Set on save and on blur rather
+   * than on every keystroke, so the field doesn't shout at a half-typed domain.
+   */
+  const [domainError, setDomainError] = useState<string | null>(null);
   const [domainState, setDomainState] = useState(initialDomain);
   const [savingDomain, setSavingDomain] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -244,8 +255,10 @@ export function FestivalLiveClient({
   const refreshStatus =
     useCallback(async (): Promise<CustomDomainStatus | null> => {
       try {
+        // Readiness is per festival — each branded host has its own
+        // certificate, so the status endpoint needs to know which one.
         const res = await fetch(
-          "/api/v1/profile/institution/custom-domain/status",
+          `/api/v1/profile/institution/custom-domain/status?festivalId=${encodeURIComponent(festivalId)}`,
           { cache: "no-store" },
         );
         const json = await res.json();
@@ -262,12 +275,12 @@ export function FestivalLiveClient({
       } catch {
         return null;
       }
-    }, []);
+    }, [festivalId]);
 
   /**
    * Poll only while a certificate is still being issued (or ops has yet to
-   * attach the wildcard). Terminal phases stop the timer so an idle settings
-   * tab makes no background requests.
+   * attach this festival's host). Terminal phases stop the timer so an idle
+   * settings tab makes no background requests.
    */
   useEffect(() => {
     if (!domainState.isInstitutional || !domainState.isPro) return;
@@ -373,17 +386,37 @@ export function FestivalLiveClient({
   const startEditingDomain = () => {
     if (!domainState.isOwner || isReadOnly) return;
     setDomainInput(domainState.customDomain ?? "");
+    setDomainError(null);
     setEditingDomain(true);
   };
 
   const cancelEditingDomain = () => {
     setDomainInput(domainState.customDomain ?? "");
+    setDomainError(null);
     setEditingDomain(!domainState.customDomain);
+  };
+
+  /**
+   * Same rules the API enforces, so a typo never costs a round trip. Clearing
+   * the field is intentionally valid — that removes the domain.
+   */
+  const validateDomainInput = (value: string): string | null => {
+    if (!value.trim()) return null;
+    return describeCustomDomainProblem(value);
   };
 
   const saveDomain = async () => {
     if (!domainState.isOwner || isReadOnly || !editingDomain) return;
     const trimmed = domainInput.trim();
+
+    const problem = validateDomainInput(trimmed);
+    if (problem) {
+      setDomainError(problem);
+      domainInputRef.current?.focus();
+      return;
+    }
+    setDomainError(null);
+
     const changing =
       (domainState.customDomain ?? "") !== trimmed && !!domainState.verifiedAt;
 
@@ -411,17 +444,19 @@ export function FestivalLiveClient({
       }
       const inst = json.data;
       const nextDomain = inst.customDomain ?? null;
+      // Changing the apex invalidates this festival's certificate — the server
+      // detached the old host and cleared readiness, so drop it here too.
       setDomainState((s) => ({
         ...s,
         customDomain: nextDomain,
         verifiedAt: inst.verifiedAt ?? null,
-        httpsReadyAt: inst.httpsReadyAt ?? null,
+        httpsReadyAt: null,
       }));
       setStatus({
         phase: nextDomain ? "awaiting-dns" : "no-domain",
         customDomain: nextDomain,
         verifiedAt: inst.verifiedAt ?? null,
-        httpsReadyAt: inst.httpsReadyAt ?? null,
+        httpsReadyAt: null,
       });
       setDomainInput(nextDomain ?? "");
       setEditingDomain(!nextDomain);
@@ -459,15 +494,17 @@ export function FestivalLiveClient({
         ...s,
         customDomain: inst.customDomain ?? null,
         verifiedAt: inst.verifiedAt ?? null,
-        httpsReadyAt: inst.httpsReadyAt ?? null,
       }));
-      // The verify route attaches the wildcard and reconciles TLS before
-      // responding, so its status is fresher than anything we could derive.
-      if (inst.status) {
-        setStatus(inst.status as CustomDomainStatus);
+      // The verify route attaches this festival's host and reconciles TLS
+      // before responding, so its status is fresher than anything we could
+      // derive here.
+      const next = inst.status as CustomDomainStatus | null;
+      if (next) {
+        setStatus(next);
+        setDomainState((s) => ({ ...s, httpsReadyAt: next.httpsReadyAt }));
       }
       toast.success(
-        inst.httpsReadyAt
+        next?.httpsReadyAt
           ? "Domain verified. HTTPS is ready."
           : "Domain verified. Issuing the certificate — this can take a few minutes.",
       );
@@ -492,6 +529,15 @@ export function FestivalLiveClient({
     ? `${festivalSlug}.${domainState.customDomain}`
     : `{slug}.your-domain.com`;
 
+  // The domain section is hidden whenever the festival has no institution. Say
+  // why — and how to fix it — only when a personal account is the actual reason
+  // and the plan would otherwise allow a domain. A non-PRO festival is a
+  // different conversation (upgrade the plan), so no notice there.
+  const showPersonalAccountNotice =
+    !domainState.isInstitutional &&
+    domainState.isPro &&
+    domainState.isPersonalAccount;
+
   const dnsRows: DnsRow[] =
     domainState.customDomain && ownershipToken && txtName
       ? [
@@ -509,6 +555,21 @@ export function FestivalLiveClient({
           },
         ]
       : [];
+
+  /**
+   * Extra records our certificate provider asked for. Normally empty — hosts are
+   * validated over the traffic path, so no DNS challenge is involved. When it is
+   * non-empty the certificate cannot issue until these are published, so they
+   * have to be on screen rather than swallowed into a status string.
+   */
+  const extraDnsRows: DnsRow[] = (status.vercelVerification ?? []).map(
+    (record, index) => ({
+      id: `provider-${index}`,
+      type: record.type,
+      hostname: record.domain,
+      value: record.value,
+    }),
+  );
 
   const shareLinks: {
     key: string;
@@ -721,6 +782,52 @@ export function FestivalLiveClient({
         </div>
       </section>
 
+      {/* Personal account — custom domains live on an institution, so there is
+          nothing here to configure until the account is upgraded. Only shown
+          when that is the actual blocker: a PRO festival on a personal account.
+          The festival slug is unaffected and works on any account type. */}
+      {showPersonalAccountNotice && (
+        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="border-b bg-muted/30 px-4 py-4 sm:px-5">
+            <h3 className="text-sm font-semibold">Custom subdomain</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Available on institutional accounts.
+            </p>
+          </div>
+          <div className="space-y-4 p-4 sm:p-5">
+            <Alert>
+              <Building2 className="h-4 w-4" />
+              <AlertTitle>Your account is personal</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>
+                  A custom domain belongs to an institution, so a personal
+                  account has nowhere to attach one. Add your institution in
+                  profile settings and this festival moves under it
+                  automatically — the section below appears right after.
+                </p>
+                <p className="text-muted-foreground">
+                  Your festival address{" "}
+                  <span className="font-mono">{festivalSlug}</span> is
+                  unaffected — subdomains work on any account type.
+                </p>
+              </AlertDescription>
+            </Alert>
+            {domainState.isFestivalOwner ? (
+              <Button asChild variant="default" className="w-full sm:w-auto">
+                <a href="/profile?tab=settings">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Upgrade in profile settings
+                </a>
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Only the festival owner can upgrade the account.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Custom subdomain — institutional PRO */}
       {domainState.isInstitutional && domainState.isPro && (
         <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -765,13 +872,26 @@ export function FestivalLiveClient({
                       id="custom-domain"
                       placeholder="ahlussuffa.in"
                       value={domainInput}
-                      onChange={(e) => setDomainInput(e.target.value)}
+                      onChange={(e) => {
+                        setDomainInput(e.target.value);
+                        // Clear while typing: the message returns on blur or
+                        // save, so a half-typed domain is never scolded.
+                        if (domainError) setDomainError(null);
+                      }}
+                      onBlur={(e) => {
+                        if (!editingDomain) return;
+                        setDomainError(validateDomainInput(e.target.value));
+                      }}
+                      aria-invalid={!!domainError}
+                      aria-describedby="custom-domain-hint"
                       readOnly={!editingDomain || isReadOnly}
                       disabled={savingDomain || isReadOnly}
                       className={cn(
                         "h-12 font-mono text-base sm:h-11 sm:text-sm",
                         !editingDomain &&
                           "cursor-default bg-muted/40 text-muted-foreground",
+                        domainError &&
+                          "border-destructive focus-visible:ring-destructive",
                       )}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && editingDomain) {
@@ -827,10 +947,18 @@ export function FestivalLiveClient({
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {editingDomain
-                    ? "Root domain only — not www and not a full URL."
-                    : "Tap Edit domain to change the apex."}
+                <p
+                  id="custom-domain-hint"
+                  className={cn(
+                    "text-xs",
+                    domainError ? "text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {domainError
+                    ? domainError
+                    : editingDomain
+                      ? "Root domain only — not www and not a full URL."
+                      : "Tap Edit domain to change the apex."}
                 </p>
               </div>
             ) : (
@@ -931,6 +1059,60 @@ export function FestivalLiveClient({
                   ))}
                 </div>
 
+                {extraDnsRows.length > 0 && (
+                  <div className="space-y-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
+                    <div className="space-y-1">
+                      <h5 className="text-sm font-semibold">
+                        One more record is needed
+                      </h5>
+                      <p className="text-sm text-muted-foreground">
+                        Our certificate provider is asking for this before it
+                        can issue{" "}
+                        <span className="font-mono">{brandedPreviewHost}</span>.
+                        Add it the same way as the records above.
+                      </p>
+                    </div>
+                    {extraDnsRows.map((row) => (
+                      <div
+                        key={row.id}
+                        className="space-y-3 rounded-lg border bg-background/60 p-3"
+                      >
+                        <Badge variant="outline" className="font-semibold">
+                          {row.type}
+                        </Badge>
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Hostname
+                          </p>
+                          <div className="flex items-start gap-1">
+                            <code className="min-w-0 flex-1 break-all rounded-lg bg-background px-3 py-2.5 text-xs">
+                              {row.hostname}
+                            </code>
+                            <CopyIconButton
+                              value={row.hostname}
+                              label={`${row.type} hostname`}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Value
+                          </p>
+                          <div className="flex items-start gap-1">
+                            <code className="min-w-0 flex-1 break-all rounded-lg bg-background px-3 py-2.5 text-xs">
+                              {row.value}
+                            </code>
+                            <CopyIconButton
+                              value={row.value}
+                              label={`${row.type} value`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {domainState.isOwner && !domainState.verifiedAt && (
                   <Button
                     type="button"
@@ -962,18 +1144,20 @@ export function FestivalLiveClient({
                   <Alert>
                     <AlertTitle className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Provisioning HTTPS…
+                      Issuing a certificate for {brandedPreviewHost}
                     </AlertTitle>
                     <AlertDescription>
-                      DNS is verified and{" "}
-                      <span className="font-mono">
-                        *.{domainState.customDomain}
-                      </span>{" "}
-                      has been attached. The certificate usually issues within a
-                      few minutes — this page checks automatically. Path URLs
-                      keep working meanwhile.
+                      DNS is verified. Each festival gets its own certificate,
+                      and this one is being issued now — usually a few minutes.
+                      This page checks on its own and turns green when it
+                      serves.
+                      <span className="mt-1.5 block">
+                        Your public site is already live at{" "}
+                        <span className="font-mono">{fullPublicUrl}</span>, so
+                        nothing is waiting on this.
+                      </span>
                       {status.detail && (
-                        <span className="mt-1 block text-xs text-muted-foreground">
+                        <span className="mt-1.5 block text-xs text-muted-foreground">
                           {status.detail}
                         </span>
                       )}
@@ -981,15 +1165,21 @@ export function FestivalLiveClient({
                   </Alert>
                 ) : status.phase === "manual-attach" ? (
                   <Alert>
-                    <AlertTitle>Awaiting wildcard attach</AlertTitle>
+                    <AlertTitle>
+                      Awaiting HTTPS for {brandedPreviewHost}
+                    </AlertTitle>
                     <AlertDescription>
-                      DNS is verified, but browsers need{" "}
-                      <span className="font-mono">
-                        *.{domainState.customDomain}
-                      </span>{" "}
-                      added to the Greenroom project before HTTPS works. Ask
-                      Greenroom support to attach it — this page goes green on
-                      its own once the certificate serves.
+                      DNS is verified, but this festival's address still needs
+                      to be set up on our side before HTTPS works. Ask Greenroom
+                      support to finish it — this page goes green on its own
+                      once the certificate serves. Your public site stays live
+                      at <span className="font-mono">{fullPublicUrl}</span>
+                      meanwhile.
+                      {status.detail && (
+                        <span className="mt-1.5 block text-xs text-muted-foreground">
+                          {status.detail}
+                        </span>
+                      )}
                     </AlertDescription>
                   </Alert>
                 ) : status.phase === "error" ? (
@@ -1005,11 +1195,9 @@ export function FestivalLiveClient({
                     <AlertTitle>Verify DNS to continue</AlertTitle>
                     <AlertDescription>
                       Add both records at your DNS provider, then press Verify
-                      DNS. Greenroom attaches{" "}
-                      <span className="font-mono">
-                        *.{domainState.customDomain}
-                      </span>{" "}
-                      and issues the certificate right after.
+                      DNS. Greenroom sets up{" "}
+                      <span className="font-mono">{brandedPreviewHost}</span>{" "}
+                      and issues its certificate right after.
                     </AlertDescription>
                   </Alert>
                 )}

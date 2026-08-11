@@ -483,6 +483,12 @@ export const festival = pgTable(
     teamLeaderLimit: integer().default(2).notNull(),
     participantsCount: integer().default(0).notNull(),
     publicSiteEnabled: boolean().notNull(),
+    /**
+     * Set when `{slug}.{institution.customDomain}` serves a real certificate.
+     * Per festival, not per institution: each host gets its own HTTP-01 cert,
+     * so one festival can be live on its branded host while another is not.
+     */
+    domainHttpsReadyAt: tzTimestampNamed("domain_https_ready_at"),
     stagesCount: integer().default(0).notNull(),
     startDate: tzTimestamp(),
     endDate: tzTimestamp(),

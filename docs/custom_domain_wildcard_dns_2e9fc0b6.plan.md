@@ -35,6 +35,17 @@ todos:
 isProject: false
 ---
 
+> **SUPERSEDED — historical record.** The TLS half of this plan does not work and
+> was replaced. A `*.{apex}` wildcard certificate can only be validated over
+> DNS-01, which requires Vercel to control the institution's zone; institutions
+> keep their own nameservers for their apex site and email, so the certificate
+> never issued and provisioning stalled permanently. Certificates are now issued
+> **per festival host** over HTTP-01.
+>
+> Everything about DNS records, proxy routing, the 60s cache, expiry rules, and
+> URL policy below is still accurate. Do not re-implement the wildcard attach.
+> See [`CUSTOM_DOMAIN.md` §1.1](./CUSTOM_DOMAIN.md#11-why-there-is-no-wildcard-certificate).
+
 # Pro-tier Wildcard Custom Domains
 
 ## Decisions (locked)

@@ -1,6 +1,7 @@
+import { randomUUID } from "crypto";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/core/database/client";
-import { institution } from "@/core/database/schema";
+import { institution, type institutionType } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { normalizeCustomDomain } from "@/features/institutions/lib/custom-domain";
 import {
@@ -15,6 +16,54 @@ export async function findInstitutionById(id: string) {
   return db.query.institution.findFirst({
     where: eq(institution.id, id),
   });
+}
+
+/**
+ * An owner has at most one institution (`institution_ownerId_key`). The upgrade
+ * path uses this to adopt an existing row instead of inserting a duplicate and
+ * hitting the unique violation as a 500.
+ */
+export async function findInstitutionByOwnerId(
+  ownerId: string,
+  tx: Pick<typeof db, "query"> = db,
+) {
+  return tx.query.institution.findFirst({
+    where: eq(institution.ownerId, ownerId),
+  });
+}
+
+/**
+ * Create the institution an owner brands their festivals under. Called from
+ * institutional onboarding and from the personal → institutional upgrade.
+ *
+ * A custom domain is never set here: the owner adds one later from
+ * Settings → Launch Website, once they have a PRO festival to serve under it.
+ */
+export async function createInstitution(
+  data: {
+    name: string;
+    type: (typeof institutionType.enumValues)[number];
+    affiliation?: string | null;
+    city?: string | null;
+    sizeRange?: string | null;
+    ownerId: string;
+  },
+  tx: Pick<typeof db, "insert"> = db,
+) {
+  const [created] = await tx
+    .insert(institution)
+    .values({
+      id: randomUUID(),
+      name: data.name,
+      type: data.type,
+      affiliation: data.affiliation ?? null,
+      city: data.city ?? null,
+      sizeRange: data.sizeRange ?? null,
+      ownerId: data.ownerId,
+    })
+    .returning();
+
+  return created;
 }
 
 /**
@@ -110,7 +159,14 @@ export async function markInstitutionDomainVerified(
 }
 
 /**
- * Phase 2: mark TLS as ready after Vercel confirms the wildcard cert is good.
+ * @deprecated Institution-wide TLS readiness assumed one wildcard certificate
+ * covered every festival under the apex. Wildcards can only be validated over
+ * DNS-01, which needs control of the institution's zone, so that certificate
+ * never issued. Readiness is now proven per host — see
+ * `markFestivalHttpsReady` in the festival repository.
+ *
+ * Nothing reads `institution.httpsReadyAt` anymore. Kept only so the column and
+ * these helpers can be dropped together in a later migration.
  */
 export async function markInstitutionHttpsReady(
   institutionId: string,
@@ -134,7 +190,8 @@ export async function markInstitutionHttpsReady(
 }
 
 /**
- * Phase 2: clear TLS readiness (e.g. after Vercel status changes to not-ready).
+ * @deprecated Counterpart to `markInstitutionHttpsReady` — see that comment.
+ * Use `clearFestivalHttpsReady` in the festival repository instead.
  */
 export async function clearInstitutionHttpsReady(
   institutionId: string,

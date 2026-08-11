@@ -76,9 +76,9 @@ export default async function OverviewWidgets({
       ? {
           customDomain: institution.customDomain,
           verifiedAt: institution.verifiedAt,
-          httpsReadyAt: institution.httpsReadyAt,
         }
       : null,
+    domainHttpsReadyAt: festival.domainHttpsReadyAt,
   });
   const showVerifySubdomainStep =
     !!festival.institutionId && isEnabled(festival.tier, "customDomain");

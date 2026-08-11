@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { labelForTimezone } from "@/core/datetime";
 import { UpdateInstitutionDialog } from "../UpdateInstitutionDialog";
 import { UpdateProfileDialog } from "../UpdateProfileDialog";
+import { UpgradeToInstitutionalDialog } from "../UpgradeToInstitutionalDialog";
 
 interface SettingsTabProps {
   userId: string;
@@ -72,6 +73,8 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
 
   const user = userData;
   const institution = user.institution;
+  const isInstitutional =
+    user.accountType === "INSTITUTIONAL" && Boolean(institution);
 
   return (
     <div className="animate-in fade-in space-y-10 duration-500">
@@ -96,6 +99,26 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
           <UpdateProfileDialog user={user} />
         </div>
       </section>
+
+      {!isInstitutional && (
+        <section className="border-t border-border pt-8">
+          <AppSectionHeading title="Institution" />
+          <div className="rounded-2xl border border-border bg-muted/40 p-5">
+            <p className="text-sm font-medium text-heading">
+              You&apos;re on a personal account
+            </p>
+            <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-muted-foreground">
+              Custom domains belong to an institution, so a personal account
+              can&apos;t set one up. Add your institution to serve festivals on
+              your own domain — festivals you already own move under it
+              automatically.
+            </p>
+            <div className="mt-5">
+              <UpgradeToInstitutionalDialog />
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="border-t border-border pt-8">
         <AppSectionHeading
@@ -154,7 +177,7 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
         <TwoFactorSetup />
       </section>
 
-      {user.accountType === "INSTITUTIONAL" && institution && (
+      {isInstitutional && institution && (
         <section className="border-t border-border pt-8">
           <AppSectionHeading title="Institution" />
           <dl className="border-t border-border">

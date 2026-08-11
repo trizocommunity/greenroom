@@ -13,8 +13,8 @@ import {
   markInstitutionDomainVerified,
 } from "@/features/institutions/repositories/institution.repository";
 import {
-  ensureWildcardAttached,
-  syncCustomDomainStatus,
+  attachPublishedFestivalsForInstitution,
+  syncFestivalDomainStatus,
 } from "@/features/institutions/services/custom-domain-provisioning.service";
 import { verifyCustomDomainDns } from "@/features/institutions/services/custom-domain-verify.service";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
@@ -105,12 +105,15 @@ const handler = createProtectedHandler({
 
     const updated = await markInstitutionDomainVerified(user.institutionId);
 
-    // Phase 2: DNS is proven, so claim the wildcard on Vercel immediately.
-    // Attach failures are surfaced through the status payload, not thrown —
-    // verification itself already succeeded and must not be rolled back.
-    await ensureWildcardAttached(updated.customDomain ?? "");
+    // DNS proves ownership of the apex, but certificates are issued per host,
+    // so verification alone attaches nothing. Start every published festival's
+    // host now. Attach failures surface through the status payload rather than
+    // throwing — verification itself succeeded and must not be rolled back.
+    await attachPublishedFestivalsForInstitution(user.institutionId);
 
-    const status = await syncCustomDomainStatus(user.institutionId);
+    const status = parsed.data.festivalId
+      ? await syncFestivalDomainStatus(parsed.data.festivalId)
+      : null;
     const fresh = await findInstitutionById(user.institutionId);
 
     return ok({ ...(fresh ?? updated), status });

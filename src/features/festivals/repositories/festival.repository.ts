@@ -79,25 +79,26 @@ export async function findBrandedRedirectTarget(slug: string): Promise<{
       tier: true,
       publicSiteEnabled: true,
       institutionId: true,
+      domainHttpsReadyAt: true,
     },
     with: {
       institution: {
         columns: {
           customDomain: true,
           verifiedAt: true,
-          httpsReadyAt: true,
         },
       },
     },
   });
 
   if (!festival?.slug || !festival.publicSiteEnabled) return null;
-  // httpsReadyAt (not verifiedAt) is the gate: redirecting to a branded host
-  // whose certificate is not serving yet would make working path URLs look dead.
+  // domainHttpsReadyAt (not verifiedAt) is the gate: redirecting to a branded
+  // host whose certificate is not serving yet would make working path URLs look
+  // dead. Readiness is per festival — each host has its own HTTP-01 certificate.
   if (
     !festival.institution?.customDomain ||
     !festival.institution.verifiedAt ||
-    !festival.institution.httpsReadyAt
+    !festival.domainHttpsReadyAt
   ) {
     return null;
   }
@@ -167,6 +168,62 @@ export async function deleteFestival(id: string) {
     .where(eq(festivals.id, id))
     .returning();
   return result[0];
+}
+
+/**
+ * Stamp TLS readiness for this festival's branded host, after a real handshake
+ * against `{slug}.{apex}` succeeded.
+ *
+ * No cache invalidation here: the custom-domain cache is keyed by apex and only
+ * carries the verified-institution lookup the proxy needs, which this does not
+ * change. Nothing in the repository reaches the network — `src/proxy.ts` imports
+ * it and must not bundle an HTTP client.
+ */
+export async function markFestivalHttpsReady(festivalId: string) {
+  const [updated] = await db
+    .update(festivals)
+    .set({
+      domainHttpsReadyAt: serverNowIso(),
+      updatedAt: serverNowIso(),
+    })
+    .where(eq(festivals.id, festivalId))
+    .returning();
+
+  return updated;
+}
+
+/**
+ * Clear TLS readiness when the certificate stops serving (host detached, DNS
+ * moved). Branded URLs stop being advertised rather than 404ing visitors.
+ */
+export async function clearFestivalHttpsReady(festivalId: string) {
+  await db
+    .update(festivals)
+    .set({
+      domainHttpsReadyAt: null,
+      updatedAt: serverNowIso(),
+    })
+    .where(eq(festivals.id, festivalId));
+}
+
+/**
+ * Every festival under an institution, with the fields the custom-domain
+ * services need to build and gate a branded host.
+ *
+ * Used both to attach hosts when an apex is verified (published + eligible ones)
+ * and to tear them all down when the apex changes.
+ */
+export async function findFestivalsForInstitution(institutionId: string) {
+  return db.query.festival.findMany({
+    where: eq(festivals.institutionId, institutionId),
+    columns: {
+      id: true,
+      slug: true,
+      tier: true,
+      publicSiteEnabled: true,
+      domainHttpsReadyAt: true,
+    },
+  });
 }
 
 export async function findFestivalByOwnerId(ownerId: string) {
