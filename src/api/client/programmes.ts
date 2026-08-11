@@ -98,7 +98,9 @@ export function useCreateProgramme() {
       return handleApiResponse(response.data);
     },
     onSuccess: (_data, { festivalId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.programmes.all(festivalId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.programmes.byFestival(festivalId),
+      });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -124,7 +126,9 @@ export function useUpdateProgramme() {
       qc.invalidateQueries({
         queryKey: queryKeys.programmes.detail(festivalId, programmeId),
       });
-      qc.invalidateQueries({ queryKey: queryKeys.programmes.all(festivalId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.programmes.byFestival(festivalId),
+      });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -145,7 +149,9 @@ export function useDeleteProgramme() {
       qc.invalidateQueries({
         queryKey: queryKeys.programmes.detail(festivalId, programmeId),
       });
-      qc.invalidateQueries({ queryKey: queryKeys.programmes.all(festivalId) });
+      qc.invalidateQueries({
+        queryKey: queryKeys.programmes.byFestival(festivalId),
+      });
     },
     onError: (error) => {
       toast.error(error.message);

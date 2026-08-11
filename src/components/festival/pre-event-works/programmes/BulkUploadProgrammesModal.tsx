@@ -430,7 +430,7 @@ export function BulkUploadProgrammesModal({
 
     if (result.success) {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.programmes.all(festivalId),
+        queryKey: queryKeys.programmes.byFestival(festivalId),
       });
     }
     // Narrow the result type to access .error safely across all union branches

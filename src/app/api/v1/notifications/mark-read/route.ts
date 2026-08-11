@@ -2,12 +2,15 @@ import "server-only";
 
 import { and, eq } from "drizzle-orm";
 import { markReadInput } from "@/api/contracts/notifications";
-import { badRequest, createProtectedHandler, ok } from "@/api/lib";
+import { badRequest, createHandler, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
 import { programmeNotification } from "@/core/database/schema";
 import { assertParticipantNotificationAccess } from "@/features/programmes/actions/reporting-access";
 
-const handler = createProtectedHandler({
+// Participant/team-leader portal callers carry only a `participant_session`
+// cookie, so this uses `createHandler`; `assertParticipantNotificationAccess`
+// does the real authz. See `notifications/route.ts` for the full rationale.
+const handler = createHandler({
   async POST({ request }) {
     const body = await request.json();
     const data = body.data ?? body;

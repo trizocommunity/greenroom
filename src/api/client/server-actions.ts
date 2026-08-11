@@ -958,7 +958,7 @@ export function useBulkCreateProgrammes() {
     },
     onSuccess: (_data, input) => {
       qc.invalidateQueries({
-        queryKey: queryKeys.programmes.all(input.festivalId),
+        queryKey: queryKeys.programmes.byFestival(input.festivalId),
       });
     },
   });
