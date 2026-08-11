@@ -3,6 +3,7 @@
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useParticipantLogout } from "@/api/client";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 import { Button } from "@/components/ui/button";
 import { clearParticipantSessionMeta } from "@/lib/participant-session-storage";
 import { toast } from "@/lib/toast";
@@ -21,6 +22,7 @@ export function ParticipantLogoutButton({
     | "link";
 }) {
   const router = useRouter();
+  const linkBase = useFestivalLinkBase(festivalSlug);
   const logoutMutation = useParticipantLogout();
 
   const handleLogout = () => {
@@ -28,7 +30,7 @@ export function ParticipantLogoutButton({
       onSuccess: () => {
         clearParticipantSessionMeta(festivalSlug);
         toast.success("Logged out successfully");
-        router.push(`/${festivalSlug}`);
+        router.push(linkBase || "/");
         router.refresh();
       },
       onError: (error) => {

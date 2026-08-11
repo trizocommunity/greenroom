@@ -4,7 +4,7 @@ import { PageHeader, Section } from "@/components/layout/Section";
 import { LifecycleInfo } from "@/components/pricing/LifecycleInfo";
 import { PlanShowcase } from "@/components/pricing/PlanShowcase";
 import { Button } from "@/components/ui/button";
-import { PRICING_TIERS, TIER_CONFIG } from "@/config/pricing";
+import { PUBLIC_PRICING_TIERS, TIER_CONFIG } from "@/config/pricing";
 
 export const metadata = {
   title: "Pricing | Greenroom",
@@ -13,9 +13,9 @@ export const metadata = {
 };
 
 export default function PricingPage() {
-  // Only the Pro plan is offered publicly; the other tiers stay in config for
-  // existing festivals and Super Admin assignment.
-  const tier = PRICING_TIERS.find((t) => t.id === "PRO");
+  // Basic and Pro are offered publicly; Standard stays in config for existing
+  // festivals and Super Admin assignment (see PUBLIC_PRICING_TIERS).
+  const tiers = PUBLIC_PRICING_TIERS;
   const durationDays = TIER_CONFIG.PRO.festivalDurationDays;
 
   return (
@@ -24,7 +24,7 @@ export default function PricingPage() {
         eyebrow="Pricing"
         title={
           <>
-            One price.{" "}
+            One payment.{" "}
             <span className="font-display font-normal italic text-primary">
               One festival.
             </span>
@@ -33,7 +33,7 @@ export default function PricingPage() {
         lede="No monthly subscription and no per-participant billing. You pay once, when you create the festival."
       />
 
-      {tier && <PlanShowcase tier={tier} durationDays={durationDays} />}
+      {tiers.length > 0 && <PlanShowcase tiers={tiers} />}
 
       <LifecycleInfo durationDays={durationDays} />
 

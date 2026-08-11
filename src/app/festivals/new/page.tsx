@@ -24,7 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PRICING_TIERS } from "@/config/pricing";
+import { PUBLIC_PRICING_TIERS } from "@/config/pricing";
 import { loadRazorpay } from "@/core/integrations/razorpay";
 import type { Tier } from "@/core/types/app-enums";
 import { toast } from "@/lib/toast";
@@ -148,8 +148,8 @@ function NewFestivalContent() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {PRICING_TIERS.map((tier) => (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {PUBLIC_PRICING_TIERS.map((tier) => (
           <Card
             key={tier.id}
             className={

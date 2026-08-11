@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
 import { eq, sql } from "drizzle-orm";
+import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ExploreNav } from "@/components/festival/landing/ExploreNav";
 import { HeroSection } from "@/components/festival/landing/HeroSection";
@@ -17,6 +18,7 @@ import {
   getPublicProgrammeResults,
   getPublicTopResults,
 } from "@/features/festivals/loaders/festival-results.loader";
+import { getFestivalLinkBase } from "@/features/institutions/lib/custom-domain";
 import { getPublicMediaData } from "@/features/media/loaders/media-public.loader";
 import { getPublicNewsData } from "@/features/news/loaders/news-public.loader";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
@@ -61,6 +63,11 @@ export default async function FestivalPage({
   }
 
   const { festival, event } = data;
+  // Branded hosts serve this page at `/`, so links must not repeat the slug.
+  const linkBase = getFestivalLinkBase(
+    festival.slug,
+    !!(await headers()).get("x-custom-domain"),
+  );
 
   if (isFestivalExpired(festival)) {
     const [countResult] = await db
@@ -160,7 +167,7 @@ export default async function FestivalPage({
           <TeamStandingsSection
             standings={teamStandings}
             accentColor={accentColor}
-            viewAllHref={`/${displayData.slug}/results`}
+            viewAllHref={`${linkBase}/results`}
           />
 
           <LatestWinners

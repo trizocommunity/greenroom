@@ -8,6 +8,7 @@ import {
   ListChecks,
   Users,
 } from "lucide-react";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -31,6 +32,7 @@ import {
 import { MS } from "@/core/datetime/server";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getFestivalLinkBase } from "@/features/institutions/lib/custom-domain";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
@@ -103,6 +105,13 @@ export default async function ParticipantMainPage({
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
 
+  // Branded hosts serve this route without the `/{slug}` prefix, so every
+  // in-festival link and redirect below is built from this base.
+  const linkBase = getFestivalLinkBase(
+    festival.slug ?? slug,
+    !!(await headers()).get("x-custom-domain"),
+  );
+
   const canViewProfile = isEnabled(festival.tier, "publicParticipantProfile");
   if (!canViewProfile) notFound();
 
@@ -114,7 +123,7 @@ export default async function ParticipantMainPage({
 
   // Team leaders live at /dashboard; this route is participant-only.
   if (participant.isTeamLeader) {
-    redirect(`/${slug}/${participantSlug}/dashboard`);
+    redirect(`${linkBase}/${participantSlug}/dashboard`);
   }
 
   const session = await getParticipantSessionFromCookie();
@@ -126,7 +135,7 @@ export default async function ParticipantMainPage({
   // No session for any reason → send to login. Auth/team-leader checks live
   // in `requireParticipantAuth` for protected sub-pages, not here.
   if (!isOwnerSession) {
-    redirect(`/${festival.slug}/login`);
+    redirect(`${linkBase}/login`);
   }
 
   const startDate = festival.startDate ?? festival.createdAt;
@@ -274,7 +283,7 @@ export default async function ParticipantMainPage({
           </ul>
 
           <Link
-            href={`/${slug}/${participantSlug}/assigned-programmes`}
+            href={`${linkBase}/${participantSlug}/assigned-programmes`}
             className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary transition-opacity hover:opacity-70"
           >
             View all programmes
@@ -370,7 +379,7 @@ export default async function ParticipantMainPage({
             {TEAM_LEADER_TOOLS.map((tool) => (
               <li key={tool.key}>
                 <Link
-                  href={`/${slug}/${participantSlug}/${tool.key}`}
+                  href={`${linkBase}/${participantSlug}/${tool.key}`}
                   className="group flex items-center gap-4 py-3.5 transition-opacity hover:opacity-70"
                 >
                   <tool.icon
@@ -400,7 +409,7 @@ export default async function ParticipantMainPage({
             title="Your programmes"
             actions={
               <Link
-                href={`/${slug}/${participantSlug}/assigned-programmes`}
+                href={`${linkBase}/${participantSlug}/assigned-programmes`}
                 className="text-sm font-medium text-primary transition-opacity hover:opacity-70"
               >
                 View all

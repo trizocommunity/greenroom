@@ -9,6 +9,7 @@ import {
   PublicSection,
   SectionHeader,
 } from "@/components/festival/public/PublicSection";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 
 interface NewsPost {
   id: string;
@@ -34,6 +35,7 @@ export function NewsPreview({
   posts,
   accentColor = "var(--primary)",
 }: NewsPreviewProps) {
+  const linkBase = useFestivalLinkBase(slug);
   const preview = posts.slice(0, 3);
 
   if (preview.length === 0) return null;
@@ -52,7 +54,7 @@ export function NewsPreview({
             transition={{ duration: 0.4, delay: i * 0.06 }}
           >
             <Link
-              href={`/${slug}/news`}
+              href={`${linkBase}/news`}
               className="group flex items-start gap-4 py-5"
             >
               <NewsImage
@@ -81,7 +83,7 @@ export function NewsPreview({
       </ul>
 
       <Link
-        href={`/${slug}/news`}
+        href={`${linkBase}/news`}
         className="group mt-5 inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
         style={{ color: accentColor }}
       >

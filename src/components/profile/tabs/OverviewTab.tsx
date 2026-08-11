@@ -30,10 +30,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { FestivalCardSkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getFestivalDurationDays, PRICING_TIERS } from "@/config/pricing";
+import {
+  getFestivalDurationDays,
+  PUBLIC_PRICING_TIERS,
+} from "@/config/pricing";
 import { parseInstant } from "@/core/datetime";
 import { MS } from "@/core/datetime/constants";
 import type { Tier } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
 import { getDerivedFestivalStatus } from "@/features/festivals/services/festival-status.service";
 import { FestivalCard } from "../FestivalCard";
 import { JoinedFestivalCard } from "../JoinedFestivalCard";
@@ -58,7 +62,9 @@ export function OverviewTab({
   const { data: credit, isLoading: isCreditLoading } = useUnusedCredit();
   const { handlePay, loading: isPaymentProcessing } = useFestivalPayment();
 
-  const proTier = PRICING_TIERS.find((t) => t.id === "PRO");
+  const plans = PUBLIC_PRICING_TIERS;
+  const confirmationPlan =
+    plans.find((plan) => plan.id === confirmationTier) ?? null;
 
   const handlePayClick = (tierId: Tier) => setConfirmationTier(tierId);
 
@@ -68,8 +74,6 @@ export function OverviewTab({
       setConfirmationTier(null);
     }
   };
-
-  if (!proTier) return null;
 
   const ownedContent = isFestivalLoading ? (
     <FestivalCardSkeleton />
@@ -167,54 +171,70 @@ export function OverviewTab({
                 description="One payment covers the whole festival for its full run."
               />
 
-              <AppPanel tinted className="p-5 sm:p-7">
-                <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-                  <div>
-                    <StatusPill tone="ready" className="mb-3">
-                      Recommended
-                    </StatusPill>
-                    <h3 className="text-xl font-semibold tracking-tight text-heading">
-                      {proTier.name}
-                    </h3>
-                    <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                      {proTier.description}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-semibold tracking-tight text-heading">
-                      ₹{proTier.price.toLocaleString("en-IN")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">/ festival</p>
-                  </div>
-                </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {plans.map((plan) => (
+                  <AppPanel
+                    key={plan.id}
+                    tinted={plan.isPopular}
+                    className="flex flex-col p-5 sm:p-7"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+                      <div>
+                        {plan.isPopular && (
+                          <StatusPill tone="ready" className="mb-3">
+                            Recommended
+                          </StatusPill>
+                        )}
+                        <h3 className="text-xl font-semibold tracking-tight text-heading">
+                          {plan.name}
+                        </h3>
+                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                          {plan.description}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-semibold tracking-tight text-heading">
+                          ₹{plan.price.toLocaleString("en-IN")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          / festival
+                        </p>
+                      </div>
+                    </div>
 
-                <ul className="mt-6 grid gap-x-8 border-t border-border pt-5 sm:grid-cols-2">
-                  {proTier.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-start gap-2.5 py-1.5 text-sm text-muted-foreground"
+                    <ul className="mt-6 flex-1 border-t border-border pt-5">
+                      {plan.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2.5 py-1.5 text-sm text-muted-foreground"
+                        >
+                          <Check
+                            className="mt-1 h-3 w-3 shrink-0 text-primary"
+                            strokeWidth={3}
+                          />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button
+                      variant={plan.isPopular ? "default" : "outline"}
+                      className={cn(
+                        "mt-6 h-11 w-full justify-center rounded-full text-sm font-medium",
+                        plan.isPopular && "shadow-primary-glow",
+                      )}
+                      onClick={() => handlePayClick(plan.id)}
+                      disabled={isPaymentProcessing}
                     >
-                      <Check
-                        className="mt-1 h-3 w-3 shrink-0 text-primary"
-                        strokeWidth={3}
-                      />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  className="mt-6 h-11 w-full justify-center rounded-full text-sm font-medium shadow-primary-glow sm:w-auto sm:px-8"
-                  onClick={() => handlePayClick(proTier.id)}
-                  disabled={isPaymentProcessing}
-                >
-                  {isPaymentProcessing && confirmationTier === proTier.id && (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  )}
-                  Pay to proceed
-                  <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                </Button>
-              </AppPanel>
+                      {isPaymentProcessing && confirmationTier === plan.id && (
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      )}
+                      Pay to proceed
+                      <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                    </Button>
+                  </AppPanel>
+                ))}
+              </div>
 
               <AlertDialog
                 open={!!confirmationTier}
@@ -224,6 +244,9 @@ export function OverviewTab({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirm payment</AlertDialogTitle>
                     <AlertDialogDescription>
+                      {confirmationPlan
+                        ? `You are paying ₹${confirmationPlan.price.toLocaleString("en-IN")} for the ${confirmationPlan.name} plan. `
+                        : null}
                       Once the payment is completed it is{" "}
                       <span className="font-semibold text-destructive">
                         non-refundable

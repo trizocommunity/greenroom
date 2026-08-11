@@ -3,7 +3,12 @@
 import { motion } from "framer-motion";
 import { ArrowRight, FileDown, Trophy } from "lucide-react";
 import Link from "next/link";
+import {
+  useFestivalLinkBase,
+  useIsCustomDomain,
+} from "@/components/providers/custom-domain-provider";
 import { Button } from "@/components/ui/button";
+import { getAppBaseUrl } from "@/config/routes";
 
 interface ExpiredFestivalViewProps {
   festivalName: string;
@@ -22,6 +27,11 @@ export function ExpiredFestivalView({
   hasPdf,
   downloadPdfUrl,
 }: ExpiredFestivalViewProps) {
+  const linkBase = useFestivalLinkBase(festivalSlug);
+  // On a branded host `/` is the festival itself, so the Greenroom pitch has to
+  // leave the domain rather than link to the festival's own front page.
+  const greenroomHref = useIsCustomDomain() ? getAppBaseUrl() : "/";
+
   return (
     <div className="relative flex min-h-[70vh] flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -46,8 +56,7 @@ export function ExpiredFestivalView({
         </h1>
 
         <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-          This festival has ended. Results and standings remain available
-          below.
+          This festival has ended. Results and standings remain available below.
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
@@ -55,7 +64,7 @@ export function ExpiredFestivalView({
             className="h-12 rounded-full px-7 text-base font-medium"
             asChild
           >
-            <Link href={`/${festivalSlug}/results`}>
+            <Link href={`${linkBase}/results`}>
               <Trophy className="mr-2 h-4 w-4" />
               View results &amp; standings
             </Link>
@@ -81,7 +90,7 @@ export function ExpiredFestivalView({
 
         <div className="mt-10 border-t border-border pt-6">
           <Link
-            href="/"
+            href={greenroomHref}
             className="group inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             Run your own festival on Greenroom

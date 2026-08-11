@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ArrowRight, Bell, Crown, ListChecks, Users } from "lucide-react";
+import { headers } from "next/headers";
 import Link from "next/link";
 import {
   APP_CONTAINER,
@@ -25,6 +26,7 @@ import {
   programmeReportingSession as sessionTable,
 } from "@/core/database/schema";
 import { MS } from "@/core/datetime/server";
+import { getFestivalLinkBase } from "@/features/institutions/lib/custom-domain";
 import { getTeamLeaderMyParticipants } from "@/features/participants/services/my-team";
 import {
   getParticipantProfileUrl,
@@ -50,7 +52,11 @@ export default async function TeamLeaderDashboardPage({
     participantSlug,
     true,
   );
-  const base = `/${slug}/${participantSlug}`;
+  // Branded hosts serve this route without the `/{slug}` prefix.
+  const base = `${getFestivalLinkBase(
+    festival.slug ?? slug,
+    !!(await headers()).get("x-custom-domain"),
+  )}/${participantSlug}`;
 
   const startDate = festival.startDate ?? festival.createdAt;
   const endDate =

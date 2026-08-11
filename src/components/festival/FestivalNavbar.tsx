@@ -7,7 +7,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PUBLIC_CONTAINER } from "@/components/festival/public/PublicSection";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 import { cn } from "@/core/utils/cn";
+import { toFestivalRelativePath } from "@/features/institutions/lib/custom-domain";
 import { isBasicTier } from "@/features/plan-features/services/tier";
 import type { FestivalPublicData } from "./FestivalContext";
 
@@ -28,12 +30,13 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
 
-  // Base URL for navigation links
-  // Public site is always at /festival-slug (or subdomain root)
-  const linkBase = `/${festival.slug}`;
+  // Nothing on a branded host (the host already names the festival),
+  // `/festival-slug` on the Greenroom app host.
+  const linkBase = useFestivalLinkBase(festival.slug);
 
-  // Current page extraction
-  const currentPage = pathname.replace(linkBase, "") || "/";
+  // Compared against the nav items' own festival-relative hrefs, so the active
+  // item is the same on both hosts.
+  const currentPage = toFestivalRelativePath(pathname, festival.slug);
 
   const isBasic = isBasicTier(festival.tier);
   const expired = !!festival.isExpired;
@@ -76,7 +79,10 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
         className={`${PUBLIC_CONTAINER} h-16 flex items-center justify-between gap-4`}
       >
         {/* Festival mark */}
-        <Link href={linkBase} className="flex min-w-0 items-center gap-2.5">
+        <Link
+          href={linkBase || "/"}
+          className="flex min-w-0 items-center gap-2.5"
+        >
           {festival.logo ? (
             <Image
               src={festival.logo}
@@ -99,7 +105,7 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
         <nav className="hidden h-16 items-center md:flex">
           {activeNavItems.map((item) => {
             const href =
-              item.href === "/" ? linkBase : `${linkBase}${item.href}`;
+              item.href === "/" ? linkBase || "/" : `${linkBase}${item.href}`;
             const isActive =
               currentPage === item.href ||
               (currentPage === "/" && item.href === "/");
@@ -131,7 +137,7 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
         <div className="hidden shrink-0 items-center md:flex">
           {!expired && (
             <Link
-              href={`/${festival.slug}/login`}
+              href={`${linkBase}/login`}
               className="text-sm font-medium text-primary transition-opacity hover:opacity-70"
             >
               Participant login
@@ -164,7 +170,9 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
               <nav className="divide-y divide-border">
                 {activeNavItems.map((item) => {
                   const href =
-                    item.href === "/" ? linkBase : `${linkBase}${item.href}`;
+                    item.href === "/"
+                      ? linkBase || "/"
+                      : `${linkBase}${item.href}`;
                   const isActive = currentPage === item.href;
                   return (
                     <Link
@@ -182,7 +190,7 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
                 })}
                 {!expired && (
                   <Link
-                    href={`/${festival.slug}/login`}
+                    href={`${linkBase}/login`}
                     onClick={() => setIsOpen(false)}
                     className="block py-3 text-[15px] font-medium text-primary"
                   >

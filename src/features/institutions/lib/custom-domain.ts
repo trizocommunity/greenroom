@@ -262,11 +262,92 @@ export function extractFestivalSlugFromPath(pathname: string): string | null {
   return segments[0];
 }
 
+/**
+ * Prefix every festival-scoped link needs on the current host.
+ *
+ * A branded host already names the festival (`zenoraev.example.in/news`), so
+ * repeating the slug there produces `/zenoraev/news` — a path that only exists
+ * on the app host. Returns `""` on a branded host and `/{slug}` on the app host,
+ * so call sites can keep writing `` `${base}/news` ``.
+ */
+export function getFestivalLinkBase(
+  slug: string | null | undefined,
+  isCustomDomain: boolean,
+): string {
+  if (isCustomDomain) return "";
+  const label = (slug ?? "").trim().replace(/^\/+|\/+$/g, "");
+  return label ? `/${label}` : "";
+}
+
+/** One festival-scoped link: `/news` on a branded host, `/{slug}/news` on the app host. */
+export function buildFestivalLinkPath(opts: {
+  slug: string | null | undefined;
+  path?: string;
+  isCustomDomain: boolean;
+}): string {
+  const base = getFestivalLinkBase(opts.slug, opts.isCustomDomain);
+  const path = (opts.path ?? "/").trim();
+
+  if (!path || path === "/") return base || "/";
+  // Hash/query-only targets stay on the current page.
+  if (path.startsWith("#") || path.startsWith("?")) return `${base}${path}`;
+
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/**
+ * `/{slug}/news` → `/news`, `/{slug}` → `/`. Returns null when the path is not
+ * under `/{slug}`, so callers can tell a redundant prefix from a clean path.
+ *
+ * Matching is per segment: `/zenoraevx` is a different festival, not a prefix.
+ */
+export function stripFestivalSlugPrefix(
+  pathname: string,
+  slug: string | null | undefined,
+): string | null {
+  const label = (slug ?? "").trim().toLowerCase();
+  if (!label) return null;
+
+  const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const [first, ...rest] = path.split("/").slice(1);
+  if ((first ?? "").toLowerCase() !== label) return null;
+
+  const remainder = rest.join("/");
+  return remainder ? `/${remainder}` : "/";
+}
+
+/**
+ * The path as the branded host would show it, whichever host it came from.
+ * Lets link comparisons (active nav state) work on either host.
+ */
+export function toFestivalRelativePath(
+  pathname: string,
+  slug: string | null | undefined,
+): string {
+  return stripFestivalSlugPrefix(pathname, slug) ?? (pathname || "/");
+}
+
+/**
+ * Second segments under a festival slug that must stay on the Greenroom app
+ * host. Both run on session cookies set for the app host, so canonicalizing
+ * them onto a branded host would sign the organizer or judge straight out.
+ */
+export const APP_HOST_ONLY_FESTIVAL_SEGMENTS = new Set([
+  "editor",
+  "stage-portal",
+]);
+
 /** Paths under a festival slug that should canonicalize to the branded host. */
 export function isPublicFestivalSurfacePath(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 0) return false;
   if (RESERVED_APP_PATH_SEGMENTS.has(segments[0].toLowerCase())) return false;
+  if (
+    segments.length > 1 &&
+    APP_HOST_ONLY_FESTIVAL_SEGMENTS.has(segments[1].toLowerCase())
+  ) {
+    return false;
+  }
   // /{slug} and any nested public/portal path (not dashboard — already reserved)
   return true;
 }

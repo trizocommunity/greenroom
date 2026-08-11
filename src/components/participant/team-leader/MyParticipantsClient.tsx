@@ -22,6 +22,7 @@ import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/participants/ParticipantDetailsDialog";
 import { AddParticipantDialog } from "@/components/participant/team-leader/AddParticipantDialog";
+import { useFestivalPath } from "@/components/providers/custom-domain-provider";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -94,6 +95,7 @@ export function MyParticipantsClient({
   isReadOnly?: boolean;
 }) {
   const router = useRouter();
+  const toFestivalPath = useFestivalPath(festivalSlug);
   const festivalTz = useDisplayTimezone();
   const {
     isLocked,
@@ -439,7 +441,9 @@ export function MyParticipantsClient({
               </p>
               <Button asChild variant="outline" className="w-full rounded-full">
                 <Link
-                  href={getParticipantProfilePath(festivalSlug, qrParticipant)}
+                  href={toFestivalPath(
+                    getParticipantProfilePath(festivalSlug, qrParticipant),
+                  )}
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />
                   Open profile

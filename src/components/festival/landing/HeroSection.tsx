@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { FestivalPublicData } from "@/components/festival/FestivalContext";
 import { PUBLIC_CONTAINER } from "@/components/festival/public/PublicSection";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 
 interface HeroSectionProps {
   festival: FestivalPublicData;
@@ -26,7 +27,7 @@ export function HeroSection({
 }: HeroSectionProps) {
   const startDate = festival.startDate ? new Date(festival.startDate) : null;
   const endDate = festival.endDate ? new Date(festival.endDate) : null;
-  const basePath = `/${festival.slug}`;
+  const basePath = useFestivalLinkBase(festival.slug);
   const isLive = festival.status === "ACTIVE";
 
   const dateLabel =

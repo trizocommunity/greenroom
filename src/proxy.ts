@@ -1,14 +1,15 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getAppBaseUrl } from "@/config/routes";
+import { findBrandedRedirectTarget } from "@/features/festivals/repositories/festival.repository";
 import {
   extractFestivalSlugFromPath,
   getAppHosts,
   isPublicFestivalSurfacePath,
   parseCustomFestivalHost,
+  stripFestivalSlugPrefix,
 } from "@/features/institutions/lib/custom-domain";
 import { findVerifiedInstitutionByCustomDomain } from "@/features/institutions/repositories/institution.repository";
-import { findBrandedRedirectTarget } from "@/features/festivals/repositories/festival.repository";
 
 const CSRF_SECRET =
   process.env.CSRF_SECRET || "default-csrf-secret-change-in-production";
@@ -139,14 +140,39 @@ function isPassthroughPath(pathname: string): boolean {
 }
 
 /**
- * Path→branded redirect is unsafe in Phase 1 until TLS is attached on Vercel.
- * Opt in with ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true after wildcard HTTPS works.
+ * Absolute URL on the host the request actually arrived at — `Location` has to
+ * be absolute, and it must name the branded host rather than the deployment
+ * origin `request.nextUrl` may carry behind Vercel's proxy.
+ */
+function buildSameHostUrl(
+  request: NextRequest,
+  hostHeader: string,
+  pathname: string,
+): URL {
+  const forwardedProto = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim();
+  const protocol =
+    forwardedProto || request.nextUrl.protocol.replace(":", "") || "https";
+
+  const url = new URL(`${protocol}://${hostHeader}`);
+  url.pathname = pathname;
+  url.search = request.nextUrl.search;
+  return url;
+}
+
+/**
+ * Path→branded redirect follows the festival's own readiness, not an env switch:
+ * `findBrandedRedirectTarget` only answers once that host has served a real
+ * certificate (`domainHttpsReadyAt`), so there is nothing left to gate manually.
+ * `DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` is the ops kill switch.
  * Always off on local app hosts so path URLs keep working in dev.
  */
 function shouldCanonicalRedirectToBrandedHost(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "127.0.0.1") return false;
   if (process.env.NODE_ENV !== "production") return false;
-  return process.env.ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT === "true";
+  return process.env.DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT !== "true";
 }
 
 export async function proxy(request: NextRequest) {
@@ -183,6 +209,23 @@ export async function proxy(request: NextRequest) {
       return finalize(pathname, new NextResponse("Not Found", { status: 404 }));
     }
 
+    // `zenoraev.example.in/zenoraev/news` is the app-host path leaking onto the
+    // branded host — usually a stale link or a bookmark. Send it to the clean
+    // path instead of rewriting to `/zenoraev/zenoraev/news`, which is a 404.
+    const withoutSlugPrefix = stripFestivalSlugPrefix(
+      pathname,
+      parsed.festivalSlug,
+    );
+    if (withoutSlugPrefix) {
+      return finalize(
+        pathname,
+        NextResponse.redirect(
+          buildSameHostUrl(request, hostHeader, withoutSlugPrefix),
+          302,
+        ),
+      );
+    }
+
     const rewritePath =
       pathname === "/"
         ? `/${parsed.festivalSlug}`
@@ -204,7 +247,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  // ── App host: optional path → branded subdomain (canonical) ───────────
+  // ── App host: public festival paths → branded host (canonical) ─────────
   if (
     shouldCanonicalRedirectToBrandedHost(hostname) &&
     !isPassthroughPath(pathname) &&
@@ -216,13 +259,10 @@ export async function proxy(request: NextRequest) {
       try {
         const branded = await findBrandedRedirectTarget(slug);
         if (branded) {
-          const rest =
-            pathname === `/${slug}` || pathname === `/${slug}/`
-              ? "/"
-              : pathname.slice(slug.length + 1) || "/";
+          const host = `${branded.festivalSlug}.${branded.customDomain}`;
           const dest = new URL(
-            rest === "/" ? "/" : rest,
-            `https://${branded.festivalSlug}.${branded.customDomain}`,
+            stripFestivalSlugPrefix(pathname, slug) ?? "/",
+            `https://${host}`,
           );
           dest.search = search;
           return finalize(pathname, NextResponse.redirect(dest, 302));
