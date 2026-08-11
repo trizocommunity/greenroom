@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { PUBLIC_CONTAINER } from "@/components/festival/public/PublicSection";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 
 /**
  * The site index, as oversized text links rather than a grid of tiles. Sits
@@ -18,7 +19,7 @@ export function ExploreNav({
   accentColor?: string;
   hideExtras?: boolean;
 }) {
-  const base = `/${slug}`;
+  const base = useFestivalLinkBase(slug);
   const links = [
     { name: "Schedule", href: `${base}/schedule`, note: "Stages, days, times" },
     { name: "Results", href: `${base}/results`, note: "Published programmes" },

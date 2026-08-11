@@ -8,6 +8,7 @@ import {
   PUBLIC_CONTAINER,
   SectionHeader,
 } from "@/components/festival/public/PublicSection";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 
 interface MediaImage {
   id: string;
@@ -30,6 +31,7 @@ export function MediaPreview({
   images,
   accentColor = "var(--primary)",
 }: MediaPreviewProps) {
+  const linkBase = useFestivalLinkBase(slug);
   const preview = images.slice(0, 8);
 
   if (preview.length === 0) return null;
@@ -67,7 +69,7 @@ export function MediaPreview({
 
       <div className={`mt-6 ${PUBLIC_CONTAINER}`}>
         <Link
-          href={`/${slug}/media`}
+          href={`${linkBase}/media`}
           className="group inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
           style={{ color: accentColor }}
         >

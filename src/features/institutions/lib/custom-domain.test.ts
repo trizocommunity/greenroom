@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildFestivalHost,
+  buildFestivalLinkPath,
   describeCustomDomainProblem,
   extractFestivalSlugFromPath,
   getDomainOwnershipToken,
+  getFestivalLinkBase,
   getPublicFestivalBaseUrl,
   isCustomDomainPhasePending,
+  isPublicFestivalSurfacePath,
   isValidCustomDomainShape,
   normalizeCustomDomain,
   parseCustomFestivalHost,
+  stripFestivalSlugPrefix,
+  toFestivalRelativePath,
 } from "./custom-domain";
 import {
   __resetCustomDomainCacheForTests,
@@ -209,6 +214,92 @@ describe("custom-domain helpers", () => {
     expect(extractFestivalSlugFromPath("/suffamehil/login")).toBe("suffamehil");
     expect(extractFestivalSlugFromPath("/dashboard/suffamehil")).toBeNull();
     expect(extractFestivalSlugFromPath("/login")).toBeNull();
+  });
+
+  it("isPublicFestivalSurfacePath keeps app-host-only surfaces off branded hosts", () => {
+    expect(isPublicFestivalSurfacePath("/suffamehil")).toBe(true);
+    expect(isPublicFestivalSurfacePath("/suffamehil/news")).toBe(true);
+    expect(isPublicFestivalSurfacePath("/suffamehil/login")).toBe(true);
+
+    expect(isPublicFestivalSurfacePath("/")).toBe(false);
+    expect(isPublicFestivalSurfacePath("/dashboard/suffamehil")).toBe(false);
+    expect(isPublicFestivalSurfacePath("/login")).toBe(false);
+
+    // Organizer + judge cookies are scoped to the app host, so canonicalizing
+    // these onto a branded host would sign the person out mid-session.
+    expect(isPublicFestivalSurfacePath("/suffamehil/editor")).toBe(false);
+    expect(isPublicFestivalSurfacePath("/suffamehil/stage-portal")).toBe(false);
+    expect(isPublicFestivalSurfacePath("/suffamehil/Stage-Portal/x")).toBe(
+      false,
+    );
+  });
+});
+
+describe("festival link paths", () => {
+  it("getFestivalLinkBase drops the slug only on a branded host", () => {
+    expect(getFestivalLinkBase("suffamehil", false)).toBe("/suffamehil");
+    expect(getFestivalLinkBase("suffamehil", true)).toBe("");
+    expect(getFestivalLinkBase(" /suffamehil/ ", false)).toBe("/suffamehil");
+    expect(getFestivalLinkBase(null, false)).toBe("");
+    expect(getFestivalLinkBase(undefined, true)).toBe("");
+  });
+
+  it("buildFestivalLinkPath keeps app-host and branded links routable", () => {
+    expect(
+      buildFestivalLinkPath({ slug: "suffamehil", isCustomDomain: false }),
+    ).toBe("/suffamehil");
+    expect(
+      buildFestivalLinkPath({ slug: "suffamehil", isCustomDomain: true }),
+    ).toBe("/");
+    expect(
+      buildFestivalLinkPath({
+        slug: "suffamehil",
+        path: "/news",
+        isCustomDomain: false,
+      }),
+    ).toBe("/suffamehil/news");
+    expect(
+      buildFestivalLinkPath({
+        slug: "suffamehil",
+        path: "news",
+        isCustomDomain: true,
+      }),
+    ).toBe("/news");
+    // Hash/query targets stay on the current page on both hosts.
+    expect(
+      buildFestivalLinkPath({
+        slug: "suffamehil",
+        path: "#results",
+        isCustomDomain: true,
+      }),
+    ).toBe("#results");
+    expect(
+      buildFestivalLinkPath({
+        slug: "suffamehil",
+        path: "?page=2",
+        isCustomDomain: false,
+      }),
+    ).toBe("/suffamehil?page=2");
+  });
+
+  it("stripFestivalSlugPrefix removes exactly one leading slug segment", () => {
+    expect(stripFestivalSlugPrefix("/zenoraev/news", "zenoraev")).toBe("/news");
+    expect(stripFestivalSlugPrefix("/zenoraev", "zenoraev")).toBe("/");
+    expect(stripFestivalSlugPrefix("/ZENORAEV/news", "zenoraev")).toBe("/news");
+    // A doubled prefix loses one segment per hop, so the redirect terminates.
+    expect(stripFestivalSlugPrefix("/zenoraev/zenoraev/news", "zenoraev")).toBe(
+      "/zenoraev/news",
+    );
+
+    expect(stripFestivalSlugPrefix("/news", "zenoraev")).toBeNull();
+    expect(stripFestivalSlugPrefix("/zenoraevx/news", "zenoraev")).toBeNull();
+    expect(stripFestivalSlugPrefix("/news", null)).toBeNull();
+  });
+
+  it("toFestivalRelativePath falls back to the path it was given", () => {
+    expect(toFestivalRelativePath("/zenoraev/news", "zenoraev")).toBe("/news");
+    expect(toFestivalRelativePath("/news", "zenoraev")).toBe("/news");
+    expect(toFestivalRelativePath("", "zenoraev")).toBe("/");
   });
 });
 

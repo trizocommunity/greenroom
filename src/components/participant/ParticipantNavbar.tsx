@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { useNotifications } from "@/api/client";
 import { APP_CONTAINER, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
+import { toFestivalRelativePath } from "@/features/institutions/lib/custom-domain";
 
 interface ParticipantNavbarProps {
   festival: {
@@ -40,12 +42,19 @@ export function ParticipantNavbar({
   assignedProgrammesTopStatus = null,
 }: ParticipantNavbarProps) {
   const pathname = usePathname();
+  const festivalBase = useFestivalLinkBase(festival.slug);
 
   const { data: notifications = [] } = useNotifications(participant.id);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const linkBase = `/${festival.slug}/${participantSlugParam}`;
+  const linkBase = `${festivalBase}/${participantSlugParam}`;
   const isTeamLeader = participant.isTeamLeader;
+
+  // Nav hrefs and the current path are both reduced to their festival-relative
+  // form, so the active item is the same on the app host and a branded host.
+  const currentPath = toFestivalRelativePath(pathname, festival.slug);
+  const isActive = (href: string) =>
+    currentPath === toFestivalRelativePath(href, festival.slug);
 
   const menuItems: Array<{
     label: string;
@@ -105,7 +114,7 @@ export function ParticipantNavbar({
         {/* Sections */}
         <nav className="mx-auto hidden h-16 items-center lg:flex">
           {menuItems.map((item) => {
-            const active = pathname === item.href;
+            const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
@@ -142,7 +151,7 @@ export function ParticipantNavbar({
             className="lg:hidden"
           />
           <IconLink
-            href={`/${festival.slug}`}
+            href={festivalBase || "/"}
             label="Festival site"
             icon={ArrowUpRight}
           />
@@ -171,7 +180,7 @@ export function ParticipantNavbar({
                 </div>
                 <nav className="divide-y divide-border px-5">
                   {menuItems.map((item) => {
-                    const active = pathname === item.href;
+                    const active = isActive(item.href);
                     return (
                       <SheetClose asChild key={item.href}>
                         <Link

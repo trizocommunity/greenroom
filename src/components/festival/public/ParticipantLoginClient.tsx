@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useRequestAccess, useVerifyParticipantOtp } from "@/api/client";
 import { ErrorScopeProvider, InlineError } from "@/components/errors";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ export function ParticipantLoginClient({
   festivalSlug: string;
 }) {
   const router = useRouter();
+  const linkBase = useFestivalLinkBase(festivalSlug);
   const requestAccess = useRequestAccess();
   const verifyOtpMutation = useVerifyParticipantOtp();
 
@@ -34,8 +36,8 @@ export function ParticipantLoginClient({
   useEffect(() => {
     const meta = readParticipantSessionMeta(festivalSlug);
     if (!meta) return;
-    router.replace(`/${festivalSlug}/${meta.participantSlug}`);
-  }, [festivalSlug, router]);
+    router.replace(`${linkBase}/${meta.participantSlug}`);
+  }, [festivalSlug, linkBase, router]);
 
   const submitIdentification = () => {
     setFieldError(null);
@@ -62,7 +64,7 @@ export function ParticipantLoginClient({
               isTeamLeader: false,
               expiresAt: data.expiresAt,
             });
-            router.push(`/${festivalSlug}/${data.participantSlug}`);
+            router.push(`${linkBase}/${data.participantSlug}`);
             router.refresh();
             return;
           }
@@ -99,8 +101,8 @@ export function ParticipantLoginClient({
             expiresAt: data.expiresAt,
           });
           const destination = data.isTeamLeader
-            ? `/${festivalSlug}/${data.participantSlug}/dashboard`
-            : `/${festivalSlug}/${data.participantSlug}`;
+            ? `${linkBase}/${data.participantSlug}/dashboard`
+            : `${linkBase}/${data.participantSlug}`;
           router.push(destination);
           router.refresh();
         },

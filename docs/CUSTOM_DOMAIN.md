@@ -116,7 +116,8 @@ flowchart LR
 | Soft checklist | Overview “Verify custom subdomain” → `settings?tab=festival-live`. Launch on `/{slug}` allowed without verify. |
 | Verify | DNS only: TXT `_greenroom.{domain}` = `greenroom-verify={institutionId}` **and** wildcard CNAME `*` → `cname.vercel-dns.com`. Proves apex ownership once, for the whole institution. Verification alone attaches no host and issues no certificate — see §9. |
 | Domain change | Saving/clearing clears `verifiedAt` immediately; cache invalidated. If the apex actually changed, every festival host under the old apex is detached and its `domainHttpsReadyAt` cleared. Old branded Host → 404 (≤60s cache). |
-| Canonical redirect | Opt-in: `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` in **production only**, and only after branded HTTPS works. Off by default; always off on localhost / non-production. |
+| Canonical redirect | Automatic in **production**: a public festival path on the app host 302s to the branded host as soon as that festival's `domainHttpsReadyAt` is stamped. No env switch to flip; `DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` is the ops kill switch. Always off on localhost / non-production. |
+| Branded-host links | On `{slug}.{apex}` every in-festival link drops the `/{slug}` prefix (`/news`, `/login`, `/{participantSlug}`). A leaked `/{slug}/…` path on the branded host 302s to the clean path. |
 | Apex / www | Bare apex and `www.{domain}` → 404 (not festival hosts). |
 | Post-expiry | Results + standings remain; news / media / participant login / stage portal blocked. |
 | Slug uniqueness | Global (unchanged). No per-institution slug namespace. |
@@ -294,7 +295,7 @@ member (managers get view access); only save/clear/verify are owner-gated.
 2. Vercel env (minimum related to this feature):
    - `NEXT_PUBLIC_APP_URL=https://greenroomm.vercel.app`
    - `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` — enables automated attach. All three or none; a partial set is treated as unset.
-   - Leave `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` **unset/false** until at least one customer has a working branded certificate.
+   - Leave `DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` unset. Canonical redirect follows each festival's own `domainHttpsReadyAt`, so it cannot fire before that host serves TLS. Set it to `true` only to switch the behavior off in an incident.
 3. Confirm PRO has `customDomain: true` in `src/config/pricing.ts`.
 4. Apply schema migrations: `drizzle/0029_unusual_phantom_reporter.sql` (`institution.customDomain`, `verifiedAt`, unique index), `drizzle/0030_nifty_king_bedlam.sql` (`institution.httpsReadyAt` — now vestigial, see §8) and `drizzle/0050_festival_domain_https_ready.sql` (`festival.domainHttpsReadyAt`).
 5. Confirm Settings → Launch Website shows **Custom subdomain** for PRO institutional festivals.
@@ -338,12 +339,13 @@ Then:
    - `https://{slug}.ahlussuffa.in/dashboard/...` → redirects to `greenroomm.vercel.app/dashboard/...`
 5. No DB edit needed — the probe notices the working certificate and stamps
    `festival.domainHttpsReadyAt` on the next status poll.
-6. Optional: only after the above works, set `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` if you want app-host `/{slug}` to 302 to the branded host.
+6. Nothing to enable: once step 5 stamps `domainHttpsReadyAt`, app-host
+   `/{slug}` and `/{slug}/…` start 302ing to the branded host on their own.
 
-**Do not** enable canonical redirect before HTTPS is confirmed — path URLs would
-redirect to a host that cannot serve TLS and look “dead” while logs still show
-2xx/3xx. `findBrandedRedirectTarget` guards this by requiring the festival's
-`domainHttpsReadyAt`, but the env flag is still the outer switch.
+Redirecting before HTTPS is confirmed would send path URLs to a host that cannot
+serve TLS and look “dead” while logs still show 2xx/3xx, which is exactly why
+readiness — not an env flag — is the gate: `findBrandedRedirectTarget` answers
+only for a festival whose own `domainHttpsReadyAt` is stamped.
 
 ---
 
@@ -406,7 +408,10 @@ returns `previousDomain` for the route to detach rather than detaching itself.
 
 - Host routing runs for page navigations (matcher covers app routes).
 - **CSRF / CSP security headers apply only to `/api/*`** — not to HTML documents. Applying strict CSP to all pages previously returned **200 with a blank/broken UI**.
-- Canonical path→branded redirect is gated by `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` + production + non-localhost, **and** by the festival's own `domainHttpsReadyAt` in `findBrandedRedirectTarget`.
+- Canonical path→branded redirect is gated by production + non-localhost + the festival's own `domainHttpsReadyAt` in `findBrandedRedirectTarget`. `DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` turns it off without a deploy.
+- `/{slug}/editor` and `/{slug}/stage-portal` are excluded from that redirect (`APP_HOST_ONLY_FESTIVAL_SEGMENTS`): organizer and judge session cookies are scoped to the app host, so canonicalizing them would sign the person out.
+- On a branded host, a request that still carries the `/{slug}` prefix 302s to the clean path (`stripFestivalSlugPrefix`). One segment is removed per hop, so a doubled prefix terminates instead of looping.
+- The rewrite injects `x-custom-domain` alongside `x-institution-id` / `x-festival-slug`; `CustomDomainProvider` seeds it into the client tree so links render identically on the server and after hydration.
 
 ---
 
@@ -500,7 +505,6 @@ side. There is no backfill script and no scheduled job.
 - Per-institution slug uniqueness (slugs stay globally unique)
 - Institution-level tier column
 - Enabling `customDomain` for STANDARD (gate remains PRO / `features.customDomain`)
-- Auto-enabling `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` — still a deliberate ops switch
 - Dropping the vestigial `institution.httpsReadyAt` column (separate migration)
 
 ### Tests
@@ -509,6 +513,7 @@ side. There is no backfill script and no scheduled job.
 |------|--------|
 | `src/features/institutions/lib/custom-domain.test.ts` | URL builder gating on the festival's `domainHttpsReadyAt` (including two festivals under one verified apex disagreeing), `buildFestivalHost` normalization + rejection, phase-pending helper, host parsing, cache |
 | `src/features/institutions/services/custom-domain-provisioning.service.test.ts` | Probe targets the real host, attach posts a bare host with no `*.` prefix, attach/detach failure handling, every `syncFestivalDomainStatus` phase, readiness set/clear, Vercel challenge records surfaced |
+| `src/proxy.test.ts` | Branded-host rewrite + injected headers, leaked `/{slug}` prefix redirect, dashboard bounce, app-host canonical redirect (query preserved, editor/stage-portal excluded, kill switch, DB failure, localhost) |
 
 ---
 
@@ -517,7 +522,7 @@ side. There is no backfill script and no scheduled job.
 | Variable | Purpose |
 |----------|---------|
 | `NEXT_PUBLIC_APP_URL` | App origin for redirects, emails, dashboard bounce from custom hosts. Prod: `https://greenroomm.vercel.app` |
-| `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` | Set `true` only in production after branded HTTPS works. Redirects `/{slug}/…` → branded host. |
+| `DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` | Kill switch. Set `true` to stop app-host `/{slug}/…` → branded-host redirects; unset (default) lets each festival's `domainHttpsReadyAt` decide. |
 | `VERCEL_URL` | Auto-included in app-host allowlist on Vercel deployments |
 | `VERCEL_TOKEN` | Domains API token, scoped to the team. Required for automated attach. |
 | `VERCEL_PROJECT_ID` | Target project (`prj_…`). Required for automated attach. |
@@ -644,7 +649,8 @@ $r = Invoke-WebRequest http://127.0.0.1:3000/login -UseBasicParsing
 | Vercel shows `*.{apex}` as **Verification Required** | Leftover wildcard from the old design; wildcards need DNS-01 and can never certify here | Remove the entry (§1.1, §7.2). Do not move the customer's nameservers |
 | One festival has HTTPS, another under the same apex does not | Expected — certificates are per host | Publish the second festival and wait for its own certificate |
 | Branded URL disappeared after a rename | Slug change detaches the old host and clears readiness | Wait for the new host's certificate; the path URL works meanwhile |
-| Path URL suddenly leaves Greenroom | Canonical redirect enabled before TLS ready | Unset `ENABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` |
+| Path URL suddenly leaves Greenroom | Expected once that festival's branded HTTPS is ready | Nothing to fix; to stop it, set `DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT=true` |
+| Branded host 404s on a link containing the slug | Stale `/{slug}/…` link or bookmark | The proxy 302s it to the clean path; update the link source if it is in-app |
 | Custom Host → 404 | Unverified, wrong apex, or non-PRO on branded host | Verify DNS; confirm PRO; confirm slug belongs under that institution’s domain |
 | Apex / www → 404 | By design | Festival hosts are `{slug}.{apex}` only |
 | Changed domain; old host still works briefly | 60s cache | Wait or restart server instances; invalidate on save already |

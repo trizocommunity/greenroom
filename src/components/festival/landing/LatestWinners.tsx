@@ -8,6 +8,7 @@ import {
   PublicSection,
   SectionHeader,
 } from "@/components/festival/public/PublicSection";
+import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 import {
   Pagination,
   PaginationContent,
@@ -41,6 +42,7 @@ export function LatestWinners({
   accentColor?: string;
 }) {
   const [pageIndex, setPageIndex] = useState(0);
+  const linkBase = useFestivalLinkBase(slug);
   const pageSize = 3;
   const totalPages = Math.ceil(results.length / pageSize);
 
@@ -163,7 +165,7 @@ export function LatestWinners({
       )}
 
       <Link
-        href={`/${slug}/results`}
+        href={`${linkBase}/results`}
         className="group mt-5 inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
         style={{ color: accentColor }}
       >

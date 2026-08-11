@@ -429,6 +429,12 @@ export type PricingTier = {
   price: number;
   description: string;
   features: string[];
+  /**
+   * Offered for self-serve purchase — pricing page, profile overview and the
+   * relaunch flow all render only the public tiers. Non-public tiers stay in
+   * config for existing festivals and Super Admin assignment.
+   */
+  isPublic: boolean;
   isPopular?: boolean;
   isCustom?: boolean;
 };
@@ -446,8 +452,13 @@ export const PRICING_TIERS: PricingTier[] = [
       `${TIER_CONFIG.BASIC.limits.stages} Stages`,
       "0.5 GB Storage",
       `${TIER_CONFIG.BASIC.festivalDurationDays} Days Active Duration`,
-      "Data deleted on expiry",
+      "Chest Numbers & Results",
+      "Live Scoreboard & Live Results",
+      "Poster Templates & PDF Export",
+      "Public Results Page",
+      "WhatsApp Support",
     ],
+    isPublic: true,
     isPopular: false,
   },
   {
@@ -467,7 +478,9 @@ export const PRICING_TIERS: PricingTier[] = [
       "QR Codes & Auto Certificates",
       "Full Landing Page",
     ],
-    isPopular: true,
+    // Standard is not sold self-serve — Basic and Pro are the offered plans.
+    isPublic: false,
+    isPopular: false,
   },
   {
     id: "PRO",
@@ -488,6 +501,29 @@ export const PRICING_TIERS: PricingTier[] = [
       "API Access & Webhooks",
       "Team Members with RBAC",
     ],
-    isPopular: false,
+    isPublic: true,
+    isPopular: true,
   },
 ];
+
+/**
+ * The plans a user can actually buy, cheapest first. Every purchase surface
+ * (pricing page, profile overview, relaunch) reads this instead of
+ * `PRICING_TIERS` so "which plans are on sale" lives in one place.
+ */
+export const PUBLIC_PRICING_TIERS: PricingTier[] = PRICING_TIERS.filter(
+  (tier) => tier.isPublic,
+);
+
+const SUPPORT_LABEL: Record<TierFeatures["supportLevel"], string> = {
+  whatsapp: "WhatsApp",
+  email: "Email",
+  priority: "Priority",
+  dedicated: "Dedicated",
+};
+
+/** Support channel + response time for a tier, e.g. "Priority · 4h response". */
+export function getTierSupportLabel(tier: Tier): string {
+  const { supportLevel, supportResponseTime } = TIER_CONFIG[tier].features;
+  return `${SUPPORT_LABEL[supportLevel]} · ${supportResponseTime}h response`;
+}

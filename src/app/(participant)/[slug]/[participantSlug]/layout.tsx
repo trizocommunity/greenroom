@@ -1,11 +1,14 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { ParticipantNavbar } from "@/components/participant/ParticipantNavbar";
+import { CustomDomainProvider } from "@/components/providers/custom-domain-provider";
 import { UserTimezoneProviderClient } from "@/components/providers/user-timezone-provider-client";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getFestivalLinkBase } from "@/features/institutions/lib/custom-domain";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getTopPriorityProgrammeStatus } from "@/features/programmes/services/programme-status-priority";
@@ -29,6 +32,8 @@ export default async function ParticipantLayout({
   const { slug, participantSlug } = await params;
 
   if (RESERVED_SLUGS.has(participantSlug)) notFound();
+
+  const customDomain = (await headers()).get("x-custom-domain");
 
   const festival = await findFestivalBySlug(slug);
   if (!festival) notFound();
@@ -89,31 +94,38 @@ export default async function ParticipantLayout({
     ? null
     : (getTopPriorityProgrammeStatus(statuses) as ProgrammeStatus | null);
 
+  const festivalBase = getFestivalLinkBase(
+    festival.slug ?? slug,
+    !!customDomain,
+  );
+
   return (
     <UserTimezoneProviderClient festivalTimezone={festival.timezone ?? null}>
-      <FestivalProvider festival={festivalProviderValue}>
-        <div className="min-h-screen md:pt-10">
-          <ParticipantNavbar
-            festival={{
-              slug: festival.slug ?? slug,
-              name: festival.name,
-            }}
-            participant={{
-              id: participant.id,
-              isTeamLeader: Boolean(participant.isTeamLeader),
-              name: participant.name,
-            }}
-            participantSlugParam={participantSlug}
-            participantMainHref={
-              participant.isTeamLeader
-                ? `/${festival.slug ?? slug}/${participantSlug}/dashboard`
-                : `/${festival.slug ?? slug}/${participantSlug}`
-            }
-            assignedProgrammesTopStatus={assignedProgrammesTopStatus}
-          />
-          {children}
-        </div>
-      </FestivalProvider>
+      <CustomDomainProvider customDomain={customDomain}>
+        <FestivalProvider festival={festivalProviderValue}>
+          <div className="min-h-screen md:pt-10">
+            <ParticipantNavbar
+              festival={{
+                slug: festival.slug ?? slug,
+                name: festival.name,
+              }}
+              participant={{
+                id: participant.id,
+                isTeamLeader: Boolean(participant.isTeamLeader),
+                name: participant.name,
+              }}
+              participantSlugParam={participantSlug}
+              participantMainHref={
+                participant.isTeamLeader
+                  ? `${festivalBase}/${participantSlug}/dashboard`
+                  : `${festivalBase}/${participantSlug}`
+              }
+              assignedProgrammesTopStatus={assignedProgrammesTopStatus}
+            />
+            {children}
+          </div>
+        </FestivalProvider>
+      </CustomDomainProvider>
     </UserTimezoneProviderClient>
   );
 }

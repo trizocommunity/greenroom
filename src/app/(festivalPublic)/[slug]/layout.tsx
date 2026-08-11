@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
+import { CustomDomainProvider } from "@/components/providers/custom-domain-provider";
 import { UserTimezoneProviderClient } from "@/components/providers/user-timezone-provider-client";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
@@ -18,6 +19,9 @@ export default async function FestivalLayout({
   const { slug: festivalSlug } = await params;
   const hdrs = await headers();
   const institutionId = hdrs.get("x-institution-id");
+  // Set by the proxy only on a branded host; links below drop the `/{slug}`
+  // prefix when it is present.
+  const customDomain = hdrs.get("x-custom-domain");
 
   const festival = await findFestivalBySlugForPublic(
     festivalSlug,
@@ -54,8 +58,8 @@ export default async function FestivalLayout({
     orgWebsite: festival.orgWebsite || "",
     orgLocation: festival.orgLocation || "",
     establishedYear: festival.establishedYear || null,
-    participantsCount: (festival as { participantsCount?: number })
-      .participantsCount || 0,
+    participantsCount:
+      (festival as { participantsCount?: number }).participantsCount || 0,
     limits: null,
     participantCreationStartDate: festival.participantCreationStartDate,
     participantCreationDeadline: festival.participantCreationDeadline,
@@ -67,13 +71,15 @@ export default async function FestivalLayout({
 
   return (
     <UserTimezoneProviderClient festivalTimezone={festival.timezone ?? null}>
-      <FestivalProvider festival={festivalData as any}>
-        <div className="min-h-screen flex flex-col">
-          <FestivalNavbar festival={festivalData as any} />
-          <main className="flex-1 pt-16">{children}</main>
-          <FestivalFooter festival={festivalData as any} />
-        </div>
-      </FestivalProvider>
+      <CustomDomainProvider customDomain={customDomain}>
+        <FestivalProvider festival={festivalData as any}>
+          <div className="min-h-screen flex flex-col">
+            <FestivalNavbar festival={festivalData as any} />
+            <main className="flex-1 pt-16">{children}</main>
+            <FestivalFooter festival={festivalData as any} />
+          </div>
+        </FestivalProvider>
+      </CustomDomainProvider>
     </UserTimezoneProviderClient>
   );
 }
