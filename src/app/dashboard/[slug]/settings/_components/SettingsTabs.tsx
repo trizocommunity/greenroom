@@ -5,7 +5,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
 import { ScoringPolicyClient } from "@/components/dashboard/judgement/ScoringPolicyClient";
 import { cn } from "@/core/utils/cn";
-import { FestivalLiveClient } from "./FestivalLiveClient";
+import {
+  type CustomDomainState,
+  FestivalLiveClient,
+} from "./FestivalLiveClient";
 import { SettingsForm } from "./SettingsForm";
 
 interface SettingsTabsProps {
@@ -15,15 +18,7 @@ interface SettingsTabsProps {
   programmes: any[];
   publicUrl: string;
   previewPath: string;
-  customDomain: {
-    institutionId: string | null;
-    customDomain: string | null;
-    verifiedAt: string | null;
-    httpsReadyAt: string | null;
-    isOwner: boolean;
-    isPro: boolean;
-    isInstitutional: boolean;
-  };
+  customDomain: CustomDomainState;
   canManageScoring: boolean;
   canManageFestivalLive: boolean;
 }

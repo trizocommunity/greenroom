@@ -1,20 +1,26 @@
 import "server-only";
 
-import { normalizeCustomDomain } from "@/features/institutions/lib/custom-domain";
-
 /**
- * Vercel Domains API client — Phase 2 automated TLS provisioning.
+ * Vercel Domains API client — automated TLS provisioning.
  *
- * Adds `*.{customDomain}` to the Greenroom Vercel project, verifies the
- * domain challenge, and reads the domain config for TLS readiness.
+ * Adds one festival host (`{slug}.{apex}`) at a time to the Greenroom Vercel
+ * project and reads its config for TLS readiness.
+ *
+ * Why per-host and not `*.{apex}`: a wildcard certificate can only be validated
+ * through the DNS-01 ACME challenge, which requires Vercel to write TXT records
+ * into the institution's zone at issuance and at every renewal. That means
+ * handing Vercel the whole zone (nameserver delegation), which would take over
+ * the institution's existing site and email. Single-label hosts validate over
+ * HTTP-01 instead — Vercel answers the challenge over the traffic path that the
+ * owner's `*` CNAME already points at us, so no zone control is needed.
  *
  * Env (all three required to enable automation):
  *   VERCEL_TOKEN       — API token scoped to the team
  *   VERCEL_PROJECT_ID  — target project id (prj_…)
  *   VERCEL_TEAM_ID     — team id (team_…)
  *
- * When unset the app stays on the Phase 1 manual path: ops attaches the
- * wildcard by hand and HTTPS readiness is proven by probe, not by this API.
+ * When unset the app stays on the manual path: ops attaches hosts by hand and
+ * HTTPS readiness is proven by probe, not by this API.
  */
 
 const API_BASE = "https://api.vercel.com";
@@ -66,10 +72,6 @@ function authHeaders(token: string): HeadersInit {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
-}
-
-function wildcardOf(customDomain: string): string {
-  return `*.${normalizeCustomDomain(customDomain)}`;
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -143,26 +145,25 @@ async function vercelFetch<T>(
 // ── API calls ──────────────────────────────────────────────────────────────
 
 /**
- * Add `*.{customDomain}` (wildcard) to the Vercel project.
+ * Add a single festival host to the Vercel project.
  * Idempotent: an already-attached domain is fetched and returned as-is.
  */
-export async function addWildcardDomainToProject(
-  customDomain: string,
+export async function addDomainToProject(
+  host: string,
 ): Promise<ProjectDomainResponse> {
   const { token, projectId, teamId } = requireVercelEnv();
-  const domain = wildcardOf(customDomain);
 
   const url = `${API_BASE}/v10/projects/${encodeURIComponent(projectId)}/domains${teamQuery(teamId)}`;
 
   const { ok, status, body } = await vercelFetch<ProjectDomainResponse>(url, {
     method: "POST",
     headers: authHeaders(token),
-    body: JSON.stringify({ name: domain }),
+    body: JSON.stringify({ name: host }),
   });
 
   // 409 = already on this project; re-read the record so callers get real state.
   if (status === 409) {
-    return await getProjectDomain(customDomain);
+    return await getProjectDomain(host);
   }
 
   if (!ok) {
@@ -177,12 +178,11 @@ export async function addWildcardDomainToProject(
  * Safe to call when already verified.
  */
 export async function verifyProjectDomain(
-  customDomain: string,
+  host: string,
 ): Promise<ProjectDomainResponse> {
   const { token, projectId, teamId } = requireVercelEnv();
-  const domain = wildcardOf(customDomain);
 
-  const url = `${API_BASE}/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(domain)}/verify${teamQuery(teamId)}`;
+  const url = `${API_BASE}/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(host)}/verify${teamQuery(teamId)}`;
 
   const { ok, status, body } = await vercelFetch<ProjectDomainResponse>(url, {
     method: "POST",
@@ -203,12 +203,11 @@ export async function verifyProjectDomain(
  * correctly — a precondition for the certificate, not proof of it.
  */
 export async function getDomainConfig(
-  customDomain: string,
+  host: string,
 ): Promise<DomainConfigResponse> {
   const { token, teamId } = requireVercelEnv();
-  const domain = wildcardOf(customDomain);
 
-  const url = `${API_BASE}/v6/domains/${encodeURIComponent(domain)}/config${teamQuery(teamId)}`;
+  const url = `${API_BASE}/v6/domains/${encodeURIComponent(host)}/config${teamQuery(teamId)}`;
 
   const { ok, status, body } = await vercelFetch<DomainConfigResponse>(url, {
     method: "GET",
@@ -224,12 +223,11 @@ export async function getDomainConfig(
 
 /** Read a project domain record. Throws `DOMAIN_NOT_FOUND` when absent. */
 export async function getProjectDomain(
-  customDomain: string,
+  host: string,
 ): Promise<ProjectDomainResponse> {
   const { token, projectId, teamId } = requireVercelEnv();
-  const domain = wildcardOf(customDomain);
 
-  const url = `${API_BASE}/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(domain)}${teamQuery(teamId)}`;
+  const url = `${API_BASE}/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(host)}${teamQuery(teamId)}`;
 
   const { ok, status, body } = await vercelFetch<ProjectDomainResponse>(url, {
     method: "GET",
@@ -237,7 +235,7 @@ export async function getProjectDomain(
   });
 
   if (status === 404) {
-    throw new DomainNotFoundError(`${domain} is not on the Vercel project`);
+    throw new DomainNotFoundError(`${host} is not on the Vercel project`);
   }
 
   if (!ok) {
@@ -255,14 +253,14 @@ export class DomainNotFoundError extends Error {
 }
 
 /**
- * Remove `*.{customDomain}` from the Vercel project.
- * Called when an institution changes or clears their domain.
+ * Remove a festival host from the Vercel project.
+ * Called when a festival unpublishes, is deleted, changes slug, or when its
+ * institution changes or clears the apex.
  */
-export async function removeProjectDomain(customDomain: string): Promise<void> {
+export async function removeProjectDomain(host: string): Promise<void> {
   const { token, projectId, teamId } = requireVercelEnv();
-  const domain = wildcardOf(customDomain);
 
-  const url = `${API_BASE}/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(domain)}${teamQuery(teamId)}`;
+  const url = `${API_BASE}/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(host)}${teamQuery(teamId)}`;
 
   const { ok, status, body } = await vercelFetch<unknown>(url, {
     method: "DELETE",
@@ -278,17 +276,17 @@ export async function removeProjectDomain(customDomain: string): Promise<void> {
 }
 
 /**
- * Attach state for a domain on the Vercel project.
+ * Attach state for a festival host on the Vercel project.
  *
  * Never throws: every failure is mapped to a status the UI can render, so a
  * Vercel outage degrades to "we can't tell yet" rather than a broken screen.
  */
 export async function checkAttachStatus(
-  customDomain: string,
+  host: string,
 ): Promise<VercelAttachStatus> {
   if (!isVercelDomainsConfigured()) return { status: "not-configured" };
 
-  const normalized = normalizeCustomDomain(customDomain);
+  const normalized = host.trim().toLowerCase().replace(/\.$/, "");
   if (!normalized) return { status: "not-attached" };
 
   try {
@@ -302,6 +300,8 @@ export async function checkAttachStatus(
 
     if (!projectDomain.verified) {
       // Attached but unverified — nudge Vercel to re-check before reporting.
+      // Rare on the HTTP-01 path, but a host whose apex is claimed by another
+      // Vercel team still lands here, and the records tell the owner why.
       try {
         projectDomain = await verifyProjectDomain(normalized);
       } catch {

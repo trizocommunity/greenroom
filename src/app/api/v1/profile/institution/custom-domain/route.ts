@@ -16,7 +16,7 @@ import {
   findInstitutionById,
   updateInstitutionCustomDomain,
 } from "@/features/institutions/repositories/institution.repository";
-import { detachWildcard } from "@/features/institutions/services/custom-domain-provisioning.service";
+import { detachAllFestivalsForApex } from "@/features/institutions/services/custom-domain-provisioning.service";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 
 const bodySchema = z.object({
@@ -99,10 +99,12 @@ const handler = createProtectedHandler({
           customDomain: nextDomain,
         });
 
-      // Release the old wildcard on Vercel so it can be claimed elsewhere.
-      // Best-effort by design: the domain change has already been persisted.
+      // Release every branded host under the old apex so it can be claimed
+      // elsewhere — each festival had its own domain on Vercel, so there is no
+      // single wildcard to drop. Best-effort by design: the domain change has
+      // already been persisted.
       if (previousDomain) {
-        await detachWildcard(previousDomain);
+        await detachAllFestivalsForApex(user.institutionId, previousDomain);
       }
 
       const fresh = await findInstitutionById(user.institutionId);

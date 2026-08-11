@@ -18,6 +18,10 @@ import {
   isSlugTaken,
   updateFestival,
 } from "@/features/festivals/repositories/festival.repository";
+import {
+  handleFestivalSlugChange,
+  reconcileFestivalDomain,
+} from "@/features/institutions/services/custom-domain-provisioning.service";
 
 export const GET = async (
   _req: Request,
@@ -83,6 +87,11 @@ export const PUT = async (
       updatedAt: serverNowIso(),
     });
 
+    // The branded host is built from the slug, so a rename has to move it.
+    if (parsed.data.slug && parsed.data.slug !== existing.slug) {
+      await handleFestivalSlugChange(id, existing.slug);
+    }
+
     return ok(updated);
   } catch (error) {
     if ((error as { code?: string })?.code === "23505") {
@@ -113,6 +122,10 @@ export const DELETE = async (
   if (existing.ownerId !== session.userId && session.role !== "SUPER_ADMIN") {
     return forbidden();
   }
+
+  // Detach first: reconcile reads the festival row to build its host, so it must
+  // run while the row still exists. Best-effort — it never blocks the delete.
+  await reconcileFestivalDomain(id, false);
 
   await deleteFestivalRecord(id);
   return ok({ id });

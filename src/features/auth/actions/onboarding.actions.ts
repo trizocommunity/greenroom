@@ -16,7 +16,7 @@ import {
   handleActionError,
 } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
-import { createInstitution } from "@/features/institution/repositories/institution.repository";
+import { createInstitution } from "@/features/institutions/repositories/institution.repository";
 
 type InstitutionType = (typeof institutionType.enumValues)[number];
 

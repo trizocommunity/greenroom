@@ -26,6 +26,8 @@ import {
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
 import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
+import { reconcileFestivalDomain } from "@/features/institutions/services/custom-domain-provisioning.service";
+import { resolveInstitutionIdForOwner } from "@/features/institutions/services/festival-institution-link.service";
 import { ensureOffStageStage } from "@/features/stages/services/off-stage.service";
 
 export async function createFestival(input: CreateFestivalInput) {
@@ -98,12 +100,20 @@ export async function createFestival(input: CreateFestivalInput) {
       const festivalId = randomUUID();
       const now = serverNowIso();
 
+      // A festival belongs to its owner's institution. Without this the
+      // custom-domain UI and API treat it as non-institutional forever.
+      const institutionId = await resolveInstitutionIdForOwner(
+        session.userId,
+        tx,
+      );
+
       const [festival] = await tx
         .insert(festivalTable)
         .values({
           id: festivalId,
           name: data.festivalName,
           slug: finalSlug,
+          institutionId,
           institutionType: (data.institutionType as any) || "OTHER",
           institutionName: data.institutionName,
           location: data.location,
@@ -391,6 +401,11 @@ export async function setPublicSiteEnabledAction(
       })
       .where(eq(festivalTable.id, festivalId));
 
+    // Branded host follows the public site: each festival is its own domain on
+    // Vercel, certified over HTTP-01. Best-effort by contract — never fails this
+    // action, and the status poll on Festival Live retries.
+    await reconcileFestivalDomain(festivalId, enabled);
+
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
     revalidatePath(`/dashboard/${festival.slug}`);
     return { success: true };
@@ -553,12 +568,20 @@ export async function relaunchFestival(input: {
       const festivalId = randomUUID();
       const now = serverNowIso();
 
+      // Same rule as createFestival — a relaunch stays under the owner's
+      // institution, so branded hosts keep working across festivals.
+      const institutionId = await resolveInstitutionIdForOwner(
+        session.userId,
+        tx,
+      );
+
       const [festival] = await tx
         .insert(festivalTable)
         .values({
           id: festivalId,
           name: input.festivalName.trim(),
           slug: finalSlug,
+          institutionId,
           ownerId: session.userId,
           status: "READY",
           tier,

@@ -2,17 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockFindInstitutionById,
-  mockMarkInstitutionHttpsReady,
-  mockClearInstitutionHttpsReady,
-  mockAddWildcardDomainToProject,
+  mockFindFestivalById,
+  mockMarkFestivalHttpsReady,
+  mockClearFestivalHttpsReady,
+  mockAddDomainToProject,
   mockCheckAttachStatus,
   mockIsVercelDomainsConfigured,
   mockRemoveProjectDomain,
 } = vi.hoisted(() => ({
   mockFindInstitutionById: vi.fn(),
-  mockMarkInstitutionHttpsReady: vi.fn(),
-  mockClearInstitutionHttpsReady: vi.fn(),
-  mockAddWildcardDomainToProject: vi.fn(),
+  mockFindFestivalById: vi.fn(),
+  mockMarkFestivalHttpsReady: vi.fn(),
+  mockClearFestivalHttpsReady: vi.fn(),
+  mockAddDomainToProject: vi.fn(),
   mockCheckAttachStatus: vi.fn(),
   mockIsVercelDomainsConfigured: vi.fn(),
   mockRemoveProjectDomain: vi.fn(),
@@ -20,34 +22,54 @@ const {
 
 vi.mock("@/features/institutions/repositories/institution.repository", () => ({
   findInstitutionById: mockFindInstitutionById,
-  markInstitutionHttpsReady: mockMarkInstitutionHttpsReady,
-  clearInstitutionHttpsReady: mockClearInstitutionHttpsReady,
+}));
+
+vi.mock("@/features/festivals/repositories/festival.repository", () => ({
+  findFestivalById: mockFindFestivalById,
+  findFestivalsForInstitution: vi.fn(),
+  markFestivalHttpsReady: mockMarkFestivalHttpsReady,
+  clearFestivalHttpsReady: mockClearFestivalHttpsReady,
 }));
 
 vi.mock("@/features/institutions/services/vercel-domains.service", () => ({
-  addWildcardDomainToProject: mockAddWildcardDomainToProject,
+  addDomainToProject: mockAddDomainToProject,
   checkAttachStatus: mockCheckAttachStatus,
   isVercelDomainsConfigured: mockIsVercelDomainsConfigured,
   removeProjectDomain: mockRemoveProjectDomain,
 }));
 
 import {
-  detachWildcard,
-  ensureWildcardAttached,
+  detachFestivalDomain,
+  ensureFestivalDomainAttached,
   probeHttpsReady,
-  syncCustomDomainStatus,
+  syncFestivalDomainStatus,
 } from "./custom-domain-provisioning.service";
 
 const VERIFIED_AT = "2026-01-01T00:00:00.000Z";
 const HTTPS_READY_AT = "2026-01-01T00:05:00.000Z";
+const APEX = "ahlussuffa.in";
+const SLUG = "suffamehil";
+const HOST = `${SLUG}.${APEX}`;
 
 /** Institution row shape as far as this service cares. */
 function institution(overrides: Record<string, unknown> = {}) {
   return {
     id: "inst_1",
-    customDomain: "ahlussuffa.in",
+    customDomain: APEX,
     verifiedAt: VERIFIED_AT,
-    httpsReadyAt: null,
+    ...overrides,
+  };
+}
+
+/** Festival row shape as far as this service cares. */
+function festival(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "fest_1",
+    slug: SLUG,
+    tier: "PRO",
+    institutionId: "inst_1",
+    publicSiteEnabled: true,
+    domainHttpsReadyAt: null,
     ...overrides,
   };
 }
@@ -57,16 +79,17 @@ describe("probeHttpsReady", () => {
     vi.unstubAllGlobals();
   });
 
-  it("treats any HTTP response as proof the TLS handshake worked", async () => {
+  it("probes the festival's own host, not a sentinel label", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(null, { status: 404 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(probeHttpsReady("ahlussuffa.in")).resolves.toBe(true);
+    await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(true);
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://_gr-tls-probe.ahlussuffa.in/");
+    // Per-host certificates mean only the real host has one to present.
+    expect(url).toBe(`https://${HOST}/`);
     expect(init.method).toBe("HEAD");
   });
 
@@ -76,19 +99,19 @@ describe("probeHttpsReady", () => {
       vi.fn().mockRejectedValue(new Error("certificate has expired")),
     );
 
-    await expect(probeHttpsReady("ahlussuffa.in")).resolves.toBe(false);
+    await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(false);
   });
 
   it("returns false for an empty domain without hitting the network", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(probeHttpsReady("")).resolves.toBe(false);
+    await expect(probeHttpsReady(SLUG, "")).resolves.toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
-describe("ensureWildcardAttached", () => {
+describe("ensureFestivalDomainAttached", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -96,17 +119,29 @@ describe("ensureWildcardAttached", () => {
   it("no-ops to not-configured when Vercel env is absent", async () => {
     mockIsVercelDomainsConfigured.mockReturnValue(false);
 
-    await expect(ensureWildcardAttached("ahlussuffa.in")).resolves.toEqual({
+    await expect(ensureFestivalDomainAttached(SLUG, APEX)).resolves.toEqual({
       status: "not-configured",
     });
-    expect(mockAddWildcardDomainToProject).not.toHaveBeenCalled();
+    expect(mockAddDomainToProject).not.toHaveBeenCalled();
+  });
+
+  it("attaches the bare host with no wildcard prefix", async () => {
+    mockIsVercelDomainsConfigured.mockReturnValue(true);
+    mockAddDomainToProject.mockResolvedValue({ verified: true });
+    mockCheckAttachStatus.mockResolvedValue({ status: "attached" });
+
+    await ensureFestivalDomainAttached(SLUG, APEX);
+
+    // A `*.` prefix would force DNS-01 validation, which is the whole reason
+    // the wildcard path was abandoned.
+    expect(mockAddDomainToProject).toHaveBeenCalledWith(HOST);
   });
 
   it("maps an attach failure to an error status instead of throwing", async () => {
     mockIsVercelDomainsConfigured.mockReturnValue(true);
-    mockAddWildcardDomainToProject.mockRejectedValue(new Error("rate limited"));
+    mockAddDomainToProject.mockRejectedValue(new Error("rate limited"));
 
-    await expect(ensureWildcardAttached("ahlussuffa.in")).resolves.toEqual({
+    await expect(ensureFestivalDomainAttached(SLUG, APEX)).resolves.toEqual({
       status: "error",
       message: "rate limited",
     });
@@ -114,16 +149,16 @@ describe("ensureWildcardAttached", () => {
 
   it("reports the post-attach status on success", async () => {
     mockIsVercelDomainsConfigured.mockReturnValue(true);
-    mockAddWildcardDomainToProject.mockResolvedValue({ verified: true });
+    mockAddDomainToProject.mockResolvedValue({ verified: true });
     mockCheckAttachStatus.mockResolvedValue({ status: "attached" });
 
-    await expect(ensureWildcardAttached("ahlussuffa.in")).resolves.toEqual({
+    await expect(ensureFestivalDomainAttached(SLUG, APEX)).resolves.toEqual({
       status: "attached",
     });
   });
 });
 
-describe("detachWildcard", () => {
+describe("detachFestivalDomain", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -131,8 +166,16 @@ describe("detachWildcard", () => {
   it("skips the API when automation is not configured", async () => {
     mockIsVercelDomainsConfigured.mockReturnValue(false);
 
-    await detachWildcard("ahlussuffa.in");
+    await detachFestivalDomain(SLUG, APEX);
     expect(mockRemoveProjectDomain).not.toHaveBeenCalled();
+  });
+
+  it("removes the festival's own host", async () => {
+    mockIsVercelDomainsConfigured.mockReturnValue(true);
+    mockRemoveProjectDomain.mockResolvedValue(undefined);
+
+    await detachFestivalDomain(SLUG, APEX);
+    expect(mockRemoveProjectDomain).toHaveBeenCalledWith(HOST);
   });
 
   it("swallows removal failures so a domain change is never blocked", async () => {
@@ -140,17 +183,18 @@ describe("detachWildcard", () => {
     mockRemoveProjectDomain.mockRejectedValue(new Error("boom"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await expect(detachWildcard("ahlussuffa.in")).resolves.toBeUndefined();
+    await expect(detachFestivalDomain(SLUG, APEX)).resolves.toBeUndefined();
     expect(errorSpy).toHaveBeenCalled();
 
     errorSpy.mockRestore();
   });
 });
 
-describe("syncCustomDomainStatus", () => {
+describe("syncFestivalDomainStatus", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsVercelDomainsConfigured.mockReturnValue(true);
+    mockAddDomainToProject.mockResolvedValue({ verified: true });
   });
 
   afterEach(() => {
@@ -167,72 +211,85 @@ describe("syncCustomDomainStatus", () => {
     );
   }
 
-  it("returns error when the institution is missing", async () => {
-    mockFindInstitutionById.mockResolvedValue(null);
+  it("returns error when the festival is missing", async () => {
+    mockFindFestivalById.mockResolvedValue(null);
 
-    const status = await syncCustomDomainStatus("inst_1");
+    const status = await syncFestivalDomainStatus("fest_1");
     expect(status.phase).toBe("error");
   });
 
   it("returns no-domain before a domain is saved", async () => {
+    mockFindFestivalById.mockResolvedValue(festival());
     mockFindInstitutionById.mockResolvedValue(
       institution({ customDomain: null, verifiedAt: null }),
     );
 
-    const status = await syncCustomDomainStatus("inst_1");
+    const status = await syncFestivalDomainStatus("fest_1");
     expect(status).toMatchObject({ phase: "no-domain", customDomain: null });
+  });
+
+  it("returns no-domain for a festival with no institution", async () => {
+    mockFindFestivalById.mockResolvedValue(festival({ institutionId: null }));
+
+    const status = await syncFestivalDomainStatus("fest_1");
+    expect(status.phase).toBe("no-domain");
+    expect(mockFindInstitutionById).not.toHaveBeenCalled();
   });
 
   it("returns awaiting-dns before verification, without probing", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
+    mockFindFestivalById.mockResolvedValue(festival());
     mockFindInstitutionById.mockResolvedValue(
       institution({ verifiedAt: null }),
     );
 
-    const status = await syncCustomDomainStatus("inst_1");
+    const status = await syncFestivalDomainStatus("fest_1");
     expect(status.phase).toBe("awaiting-dns");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("persists httpsReadyAt the first time the probe succeeds", async () => {
+  it("persists readiness on the festival the first time the probe succeeds", async () => {
     stubProbe(true);
+    mockFindFestivalById.mockResolvedValue(festival());
     mockFindInstitutionById.mockResolvedValue(institution());
-    mockMarkInstitutionHttpsReady.mockResolvedValue({
-      httpsReadyAt: HTTPS_READY_AT,
+    mockMarkFestivalHttpsReady.mockResolvedValue({
+      domainHttpsReadyAt: HTTPS_READY_AT,
     });
 
-    const status = await syncCustomDomainStatus("inst_1");
+    const status = await syncFestivalDomainStatus("fest_1");
 
-    expect(mockMarkInstitutionHttpsReady).toHaveBeenCalledWith("inst_1");
+    expect(mockMarkFestivalHttpsReady).toHaveBeenCalledWith("fest_1");
     expect(status).toMatchObject({
       phase: "https-ready",
       httpsReadyAt: HTTPS_READY_AT,
     });
   });
 
-  it("does not rewrite httpsReadyAt when it is already set", async () => {
+  it("does not rewrite readiness when it is already set", async () => {
     stubProbe(true);
-    mockFindInstitutionById.mockResolvedValue(
-      institution({ httpsReadyAt: HTTPS_READY_AT }),
+    mockFindFestivalById.mockResolvedValue(
+      festival({ domainHttpsReadyAt: HTTPS_READY_AT }),
     );
+    mockFindInstitutionById.mockResolvedValue(institution());
 
-    const status = await syncCustomDomainStatus("inst_1");
+    const status = await syncFestivalDomainStatus("fest_1");
 
-    expect(mockMarkInstitutionHttpsReady).not.toHaveBeenCalled();
+    expect(mockMarkFestivalHttpsReady).not.toHaveBeenCalled();
     expect(status.phase).toBe("https-ready");
   });
 
-  it("clears httpsReadyAt when a previously serving certificate stops", async () => {
+  it("clears readiness when a previously serving certificate stops", async () => {
     stubProbe(false);
     mockCheckAttachStatus.mockResolvedValue({ status: "attached" });
-    mockFindInstitutionById.mockResolvedValue(
-      institution({ httpsReadyAt: HTTPS_READY_AT }),
+    mockFindFestivalById.mockResolvedValue(
+      festival({ domainHttpsReadyAt: HTTPS_READY_AT }),
     );
+    mockFindInstitutionById.mockResolvedValue(institution());
 
-    const status = await syncCustomDomainStatus("inst_1");
+    const status = await syncFestivalDomainStatus("fest_1");
 
-    expect(mockClearInstitutionHttpsReady).toHaveBeenCalledWith("inst_1");
+    expect(mockClearFestivalHttpsReady).toHaveBeenCalledWith("fest_1");
     expect(status.httpsReadyAt).toBeNull();
     expect(status.phase).toBe("provisioning");
   });
@@ -240,22 +297,68 @@ describe("syncCustomDomainStatus", () => {
   it("keeps DNS verification intact when TLS is not ready", async () => {
     stubProbe(false);
     mockCheckAttachStatus.mockResolvedValue({ status: "attached" });
+    mockFindFestivalById.mockResolvedValue(festival());
     mockFindInstitutionById.mockResolvedValue(institution());
 
-    const status = await syncCustomDomainStatus("inst_1");
+    const status = await syncFestivalDomainStatus("fest_1");
 
     expect(status.verifiedAt).toBe(VERIFIED_AT);
     expect(status.phase).toBe("provisioning");
   });
 
-  it("reports manual-attach when Vercel automation is not configured", async () => {
+  it("attaches on demand, which is what backfills festivals published before verification", async () => {
     stubProbe(false);
-    mockCheckAttachStatus.mockResolvedValue({ status: "not-configured" });
+    mockCheckAttachStatus.mockResolvedValue({ status: "attached" });
+    mockFindFestivalById.mockResolvedValue(festival());
     mockFindInstitutionById.mockResolvedValue(institution());
 
-    const status = await syncCustomDomainStatus("inst_1");
+    await syncFestivalDomainStatus("fest_1");
+
+    expect(mockAddDomainToProject).toHaveBeenCalledWith(HOST);
+  });
+
+  it("does not attach a host for a festival that is not published", async () => {
+    stubProbe(false);
+    mockFindFestivalById.mockResolvedValue(
+      festival({ publicSiteEnabled: false }),
+    );
+    mockFindInstitutionById.mockResolvedValue(institution());
+
+    const status = await syncFestivalDomainStatus("fest_1");
+
+    expect(mockAddDomainToProject).not.toHaveBeenCalled();
+    expect(status.phase).toBe("provisioning");
+    expect(status.detail).toContain("public site");
+  });
+
+  it("reports manual-attach when Vercel automation is not configured", async () => {
+    stubProbe(false);
+    mockIsVercelDomainsConfigured.mockReturnValue(false);
+    mockFindFestivalById.mockResolvedValue(festival());
+    mockFindInstitutionById.mockResolvedValue(institution());
+
+    const status = await syncFestivalDomainStatus("fest_1");
 
     expect(status.phase).toBe("manual-attach");
     expect(status.detail).toBeTruthy();
+  });
+
+  it("surfaces the provider's own records instead of dropping them", async () => {
+    stubProbe(false);
+    mockCheckAttachStatus.mockResolvedValue({
+      status: "pending-verification",
+      records: [
+        { type: "txt", domain: "_vercel.ahlussuffa.in", value: "vc-domain=x" },
+      ],
+    });
+    mockFindFestivalById.mockResolvedValue(festival());
+    mockFindInstitutionById.mockResolvedValue(institution());
+
+    const status = await syncFestivalDomainStatus("fest_1");
+
+    // Dropping these is what let the screen spin forever with nothing to act on.
+    expect(status.vercelVerification).toEqual([
+      { type: "TXT", domain: "_vercel.ahlussuffa.in", value: "vc-domain=x" },
+    ]);
   });
 });
