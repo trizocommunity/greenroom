@@ -35,13 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/core/utils/cn";
@@ -536,37 +530,12 @@ export function MediaClient({
           )}
 
           {images.length > pageSize && (
-            <Pagination className="mt-4">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (photosPageIndex > 0) setPhotosPageIndex((p) => p - 1);
-                    }}
-                    className={
-                      photosPageIndex === 0
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if ((photosPageIndex + 1) * pageSize < images.length)
-                        setPhotosPageIndex((p) => p + 1);
-                    }}
-                    className={
-                      (photosPageIndex + 1) * pageSize >= images.length
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <DataTablePagination
+              pageIndex={photosPageIndex}
+              pageCount={Math.ceil(images.length / pageSize)}
+              onPageChange={(page) => setPhotosPageIndex(page)}
+              className="mt-4"
+            />
           )}
         </TabsContent>
 
@@ -669,37 +638,12 @@ export function MediaClient({
           )}
 
           {videos.length > pageSize && (
-            <Pagination className="mt-4">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (videosPageIndex > 0) setVideosPageIndex((p) => p - 1);
-                    }}
-                    className={
-                      videosPageIndex === 0
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if ((videosPageIndex + 1) * pageSize < videos.length)
-                        setVideosPageIndex((p) => p + 1);
-                    }}
-                    className={
-                      (videosPageIndex + 1) * pageSize >= videos.length
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <DataTablePagination
+              pageIndex={videosPageIndex}
+              pageCount={Math.ceil(videos.length / pageSize)}
+              onPageChange={(page) => setVideosPageIndex(page)}
+              className="mt-4"
+            />
           )}
         </TabsContent>
       </Tabs>

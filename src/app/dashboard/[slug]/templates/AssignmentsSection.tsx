@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Table,
   TableBody,
@@ -61,6 +62,9 @@ export function AssignmentsSection({
   const [assignments, setAssignments] = useState(initialAssignments);
   const [isPending, startTransition] = useTransition();
 
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 20;
+
   // New Assign Drawer State
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [assignType, setAssignType] = useState<PosterTemplateType | "">("");
@@ -90,7 +94,7 @@ export function AssignmentsSection({
   const handleSaveAssignment = () => {
     if (!selectedTemplateCode || !assignType) return;
     startTransition(async () => {
-      let res;
+      let res: any;
       if (assignType === "RESULT") {
         if (!fromResult || !toResult) {
           toast.error("Please provide a valid result range.");
@@ -347,7 +351,9 @@ export function AssignmentsSection({
                 </TableCell>
               </TableRow>
             ) : (
-              assignments.map((a) => (
+              assignments
+                .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+                .map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-medium">
                     {a.assignmentKind.replace("_", " ")}
@@ -388,7 +394,9 @@ export function AssignmentsSection({
             No assignments created yet.
           </div>
         ) : (
-          assignments.map((a) => (
+          assignments
+            .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+            .map((a) => (
             <div
               key={a.id}
               className="border rounded-md p-4 space-y-3 shadow-sm"
@@ -429,6 +437,15 @@ export function AssignmentsSection({
           ))
         )}
       </div>
+
+      {assignments.length > pageSize && (
+        <DataTablePagination
+          pageIndex={pageIndex}
+          pageCount={Math.ceil(assignments.length / pageSize)}
+          onPageChange={(page) => setPageIndex(page)}
+          className="mt-4"
+        />
+      )}
 
       {/* View Details Drawer */}
       <Drawer

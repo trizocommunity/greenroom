@@ -48,6 +48,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Drawer,
   DrawerContent,
@@ -258,6 +259,12 @@ export function JudgementWizardClient({
   const [searchDrawerOpen, setSearchDrawerOpen] = useState(false);
   const [combinedDrawerDetail, setCombinedDrawerDetail] =
     useState<JudgedProgrammeCard | null>(null);
+
+  const [completedPageIndex, setCompletedPageIndex] = useState(0);
+  const [rejudgePageIndex, setRejudgePageIndex] = useState(0);
+  const [searchPageIndex, setSearchPageIndex] = useState(0);
+  const [judgePageIndex, setJudgePageIndex] = useState(0);
+  const pageSize = 12;
 
   const [selectedJudgeIds, setSelectedJudgeIds] = useState<string[]>([]);
   const [judgingMode, setJudgingMode] = useState<"SINGLE" | "GROUP">("GROUP");
@@ -640,10 +647,13 @@ export function JudgementWizardClient({
             No programmes are ready to judge right now.
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredJudgeProgrammes.map((p) => {
-              const active = activeByProgrammeId.get(p.id);
-              const isUnscheduled = Boolean(
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredJudgeProgrammes
+                .slice(judgePageIndex * pageSize, (judgePageIndex + 1) * pageSize)
+                .map((p) => {
+                const active = activeByProgrammeId.get(p.id);
+                const isUnscheduled = Boolean(
                 p.reportingDetails && p.reportingDetails.stageId === null,
               );
               return (
@@ -845,7 +855,16 @@ export function JudgementWizardClient({
                 </Card>
               );
             })}
-          </div>
+            </div>
+            {filteredJudgeProgrammes.length > pageSize && (
+              <DataTablePagination
+                pageIndex={judgePageIndex}
+                pageCount={Math.ceil(filteredJudgeProgrammes.length / pageSize)}
+                onPageChange={(page) => setJudgePageIndex(page)}
+                className="mt-6"
+              />
+            )}
+          </>
         )}
       </section>
 
@@ -864,60 +883,72 @@ export function JudgementWizardClient({
               No completed judgements yet.
             </div>
           ) : (
-            <div className="space-y-2">
-              {completedJudgements.map((item) => (
-                <div
-                  key={item.configId}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors bg-card"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-sm line-clamp-1">
-                        {item.programmeName}
-                      </h4>
-                      {(item.programmeStatus ?? "")
-                        .toUpperCase()
-                        .includes("PUBLISHED") && (
-                        <Badge
-                          variant="outline"
-                          className="border-purple/60 text-purple bg-purple/10 text-[10px] hidden sm:inline-flex"
-                        >
-                          Published
+            <>
+              <div className="space-y-2">
+                {completedJudgements
+                  .slice(completedPageIndex * pageSize, (completedPageIndex + 1) * pageSize)
+                  .map((item) => (
+                  <div
+                    key={item.configId}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors bg-card"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-sm line-clamp-1">
+                          {item.programmeName}
+                        </h4>
+                        {(item.programmeStatus ?? "")
+                          .toUpperCase()
+                          .includes("PUBLISHED") && (
+                          <Badge
+                            variant="outline"
+                            className="border-purple/60 text-purple bg-purple/10 text-[10px] hidden sm:inline-flex"
+                          >
+                            Published
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <Badge variant="default" className="text-[10px]">
+                          {judgementStatusLabel(item.judgementStatus)}
                         </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <Badge variant="default" className="text-[10px]">
-                        {judgementStatusLabel(item.judgementStatus)}
-                      </Badge>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {item.judgingMode}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {item.totalJudgements} entries
-                      </span>
-                      {item.programmeCategory && (
-                        <span className="text-xs text-muted-foreground hidden sm:inline-block">
-                          · {item.programmeCategory}
+                        <Badge variant="secondary" className="text-[10px]">
+                          {item.judgingMode}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {item.totalJudgements} entries
                         </span>
-                      )}
-                      <span className="text-xs text-muted-foreground hidden md:inline-block">
-                        · Created {formatCardDateTime(item.createdAt)}
-                      </span>
+                        {item.programmeCategory && (
+                          <span className="text-xs text-muted-foreground hidden sm:inline-block">
+                            · {item.programmeCategory}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground hidden md:inline-block">
+                          · Created {formatCardDateTime(item.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="pl-3 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCombinedDrawerDetail(item)}
+                      >
+                        View
+                      </Button>
                     </div>
                   </div>
-                  <div className="pl-3 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setCombinedDrawerDetail(item)}
-                    >
-                      View
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {completedJudgements.length > pageSize && (
+                <DataTablePagination
+                  pageIndex={completedPageIndex}
+                  pageCount={Math.ceil(completedJudgements.length / pageSize)}
+                  onPageChange={(page) => setCompletedPageIndex(page)}
+                  className="mt-6"
+                />
+              )}
+            </>
           )}
         </section>
 
@@ -934,47 +965,59 @@ export function JudgementWizardClient({
               appear here).
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredRejudgeProgrammes.map((p) => (
-                <div
-                  key={p.id}
-                  className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-[13px] font-semibold sm:text-sm">
-                          {p.name}
-                        </p>
-                        {p.programmeCategory ? (
-                          <p className="text-[11px] text-muted-foreground">
-                            {p.programmeCategory}
+            <>
+              <div className="space-y-2">
+                {filteredRejudgeProgrammes
+                  .slice(rejudgePageIndex * pageSize, (rejudgePageIndex + 1) * pageSize)
+                  .map((p) => (
+                  <div
+                    key={p.id}
+                    className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-[13px] font-semibold sm:text-sm">
+                            {p.name}
                           </p>
-                        ) : null}
+                          {p.programmeCategory ? (
+                            <p className="text-[11px] text-muted-foreground">
+                              {p.programmeCategory}
+                            </p>
+                          ) : null}
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="w-fit text-[10px] font-normal"
+                        >
+                          {p.status}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className="w-fit text-[10px] font-normal"
-                      >
-                        {p.status}
-                      </Badge>
-                    </div>
-                    <div className="shrink-0 self-center">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                        onClick={() => openWizardForProgramme(p.id, "rejudge")}
-                      >
-                        <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                        Rejudge
-                      </Button>
+                      <div className="shrink-0 self-center">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                          onClick={() => openWizardForProgramme(p.id, "rejudge")}
+                        >
+                          <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
+                          Rejudge
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {filteredRejudgeProgrammes.length > pageSize && (
+                <DataTablePagination
+                  pageIndex={rejudgePageIndex}
+                  pageCount={Math.ceil(filteredRejudgeProgrammes.length / pageSize)}
+                  onPageChange={(page) => setRejudgePageIndex(page)}
+                  className="mt-6"
+                />
+              )}
+            </>
           )}
         </section>
       </div>
@@ -1213,10 +1256,11 @@ export function JudgementWizardClient({
           if (!open) {
             setSearchDrawerOpen(false);
             setSearchQuery("");
+            setSearchPageIndex(0);
           }
         }}
       >
-        <DrawerContent className=" flex flex-col">
+        <DrawerContent className="flex flex-col">
           <DrawerHeader className="pb-2">
             <DrawerTitle>Search Results</DrawerTitle>
             <div className="mt-4 relative">
@@ -1224,9 +1268,12 @@ export function JudgementWizardClient({
               <Input
                 type="search"
                 placeholder="Search programmes..."
-                className="pl-10 h-9 bg-background"
+                className="pl-9 h-9 bg-background"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchPageIndex(0);
+                }}
               />
             </div>
             <DrawerDescription className="mt-2">
@@ -1234,9 +1281,11 @@ export function JudgementWizardClient({
               {searchResults.length === 1 ? "" : "s"}
             </DrawerDescription>
           </DrawerHeader>
-          <div className="flex-1 overflow-y-auto  pb-6 min-h-0">
+          <div className="flex-1 overflow-y-auto pb-6 min-h-0">
             <div className="space-y-2">
-              {searchResults.map((item) => (
+              {searchResults
+                .slice(searchPageIndex * pageSize, (searchPageIndex + 1) * pageSize)
+                .map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -1310,6 +1359,14 @@ export function JudgementWizardClient({
                 </p>
               )}
             </div>
+            {searchResults.length > pageSize && (
+              <DataTablePagination
+                pageIndex={searchPageIndex}
+                pageCount={Math.ceil(searchResults.length / pageSize)}
+                onPageChange={(page) => setSearchPageIndex(page)}
+                className="mt-6"
+              />
+            )}
           </div>
         </DrawerContent>
       </Drawer>

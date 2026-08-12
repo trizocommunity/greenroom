@@ -23,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,6 +84,9 @@ export function GeneralEntriesClient({
   groups: Group[];
 }) {
   const [isPending, startTransition] = useTransition();
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 20;
 
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -664,7 +668,9 @@ export function GeneralEntriesClient({
                   </TableCell>
                 </TableRow>
               ) : (
-                entries.map((entry) => {
+                entries
+                  .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+                  .map((entry) => {
                   const isPublished = entry.awards.some((a) => a.isPublished);
                   const categoryName =
                     entry.type === "PROGRAMME"
@@ -767,7 +773,9 @@ export function GeneralEntriesClient({
               <p>No general entries found.</p>
             </div>
           ) : (
-            entries.map((entry) => {
+            entries
+              .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+              .map((entry) => {
               const isPublished = entry.awards.some((a) => a.isPublished);
               const categoryName =
                 entry.type === "PROGRAMME"
@@ -869,6 +877,14 @@ export function GeneralEntriesClient({
           )}
         </div>
       </div>
+      {entries.length > pageSize && (
+        <DataTablePagination
+          pageIndex={pageIndex}
+          pageCount={Math.ceil(entries.length / pageSize)}
+          onPageChange={(page) => setPageIndex(page)}
+          className="mt-4"
+        />
+      )}
     </div>
   );
 }

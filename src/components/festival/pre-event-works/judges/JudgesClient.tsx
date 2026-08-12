@@ -41,13 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ERROR_MESSAGES } from "@/core/errors/errors";
@@ -419,37 +413,12 @@ export function JudgesClient({
       </div>
 
       {filteredJudges.length > pageSize && (
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (pageIndex > 0) setPageIndex((p) => p - 1);
-                }}
-                className={
-                  pageIndex === 0
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                onClick={(e) => {
-                  e.preventDefault();
-                  if ((pageIndex + 1) * pageSize < filteredJudges.length)
-                    setPageIndex((p) => p + 1);
-                }}
-                className={
-                  (pageIndex + 1) * pageSize >= filteredJudges.length
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <DataTablePagination
+          pageIndex={pageIndex}
+          pageCount={Math.ceil(filteredJudges.length / pageSize)}
+          onPageChange={(page) => setPageIndex(page)}
+          className="mt-4"
+        />
       )}
 
       {judges.length === 0 ? (
