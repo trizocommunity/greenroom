@@ -11,6 +11,7 @@ export const uploadFolderEnum = z.enum([
 export const uploadInput = z.object({
   file: z.string().regex(/^data:image\/(jpeg|png|gif|webp|svg\+xml);base64,/),
   folder: uploadFolderEnum,
+  festivalId: z.string(),
 });
 
 export const uploadResponse = z.object({

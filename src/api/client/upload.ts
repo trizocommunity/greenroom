@@ -14,13 +14,13 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 export function useCloudinaryUpload() {
-  return useMutation<UploadResponse, Error, { file: File; folder: string }>({
-    mutationFn: async ({ file, folder }) => {
+  return useMutation<UploadResponse, Error, { file: File; folder: string; festivalId: string }>({
+    mutationFn: async ({ file, folder, festivalId }) => {
       const base64Data = await fileToBase64(file);
       const response = await apiClient.post<ApiResponse<UploadResponse>>(
         "/upload",
         {
-          data: { file: base64Data, folder },
+          data: { file: base64Data, folder, festivalId },
         },
       );
       return handleApiResponse(response.data);

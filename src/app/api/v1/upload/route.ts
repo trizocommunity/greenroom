@@ -1,6 +1,10 @@
 import "server-only";
 
 import crypto from "crypto";
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/core/database/client";
+import { festival } from "@/core/database/schema";
+import { TIER_CONFIG } from "@/config/pricing";
 import { uploadInput } from "@/api/contracts/upload";
 import {
   badRequest,
@@ -46,6 +50,22 @@ const handler = createProtectedHandler({
       return badRequest("CONFIG_ERROR", "Upload service not configured");
     }
 
+    const festivalRecord = await db.query.festival.findFirst({
+      where: eq(festival.id, parsed.data.festivalId),
+    });
+
+    if (!festivalRecord) {
+      return badRequest("NOT_FOUND", "Festival not found");
+    }
+
+    const tierConfig = TIER_CONFIG[festivalRecord.tier] || TIER_CONFIG.BASIC;
+    const tierLimitBytes = tierConfig.limits.storageMB * 1024 * 1024;
+    const totalStorage = festivalRecord.storageUsedBytes + festivalRecord.dbStorageBytes + buffer.length;
+
+    if (totalStorage > tierLimitBytes) {
+      return badRequest("STORAGE_LIMIT_EXCEEDED", "Storage limit exceeded for this tier.");
+    }
+
     const timestamp = Math.round(serverNowMs() / 1000);
     const folderPath = `greenroom/festivals/${parsed.data.folder}`;
     const signatureString = `folder=${folderPath}&timestamp=${timestamp}${apiSecret}`;
@@ -79,6 +99,11 @@ const handler = createProtectedHandler({
       secure_url: string;
       public_id: string;
     };
+
+    await db
+      .update(festival)
+      .set({ storageUsedBytes: sql`${festival.storageUsedBytes} + ${buffer.length}` })
+      .where(eq(festival.id, festivalRecord.id));
 
     return ok({
       url: responseData.secure_url,

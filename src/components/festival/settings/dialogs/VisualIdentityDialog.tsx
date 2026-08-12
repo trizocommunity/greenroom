@@ -20,8 +20,6 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/core/utils/cn";
 import { updateFestivalBrandingAction } from "@/features/festivals/actions/festival-crud.actions";
 import { toast } from "@/lib/toast";
@@ -75,7 +73,7 @@ export function VisualIdentityDialog({
     }
 
     try {
-      const url = await uploadMutation.mutateAsync({ file, folder: "logo" });
+      const url = await uploadMutation.mutateAsync({ file, folder: "logo", festivalId: festival.id });
       return url;
     } catch {
       return null;

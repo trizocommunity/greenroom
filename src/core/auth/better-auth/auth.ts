@@ -35,6 +35,7 @@ const SIGN_IN_OTP_ATTEMPTS = 3; // Locked Decision #7
  * it whenever the session row changes.
  */
 export const auth = betterAuth({
+  basePath: "/api/v1/auth",
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",")

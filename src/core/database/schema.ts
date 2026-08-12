@@ -10,6 +10,7 @@ import {
   pgTable,
   text,
   uniqueIndex,
+  bigint,
 } from "drizzle-orm/pg-core";
 
 import {
@@ -476,6 +477,8 @@ export const festival = pgTable(
     programmeAssignmentStartDate: tzTimestamp(),
     programmeAssignmentDeadline: tzTimestamp(),
     storageUsedMb: integer().default(0).notNull(),
+    storageUsedBytes: bigint({ mode: "number" }).default(0).notNull(),
+    dbStorageBytes: bigint({ mode: "number" }).default(0).notNull(),
     tier: tier().notNull(),
     tierLabel: text().default("Standard").notNull(),
     participantCreationStartDate: tzTimestamp(),

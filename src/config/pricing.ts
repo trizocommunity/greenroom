@@ -134,7 +134,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       programmes: 100,
       events: 10,
       stages: 10,
-      storageMB: 512, // 0.5 GB
+      storageMB: 500, // 500 MB
       categories: 5,
     },
     features: {
@@ -233,7 +233,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       programmes: 250,
       events: 25,
       stages: 20,
-      storageMB: 2048, // 2 GB
+      storageMB: 1024, // 1 GB
       categories: 10,
     },
     features: {
@@ -332,7 +332,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       programmes: 1000,
       events: 100,
       stages: 50,
-      storageMB: 10240, // 10 GB
+      storageMB: 5120, // 5 GB
       categories: 50,
     },
     features: {
@@ -450,7 +450,7 @@ export const PRICING_TIERS: PricingTier[] = [
       `${TIER_CONFIG.BASIC.limits.programmes} Programmes`,
       `${TIER_CONFIG.BASIC.limits.events} Public Events`,
       `${TIER_CONFIG.BASIC.limits.stages} Stages`,
-      "0.5 GB Storage",
+      "500 MB Storage",
       `${TIER_CONFIG.BASIC.festivalDurationDays} Days Active Duration`,
       "Chest Numbers & Results",
       "Live Scoreboard & Live Results",
@@ -471,7 +471,7 @@ export const PRICING_TIERS: PricingTier[] = [
       `${TIER_CONFIG.STANDARD.limits.programmes} Programmes`,
       `${TIER_CONFIG.STANDARD.limits.events} Public Events`,
       `${TIER_CONFIG.STANDARD.limits.stages} Stages`,
-      "2 GB Storage",
+      "1 GB Storage",
       `${TIER_CONFIG.STANDARD.festivalDurationDays} Days Active Duration`,
       "Stage Management & Scheduling",
       "Bulk Upload (Participants & Programmes)",
@@ -492,7 +492,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "1,000 Programmes",
       `${TIER_CONFIG.PRO.limits.events} Public Events`,
       "50 Stages",
-      "10 GB Storage",
+      "5 GB Storage",
       `${TIER_CONFIG.PRO.festivalDurationDays} Days Active Duration`,
       "Advanced Analytics & Custom Reports",
       "Live Scoreboard & Live Results",

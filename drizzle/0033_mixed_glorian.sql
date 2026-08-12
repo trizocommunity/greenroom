@@ -1,0 +1,1 @@
+ALTER TABLE "festival" ADD COLUMN "dbStorageBytes" bigint DEFAULT 0 NOT NULL;
