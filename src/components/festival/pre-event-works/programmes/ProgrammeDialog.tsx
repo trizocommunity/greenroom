@@ -13,6 +13,7 @@ import {
   useProgramme,
   useUpdateProgramme,
 } from "@/api/client/programmes";
+import { useFestival } from "@/components/festival/FestivalContext";
 import { StatusPill } from "@/components/app/AppSection";
 import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
 import { Badge } from "@/components/ui/badge";

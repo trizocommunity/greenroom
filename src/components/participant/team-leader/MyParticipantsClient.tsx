@@ -329,9 +329,6 @@ export function MyParticipantsClient({
                           Leader
                         </StatusPill>
                       )}
-                      {s.assignments && s.assignments.length > 0 && (
-                        <StatusPill tone="ready">Assigned</StatusPill>
-                      )}
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {s.category?.name ?? "No category"}
