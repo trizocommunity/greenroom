@@ -229,7 +229,7 @@ export function NewsClient({
       return;
     }
     try {
-      const result = await uploadMutation.mutateAsync({ file, folder: "news" });
+      const result = await uploadMutation.mutateAsync({ file, folder: "news", festivalId });
       if (result?.url) setForm((f) => ({ ...f, imageUrl: result.url }));
     } catch {
       // Error toast is handled by the hook

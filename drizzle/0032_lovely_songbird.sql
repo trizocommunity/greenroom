@@ -1,0 +1,1 @@
+ALTER TABLE "festival" ADD COLUMN "storageUsedBytes" bigint DEFAULT 0 NOT NULL;

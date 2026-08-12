@@ -171,6 +171,7 @@ export function MediaClient({
         const result = await uploadMutation.mutateAsync({
           file: files[i],
           folder: "media",
+          festivalId,
         });
         if (result?.url) urls.push(result.url);
       }
