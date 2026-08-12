@@ -20,15 +20,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -248,85 +240,12 @@ export function AnnouncerClient({
                   </div>
 
                   {sorted.length > pageSize && (
-                    <Pagination className="mt-4">
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (queuePageIndex > 0)
-                                setQueuePageIndex((p) => p - 1);
-                            }}
-                            className={
-                              queuePageIndex === 0
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
-                          />
-                        </PaginationItem>
-
-                        {[...Array(Math.ceil(sorted.length / pageSize))].map(
-                          (_, i) => {
-                            const targetPage = i;
-                            const totalPages = Math.ceil(
-                              sorted.length / pageSize,
-                            );
-
-                            if (
-                              targetPage === 0 ||
-                              targetPage === totalPages - 1 ||
-                              (targetPage >= queuePageIndex - 1 &&
-                                targetPage <= queuePageIndex + 1)
-                            ) {
-                              return (
-                                <PaginationItem key={i}>
-                                  <PaginationLink
-                                    isActive={queuePageIndex === targetPage}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setQueuePageIndex(targetPage);
-                                    }}
-                                  >
-                                    {targetPage + 1}
-                                  </PaginationLink>
-                                </PaginationItem>
-                              );
-                            }
-
-                            if (
-                              targetPage === queuePageIndex - 2 ||
-                              targetPage === queuePageIndex + 2
-                            ) {
-                              return (
-                                <PaginationItem key={i}>
-                                  <PaginationEllipsis />
-                                </PaginationItem>
-                              );
-                            }
-
-                            return null;
-                          },
-                        )}
-
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (
-                                (queuePageIndex + 1) * pageSize <
-                                sorted.length
-                              )
-                                setQueuePageIndex((p) => p + 1);
-                            }}
-                            className={
-                              (queuePageIndex + 1) * pageSize >= sorted.length
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
+                    <DataTablePagination
+                      pageIndex={queuePageIndex}
+                      pageCount={Math.ceil(sorted.length / pageSize)}
+                      onPageChange={(page) => setQueuePageIndex(page)}
+                      className="mt-4"
+                    />
                   )}
                 </div>
               )}
@@ -384,88 +303,12 @@ export function AnnouncerClient({
                   </div>
 
                   {publishedResults.length > pageSize && (
-                    <Pagination className="mt-4">
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (publishedPageIndex > 0)
-                                setPublishedPageIndex((p) => p - 1);
-                            }}
-                            className={
-                              publishedPageIndex === 0
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
-                          />
-                        </PaginationItem>
-
-                        {[
-                          ...Array(
-                            Math.ceil(publishedResults.length / pageSize),
-                          ),
-                        ].map((_, i) => {
-                          const targetPage = i;
-                          const totalPages = Math.ceil(
-                            publishedResults.length / pageSize,
-                          );
-
-                          if (
-                            targetPage === 0 ||
-                            targetPage === totalPages - 1 ||
-                            (targetPage >= publishedPageIndex - 1 &&
-                              targetPage <= publishedPageIndex + 1)
-                          ) {
-                            return (
-                              <PaginationItem key={i}>
-                                <PaginationLink
-                                  isActive={publishedPageIndex === targetPage}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setPublishedPageIndex(targetPage);
-                                  }}
-                                >
-                                  {targetPage + 1}
-                                </PaginationLink>
-                              </PaginationItem>
-                            );
-                          }
-
-                          if (
-                            targetPage === publishedPageIndex - 2 ||
-                            targetPage === publishedPageIndex + 2
-                          ) {
-                            return (
-                              <PaginationItem key={i}>
-                                <PaginationEllipsis />
-                              </PaginationItem>
-                            );
-                          }
-
-                          return null;
-                        })}
-
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (
-                                (publishedPageIndex + 1) * pageSize <
-                                publishedResults.length
-                              )
-                                setPublishedPageIndex((p) => p + 1);
-                            }}
-                            className={
-                              (publishedPageIndex + 1) * pageSize >=
-                              publishedResults.length
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
+                    <DataTablePagination
+                      pageIndex={publishedPageIndex}
+                      pageCount={Math.ceil(publishedResults.length / pageSize)}
+                      onPageChange={(page) => setPublishedPageIndex(page)}
+                      className="mt-4"
+                    />
                   )}
                 </div>
               )}

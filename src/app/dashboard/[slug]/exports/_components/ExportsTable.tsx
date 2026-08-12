@@ -4,15 +4,7 @@ import { CheckCircle2, Download, Loader2, Trash2, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Table,
   TableBody,
@@ -330,74 +322,12 @@ export function ExportsTable({
       </div>
 
       {exports.length > pageSize && (
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (pageIndex > 0) setPageIndex((p) => p - 1);
-                }}
-                className={
-                  pageIndex === 0 ? "pointer-events-none opacity-50" : ""
-                }
-              />
-            </PaginationItem>
-
-            {[...Array(Math.ceil(exports.length / pageSize))].map((_, i) => {
-              const targetPage = i;
-              const totalPages = Math.ceil(exports.length / pageSize);
-
-              if (
-                targetPage === 0 ||
-                targetPage === totalPages - 1 ||
-                (targetPage >= pageIndex - 1 && targetPage <= pageIndex + 1)
-              ) {
-                return (
-                  <PaginationItem key={i}>
-                    <PaginationLink
-                      isActive={pageIndex === targetPage}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setPageIndex(targetPage);
-                      }}
-                    >
-                      {targetPage + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                );
-              }
-
-              if (
-                targetPage === pageIndex - 2 ||
-                targetPage === pageIndex + 2
-              ) {
-                return (
-                  <PaginationItem key={i}>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                );
-              }
-
-              return null;
-            })}
-
-            <PaginationItem>
-              <PaginationNext
-                onClick={(e) => {
-                  e.preventDefault();
-                  if ((pageIndex + 1) * pageSize < exports.length)
-                    setPageIndex((p) => p + 1);
-                }}
-                className={
-                  (pageIndex + 1) * pageSize >= exports.length
-                    ? "pointer-events-none opacity-50"
-                    : ""
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <DataTablePagination
+          pageIndex={pageIndex}
+          pageCount={Math.ceil(exports.length / pageSize)}
+          onPageChange={(page) => setPageIndex(page)}
+          className="mt-4"
+        />
       )}
     </>
   );

@@ -666,7 +666,7 @@ export function FestivalLiveClient({
           </div>
 
           {enabled ? (
-            <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+            <div className="flex w-full shrink-0 gap-2 sm:w-auto mt-1 sm:mt-0">
               <Button
                 type="button"
                 variant="outline"
@@ -700,16 +700,18 @@ export function FestivalLiveClient({
               </Button>
             </div>
           ) : (
-            <Button
-              type="button"
-              size="sm"
-              className="hidden h-9 shrink-0 sm:inline-flex"
-              onClick={() => setOverlayOpen(true)}
-              disabled={isReadOnly}
-            >
-              <Rocket className="h-3.5 w-3.5 mr-1.5" />
-              Launch website
-            </Button>
+            <div className="flex w-full shrink-0 sm:w-auto mt-1 sm:mt-0">
+              <Button
+                type="button"
+                size="sm"
+                className="flex w-full sm:w-auto h-9 shrink-0"
+                onClick={() => setOverlayOpen(true)}
+                disabled={isReadOnly}
+              >
+                <Rocket className="h-3.5 w-3.5 mr-1.5" />
+                Launch website
+              </Button>
+            </div>
           )}
         </div>
 

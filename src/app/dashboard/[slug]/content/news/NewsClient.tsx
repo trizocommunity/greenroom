@@ -42,13 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate, parseInstant } from "@/core/datetime";
@@ -414,37 +408,12 @@ export function NewsClient({
       </div>
 
       {displayPosts.length > pageSize && (
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (pageIndex > 0) setPageIndex((p) => p - 1);
-                }}
-                className={
-                  pageIndex === 0
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                onClick={(e) => {
-                  e.preventDefault();
-                  if ((pageIndex + 1) * pageSize < displayPosts.length)
-                    setPageIndex((p) => p + 1);
-                }}
-                className={
-                  (pageIndex + 1) * pageSize >= displayPosts.length
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <DataTablePagination
+          pageIndex={pageIndex}
+          pageCount={Math.ceil(displayPosts.length / pageSize)}
+          onPageChange={(page) => setPageIndex(page)}
+          className="mt-4"
+        />
       )}
 
       <DeleteDialog

@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,13 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -608,44 +603,11 @@ export function ProgrammesClient({
 
           {pageCount > 1 && (
             <div className="p-4 border-t">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (pagination.pageIndex > 0)
-                          setPagination((p) => ({
-                            ...p,
-                            pageIndex: p.pageIndex - 1,
-                          }));
-                      }}
-                      className={
-                        pagination.pageIndex === 0
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (pagination.pageIndex < pageCount - 1)
-                          setPagination((p) => ({
-                            ...p,
-                            pageIndex: p.pageIndex + 1,
-                          }));
-                      }}
-                      className={
-                        pagination.pageIndex >= pageCount - 1
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+              <DataTablePagination
+                pageIndex={pagination.pageIndex}
+                pageCount={pageCount}
+                onPageChange={(page) => setPagination((p) => ({ ...p, pageIndex: page }))}
+              />
             </div>
           )}
         </CardContent>

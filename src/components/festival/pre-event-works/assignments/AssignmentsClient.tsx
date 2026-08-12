@@ -27,13 +27,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -804,37 +798,12 @@ export function AssignmentsClient({
       )}
 
       {programmeCards.length > pageSize && (
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (pageIndex > 0) setPageIndex((p) => p - 1);
-                }}
-                className={
-                  pageIndex === 0
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                onClick={(e) => {
-                  e.preventDefault();
-                  if ((pageIndex + 1) * pageSize < programmeCards.length)
-                    setPageIndex((p) => p + 1);
-                }}
-                className={
-                  (pageIndex + 1) * pageSize >= programmeCards.length
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <DataTablePagination
+          pageIndex={pageIndex}
+          pageCount={Math.ceil(programmeCards.length / pageSize)}
+          onPageChange={(page) => setPageIndex(page)}
+          className="mt-4"
+        />
       )}
 
       {/* Delete Dialogs */}

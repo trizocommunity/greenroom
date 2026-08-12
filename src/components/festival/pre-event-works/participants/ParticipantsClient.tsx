@@ -43,13 +43,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -651,36 +645,7 @@ export function ParticipantsClient({
       {/* Mobile Pagination */}
       {totalCount > 0 && (
         <div className="block lg:hidden mt-4">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => table.previousPage()}
-                  className={
-                    !table.getCanPreviousPage()
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-              <PaginationItem>
-                <span className="flex h-9 items-center px-4 text-sm font-medium">
-                  {table.getState().pagination.pageIndex + 1} /{" "}
-                  {table.getPageCount() || 1}
-                </span>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => table.nextPage()}
-                  className={
-                    !table.getCanNextPage()
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+          <DataTablePagination table={table} />
         </div>
       )}
       {/* Desktop: table */}
@@ -840,36 +805,7 @@ export function ParticipantsClient({
         </CardContent>
         {totalCount > 0 && (
           <div className="border-t px-2 py-4">
-            <Pagination className="justify-end">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => table.previousPage()}
-                    className={
-                      !table.getCanPreviousPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="flex h-9 items-center px-4 text-sm font-medium">
-                    Page {table.getState().pagination.pageIndex + 1} of{" "}
-                    {table.getPageCount() || 1}
-                  </span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => table.nextPage()}
-                    className={
-                      !table.getCanNextPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <DataTablePagination table={table} className="justify-end" />
           </div>
         )}
       </Card>

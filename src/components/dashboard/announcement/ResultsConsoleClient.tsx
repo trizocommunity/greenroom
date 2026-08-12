@@ -55,15 +55,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -775,85 +767,12 @@ export function ResultsConsoleClient({
           )}
 
           {filteredSorted.length > pageSize && (
-            <Pagination className="mt-4">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (resultsPageIndex > 0)
-                        setResultsPageIndex((p) => p - 1);
-                    }}
-                    className={
-                      resultsPageIndex === 0
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-
-                {[...Array(Math.ceil(filteredSorted.length / pageSize))].map(
-                  (_, i) => {
-                    const targetPage = i;
-                    const totalPages = Math.ceil(
-                      filteredSorted.length / pageSize,
-                    );
-
-                    if (
-                      targetPage === 0 ||
-                      targetPage === totalPages - 1 ||
-                      (targetPage >= resultsPageIndex - 1 &&
-                        targetPage <= resultsPageIndex + 1)
-                    ) {
-                      return (
-                        <PaginationItem key={i}>
-                          <PaginationLink
-                            isActive={resultsPageIndex === targetPage}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setResultsPageIndex(targetPage);
-                            }}
-                          >
-                            {targetPage + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    }
-
-                    if (
-                      targetPage === resultsPageIndex - 2 ||
-                      targetPage === resultsPageIndex + 2
-                    ) {
-                      return (
-                        <PaginationItem key={i}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
-                    }
-
-                    return null;
-                  },
-                )}
-
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (
-                        (resultsPageIndex + 1) * pageSize <
-                        filteredSorted.length
-                      )
-                        setResultsPageIndex((p) => p + 1);
-                    }}
-                    className={
-                      (resultsPageIndex + 1) * pageSize >= filteredSorted.length
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <DataTablePagination
+              pageIndex={resultsPageIndex}
+              pageCount={Math.ceil(filteredSorted.length / pageSize)}
+              onPageChange={(page) => setResultsPageIndex(page)}
+              className="mt-4"
+            />
           )}
         </div>
 
@@ -963,86 +882,12 @@ export function ResultsConsoleClient({
               )}
             </ScrollArea>
             {dynamicStandings.length > pageSize && (
-              <Pagination className="py-2 border-t mt-auto shrink-0 bg-muted/20">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (standingsPageIndex > 0)
-                          setStandingsPageIndex((p) => p - 1);
-                      }}
-                      className={
-                        standingsPageIndex === 0
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-
-                  {[
-                    ...Array(Math.ceil(dynamicStandings.length / pageSize)),
-                  ].map((_, i) => {
-                    const targetPage = i;
-                    const totalPages = Math.ceil(
-                      dynamicStandings.length / pageSize,
-                    );
-
-                    if (
-                      targetPage === 0 ||
-                      targetPage === totalPages - 1 ||
-                      (targetPage >= standingsPageIndex - 1 &&
-                        targetPage <= standingsPageIndex + 1)
-                    ) {
-                      return (
-                        <PaginationItem key={i}>
-                          <PaginationLink
-                            isActive={standingsPageIndex === targetPage}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setStandingsPageIndex(targetPage);
-                            }}
-                          >
-                            {targetPage + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    }
-
-                    if (
-                      targetPage === standingsPageIndex - 2 ||
-                      targetPage === standingsPageIndex + 2
-                    ) {
-                      return (
-                        <PaginationItem key={i}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
-                    }
-
-                    return null;
-                  })}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (
-                          (standingsPageIndex + 1) * pageSize <
-                          dynamicStandings.length
-                        )
-                          setStandingsPageIndex((p) => p + 1);
-                      }}
-                      className={
-                        (standingsPageIndex + 1) * pageSize >=
-                        dynamicStandings.length
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+              <DataTablePagination
+                pageIndex={standingsPageIndex}
+                pageCount={Math.ceil(dynamicStandings.length / pageSize)}
+                onPageChange={(page) => setStandingsPageIndex(page)}
+                className="py-2 border-t mt-auto shrink-0 bg-muted/20"
+              />
             )}
           </div>
         </div>

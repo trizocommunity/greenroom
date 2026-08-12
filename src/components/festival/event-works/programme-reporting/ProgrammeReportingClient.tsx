@@ -16,6 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 import party from "party-js";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import {
   AlertDialog,
@@ -177,6 +178,9 @@ export function ProgrammeReportingClient({
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   /** Queue hides ended sessions by default; the filter drawer can reveal them. */
   const [showEnded, setShowEnded] = useState(false);
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 12;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
@@ -1213,14 +1217,20 @@ export function ProgrammeReportingClient({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPageIndex(0);
+              }}
               placeholder="Search programmes…"
               className="h-10 pl-9 pr-9"
             />
             {searchQuery ? (
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery("");
+                  setPageIndex(0);
+                }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Clear search"
               >
@@ -1257,7 +1267,10 @@ export function ProgrammeReportingClient({
         </div>
 
         <ReportingBoardList
-          items={filteredBoard}
+          items={filteredBoard.slice(
+            pageIndex * pageSize,
+            (pageIndex + 1) * pageSize,
+          )}
           selectedId={selectedEntryId}
           onSelect={(id) => {
             if (id === selectedEntryId) return;
@@ -1279,6 +1292,15 @@ export function ProgrammeReportingClient({
             </p>
           </div>
         ) : null}
+
+        {filteredBoard.length > pageSize && (
+          <DataTablePagination
+            pageIndex={pageIndex}
+            pageCount={Math.ceil(filteredBoard.length / pageSize)}
+            onPageChange={(page) => setPageIndex(page)}
+            className="mt-4"
+          />
+        )}
       </div>
 
       {/* Section 2 — the workspace. Opens as a drawer over the queue: a right
@@ -1729,7 +1751,10 @@ export function ProgrammeReportingClient({
               </p>
               <Select
                 value={filterCategoryId}
-                onValueChange={setFilterCategoryId}
+                onValueChange={(v) => {
+                  setFilterCategoryId(v);
+                  setPageIndex(0);
+                }}
               >
                 <SelectTrigger className="h-10">
                   <SelectValue placeholder="Category" />
@@ -1750,7 +1775,13 @@ export function ProgrammeReportingClient({
                 <p className="text-xs font-medium text-muted-foreground">
                   Stage
                 </p>
-                <Select value={filterStageId} onValueChange={setFilterStageId}>
+                <Select
+                  value={filterStageId}
+                  onValueChange={(v) => {
+                    setFilterStageId(v);
+                    setPageIndex(0);
+                  }}
+                >
                   <SelectTrigger className="h-10">
                     <SelectValue placeholder="Stage" />
                   </SelectTrigger>
@@ -1770,7 +1801,10 @@ export function ProgrammeReportingClient({
               <p className="text-xs font-medium text-muted-foreground">Type</p>
               <Select
                 value={filterType}
-                onValueChange={(val: any) => setFilterType(val)}
+                onValueChange={(val: any) => {
+                  setFilterType(val);
+                  setPageIndex(0);
+                }}
               >
                 <SelectTrigger className="h-10">
                   <SelectValue placeholder="Type" />
@@ -1787,7 +1821,13 @@ export function ProgrammeReportingClient({
               <p className="text-xs font-medium text-muted-foreground">
                 Status
               </p>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <Select
+                value={filterStatus}
+                onValueChange={(v) => {
+                  setFilterStatus(v);
+                  setPageIndex(0);
+                }}
+              >
                 <SelectTrigger className="h-10">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -1821,6 +1861,7 @@ export function ProgrammeReportingClient({
                 setFilterType("ALL");
                 setFilterStatus("ALL");
                 setShowEnded(false);
+                setPageIndex(0);
               }}
             >
               Reset

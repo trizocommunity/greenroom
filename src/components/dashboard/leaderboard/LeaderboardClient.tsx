@@ -14,13 +14,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -512,37 +506,12 @@ export function LeaderboardClient({
       </Card>
 
       {participantStandings.length > pageSize && (
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (pageIndex > 0) setPageIndex((p) => p - 1);
-                }}
-                className={
-                  pageIndex === 0
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                onClick={(e) => {
-                  e.preventDefault();
-                  if ((pageIndex + 1) * pageSize < participantStandings.length)
-                    setPageIndex((p) => p + 1);
-                }}
-                className={
-                  (pageIndex + 1) * pageSize >= participantStandings.length
-                    ? "pointer-events-none opacity-50"
-                    : "cursor-pointer"
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <DataTablePagination
+          pageIndex={pageIndex}
+          pageCount={Math.ceil(participantStandings.length / pageSize)}
+          onPageChange={(page) => setPageIndex(page)}
+          className="mt-4"
+        />
       )}
 
       {/* Participant Breakdown Drawer */}
