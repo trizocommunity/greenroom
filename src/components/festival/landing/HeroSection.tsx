@@ -210,3 +210,16 @@ function HeroLink({
     </Link>
   );
 }
+
+function WindowStatusBadge({ state }: { state: string }) {
+  if (state === "OPEN") {
+    return <span className="font-semibold text-emerald-600">Open</span>;
+  }
+  if (state === "CLOSED") {
+    return <span className="font-semibold text-destructive">Closed</span>;
+  }
+  if (state === "UPCOMING") {
+    return <span className="font-semibold text-amber-600">Upcoming</span>;
+  }
+  return <span className="font-semibold text-muted-foreground">Not Set</span>;
+}

@@ -7,6 +7,7 @@ import {
   Eye,
   MoreVertical,
   Pencil,
+  Plus,
   QrCode,
   ShieldAlert,
   Search,
@@ -63,6 +64,7 @@ import {
   getParticipantProfilePath,
   getQrCodeContent,
 } from "@/features/participants/services/participant-profile-url";
+import { Input } from "@/components/ui/input";
 
 type ParticipantForMyParticipants = {
   id: string;
