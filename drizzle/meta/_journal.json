@@ -218,6 +218,13 @@
       "when": 1786331533617,
       "tag": "0030_nifty_king_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1786475594100,
+      "tag": "0031_mushy_bug",
+      "breakpoints": true
     }
   ]
 }

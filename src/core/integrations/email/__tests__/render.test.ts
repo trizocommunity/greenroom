@@ -28,9 +28,7 @@ describe("renderEmail — festival_invitation", () => {
       role: "STAGE_MANAGER",
     });
     // Button must point at /invite/{token}, never /dashboard/{slug}/...
-    expect(result.html).toMatch(
-      new RegExp(`href="[^"]*/invite/${token}"`),
-    );
+    expect(result.html).toMatch(new RegExp(`href="[^"]*/invite/${token}"`));
     expect(result.html).not.toMatch(/href="[^"]*\/dashboard\/[^"]*invite/);
     expect(result.text).toContain(`/invite/${token}`);
   });

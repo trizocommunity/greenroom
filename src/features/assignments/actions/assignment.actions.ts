@@ -106,6 +106,33 @@ function assertAssignmentWindowOpen(
   }
 }
 
+/**
+ * Per-window permission gate for Team Leaders, applied *after* the window is
+ * confirmed open. Organisers (`type === "user"`) are never gated. The
+ * assignment window carries `add` (assign programmes) and `delete` (remove
+ * assignments) — there is no edit.
+ */
+function assertAssignmentPermission(
+  festival:
+    | {
+        programmeAssignmentCanAdd?: boolean | null;
+        programmeAssignmentCanDelete?: boolean | null;
+      }
+    | null
+    | undefined,
+  actorContext: AssignmentActorContext,
+  action: "add" | "delete",
+) {
+  if (actorContext.type === "user") return;
+
+  if (action === "add" && festival?.programmeAssignmentCanAdd === false) {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_ADD_NOT_PERMITTED);
+  }
+  if (action === "delete" && festival?.programmeAssignmentCanDelete === false) {
+    throw new AppError(ERROR_MESSAGES.ASSIGNMENT_DELETE_NOT_PERMITTED);
+  }
+}
+
 export type AssignmentActorContext =
   | { type: "user"; userId: string }
   | { type: "teamLeader"; participantId: string; groupId: string };
@@ -180,6 +207,7 @@ export async function createAssignmentAction(
 
   // Deadline Check
   assertAssignmentWindowOpen(festival, actorContext);
+  assertAssignmentPermission(festival, actorContext, "add");
 
   // Validate Dependencies
   const [categoryCount, groupCount, programmeCount, participantCount] =
@@ -284,6 +312,7 @@ export async function bulkCreateAssignmentAction(
 
   // Deadline Check
   assertAssignmentWindowOpen(festival, actorContext);
+  assertAssignmentPermission(festival, actorContext, "add");
 
   if (assignments.length === 0) return [];
 
@@ -364,6 +393,7 @@ export async function deleteAssignmentAction(
 
   // Deadline Check
   assertAssignmentWindowOpen(festival, actorContext);
+  assertAssignmentPermission(festival, actorContext, "delete");
 
   if (actorContext.type === "teamLeader") {
     const assignment = await db.query.programmeAssignment.findFirst({
@@ -417,6 +447,7 @@ export async function deleteTeamAssignmentAction(
   await assertFestivalMutationAllowed(festivalId);
 
   assertAssignmentWindowOpen(festival, actorContext);
+  assertAssignmentPermission(festival, actorContext, "delete");
 
   if (actorContext.type === "teamLeader" && groupId !== actorContext.groupId) {
     throw new AppError(ERROR_MESSAGES.FORBIDDEN);
@@ -452,43 +483,15 @@ export async function updateAssignmentAction(
     requireWritable: true,
   });
 
+  if (actorContext.type === "teamLeader") {
+    throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+  }
+
   const festival = await findFestivalById(festivalId);
   await assertFestivalMutationAllowed(festivalId);
 
   // Deadline Check
   assertAssignmentWindowOpen(festival, actorContext);
-
-  if (actorContext.type === "teamLeader") {
-    const existing = await db.query.programmeAssignment.findFirst({
-      where: eq(assignmentTable.id, id),
-      with: { participant: true, group: true },
-    });
-    const existingGroupId =
-      existing?.groupId ??
-      existing?.participant?.groupId ??
-      existing?.group?.id;
-    if (
-      !existing ||
-      existing.festivalId !== festivalId ||
-      existingGroupId !== actorContext.groupId
-    ) {
-      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
-    }
-
-    if (data.participantId) {
-      const participant = await db.query.participant.findFirst({
-        where: eq(participantTable.id, data.participantId),
-        columns: { festivalId: true, groupId: true },
-      });
-      if (
-        !participant ||
-        participant.festivalId !== festivalId ||
-        participant.groupId !== actorContext.groupId
-      ) {
-        throw new AppError(ERROR_MESSAGES.FORBIDDEN);
-      }
-    }
-  }
 
   return AssignmentService.update(id, festivalId, data);
 }

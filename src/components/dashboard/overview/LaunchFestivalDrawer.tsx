@@ -47,16 +47,16 @@ export function LaunchFestivalDrawer({
               Launch Festival
             </DrawerTitle>
             <DrawerDescription>
-              You are about to launch your festival. This will make it visible to
-              all participants and staff.
+              You are about to launch your festival. This will make it visible
+              to all participants and staff.
             </DrawerDescription>
           </DrawerHeader>
           <div className="p-4">
             <div className="bg-muted p-4 rounded-md">
               <p className="text-sm text-muted-foreground">
-                Ensure you have completed all previous setup steps before launching.
-                Once launched, you can enable the public site for participants to
-                view schedules and results.
+                Ensure you have completed all previous setup steps before
+                launching. Once launched, you can enable the public site for
+                participants to view schedules and results.
               </p>
             </div>
           </div>

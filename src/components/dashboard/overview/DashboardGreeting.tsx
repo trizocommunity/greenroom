@@ -24,13 +24,26 @@ function LiveClock({ timezone }: { timezone?: string | null }) {
         })}
       </div>
       <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
-        {time.toLocaleTimeString("en-US", { timeZoneName: "short", timeZone: timezone || undefined }).split(' ').slice(2).join(' ')}
+        {time
+          .toLocaleTimeString("en-US", {
+            timeZoneName: "short",
+            timeZone: timezone || undefined,
+          })
+          .split(" ")
+          .slice(2)
+          .join(" ")}
       </div>
     </div>
   );
 }
 
-export function DashboardGreeting({ name, timezone }: { name?: string | null; timezone?: string | null }) {
+export function DashboardGreeting({
+  name,
+  timezone,
+}: {
+  name?: string | null;
+  timezone?: string | null;
+}) {
   const [greeting, setGreeting] = useState("Hello");
   const [dateStr, setDateStr] = useState("");
 

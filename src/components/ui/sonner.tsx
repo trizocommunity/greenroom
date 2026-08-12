@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { useTheme } from "next-themes";
+import * as React from "react";
 import { Toaster as Sonner } from "sonner";
 import { useIsMobile } from "@/components/common/use-mobile";
 
@@ -26,7 +26,12 @@ function useHasOpenWrapper() {
     };
 
     const observer = new MutationObserver(check);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-state"] });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state"],
+    });
 
     check();
     return () => observer.disconnect();

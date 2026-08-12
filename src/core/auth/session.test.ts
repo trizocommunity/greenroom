@@ -239,14 +239,17 @@ describe("appendSetCookieHeaders", () => {
     const withCookies = source as Headers & {
       getSetCookie: () => string[];
     };
-    withCookies.getSetCookie = () => [
-      "a=1; Path=/",
-      "b=2; Path=/",
-    ];
+    withCookies.getSetCookie = () => ["a=1; Path=/", "b=2; Path=/"];
 
     appendSetCookieHeaders(target as never, withCookies);
 
-    expect(target.headers.append).toHaveBeenCalledWith("Set-Cookie", "a=1; Path=/");
-    expect(target.headers.append).toHaveBeenCalledWith("Set-Cookie", "b=2; Path=/");
+    expect(target.headers.append).toHaveBeenCalledWith(
+      "Set-Cookie",
+      "a=1; Path=/",
+    );
+    expect(target.headers.append).toHaveBeenCalledWith(
+      "Set-Cookie",
+      "b=2; Path=/",
+    );
   });
 });

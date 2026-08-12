@@ -89,6 +89,8 @@ export function AssignProgrammesClient({
   isReadOnly,
   windowStart,
   deadline,
+  canAdd = true,
+  canDelete = true,
   managerName,
   managerEmail,
   managerPhone,
@@ -104,6 +106,10 @@ export function AssignProgrammesClient({
   isReadOnly: boolean;
   windowStart?: string | Date | null;
   deadline?: string | Date | null;
+  /** Manager-controlled permission: may Team Leaders assign programmes? */
+  canAdd?: boolean;
+  /** Manager-controlled permission: may Team Leaders remove assignments? */
+  canDelete?: boolean;
   managerName?: string | null;
   managerEmail?: string | null;
   managerPhone?: string | null;
@@ -127,6 +133,11 @@ export function AssignProgrammesClient({
   // Team leaders only get write access when the festival manager has set a
   // full open → close window AND we are currently inside it.
   const tlHasAccess = !runtimeIsReadOnly;
+  // Per-window permissions are a *second* gate on top of the open window: an
+  // open window whose flag is off still blocks that action. They never widen
+  // access, so a closed/upcoming window stays read-only regardless.
+  const canAssign = tlHasAccess && canAdd;
+  const canRemove = tlHasAccess && canDelete;
 
   const { data: assignments = [], refetch } = useAssignments(festivalId);
   const bulkCreateAssignments = useBulkCreateAssignments();
@@ -250,13 +261,13 @@ export function AssignProgrammesClient({
   >("ASSIGN");
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
 
-  // When the team leader loses access (window closes or never opened), make
-  // sure we can't sit on a hidden tab.
+  // When the team leader can't assign (window closed/upcoming, or the manager
+  // disabled adding), make sure we can't sit on a now-hidden Assign tab.
   useEffect(() => {
-    if (!tlHasAccess && assignProgrammesTab === "ASSIGN") {
+    if (!canAssign && assignProgrammesTab === "ASSIGN") {
       setAssignProgrammesTab("ASSIGNMENTS");
     }
-  }, [tlHasAccess, assignProgrammesTab]);
+  }, [canAssign, assignProgrammesTab]);
 
   // AssignmentModal expects a top-level `categoryId` on each programme (this
   // component's ProgrammeForAssignment only nests it under `category.id`).
@@ -695,7 +706,7 @@ export function AssignProgrammesClient({
   }, [leaderAssignments]);
 
   const onRemoveIndividualAssignment = async (assignmentId: string) => {
-    if (runtimeIsReadOnly) return;
+    if (!canRemove) return;
     const ok = window.confirm("Remove this assignment?");
     if (!ok) return;
     await deleteAssignment.mutateAsync({ festivalId, assignmentId });
@@ -706,7 +717,7 @@ export function AssignProgrammesClient({
     groupId: string;
     teamNumber: number;
   }) => {
-    if (runtimeIsReadOnly) return;
+    if (!canRemove) return;
     const ok = window.confirm(
       `Remove Team ${params.teamNumber} from this programme?`,
     );
@@ -761,7 +772,7 @@ export function AssignProgrammesClient({
   );
 
   const onAssign = async () => {
-    if (runtimeIsReadOnly) return;
+    if (!canAssign) return;
     if (!selectedProgramme) return;
     if (selectedNewCount === 0) {
       toast.error("Select at least one participant");
@@ -961,11 +972,11 @@ export function AssignProgrammesClient({
 
   const onRemoveAssignment = useCallback(
     async (assignmentId: string, label: string) => {
-      if (runtimeIsReadOnly) return;
+      if (!canRemove) return;
       if (!window.confirm(`Remove ${label} from this programme?`)) return;
       await deleteAssignment.mutateAsync({ festivalId, assignmentId });
     },
-    [runtimeIsReadOnly, deleteAssignment, festivalId],
+    [canRemove, deleteAssignment, festivalId],
   );
 
   const visibleParticipants = useMemo(() => {
@@ -1013,7 +1024,7 @@ export function AssignProgrammesClient({
         festivalId={festivalId}
         open={assignmentModalOpen}
         onOpenChange={setAssignmentModalOpen}
-        isReadOnly={runtimeIsReadOnly}
+        isReadOnly={!canAssign}
         fixedGroupId={leaderGroupId}
         categories={programmeCategoryOptions}
         programmes={assignmentModalProgrammes}
@@ -1120,10 +1131,30 @@ export function AssignProgrammesClient({
           </div>
         )}
 
+        {/* Manager disabled a specific action while the window is open. */}
+        {tlHasAccess && !canAdd && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-600">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="leading-relaxed">
+              The festival manager has disabled assigning programmes. You can
+              still review what's already assigned.
+            </p>
+          </div>
+        )}
+        {tlHasAccess && !canDelete && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-600">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="leading-relaxed">
+              The festival manager has disabled removing assignments. Contact
+              them if something needs to change.
+            </p>
+          </div>
+        )}
+
         {tlHasAccess && (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <TabsList className="justify-start gap-1">
-              <TabsTrigger value="ASSIGN">Assign</TabsTrigger>
+              {canAssign && <TabsTrigger value="ASSIGN">Assign</TabsTrigger>}
               <TabsTrigger value="ASSIGNMENTS">
                 Assignments
                 {programmeAssignmentRows.length > 0 && (
@@ -1133,19 +1164,21 @@ export function AssignProgrammesClient({
                 )}
               </TabsTrigger>
             </TabsList>
-            <Button
-              size="sm"
-              className="h-9 rounded-full"
-              onClick={() => setAssignmentModalOpen(true)}
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              New assignment
-            </Button>
+            {canAssign && (
+              <Button
+                size="sm"
+                className="h-9 rounded-full"
+                onClick={() => setAssignmentModalOpen(true)}
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                New assignment
+              </Button>
+            )}
           </div>
         )}
 
         {/* ── Assign: pick a programme, assign inside the drawer ─────── */}
-        {tlHasAccess && (
+        {canAssign && (
           <TabsContent value="ASSIGN" className="mt-5">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
@@ -1728,7 +1761,7 @@ export function AssignProgrammesClient({
                               disableForLimit && "opacity-45",
                               !isAssignedDB &&
                                 !disableForLimit &&
-                                !runtimeIsReadOnly &&
+                                canAssign &&
                                 "cursor-pointer",
                             )}
                           >
@@ -1738,9 +1771,7 @@ export function AssignProgrammesClient({
                               checked={checked || isAssignedDB}
                               onChange={() => toggleParticipant(s.id)}
                               disabled={
-                                runtimeIsReadOnly ||
-                                isAssignedDB ||
-                                disableForLimit
+                                !canAssign || isAssignedDB || disableForLimit
                               }
                             />
 
@@ -1778,7 +1809,7 @@ export function AssignProgrammesClient({
                 <button
                   type="button"
                   onClick={clearSelection}
-                  disabled={runtimeIsReadOnly || selectedNewCount === 0}
+                  disabled={!canAssign || selectedNewCount === 0}
                   className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
                 >
                   Clear
@@ -1787,7 +1818,7 @@ export function AssignProgrammesClient({
                 <Button
                   onClick={onAssign}
                   disabled={
-                    runtimeIsReadOnly ||
+                    !canAssign ||
                     selectedNewCount === 0 ||
                     isOverLimit ||
                     missingTeamLead ||
@@ -1847,7 +1878,7 @@ export function AssignProgrammesClient({
                 </SheetDescription>
 
                 {/* Only offer "Assign more" when there is actually room. */}
-                {!runtimeIsReadOnly &&
+                {canAssign &&
                   (drawerCapacity?.isFull ? (
                     <p className="pt-4 text-xs text-muted-foreground">
                       This programme is full for your group. Remove someone
@@ -1894,7 +1925,7 @@ export function AssignProgrammesClient({
                                 </span>
                               )}
                             </h3>
-                            {!runtimeIsReadOnly && (
+                            {canRemove && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1927,7 +1958,7 @@ export function AssignProgrammesClient({
                                     `${drawerRow.programmeId}:${teamNumber}`
                                   ]?.participantId === a.participant?.id
                                 }
-                                readOnly={runtimeIsReadOnly}
+                                readOnly={!canRemove}
                                 pending={deleteAssignment.isPending}
                               />
                             ))}
@@ -1941,7 +1972,7 @@ export function AssignProgrammesClient({
                       <AssignedParticipantRow
                         key={a.id}
                         assignment={a}
-                        readOnly={runtimeIsReadOnly}
+                        readOnly={!canRemove}
                         pending={deleteAssignment.isPending}
                         onRemove={onRemoveAssignment}
                       />

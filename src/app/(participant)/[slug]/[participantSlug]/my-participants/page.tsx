@@ -58,6 +58,8 @@ export default async function MyParticipantsPage({
         windowStart={windowStart}
         deadline={deadline}
         isReadOnly={isReadOnly}
+        canAdd={festival.participantCreationCanAdd !== false}
+        canEdit={festival.participantCreationCanEdit !== false}
       />
     </div>
   );

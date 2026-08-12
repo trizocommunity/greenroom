@@ -71,7 +71,9 @@ export function TimezoneSelect({
 }: TimezoneSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  const selectedLabel = value ? labelForTimezone(value) : "Local Time (Browser Default)";
+  const selectedLabel = value
+    ? labelForTimezone(value)
+    : "Local Time (Browser Default)";
   const groups = React.useMemo(() => groupedTimezones(), []);
 
   return (
@@ -108,7 +110,7 @@ export function TimezoneSelect({
             <CommandInput placeholder="Search timezone or city…" />
             <CommandList className="max-h-72">
               <CommandEmpty>No timezone found.</CommandEmpty>
-              
+
               <CommandGroup heading="System" className="font-medium">
                 <CommandItem
                   value="local"
@@ -123,7 +125,9 @@ export function TimezoneSelect({
                       !value ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <span className="flex-1 truncate">Local Time (Browser Default)</span>
+                  <span className="flex-1 truncate">
+                    Local Time (Browser Default)
+                  </span>
                 </CommandItem>
               </CommandGroup>
 

@@ -31,8 +31,8 @@ import {
   getCodeForParticipantFromLetters,
   mapSessionCodeLettersForLookup,
 } from "@/features/programmes/services/programme-reporting-code";
-import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 import { revealedCodeLettersOnly } from "@/features/programmes/services/programme-reporting-display";
+import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
 
 function isSessionTimedOut(session: any): boolean {
   return Boolean(

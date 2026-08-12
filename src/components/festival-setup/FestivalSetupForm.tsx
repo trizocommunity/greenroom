@@ -18,7 +18,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { queryKeys } from "@/api/client/_query-keys";
 import { useCreateFestival } from "@/api/client/festivals";
-import { checkFestivalSlugAvailability } from "@/features/festivals/actions/festival-crud.actions";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -32,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { InstitutionType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
+import { checkFestivalSlugAvailability } from "@/features/festivals/actions/festival-crud.actions";
 import {
   type CreateFestivalInput,
   createFestivalSchema,
@@ -157,14 +157,17 @@ export function FestivalSetupForm({
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-+|-+$/g, "");
-      
+
       const availability = await checkFestivalSlugAvailability(slugToCheck);
       if (availability.success && !availability.data.available) {
-        setError("festivalSlug", { type: "server", message: "This subdomain is already taken. Please choose another." });
+        setError("festivalSlug", {
+          type: "server",
+          message: "This subdomain is already taken. Please choose another.",
+        });
         toast.error("Please fix the errors in the form.");
         return;
       }
-      
+
       goTo(showInstitutionStep ? "institution" : "dates");
     } else if (currentStep === "institution") {
       goTo("dates");
@@ -211,7 +214,10 @@ export function FestivalSetupForm({
           message.toLowerCase().includes("taken") ||
           message.toLowerCase().includes("unique")
         ) {
-          setError("festivalSlug", { type: "server", message: "This subdomain is already taken. Please choose another." });
+          setError("festivalSlug", {
+            type: "server",
+            message: "This subdomain is already taken. Please choose another.",
+          });
         } else {
           toast.error(message || "Failed to create festival");
         }

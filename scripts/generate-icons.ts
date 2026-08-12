@@ -48,10 +48,7 @@ async function main() {
 
   // Maskable icons need a safe zone: icon content centered at ~61% of the
   // canvas with a solid background fill.
-  const iconForMaskable = await sharp(square)
-    .resize(312, 312)
-    .png()
-    .toBuffer();
+  const iconForMaskable = await sharp(square).resize(312, 312).png().toBuffer();
 
   await sharp({
     create: { width: 512, height: 512, channels: 4, background: BRAND_RED },
@@ -61,10 +58,7 @@ async function main() {
     .toFile(path.join(iconsDir, "maskable-512.png"));
 
   // Apple touch icons must be opaque (no transparency).
-  const iconForApple = await sharp(square)
-    .resize(140, 140)
-    .png()
-    .toBuffer();
+  const iconForApple = await sharp(square).resize(140, 140).png().toBuffer();
 
   await sharp({
     create: { width: 180, height: 180, channels: 4, background: BRAND_RED },

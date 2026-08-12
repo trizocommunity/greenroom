@@ -202,6 +202,10 @@ export async function updateFestivalSettingsAction(
     programmeAssignmentDeadline?: string | null;
     participantCreationStartDate?: string | null;
     participantCreationDeadline?: string | null;
+    programmeAssignmentCanAdd?: boolean;
+    programmeAssignmentCanDelete?: boolean;
+    participantCreationCanAdd?: boolean;
+    participantCreationCanEdit?: boolean;
     teamLeaderLimit?: number;
     startDate?: string | null;
     endDate?: string | null;
@@ -323,6 +327,18 @@ export async function updateFestivalSettingsAction(
           participantCreationDeadline: data.participantCreationDeadline
             ? parseInstant(data.participantCreationDeadline)?.toISOString()
             : null,
+        }),
+        ...(data.programmeAssignmentCanAdd !== undefined && {
+          programmeAssignmentCanAdd: data.programmeAssignmentCanAdd,
+        }),
+        ...(data.programmeAssignmentCanDelete !== undefined && {
+          programmeAssignmentCanDelete: data.programmeAssignmentCanDelete,
+        }),
+        ...(data.participantCreationCanAdd !== undefined && {
+          participantCreationCanAdd: data.participantCreationCanAdd,
+        }),
+        ...(data.participantCreationCanEdit !== undefined && {
+          participantCreationCanEdit: data.participantCreationCanEdit,
         }),
         ...(data.teamLeaderLimit !== undefined && {
           teamLeaderLimit: Math.max(

@@ -93,20 +93,22 @@ export function FoodEntryDashboard({
     return () => window.clearInterval(interval);
   }, []);
 
-  const slotRows: SlotRow[] = initialData.slots.map((slot) => {
-    const todaySession = initialData.todaySessionsBySlotId[slot.id];
-    return {
-      ...slot,
-      sessionId: todaySession?.sessionId ?? null,
-      sessionStatus: todaySession?.status ?? "OPEN",
-      scannedCount: todaySession?.scannedCount ?? 0,
-      status: getFoodSlotStatus(now, initialData.timezone, slot),
-    };
-  }).sort((a, b) => {
-    if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
-    if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
-    return a.slotOrder - b.slotOrder;
-  });
+  const slotRows: SlotRow[] = initialData.slots
+    .map((slot) => {
+      const todaySession = initialData.todaySessionsBySlotId[slot.id];
+      return {
+        ...slot,
+        sessionId: todaySession?.sessionId ?? null,
+        sessionStatus: todaySession?.status ?? "OPEN",
+        scannedCount: todaySession?.scannedCount ?? 0,
+        status: getFoodSlotStatus(now, initialData.timezone, slot),
+      };
+    })
+    .sort((a, b) => {
+      if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+      if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
+      return a.slotOrder - b.slotOrder;
+    });
   const activeSlotId =
     slotRows.find((slot) => slot.status === "ACTIVE")?.id ?? null;
   const selectedSlot = slotRows.find((slot) => slot.id === selectedSlotId);
