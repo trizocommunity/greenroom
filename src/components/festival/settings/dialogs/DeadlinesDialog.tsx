@@ -17,6 +17,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { parseInstant, toDateOrNull } from "@/core/datetime";
 import { updateFestivalSettingsAction } from "@/features/festivals/actions/festival-crud.actions";
 import { toast } from "@/lib/toast";
@@ -28,6 +29,10 @@ interface DeadlinesDialogProps {
     programmeAssignmentDeadline?: Date | string | null;
     participantCreationStartDate?: Date | string | null;
     participantCreationDeadline?: Date | string | null;
+    programmeAssignmentCanAdd?: boolean | null;
+    programmeAssignmentCanDelete?: boolean | null;
+    participantCreationCanAdd?: boolean | null;
+    participantCreationCanEdit?: boolean | null;
     startDate?: Date | string | null;
     createdAt?: Date | string | null;
     /**
@@ -62,6 +67,20 @@ export function DeadlinesDialog({
       start: parseInstant(festival.participantCreationStartDate ?? null),
       end: parseInstant(festival.participantCreationDeadline ?? null),
     }));
+  // Per-window team-leader permissions. Default `true` so a window with no
+  // stored flag (legacy festivals) keeps today's full-access behaviour.
+  const [assignmentCanAdd, setAssignmentCanAdd] = useState(
+    festival.programmeAssignmentCanAdd !== false,
+  );
+  const [assignmentCanDelete, setAssignmentCanDelete] = useState(
+    festival.programmeAssignmentCanDelete !== false,
+  );
+  const [participantCanAdd, setParticipantCanAdd] = useState(
+    festival.participantCreationCanAdd !== false,
+  );
+  const [participantCanEdit, setParticipantCanEdit] = useState(
+    festival.participantCreationCanEdit !== false,
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   const durationStart = festival.createdAt
@@ -126,6 +145,10 @@ export function DeadlinesDialog({
           participantCreation.start?.toISOString() ?? null,
         participantCreationDeadline:
           participantCreation.end?.toISOString() ?? null,
+        programmeAssignmentCanAdd: assignmentCanAdd,
+        programmeAssignmentCanDelete: assignmentCanDelete,
+        participantCreationCanAdd: participantCanAdd,
+        participantCreationCanEdit: participantCanEdit,
       });
 
       if (res.success) {
@@ -187,6 +210,24 @@ export function DeadlinesDialog({
                 Team Leaders can assign participants to programmes only inside
                 this window. Both an open and close date are required.
               </p>
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <PermissionToggle
+                  id="assignmentCanAdd"
+                  label="Allow assigning"
+                  description="Team Leaders can assign programmes."
+                  checked={assignmentCanAdd}
+                  onCheckedChange={setAssignmentCanAdd}
+                  disabled={festivalHasStarted}
+                />
+                <PermissionToggle
+                  id="assignmentCanDelete"
+                  label="Allow removing"
+                  description="Team Leaders can remove assignments."
+                  checked={assignmentCanDelete}
+                  onCheckedChange={setAssignmentCanDelete}
+                  disabled={festivalHasStarted}
+                />
+              </div>
             </div>
           )}
           {isParticipantDeadlineFeatureEnabled && (
@@ -214,6 +255,24 @@ export function DeadlinesDialog({
                 Team Leaders can add new participants only inside this window.
                 Both an open and close date are required.
               </p>
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <PermissionToggle
+                  id="participantCanAdd"
+                  label="Allow adding"
+                  description="Team Leaders can add participants."
+                  checked={participantCanAdd}
+                  onCheckedChange={setParticipantCanAdd}
+                  disabled={festivalHasStarted}
+                />
+                <PermissionToggle
+                  id="participantCanEdit"
+                  label="Allow editing"
+                  description="Team Leaders can edit their participants."
+                  checked={participantCanEdit}
+                  onCheckedChange={setParticipantCanEdit}
+                  disabled={festivalHasStarted}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -229,5 +288,38 @@ export function DeadlinesDialog({
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
+  );
+}
+
+function PermissionToggle({
+  id,
+  label,
+  description,
+  checked,
+  onCheckedChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="space-y-0.5">
+        <Label htmlFor={id} className="cursor-pointer">
+          {label}
+        </Label>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        disabled={disabled}
+      />
+    </div>
   );
 }

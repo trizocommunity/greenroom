@@ -80,12 +80,7 @@ export function FestSetupWidget({
         setIsExpanded(false);
       }
     }
-  }, [
-    festivalSlug,
-    setupStatus,
-    showVerifySubdomainStep,
-    subdomainVerified,
-  ]);
+  }, [festivalSlug, setupStatus, showVerifySubdomainStep, subdomainVerified]);
 
   const handleScoringClick = () => {
     localStorage.setItem(`visited_scoring_${festivalSlug}`, "true");

@@ -94,6 +94,10 @@ export const ERROR_MESSAGES = {
     "Assignments haven't opened yet. Please wait for the start date.",
   ASSIGNMENT_WINDOW_NOT_CONFIGURED:
     "The festival manager hasn't set an assignment window yet. Contact them to enable assignments.",
+  ASSIGNMENT_ADD_NOT_PERMITTED:
+    "The festival manager has disabled assigning programmes. Contact them to enable it.",
+  ASSIGNMENT_DELETE_NOT_PERMITTED:
+    "The festival manager has disabled removing assignments. Contact them to enable it.",
   ASSIGNMENT_INDIVIDUAL_REQUIRES_PARTICIPANT:
     "INDIVIDUAL programme assignments must reference a participant, not a group.",
   ASSIGNMENT_GROUP_REQUIRES_GROUP:
@@ -114,6 +118,10 @@ export const ERROR_MESSAGES = {
     "Participant registration hasn't opened yet. Please wait for the start date.",
   PARTICIPANT_CREATION_WINDOW_NOT_CONFIGURED:
     "The festival manager hasn't set a participant registration window yet. Contact them to add new participants.",
+  PARTICIPANT_CREATION_ADD_NOT_PERMITTED:
+    "The festival manager has disabled adding participants. Contact them to enable it.",
+  PARTICIPANT_EDIT_NOT_PERMITTED:
+    "The festival manager has disabled editing participants. Contact them to enable it.",
 
   // ─── Usage / Limits ───────────────────────────────────────────────────────
   USAGE_LIMIT_EXCEEDED:

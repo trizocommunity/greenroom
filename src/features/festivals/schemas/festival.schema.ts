@@ -69,6 +69,10 @@ export const updateFestivalSchema = z.object({
   programmeAssignmentDeadline: z.string().optional().nullable(),
   participantCreationStartDate: z.string().optional().nullable(),
   participantCreationDeadline: z.string().optional().nullable(),
+  programmeAssignmentCanAdd: z.boolean().optional(),
+  programmeAssignmentCanDelete: z.boolean().optional(),
+  participantCreationCanAdd: z.boolean().optional(),
+  participantCreationCanEdit: z.boolean().optional(),
   teamLeaderLimit: z.number().int().min(1).max(10).optional(),
   publicSiteEnabled: z.boolean().optional(),
 });

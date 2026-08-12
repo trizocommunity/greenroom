@@ -1,6 +1,6 @@
 {
-  "id": "7ab2ff49-e284-49a7-a13e-265808142c92",
-  "prevId": "12538dfe-9e4c-496b-b302-7ac028cde117",
+  "id": "a8be4c07-7fb9-48eb-8830-8bffbaff33c9",
+  "prevId": "7ab2ff49-e284-49a7-a13e-265808142c92",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -531,6 +531,34 @@
           "primaryKey": false,
           "notNull": false
         },
+        "programmeAssignmentCanAdd": {
+          "name": "programmeAssignmentCanAdd",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "programmeAssignmentCanDelete": {
+          "name": "programmeAssignmentCanDelete",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "participantCreationCanAdd": {
+          "name": "participantCreationCanAdd",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "participantCreationCanEdit": {
+          "name": "participantCreationCanEdit",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
         "teamLeaderLimit": {
           "name": "teamLeaderLimit",
           "type": "integer",
@@ -550,6 +578,12 @@
           "type": "boolean",
           "primaryKey": false,
           "notNull": true
+        },
+        "domain_https_ready_at": {
+          "name": "domain_https_ready_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "stagesCount": {
           "name": "stagesCount",
@@ -5205,6 +5239,24 @@
           "type": "timestamp(3) with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "queue_position": {
+          "name": "queue_position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revealed_at": {
+          "name": "revealed_at",
+          "type": "timestamp(3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revealed_by": {
+          "name": "revealed_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -5261,6 +5313,49 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "programme_code_letter_session_queue_position_key": {
+          "name": "programme_code_letter_session_queue_position_key",
+          "columns": [
+            {
+              "expression": "reportingSessionId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "queue_position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"programme_code_letter\".\"queue_position\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "programme_code_letter_session_revealed_at_idx": {
+          "name": "programme_code_letter_session_revealed_at_idx",
+          "columns": [
+            {
+              "expression": "reportingSessionId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "revealed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -5876,6 +5971,12 @@
         "endedBy": {
           "name": "endedBy",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "checkout_completed_at": {
+          "name": "checkout_completed_at",
+          "type": "timestamp(3) with time zone",
           "primaryKey": false,
           "notNull": false
         },

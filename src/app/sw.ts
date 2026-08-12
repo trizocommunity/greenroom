@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { PAGES_CACHE_NAME, defaultCache } from "@serwist/next/worker";
+import { defaultCache, PAGES_CACHE_NAME } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { NetworkOnly, Serwist, Strategy } from "serwist";
 
@@ -32,8 +32,13 @@ const runtimeCaching = [
     // Same-origin document navigations always go to the network. When the
     // network fails (offline), the fallback plugin serves the precached
     // /offline page instead of a browser error.
-    matcher: ({ request, sameOrigin }: { request: Request; sameOrigin: boolean }) =>
-      sameOrigin && request.mode === "navigate",
+    matcher: ({
+      request,
+      sameOrigin,
+    }: {
+      request: Request;
+      sameOrigin: boolean;
+    }) => sameOrigin && request.mode === "navigate",
     handler: new NetworkOnly(),
   },
   ...defaultCache.filter((entry) => {

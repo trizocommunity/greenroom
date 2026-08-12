@@ -37,8 +37,7 @@ export function FoodEntryConfig({
     resolver: zodResolver(upsertFoodSlotsSchema),
     defaultValues: {
       festivalId,
-      slots:
-        initialSlots.length > 0 ? initialSlots : [],
+      slots: initialSlots.length > 0 ? initialSlots : [],
     },
   });
 

@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Eye,
   MoreVertical,
+  Pencil,
   Plus,
   QrCode,
   ShieldAlert,
@@ -22,6 +23,7 @@ import { QrCodeWithActions } from "@/components/common/QrCodeWithActions";
 import { DeadlinesCard } from "@/components/festival/pre-event-works/DeadlinesCard";
 import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/participants/ParticipantDetailsDialog";
 import { AddParticipantDialog } from "@/components/participant/team-leader/AddParticipantDialog";
+import { EditParticipantDialog } from "@/components/participant/team-leader/EditParticipantDialog";
 import { useFestivalPath } from "@/components/providers/custom-domain-provider";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
@@ -85,6 +87,8 @@ export function MyParticipantsClient({
   windowStart,
   deadline,
   isReadOnly,
+  canAdd = true,
+  canEdit = true,
 }: {
   festivalId: string;
   festivalSlug: string;
@@ -93,6 +97,10 @@ export function MyParticipantsClient({
   windowStart?: string | Date | null;
   deadline?: string | Date | null;
   isReadOnly?: boolean;
+  /** Manager-controlled permission: may Team Leaders add participants? */
+  canAdd?: boolean;
+  /** Manager-controlled permission: may Team Leaders edit participants? */
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const toFestivalPath = useFestivalPath(festivalSlug);
@@ -108,6 +116,10 @@ export function MyParticipantsClient({
   // Team leaders only get write access when the festival manager has set a
   // full open → close window AND we are currently inside it.
   const tlHasAccess = !runtimeIsReadOnly;
+  // Per-window permissions are a second gate on top of the open window; they
+  // never widen access, so a closed/upcoming window stays read-only.
+  const canAddParticipants = tlHasAccess && canAdd;
+  const canEditParticipants = tlHasAccess && canEdit;
 
   const formatBound = useMemo(
     () => (d: Date | null) =>
@@ -135,6 +147,8 @@ export function MyParticipantsClient({
     useState<ParticipantForMyParticipants | null>(null);
   const [qrParticipant, setQrParticipant] =
     useState<ParticipantForMyParticipants | null>(null);
+  const [editParticipant, setEditParticipant] =
+    useState<ParticipantForMyParticipants | null>(null);
 
   const visibleParticipants = useMemo(() => {
     if (selectedCategoryId === "all") return participants;
@@ -157,7 +171,7 @@ export function MyParticipantsClient({
               start={windowStart}
               end={deadline}
             />
-            {tlHasAccess && (
+            {canAddParticipants && (
               <AddParticipantDialog
                 festivalId={festivalId}
                 categories={allCategories}
@@ -316,6 +330,14 @@ export function MyParticipantsClient({
                         <Eye className="mr-2 h-4 w-4" />
                         View details
                       </DropdownMenuItem>
+                      {canEditParticipants && (
+                        <DropdownMenuItem
+                          onSelect={() => setEditParticipant(s)}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onSelect={() => setQrParticipant(s)}>
                         <QrCode className="mr-2 h-4 w-4" />
                         Chest number QR
@@ -414,6 +436,19 @@ export function MyParticipantsClient({
           onOpenChange={(open) => {
             if (!open) setDetailsParticipant(null);
           }}
+        />
+      ) : null}
+
+      {editParticipant ? (
+        <EditParticipantDialog
+          festivalId={festivalId}
+          participant={editParticipant}
+          categories={allCategories}
+          open={Boolean(editParticipant)}
+          onOpenChange={(open) => {
+            if (!open) setEditParticipant(null);
+          }}
+          onUpdated={() => router.refresh()}
         />
       ) : null}
 

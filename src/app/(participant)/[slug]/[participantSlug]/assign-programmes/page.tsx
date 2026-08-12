@@ -111,6 +111,8 @@ export default async function AssignProgrammesPage({
         isReadOnly={isReadOnly}
         windowStart={windowStart ?? undefined}
         deadline={deadline ?? undefined}
+        canAdd={festival.programmeAssignmentCanAdd !== false}
+        canDelete={festival.programmeAssignmentCanDelete !== false}
         managerName={managerName}
         managerEmail={managerEmail}
         managerPhone={managerPhone}

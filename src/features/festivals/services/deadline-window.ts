@@ -28,6 +28,18 @@ export type DeadlineWindow = {
   end: Date | null;
 };
 
+/**
+ * Per-window team-leader permissions. A second gate *on top of* the time
+ * window — an OPEN window whose `add` is false still blocks adding. Only the
+ * fields relevant to a window are used: assignments use `add` + `delete`,
+ * participant registration uses `add` + `edit`.
+ */
+export type DeadlinePermissions = {
+  add: boolean;
+  delete?: boolean;
+  edit?: boolean;
+};
+
 export function resolveDeadlineWindow(
   { start, end }: DeadlineWindowInput,
   now: Date = new Date(),

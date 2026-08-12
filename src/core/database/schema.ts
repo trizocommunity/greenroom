@@ -480,6 +480,16 @@ export const festival = pgTable(
     tierLabel: text().default("Standard").notNull(),
     participantCreationStartDate: tzTimestamp(),
     participantCreationDeadline: tzTimestamp(),
+    /**
+     * Per-window team-leader permissions. Gate what a leader may do *while the
+     * window is open* — never widen access beyond the time window. Default
+     * `true` so festivals created before these existed keep the old "open
+     * window = full access" behaviour.
+     */
+    programmeAssignmentCanAdd: boolean().default(true).notNull(),
+    programmeAssignmentCanDelete: boolean().default(true).notNull(),
+    participantCreationCanAdd: boolean().default(true).notNull(),
+    participantCreationCanEdit: boolean().default(true).notNull(),
     teamLeaderLimit: integer().default(2).notNull(),
     participantsCount: integer().default(0).notNull(),
     publicSiteEnabled: boolean().notNull(),

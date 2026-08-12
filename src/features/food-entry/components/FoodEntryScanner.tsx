@@ -1,10 +1,10 @@
 "use client";
 
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { AlertCircle, Loader2, Lock, ScanLine, UserCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { formatInTimeZone } from "date-fns-tz";
 import { QrScanner } from "@/components/festival/event-works/programme-reporting/QrScanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -301,8 +301,8 @@ export function FoodEntryScanner({
                         <TableCell>{entry.groupName ?? "—"}</TableCell>
                         <TableCell>{entry.categoryName ?? "—"}</TableCell>
                         <TableCell className="text-right text-muted-foreground whitespace-nowrap">
-                        {formatScannedAt(entry.scannedAt, timezone)}
-                      </TableCell>
+                          {formatScannedAt(entry.scannedAt, timezone)}
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {entry.scannedByName ?? "—"}
                         </TableCell>

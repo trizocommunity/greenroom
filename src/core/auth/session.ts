@@ -183,9 +183,7 @@ export function appendSetCookieHeaders(
   source: Headers,
 ): void {
   const cookies =
-    typeof source.getSetCookie === "function"
-      ? source.getSetCookie()
-      : [];
+    typeof source.getSetCookie === "function" ? source.getSetCookie() : [];
   if (cookies.length > 0) {
     for (const cookie of cookies) {
       target.headers.append("Set-Cookie", cookie);

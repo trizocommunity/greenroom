@@ -40,7 +40,8 @@ export default async function FoodEntryPage({
 
   const data = await getFoodHallDashboardData(
     context.festival.id,
-    context.festival.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    context.festival.timezone ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
   const filters = await getGroupsAndCategoriesForFestival(context.festival.id);
 

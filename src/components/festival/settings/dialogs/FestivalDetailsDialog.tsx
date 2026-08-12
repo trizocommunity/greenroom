@@ -5,9 +5,9 @@ import { Loader2, Pencil } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUpdateFestival } from "@/api/client/festivals";
+import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-picker";
-import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";
 import {
   Drawer,
   DrawerContent,

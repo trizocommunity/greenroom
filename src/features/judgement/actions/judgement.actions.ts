@@ -134,17 +134,22 @@ function buildProgrammeReportingSessionStageScope(
 
 function buildJudgementConfigReportingSessionStageScope(
   accessibleStageIds: string[] | "all",
-  judgementConfigTableRef: { reportingSessionId: typeof judgementConfigTable.reportingSessionId } = judgementConfigTable,
+  judgementConfigTableRef: {
+    reportingSessionId: typeof judgementConfigTable.reportingSessionId;
+  } = judgementConfigTable,
 ): SQL | undefined {
   if (accessibleStageIds === "all") return undefined;
-  
+
   return exists(
     db
       .select({ one: sql`1` })
       .from(reportingSessionTable)
       .where(
         and(
-          eq(reportingSessionTable.id, judgementConfigTableRef.reportingSessionId),
+          eq(
+            reportingSessionTable.id,
+            judgementConfigTableRef.reportingSessionId,
+          ),
           inArray(reportingSessionTable.stageId, accessibleStageIds),
         ),
       ),
@@ -477,17 +482,18 @@ export async function getActiveJudgementConfigsAction(festivalId: string) {
     session,
   );
   const configs = await db.query.judgementConfig.findMany({
-    where: (judgementConfig, { and, inArray, eq }) => and(
-      eq(judgementConfig.festivalId, festivalId),
-      inArray(judgementConfig.status, ["LIVE", "SUBMITTED"]),
-      // Must use the RQB-aliased table (`judgementConfig`), not the imported
-      // schema table — otherwise Postgres sees `"judgement_config"` while the
-      // outer FROM is aliased as `"judgementConfig"` (STAGE_MANAGER-only path).
-      buildJudgementConfigReportingSessionStageScope(
-        accessibleStageIds,
-        judgementConfig,
+    where: (judgementConfig, { and, inArray, eq }) =>
+      and(
+        eq(judgementConfig.festivalId, festivalId),
+        inArray(judgementConfig.status, ["LIVE", "SUBMITTED"]),
+        // Must use the RQB-aliased table (`judgementConfig`), not the imported
+        // schema table — otherwise Postgres sees `"judgement_config"` while the
+        // outer FROM is aliased as `"judgementConfig"` (STAGE_MANAGER-only path).
+        buildJudgementConfigReportingSessionStageScope(
+          accessibleStageIds,
+          judgementConfig,
+        ),
       ),
-    ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
       programme: {
@@ -531,14 +537,15 @@ export async function getJudgedProgrammeCardsAction(festivalId: string) {
     session,
   );
   const configs = await db.query.judgementConfig.findMany({
-    where: (judgementConfig, { and, inArray, eq }) => and(
-      eq(judgementConfig.festivalId, festivalId),
-      buildJudgementConfigReportingSessionStageScope(
-        accessibleStageIds,
-        judgementConfig,
+    where: (judgementConfig, { and, inArray, eq }) =>
+      and(
+        eq(judgementConfig.festivalId, festivalId),
+        buildJudgementConfigReportingSessionStageScope(
+          accessibleStageIds,
+          judgementConfig,
+        ),
+        inArray(judgementConfig.status, ["COMPLETED"]),
       ),
-      inArray(judgementConfig.status, ["COMPLETED"]),
-    ),
     orderBy: [desc(judgementConfigTable.createdAt)],
     with: {
       programme: {
