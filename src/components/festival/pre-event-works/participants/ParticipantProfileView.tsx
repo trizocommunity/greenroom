@@ -307,13 +307,25 @@ export function ParticipantProfileView({
         </Card>
 
         <Card className="md:col-span-2">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               Assigned Programmes
               <Badge variant="secondary" className="text-xs">
                 {assignments.length}
               </Badge>
             </CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              asChild
+            >
+              <Link
+                href={`/dashboard/${festivalSlug}/pre-event-works/assignments?participantId=${participant.id}`}
+              >
+                Edit assignments
+              </Link>
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="border rounded-md overflow-hidden">

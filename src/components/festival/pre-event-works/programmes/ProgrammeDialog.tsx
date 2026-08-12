@@ -3,6 +3,7 @@
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
 import { useQuery } from "@tanstack/react-query";
 import { Crown, Loader2, Plus, User } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -144,6 +145,7 @@ export function ProgrammeDialog({
   );
 
   const canUseAuditDrawer = useFeatureTag("programme.auditDrawer");
+  const festival = useFestival();
 
   /* Who leads each team. `{}` on non-PRO tiers, so the list simply shows no
      lead rather than failing. */
@@ -373,14 +375,30 @@ export function ProgrammeDialog({
         </div>
 
         <div className="space-y-2 flex flex-col flex-1 min-h-0">
-          <div className="flex items-baseline justify-between gap-3 shrink-0">
+          <div className="flex items-center justify-between gap-3 shrink-0">
             <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Assigned participants
             </h4>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {assignments.length} in {groupBlocks.length} group
-              {groupBlocks.length === 1 ? "" : "s"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {assignments.length} in {groupBlocks.length} group
+                {groupBlocks.length === 1 ? "" : "s"}
+              </span>
+              {festival?.slug && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs"
+                  asChild
+                >
+                  <Link
+                    href={`/dashboard/${festival.slug}/pre-event-works/assignments?programmeId=${details.id}`}
+                  >
+                    Edit assignments
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
 
           <ScrollArea className="flex-1 min-h-0 pr-1">

@@ -11,6 +11,7 @@ import {
   Plus,
   ShieldAlert,
   Trash2,
+  Search,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -31,6 +32,8 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
+  PaginationFirst,
+  PaginationLast,
 } from "@/components/ui/pagination";
 import {
   Select,
@@ -144,11 +147,13 @@ export function AssignProgrammesClient({
   const deleteAssignment = useDeleteAssignment();
 
   const sortedProgrammes = useMemo(() => {
-    return [...programmes].sort(
-      (a, b) =>
+    return [...programmes].sort((a, b) => {
+      const rankDiff =
         getProgrammeStatusPriorityRank(a.status) -
-        getProgrammeStatusPriorityRank(b.status),
-    );
+        getProgrammeStatusPriorityRank(b.status);
+      if (rankDiff !== 0) return rankDiff;
+      return a.name.localeCompare(b.name);
+    });
   }, [programmes]);
 
   const programmeCategoryOptions = useMemo(() => {
@@ -190,6 +195,9 @@ export function AssignProgrammesClient({
     "ALL" | "GROUP" | "INDIVIDUAL"
   >("ALL");
 
+  // Search filter
+  const [programmeSearch, setProgrammeSearch] = useState("");
+
   // Polling: keep assignments fresh while admins assign in another session.
   useEffect(() => {
     if (!festivalId) return;
@@ -201,7 +209,7 @@ export function AssignProgrammesClient({
 
   useEffect(() => {
     setAssignPageIndex(0);
-  }, [selectedProgrammeCategoryId, selectedProgrammeType]);
+  }, [selectedProgrammeCategoryId, selectedProgrammeType, programmeSearch]);
 
   useEffect(() => {
     if (!programmeCategoryOptions.length) return;
@@ -225,6 +233,12 @@ export function AssignProgrammesClient({
         return p.category.type === "GENERAL";
       }
 
+      // Search filter
+      if (programmeSearch.trim() !== "") {
+        const q = programmeSearch.toLowerCase();
+        if (!p.name.toLowerCase().includes(q)) return false;
+      }
+
       // default to SINGLE behaviour
       return p.category.id === selectedProgrammeCategoryId;
     });
@@ -233,6 +247,7 @@ export function AssignProgrammesClient({
     selectedProgrammeCategoryId,
     selectedProgrammeType,
     selectedProgrammeCategoryType,
+    programmeSearch,
   ]);
 
   const [selectedProgrammeId, setSelectedProgrammeId] = useState<string | null>(
@@ -927,9 +942,11 @@ export function AssignProgrammesClient({
       }
     }
 
-    return Array.from(map.values()).sort(
-      (x, y) => y.lastAssignedAt - x.lastAssignedAt,
-    );
+    return Array.from(map.values()).sort((x, y) => {
+      const timeDiff = y.lastAssignedAt - x.lastAssignedAt;
+      if (timeDiff !== 0) return timeDiff;
+      return (x.programme?.name ?? "").localeCompare(y.programme?.name ?? "");
+    });
   }, [leaderAssignments]);
 
   const [drawerProgrammeId, setDrawerProgrammeId] = useState<string | null>(
@@ -1180,9 +1197,19 @@ export function AssignProgrammesClient({
         {/* ── Assign: pick a programme, assign inside the drawer ─────── */}
         {canAssign && (
           <TabsContent value="ASSIGN" className="mt-5">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
-                <Select
+            <div className="mb-4 flex flex-col gap-3">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search programmes..."
+                  value={programmeSearch}
+                  onChange={(e) => setProgrammeSearch(e.target.value)}
+                  className="h-10 w-full rounded-full pl-9"
+                />
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
+                  <Select
                   value={selectedProgrammeCategoryId}
                   onValueChange={setSelectedProgrammeCategoryId}
                 >
@@ -1221,6 +1248,7 @@ export function AssignProgrammesClient({
                 {eligibleProgrammes.length} programme
                 {eligibleProgrammes.length === 1 ? "" : "s"}
               </span>
+            </div>
             </div>
 
             {eligibleProgrammes.length === 0 ? (
@@ -1286,6 +1314,19 @@ export function AssignProgrammesClient({
                 {eligibleProgrammes.length > pageSize && (
                   <Pagination className="mt-4">
                     <PaginationContent>
+                      <PaginationItem>
+                        <PaginationFirst
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setAssignPageIndex(0);
+                          }}
+                          className={
+                            assignPageIndex === 0
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
                       <PaginationItem>
                         <PaginationPrevious
                           onClick={(e) => {
@@ -1355,6 +1396,23 @@ export function AssignProgrammesClient({
                               eligibleProgrammes.length
                             )
                               setAssignPageIndex((p) => p + 1);
+                          }}
+                          className={
+                            (assignPageIndex + 1) * pageSize >=
+                            eligibleProgrammes.length
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationLast
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setAssignPageIndex(
+                              Math.ceil(eligibleProgrammes.length / pageSize) -
+                                1,
+                            );
                           }}
                           className={
                             (assignPageIndex + 1) * pageSize >=
@@ -1447,6 +1505,19 @@ export function AssignProgrammesClient({
                 <Pagination className="mt-4">
                   <PaginationContent>
                     <PaginationItem>
+                      <PaginationFirst
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setAssignmentsPageIndex(0);
+                        }}
+                        className={
+                          assignmentsPageIndex === 0
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
                       <PaginationPrevious
                         onClick={(e) => {
                           e.preventDefault();
@@ -1515,6 +1586,24 @@ export function AssignProgrammesClient({
                             programmeAssignmentRows.length
                           )
                             setAssignmentsPageIndex((p) => p + 1);
+                        }}
+                        className={
+                          (assignmentsPageIndex + 1) * pageSize >=
+                          programmeAssignmentRows.length
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationLast
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setAssignmentsPageIndex(
+                            Math.ceil(
+                              programmeAssignmentRows.length / pageSize,
+                            ) - 1,
+                          );
                         }}
                         className={
                           (assignmentsPageIndex + 1) * pageSize >=

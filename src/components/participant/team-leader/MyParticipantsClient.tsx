@@ -7,9 +7,9 @@ import {
   Eye,
   MoreVertical,
   Pencil,
-  Plus,
   QrCode,
   ShieldAlert,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -47,6 +47,8 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
+  PaginationFirst,
+  PaginationLast,
 } from "@/components/ui/pagination";
 import {
   Select,
@@ -74,9 +76,9 @@ type ParticipantForMyParticipants = {
   phone?: string | null;
   gender?: any;
   dateOfBirth?: string | null;
-  standard?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+  assignments?: any[];
 };
 
 export function MyParticipantsClient({
@@ -141,6 +143,7 @@ export function MyParticipantsClient({
   }, [participants]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [participantSearch, setParticipantSearch] = useState("");
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = 15;
   const [detailsParticipant, setDetailsParticipant] =
@@ -151,12 +154,19 @@ export function MyParticipantsClient({
     useState<ParticipantForMyParticipants | null>(null);
 
   const visibleParticipants = useMemo(() => {
-    if (selectedCategoryId === "all") return participants;
-    return participants.filter((s) => s.category?.id === selectedCategoryId);
-  }, [participants, selectedCategoryId]);
+    let filtered = participants;
+    if (selectedCategoryId !== "all") {
+      filtered = filtered.filter((s) => s.category?.id === selectedCategoryId);
+    }
+    if (participantSearch.trim() !== "") {
+      const q = participantSearch.toLowerCase();
+      filtered = filtered.filter((s) => s.name.toLowerCase().includes(q) || (s.chestNumber && s.chestNumber.toLowerCase().includes(q)));
+    }
+    return filtered;
+  }, [participants, selectedCategoryId, participantSearch]);
 
   // Reset pagination when filter changes
-  useMemo(() => setPageIndex(0), [selectedCategoryId]);
+  useMemo(() => setPageIndex(0), [selectedCategoryId, participantSearch]);
 
   return (
     <div className="space-y-8">
@@ -257,27 +267,38 @@ export function MyParticipantsClient({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Select
-          value={selectedCategoryId}
-          onValueChange={setSelectedCategoryId}
-        >
-          <SelectTrigger className="h-9 w-full rounded-full sm:w-[200px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col gap-3">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search participants by name or chest number..."
+            value={participantSearch}
+            onChange={(e) => setParticipantSearch(e.target.value)}
+            className="h-10 w-full rounded-full pl-9"
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Select
+            value={selectedCategoryId}
+            onValueChange={setSelectedCategoryId}
+          >
+            <SelectTrigger className="h-9 w-full rounded-full sm:w-[200px]">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <p className="text-xs tabular-nums text-muted-foreground">
-          {visibleParticipants.length} of {participants.length}
-        </p>
+          <p className="text-xs tabular-nums text-muted-foreground">
+            {visibleParticipants.length} of {participants.length}
+          </p>
+        </div>
       </div>
 
       {visibleParticipants.length === 0 ? (
@@ -305,6 +326,9 @@ export function MyParticipantsClient({
                         <StatusPill tone="warning" icon={Crown}>
                           Leader
                         </StatusPill>
+                      )}
+                      {s.assignments && s.assignments.length > 0 && (
+                        <StatusPill tone="ready">Assigned</StatusPill>
                       )}
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -351,6 +375,17 @@ export function MyParticipantsClient({
           {visibleParticipants.length > pageSize && (
             <Pagination className="mt-4">
               <PaginationContent>
+                <PaginationItem>
+                  <PaginationFirst
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPageIndex(0);
+                    }}
+                    className={
+                      pageIndex === 0 ? "pointer-events-none opacity-50" : ""
+                    }
+                  />
+                </PaginationItem>
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={(e) => {
@@ -414,6 +449,21 @@ export function MyParticipantsClient({
                         visibleParticipants.length
                       )
                         setPageIndex((p) => p + 1);
+                    }}
+                    className={
+                      (pageIndex + 1) * pageSize >= visibleParticipants.length
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLast
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPageIndex(
+                        Math.ceil(visibleParticipants.length / pageSize) - 1,
+                      );
                     }}
                     className={
                       (pageIndex + 1) * pageSize >= visibleParticipants.length
