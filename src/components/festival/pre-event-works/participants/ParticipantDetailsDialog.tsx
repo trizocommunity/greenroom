@@ -1,6 +1,8 @@
 "use client";
 
 import { Crown, Eye, Loader2, Mail, Phone } from "lucide-react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { useAssignments } from "@/api/client/assignments";
 import { useFestival } from "@/components/festival/FestivalContext";
@@ -41,8 +43,9 @@ export function ParticipantDetailsDialog({
   const { data: assignments = [], isLoading } = useAssignments(festivalId);
   const canViewTeamLeaders = useFeature("members");
   const festivalContext = useFestival();
-  const isBasicTier = festivalContext.tier === "BASIC";
+  const isBasicTier = festivalContext?.tier === "BASIC";
   const displayTz = useDisplayTimezone();
+  const pathname = usePathname();
 
   const participantAssignments = assignments.filter(
     (a: any) =>
@@ -267,12 +270,32 @@ export function ParticipantDetailsDialog({
               {/* Programmes Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold tracking-tight">
-                    Assigned Programmes
-                  </h4>
-                  <Badge variant="secondary" className="rounded-full">
-                    {participantAssignments.length}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-semibold tracking-tight">
+                      Assigned Programmes
+                    </h4>
+                    <Badge variant="secondary" className="rounded-full">
+                      {participantAssignments.length}
+                    </Badge>
+                  </div>
+                  {festivalContext?.slug && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      asChild
+                    >
+                      <Link
+                        href={
+                          pathname?.includes("/dashboard/")
+                            ? `/dashboard/${festivalContext.slug}/pre-event-works/assignments?participantId=${participant.id}`
+                            : `/festival/${festivalContext.slug}/${participant.profileSlug || participant.id}/assign`
+                        }
+                      >
+                        Edit assignments
+                      </Link>
+                    </Button>
+                  )}
                 </div>
 
                 {isLoading ? (

@@ -29,7 +29,7 @@ export default async function MyParticipantsPage({
         eq(participantTable.festivalId, festival.id),
         eq(participantTable.groupId, participant.groupId!),
       ),
-      with: { group: true, category: true },
+      with: { group: true, category: true, assignments: { limit: 1 } },
       orderBy: [desc(participantTable.createdAt)],
     }),
     db.query.category.findMany({
