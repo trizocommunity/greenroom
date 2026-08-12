@@ -3,7 +3,7 @@ import "client-only";
 
 const baseURL =
   typeof window === "undefined"
-    ? `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1`
+    ? `${(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").trim()}/api/v1`
     : "/api/v1";
 
 export const apiClient = axios.create({
