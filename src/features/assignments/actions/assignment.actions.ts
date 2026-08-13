@@ -433,6 +433,65 @@ export async function deleteAssignmentAction(
   return deleted;
 }
 
+export async function removeTeamMemberAction(
+  festivalId: string,
+  assignmentId: string,
+  participantId: string,
+  replacementLeadParticipantId?: string,
+) {
+  const actorContext = await resolveAssignmentActorContext(festivalId, {
+    requireWritable: true,
+  });
+
+  const festival = await findFestivalById(festivalId);
+  await assertFestivalMutationAllowed(festivalId);
+
+  assertAssignmentWindowOpen(festival, actorContext);
+  assertAssignmentPermission(festival, actorContext, "delete");
+
+  if (actorContext.type === "teamLeader") {
+    const assignment = await db.query.programmeAssignment.findFirst({
+      where: eq(assignmentTable.id, assignmentId),
+      with: { participant: true, group: true },
+    });
+    const assignmentGroupId =
+      assignment?.groupId ??
+      assignment?.participant?.groupId ??
+      assignment?.group?.id;
+    if (
+      !assignment ||
+      assignment.festivalId !== festivalId ||
+      assignmentGroupId !== actorContext.groupId
+    ) {
+      throw new AppError(ERROR_MESSAGES.FORBIDDEN);
+    }
+  }
+
+  const appointer = await resolveAppointerContext(actorContext);
+
+  const deleted = await AssignmentService.removeTeamMember(
+    festivalId,
+    assignmentId,
+    participantId,
+    {
+      replacementLeadParticipantId,
+      appointer,
+    },
+  );
+  await createAuditLog({
+    action: "REMOVE_ASSIGNMENT",
+    targetType: "PROGRAMME_ASSIGNMENT",
+    targetId: assignmentId,
+    metadata: {
+      participantId,
+    },
+    actor: auditActorForContext(actorContext),
+  }).catch((err) => console.error("[AuditLog] REMOVE_ASSIGNMENT failed", err));
+  revalidatePath("/", "layout");
+  return deleted;
+}
+
+
 export async function deleteTeamAssignmentAction(
   festivalId: string,
   programmeId: string,

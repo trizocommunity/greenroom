@@ -581,6 +581,113 @@ export const AssignmentService = {
     return deleted;
   },
 
+  async removeTeamMember(
+    festivalId: string,
+    assignmentId: string,
+    participantId: string,
+    options?: {
+      replacementLeadParticipantId?: string;
+      appointer?: {
+        appointedBy: string;
+        appointedByRole: TeamLeadAppointerRole;
+        appointedByName?: string;
+        appointedByEmail?: string;
+      };
+    },
+  ) {
+    const existing = await db.query.programmeAssignment.findFirst({
+      where: and(
+        eq(programmeAssignment.id, assignmentId),
+        eq(programmeAssignment.festivalId, festivalId)
+      ),
+      with: { programme: { columns: { type: true, status: true } } },
+    });
+    if (!existing) throw new AppError(ERROR_MESSAGES.ASSIGNMENT_NOT_FOUND);
+
+    assertProgrammePreReporting(existing.programme.status);
+
+    if (existing.programme?.type !== "GROUP" || !existing.groupId) {
+      throw new AppError("Can only remove team members from GROUP programmes.");
+    }
+
+    const lead = await db.query.programmeTeamLead.findFirst({
+      where: and(
+        eq(programmeTeamLeadTable.programmeId, existing.programmeId),
+        eq(programmeTeamLeadTable.groupId, existing.groupId),
+        eq(programmeTeamLeadTable.teamNumber, existing.teamNumber),
+      ),
+    });
+
+    const [{ c: remainingCount }] = await db
+      .select({ c: count() })
+      .from(programmeAssignmentMember)
+      .where(
+        and(
+          eq(programmeAssignmentMember.assignmentId, assignmentId),
+          sql`${programmeAssignmentMember.participantId} != ${participantId}`
+        )
+      );
+
+    if (remainingCount === 0) {
+      throw new AppError(
+        "This team has no remaining members. Delete the whole team instead of removing its last member.",
+        "TEAM_WOULD_BE_EMPTY",
+      );
+    }
+
+    let deletedRow;
+    if (lead && lead.participantId === participantId) {
+      if (!options?.replacementLeadParticipantId) {
+        throw new AppError(
+          "This team has a lead. Appoint a replacement lead before removing the team lead.",
+          "LEAD_MUST_BE_REPLACED",
+        );
+      }
+      if (!options?.appointer) {
+        throw new AppError(
+          "Missing appointer context for team lead replacement.",
+          "LEAD_MUST_BE_REPLACED",
+        );
+      }
+      
+      deletedRow = await db.transaction(async (tx) => {
+        await ProgrammeTeamLeadService.replaceTeamLead(
+          {
+            programmeId: existing.programmeId,
+            groupId: existing.groupId!,
+            teamNumber: existing.teamNumber,
+            participantId: options.replacementLeadParticipantId!,
+            ...options.appointer!,
+          },
+          tx,
+        );
+        const [deleted] = await tx
+          .delete(programmeAssignmentMember)
+          .where(
+            and(
+              eq(programmeAssignmentMember.assignmentId, assignmentId),
+              eq(programmeAssignmentMember.participantId, participantId)
+            )
+          )
+          .returning();
+        return deleted;
+      });
+    } else {
+      const [deleted] = await db
+        .delete(programmeAssignmentMember)
+        .where(
+          and(
+            eq(programmeAssignmentMember.assignmentId, assignmentId),
+            eq(programmeAssignmentMember.participantId, participantId)
+          )
+        )
+        .returning();
+      deletedRow = deleted;
+    }
+    await updateProgrammeStatus(existing.programmeId);
+    return deletedRow;
+  },
+
   async deleteByTeam(
     festivalId: string,
     programmeId: string,

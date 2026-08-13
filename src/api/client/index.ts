@@ -104,6 +104,7 @@ export {
   useDeletePosterTemplateDraft,
   useDeleteScheduleEntry,
   useDeleteTeamAssignment,
+  useRemoveTeamMember,
   useEditorPreviewBindings,
   useExportParticipantsQrPdf,
   useListPosterTemplates,
