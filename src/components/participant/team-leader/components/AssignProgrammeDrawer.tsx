@@ -82,6 +82,7 @@ export function AssignProgrammeDrawer({
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
   const [removedParticipantIds, setRemovedParticipantIds] = useState<string[]>([]);
   const [teamLeadChoice, setTeamLeadChoice] = useState<Record<number, string>>({});
+  const [teamOverrides, setTeamOverrides] = useState<Record<string, number>>({});
   const [isEditingAssignments, setIsEditingAssignments] = useState(false);
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export function AssignProgrammeDrawer({
       setSelectedParticipantIds([]);
       setRemovedParticipantIds([]);
       setTeamLeadChoice({});
+      setTeamOverrides({});
       setIsEditingAssignments(false);
       setParticipantSearch("");
       setParticipantFilter("ALL");
@@ -99,6 +101,7 @@ export function AssignProgrammeDrawer({
     setSelectedParticipantIds([]);
     setRemovedParticipantIds([]);
     setTeamLeadChoice({});
+    setTeamOverrides({});
   };
 
   const participantsForSelectedProgramme = useMemo(() => {
@@ -320,10 +323,16 @@ export function AssignProgrammeDrawer({
         teamNumber: number;
       }[] = [];
       for (const participantId of participantIds) {
-        const teamNumber = allocateOneParticipant();
+        let teamNumber = teamOverrides[participantId];
+        
         if (!teamNumber) {
-          return [];
+          const alloc = allocateOneParticipant();
+          if (alloc === null) return [];
+          teamNumber = alloc;
+        } else {
+          // If explicitly chosen but team is full, UI handles the warning, we just assign
         }
+        
         existingTeams.add(teamNumber);
         teamCounts.set(teamNumber, (teamCounts.get(teamNumber) || 0) + 1);
         result.push({ programmeId: programme.id, participantId, teamNumber });
@@ -331,7 +340,7 @@ export function AssignProgrammeDrawer({
 
       return result;
     },
-    [assignments, leaderGroupId, removedParticipantIds],
+    [assignments, leaderGroupId, removedParticipantIds, teamOverrides],
   );
 
   const groupTeamPreview = useMemo(() => {
@@ -359,10 +368,10 @@ export function AssignProgrammeDrawer({
       if (!a?.participant?.id) continue;
       if (a?.teamNumber == null) continue;
 
-      const tn = Number(a.teamNumber) || 1;
-      if (tn < 1 || tn > maxTeams) continue;
-
       if (removedParticipantIds.includes(a.participant.id)) continue;
+
+      const tn = teamOverrides[a.participant.id] ?? Number(a.teamNumber) ?? 1;
+      if (tn < 1 || tn > maxTeams) continue;
 
       teamToExistingParticipantIds.get(tn)!.add(a.participant.id);
       participantIdToTeamNumber.set(a.participant.id, tn);
@@ -406,6 +415,7 @@ export function AssignProgrammeDrawer({
     allocateTeamsForGroupProgramme,
     selectedNewParticipantIdsToAssign,
     removedParticipantIds,
+    teamOverrides,
   ]);
 
   const teamsNeedingLead = useMemo(() => {
@@ -437,12 +447,41 @@ export function AssignProgrammeDrawer({
   const onAssign = async () => {
     if (!canAssign) return;
     if (!selectedProgramme) return;
-    if (selectedNewCount === 0 && removedParticipantIds.length === 0) {
+
+    // Detect if there's any team lead changes
+    let hasLeadChanges = false;
+    if (requiresTeamLead && selectedProgramme.type === "GROUP") {
+      for (const t of teamsNeedingLead) {
+        const chosenId = teamLeadChoice[t.teamNumber];
+        const existingLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
+        const isExistingLeadRemoved = existingLead && removedParticipantIds.includes(existingLead.participantId);
+        
+        if (chosenId && chosenId !== existingLead?.participantId) {
+          hasLeadChanges = true;
+        }
+      }
+    }
+
+    const existingParticipantsToMove = (assignments as any[]).filter((a) => {
+      const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
+      const assignmentGroupId = a?.group?.id ?? a?.participant?.groupId ?? a?.participant?.group?.id;
+      if (assignmentProgrammeId !== selectedProgramme.id || assignmentGroupId !== leaderGroupId) return false;
+      if (removedParticipantIds.includes(a.participant?.id)) return false;
+      
+      const override = teamOverrides[a.participant?.id];
+      if (override && override !== a.teamNumber) return true;
+      return false;
+    });
+
+    const participantsToMoveIds = existingParticipantsToMove.map(a => a.participant.id);
+    const allRemovedIds = [...removedParticipantIds, ...participantsToMoveIds];
+
+    if (selectedNewCount === 0 && allRemovedIds.length === 0 && !hasLeadChanges) {
       toast.error("No changes to save");
       return;
     }
 
-    if (removedParticipantIds.length > 0) {
+    if (allRemovedIds.length > 0) {
       const assignmentsToDelete = (assignments as any[]).filter((a) => {
         const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
         const assignmentGroupId =
@@ -450,7 +489,7 @@ export function AssignProgrammeDrawer({
         return (
           assignmentProgrammeId === selectedProgramme.id &&
           assignmentGroupId === leaderGroupId &&
-          removedParticipantIds.includes(a.participant?.id)
+          allRemovedIds.includes(a.participant?.id)
         );
       });
 
@@ -487,24 +526,24 @@ export function AssignProgrammeDrawer({
           return;
         }
       }
-    }
-
-    if (selectedNewCount === 0) {
+    }    if (selectedNewCount === 0 && participantsToMoveIds.length === 0 && !hasLeadChanges) {
       toast.success("Assignments updated");
       clearSelection();
       setIsEditingAssignments(false);
       return;
     }
 
-    const selectedParticipantsList = participantsForSelectedProgramme.filter((s) => selectedParticipantIds.includes(s.id));
+    const selectedParticipantsList = participantsForSelectedProgramme.filter((s) => 
+      selectedParticipantIds.includes(s.id) || participantsToMoveIds.includes(s.id)
+    );
     
     const participantIdsToAssign = selectedParticipantsList
       .map((s) => s.id)
       .filter(
-        (id) => !alreadyAssignedParticipantIdsForSelectedProgramme.has(id),
+        (id) => !alreadyAssignedParticipantIdsForSelectedProgramme.has(id) || participantsToMoveIds.includes(id),
       );
 
-    if (participantIdsToAssign.length === 0) {
+    if (participantIdsToAssign.length === 0 && !hasLeadChanges) {
       toast.error(
         "All selected participants are already assigned to this programme",
       );
@@ -540,7 +579,7 @@ export function AssignProgrammeDrawer({
       for (const t of teamsNeedingLead) {
         const chosenId = teamLeadChoice[t.teamNumber];
         const existingLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
-        const isExistingLeadRemoved = existingLead && removedParticipantIds.includes(existingLead.participantId);
+        const isExistingLeadRemoved = existingLead && allRemovedIds.includes(existingLead.participantId);
 
         if (chosenId && chosenId !== existingLead?.participantId) {
           teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = chosenId;
@@ -880,13 +919,18 @@ export function AssignProgrammeDrawer({
                             : undefined;
 
                         return (
-                          <li key={s.id}>
+                          <li
+                            key={s.id}
+                            className={cn(
+                              "flex items-center justify-between px-3.5 py-3 transition-colors",
+                              checked && "bg-primary/[0.06]",
+                              isAssignedDB && !isRemoved && "bg-muted/40",
+                              disableForLimit && "opacity-45"
+                            )}
+                          >
                             <label
                               className={cn(
-                                "flex items-center gap-3 px-3.5 py-3 transition-colors",
-                                checked && "bg-primary/[0.06]",
-                                isAssignedDB && !isRemoved && "bg-muted/40",
-                                disableForLimit && "opacity-45",
+                                "flex flex-1 items-center gap-3 min-w-0",
                                 !(isAssignedDB && !isRemoved) &&
                                   !disableForLimit &&
                                   canAssign &&
@@ -914,18 +958,43 @@ export function AssignProgrammeDrawer({
                                   {s.chestNumber ?? "No chest number"}
                                 </span>
                               </span>
+                            </label>
 
-                              {isAssignedDB && !isRemoved && (
+                            <div className="flex shrink-0 items-center gap-2 pl-3">
+                              {isAssignedDB && !isRemoved && !isEditingAssignments && (
                                 <StatusPill tone="live" icon={Check}>
                                   Assigned
                                 </StatusPill>
                               )}
                               {teamNumber != null && !isRemoved && (
-                                <StatusPill tone="muted">
-                                  Team {teamNumber}
-                                </StatusPill>
+                                isEditingAssignments ? (
+                                  <Select 
+                                    value={String(teamNumber)}
+                                    onValueChange={(val) => {
+                                      setTeamOverrides((prev) => ({
+                                        ...prev,
+                                        [s.id]: parseInt(val, 10),
+                                      }));
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-7 w-[95px] rounded-full text-[11px]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: selectedProgramme.maxTeamsPerGroup ?? 1 }, (_, i) => i + 1).map((num) => (
+                                        <SelectItem key={num} value={String(num)}>
+                                          Team {num}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <StatusPill tone="muted">
+                                    Team {teamNumber}
+                                  </StatusPill>
+                                )
                               )}
-                            </label>
+                            </div>
                           </li>
                         );
                       })}

@@ -74,11 +74,11 @@ const PaginationFirst = ({
   <PaginationLink
     aria-label="Go to first page"
     size="default"
-    className={cn("gap-1 pl-2.5", className)}
+    className={cn("gap-1 px-2.5 sm:pl-2.5 sm:pr-4", className)}
     {...props}
   >
     <ChevronsLeft className="h-4 w-4" />
-    <span>First</span>
+    <span className="hidden sm:inline">First</span>
   </PaginationLink>
 );
 PaginationFirst.displayName = "PaginationFirst";
@@ -90,11 +90,11 @@ const PaginationPrevious = ({
   <PaginationLink
     aria-label="Go to previous page"
     size="default"
-    className={cn("gap-1 pl-2.5", className)}
+    className={cn("gap-1 px-2.5 sm:pl-2.5 sm:pr-4", className)}
     {...props}
   >
     <ChevronLeft className="h-4 w-4" />
-    <span>Prev</span>
+    <span className="hidden sm:inline">Prev</span>
   </PaginationLink>
 );
 PaginationPrevious.displayName = "PaginationPrevious";
@@ -106,10 +106,10 @@ const PaginationNext = ({
   <PaginationLink
     aria-label="Go to next page"
     size="default"
-    className={cn("gap-1 pr-2.5", className)}
+    className={cn("gap-1 px-2.5 sm:pl-4 sm:pr-2.5", className)}
     {...props}
   >
-    <span>Next</span>
+    <span className="hidden sm:inline">Next</span>
     <ChevronRight className="h-4 w-4" />
   </PaginationLink>
 );
@@ -122,10 +122,10 @@ const PaginationLast = ({
   <PaginationLink
     aria-label="Go to last page"
     size="default"
-    className={cn("gap-1 pr-2.5", className)}
+    className={cn("gap-1 px-2.5 sm:pl-4 sm:pr-2.5", className)}
     {...props}
   >
-    <span>Last</span>
+    <span className="hidden sm:inline">Last</span>
     <ChevronsRight className="h-4 w-4" />
   </PaginationLink>
 );
