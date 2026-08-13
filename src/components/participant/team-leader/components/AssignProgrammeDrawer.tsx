@@ -428,8 +428,7 @@ export function AssignProgrammeDrawer({
       removedParticipantIds.includes(existingLead.participantId);
 
     if (chosenId) return false;
-    if (!isEditingAssignments && existingLead && !isExistingLeadRemoved)
-      return false;
+    if (existingLead && !isExistingLeadRemoved) return false;
     return true;
   });
 
@@ -522,7 +521,7 @@ export function AssignProgrammeDrawer({
 
         if (chosenId) {
           teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = chosenId;
-        } else if (!isEditingAssignments && existingLead && !isExistingLeadRemoved) {
+        } else if (existingLead && !isExistingLeadRemoved) {
           teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = existingLead.participantId;
         } else {
            toast.error(`Choose a team lead for Team ${t.teamNumber}`);
@@ -664,11 +663,8 @@ export function AssignProgrammeDrawer({
                             <Select
                               value={
                                 teamLeadChoice[t.teamNumber] ??
-                                (isEditingAssignments
-                                  ? ""
-                                  : existingTeamLeads[
-                                      `${selectedProgramme.id}:${t.teamNumber}`
-                                    ]?.participantId ?? "")
+                                existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`]?.participantId ??
+                                ""
                               }
                               onValueChange={(v) =>
                                 setTeamLeadChoice((prev) => ({
