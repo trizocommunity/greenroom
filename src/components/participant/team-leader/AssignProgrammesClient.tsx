@@ -6,7 +6,7 @@ import {
   useBulkCreateAssignments,
   useDeleteAssignment,
 } from "@/api/client/assignments";
-import { useDeleteTeamAssignment } from "@/api/client";
+import { useDeleteTeamAssignment, useRemoveTeamMember } from "@/api/client";
 import { AssignmentModal } from "@/components/festival/pre-event-works/assignments/AssignmentModal";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
 import { toast } from "@/lib/toast";
@@ -72,6 +72,7 @@ export function AssignProgrammesClient({
   const bulkCreateAssignments = useBulkCreateAssignments();
   const deleteAssignment = useDeleteAssignment();
   const deleteTeamAssignment = useDeleteTeamAssignment();
+  const removeTeamMember = useRemoveTeamMember();
 
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
@@ -219,6 +220,7 @@ export function AssignProgrammesClient({
         bulkCreateAssignments={bulkCreateAssignments}
         deleteAssignment={deleteAssignment}
         deleteTeamAssignment={deleteTeamAssignment}
+        removeTeamMember={removeTeamMember}
         programmeCategoryOptions={programmeCategoryOptions}
       />
     </div>

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteTeamAssignmentAction,
   getProgrammeTeamMembersAction,
+  removeTeamMemberAction,
 } from "@/features/assignments/actions/assignment.actions";
 import {
   updateFestivalBrandingAction,
@@ -1006,6 +1007,33 @@ export function useDeleteTeamAssignment() {
           input.groupId,
           input.teamNumber,
         ],
+      });
+    },
+  });
+}
+
+export function useRemoveTeamMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      festivalId: string;
+      assignmentId: string;
+      participantId: string;
+      replacementLeadParticipantId?: string;
+    }) => {
+      return removeTeamMemberAction(
+        input.festivalId,
+        input.assignmentId,
+        input.participantId,
+        input.replacementLeadParticipantId,
+      );
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({
+        queryKey: queryKeys.assignments.all(input.festivalId),
       });
     },
   });

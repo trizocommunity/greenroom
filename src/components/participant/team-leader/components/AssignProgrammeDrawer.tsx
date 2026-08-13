@@ -53,6 +53,7 @@ interface AssignProgrammeDrawerProps {
   bulkCreateAssignments: any;
   deleteAssignment: any;
   deleteTeamAssignment: any;
+  removeTeamMember: any;
   programmeCategoryOptions: { id: string; name: string; type: CategoryType | null }[];
 }
 
@@ -72,6 +73,7 @@ export function AssignProgrammeDrawer({
   bulkCreateAssignments,
   deleteAssignment,
   deleteTeamAssignment,
+  removeTeamMember,
   programmeCategoryOptions,
 }: AssignProgrammeDrawerProps) {
   const [participantSearch, setParticipantSearch] = useState<string>("");
@@ -455,9 +457,30 @@ export function AssignProgrammeDrawer({
       if (assignmentsToDelete.length > 0) {
         try {
           await Promise.all(
-            assignmentsToDelete.map((a) =>
-              deleteAssignment.mutateAsync({ festivalId, assignmentId: a.id }),
-            ),
+            assignmentsToDelete.map((a) => {
+              if (selectedProgramme.type === "GROUP") {
+                const teamNumber = a.teamNumber;
+                let replacementLeadId: string | undefined = undefined;
+                
+                // If removing the current lead, check if a new one was selected
+                const existingLead = existingTeamLeads[`${selectedProgramme.id}:${teamNumber}`];
+                if (existingLead && existingLead.participantId === a.participant.id) {
+                  const newLeadChoice = teamLeadChoice[teamNumber];
+                  if (newLeadChoice) {
+                    replacementLeadId = newLeadChoice;
+                  }
+                }
+
+                return removeTeamMember.mutateAsync({
+                  festivalId,
+                  assignmentId: a.id,
+                  participantId: a.participant.id,
+                  replacementLeadParticipantId: replacementLeadId,
+                });
+              } else {
+                return deleteAssignment.mutateAsync({ festivalId, assignmentId: a.id });
+              }
+            }),
           );
         } catch (e) {
           toast.error("Failed to remove some assignments");
@@ -519,7 +542,7 @@ export function AssignProgrammeDrawer({
         const existingLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
         const isExistingLeadRemoved = existingLead && removedParticipantIds.includes(existingLead.participantId);
 
-        if (chosenId) {
+        if (chosenId && chosenId !== existingLead?.participantId) {
           teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = chosenId;
         } else if (existingLead && !isExistingLeadRemoved) {
           teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = existingLead.participantId;
@@ -650,59 +673,47 @@ export function AssignProgrammeDrawer({
                           t.isFull && "bg-muted/40",
                         )}
                       >
-                        <div className="flex items-baseline justify-between gap-2">
+                        <div className="flex items-center justify-between gap-2">
                           <span className="text-sm font-medium text-heading">
                             Team {t.teamNumber}
                           </span>
-                          <span className="text-xs tabular-nums text-muted-foreground">
-                            {t.used}/{groupTeamPreview.maxPerTeam}
-                          </span>
-                        </div>
-                        {requiresTeamLead && t.used > 0 && (isEditingAssignments || t.newIds.length > 0) ? (
-                          <div className="mt-3">
-                            <Select
-                              value={
-                                teamLeadChoice[t.teamNumber] ??
-                                existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`]?.participantId ??
-                                ""
-                              }
-                              onValueChange={(v) =>
-                                setTeamLeadChoice((prev) => ({
-                                  ...prev,
-                                  [t.teamNumber]: v,
-                                }))
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-full rounded-md border-border text-xs shadow-none">
-                                <div className="flex min-w-0 items-center gap-1.5">
-                                  <Crown className="h-3.5 w-3.5 shrink-0 text-primary" />
-                                  <span className="truncate">
-                                    <SelectValue placeholder="Select team lead" />
-                                  </span>
-                                </div>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {[...t.existingIds, ...t.newIds].map((id) => (
-                                  <SelectItem key={id} value={id}>
-                                    {participantByIdLookup.get(id)?.name ?? id}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                          <div className="flex items-center gap-2">
+                            {requiresTeamLead && t.used > 0 && (isEditingAssignments || t.newIds.length > 0) && (
+                              <Select
+                                value={
+                                  teamLeadChoice[t.teamNumber] ??
+                                  existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`]?.participantId ??
+                                  ""
+                                }
+                                onValueChange={(v) =>
+                                  setTeamLeadChoice((prev) => ({
+                                    ...prev,
+                                    [t.teamNumber]: v,
+                                  }))
+                                }
+                              >
+                                <SelectTrigger className="h-7 w-[120px] rounded-full border-border text-[11px] shadow-none bg-background">
+                                  <div className="flex min-w-0 items-center gap-1.5">
+                                    <Crown className="h-3 w-3 shrink-0 text-primary" />
+                                    <span className="truncate">
+                                      <SelectValue placeholder="Select lead" />
+                                    </span>
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[...t.existingIds, ...t.newIds].map((id) => (
+                                    <SelectItem key={id} value={id} className="text-[11px]">
+                                      {participantByIdLookup.get(id)?.name ?? id}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+                              {t.used}/{groupTeamPreview.maxPerTeam}
+                            </span>
                           </div>
-                        ) : existingTeamLeads[
-                            `${selectedProgramme.id}:${t.teamNumber}`
-                          ] ? (
-                          <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <Crown className="h-3 w-3 text-primary" />
-                            Lead:{" "}
-                            {
-                              existingTeamLeads[
-                                `${selectedProgramme.id}:${t.teamNumber}`
-                              ].name
-                            }
-                          </p>
-                        ) : null}
+                        </div>
                         <div className="mt-2 flex flex-wrap gap-1">
                           {[...t.existingIds, ...t.newIds].length === 0 ? (
                             <span className="text-xs text-muted-foreground">
@@ -1007,12 +1018,14 @@ export function AssignProgrammeDrawer({
                       isOverLimit ||
                       missingTeamLead ||
                       bulkCreateAssignments.isPending ||
-                      deleteAssignment.isPending
+                      deleteAssignment.isPending ||
+                      removeTeamMember.isPending
                     }
                     className="h-10 rounded-full px-7"
                   >
                     {(bulkCreateAssignments.isPending ||
-                      deleteAssignment.isPending) && (
+                      deleteAssignment.isPending ||
+                      removeTeamMember.isPending) && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
                     {isEditingAssignments
