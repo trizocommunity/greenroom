@@ -1,0 +1,1 @@
+ALTER TABLE "schedule_entry" ADD COLUMN "call_list_notified_at" timestamp(3) with time zone;

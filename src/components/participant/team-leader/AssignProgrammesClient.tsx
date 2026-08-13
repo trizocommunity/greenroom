@@ -215,6 +215,9 @@ export function AssignProgrammesClient({
     "ALL" | "GROUP" | "INDIVIDUAL"
   >("ALL");
 
+  const [participantCategoryFilter, setParticipantCategoryFilter] =
+    useState<string>("ALL");
+
   // Polling: keep assignments fresh while admins assign in another session.
   useEffect(() => {
     if (!festivalId) return;
@@ -427,14 +430,25 @@ export function AssignProgrammesClient({
     {},
   );
   const filteredParticipants = useMemo(() => {
+    let filtered = participantsForSelectedProgramme;
+
     const q = participantSearch.trim().toLowerCase();
-    if (!q) return participantsForSelectedProgramme;
-    return participantsForSelectedProgramme.filter((s) => {
-      const name = s.name.toLowerCase();
-      const chest = (s.chestNumber ?? "").toLowerCase();
-      return name.includes(q) || chest.includes(q);
-    });
-  }, [participantsForSelectedProgramme, participantSearch]);
+    if (q) {
+      filtered = filtered.filter((s) => {
+        const name = s.name.toLowerCase();
+        const chest = (s.chestNumber ?? "").toLowerCase();
+        return name.includes(q) || chest.includes(q);
+      });
+    }
+
+    if (participantCategoryFilter !== "ALL") {
+      filtered = filtered.filter(
+        (s) => s.categoryId === participantCategoryFilter,
+      );
+    }
+
+    return filtered;
+  }, [participantsForSelectedProgramme, participantSearch, participantCategoryFilter]);
 
   // NOTE: we display remaining capacity based on only "new" selections
   // (participants not already assigned for the selected programme).
@@ -863,10 +877,7 @@ export function AssignProgrammesClient({
     if (!groupTeamPreview) return [];
 
     return groupTeamPreview.teams
-      .filter((t) => t.newIds.length > 0)
-      .filter(
-        (t) => !existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`],
-      )
+      .filter((t) => [...t.existingIds, ...t.newIds].length > 0)
       .map((t) => ({
         teamNumber: t.teamNumber,
         candidateIds: [...t.existingIds, ...t.newIds],
@@ -875,7 +886,6 @@ export function AssignProgrammesClient({
     requiresTeamLead,
     selectedProgramme,
     groupTeamPreview,
-    existingTeamLeads,
   ]);
 
   const missingTeamLead = teamsNeedingLead.some(
@@ -965,18 +975,27 @@ export function AssignProgrammesClient({
        teams that actually gain members need one. */
     let teamLeadsByTeam: Record<string, string> | undefined;
     if (requiresTeamLead && selectedProgramme.type === "GROUP") {
-      const missing = teamsNeedingLead.find(
-        (t) => !teamLeadChoice[t.teamNumber],
-      );
-      if (missing) {
-        toast.error(`Choose a team lead for Team ${missing.teamNumber}`);
-        return;
-      }
       teamLeadsByTeam = {};
       for (const t of teamsNeedingLead) {
-        teamLeadsByTeam[
-          `${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`
-        ] = teamLeadChoice[t.teamNumber];
+        // If a new lead was selected in the dropdown, use it.
+        // Otherwise, if they already have a lead, preserve it so we don't accidentally remove it,
+        // unless they literally have no lead at all, in which case they MUST pick one.
+        const chosenId = teamLeadChoice[t.teamNumber];
+        const existingLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
+
+        if (chosenId) {
+          teamLeadsByTeam[
+            `${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`
+          ] = chosenId;
+        } else if (existingLead) {
+           teamLeadsByTeam[
+            `${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`
+          ] = existingLead.participantId;
+        } else {
+           // No existing lead, and none chosen -> Error
+           toast.error(`Choose a team lead for Team ${t.teamNumber}`);
+           return;
+        }
       }
     }
 
@@ -1540,15 +1559,11 @@ export function AssignProgrammesClient({
         open={assignDrawerOpen}
         onOpenChange={(open) => {
           setAssignDrawerOpen(open);
-          if (!open) {
-            clearSelection();
-            setIsEditingAssignments(false);
-          }
         }}
       >
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+          className="flex w-full flex-col gap-0 p-6 sm:max-w-xl"
         >
           {selectedProgramme ? (
             <>
@@ -1647,14 +1662,16 @@ export function AssignProgrammesClient({
                     {isEditingAssignments && teamsNeedingLead.length > 0 && (
                       <div className="mt-4 rounded-xl border border-border p-3">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Team lead required
+                          Team Leads
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Every new team needs a lead before it can be saved.
+                          Select a team lead for your teams.
                         </p>
 
                         <div className="mt-3 space-y-2">
-                          {teamsNeedingLead.map((t) => (
+                          {teamsNeedingLead.map((t) => {
+                            const currentLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`]?.participantId;
+                            return (
                             <div
                               key={t.teamNumber}
                               className="flex items-center gap-3"
@@ -1663,7 +1680,7 @@ export function AssignProgrammesClient({
                                 Team {t.teamNumber}
                               </span>
                               <Select
-                                value={teamLeadChoice[t.teamNumber] ?? ""}
+                                value={teamLeadChoice[t.teamNumber] ?? currentLead ?? ""}
                                 onValueChange={(v) =>
                                   setTeamLeadChoice((prev) => ({
                                     ...prev,
@@ -1684,7 +1701,7 @@ export function AssignProgrammesClient({
                                 </SelectContent>
                               </Select>
                             </div>
-                          ))}
+                          )})}
                         </div>
                       </div>
                     )}
@@ -1737,12 +1754,32 @@ export function AssignProgrammesClient({
                     </div>
 
                     <div className="mb-3 flex flex-col gap-2">
-                      <Input
-                        value={participantSearch}
-                        onChange={(e) => setParticipantSearch(e.target.value)}
-                        placeholder="Search name or chest number"
-                        className="h-9 rounded-full text-sm"
-                      />
+                      <div className="flex gap-2 flex-1">
+                        <Input
+                          value={participantSearch}
+                          onChange={(e) => setParticipantSearch(e.target.value)}
+                          placeholder="Search name or chest number"
+                          className="h-9 flex-1 rounded-full text-sm min-w-0"
+                        />
+                        {selectedProgramme.category.type === "GENERAL" && (
+                          <Select
+                            value={participantCategoryFilter}
+                            onValueChange={setParticipantCategoryFilter}
+                          >
+                            <SelectTrigger className="h-9 w-[140px] shrink-0 rounded-full text-sm">
+                              <SelectValue placeholder="Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ALL">All categories</SelectItem>
+                              {programmeCategoryOptions.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
                       <div className="flex gap-1">
                         {(["ALL", "AVAILABLE", "ASSIGNED"] as const).map(
                           (f) => (
