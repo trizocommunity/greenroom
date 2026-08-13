@@ -19,6 +19,7 @@ import {
   useBulkCreateAssignments,
   useDeleteAssignment,
 } from "@/api/client/assignments";
+import { useDeleteTeamAssignment } from "@/api/client";
 import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { AssignmentModal } from "@/components/festival/pre-event-works/assignments/AssignmentModal";
@@ -155,6 +156,7 @@ export function AssignProgrammesClient({
   const { data: assignments = [], refetch } = useAssignments(festivalId);
   const bulkCreateAssignments = useBulkCreateAssignments();
   const deleteAssignment = useDeleteAssignment();
+  const deleteTeamAssignment = useDeleteTeamAssignment();
 
   const sortedProgrammes = useMemo(() => {
     return [...programmes].sort((a, b) => {
@@ -461,6 +463,7 @@ export function AssignProgrammesClient({
     if (runtimeIsReadOnly) return;
     setSelectedParticipantIds([]);
     setRemovedParticipantIds([]);
+    setTeamLeadChoice({});
   };
 
   const alreadyAssignedParticipantIdsForSelectedProgramme = useMemo(() => {
@@ -682,7 +685,7 @@ export function AssignProgrammesClient({
 
       return result;
     },
-    [assignments, leaderGroupId],
+    [assignments, leaderGroupId, removedParticipantIds],
   );
 
   const groupTeamPreview = useMemo(() => {
@@ -758,6 +761,7 @@ export function AssignProgrammesClient({
     leaderGroupId,
     allocateTeamsForGroupProgramme,
     selectedNewParticipantIdsToAssign,
+    removedParticipantIds,
   ]);
 
   const leaderAssignments = useMemo(() => {
@@ -847,22 +851,11 @@ export function AssignProgrammesClient({
       `Remove Team ${params.teamNumber} from this programme?`,
     );
     if (!ok) return;
-    const assignment = (assignments as any[]).find(
-      (a) =>
-        (a.programme?.id ?? a.programmeId) === params.programmeId &&
-        (a.group?.id ??
-          a.groupId ??
-          a.participant?.groupId ??
-          a.participant?.group?.id) === params.groupId &&
-        a.teamNumber === params.teamNumber,
-    );
-    if (!assignment) {
-      toast.error("Assignment not found");
-      return;
-    }
-    await deleteAssignment.mutateAsync({
+    await deleteTeamAssignment.mutateAsync({
       festivalId,
-      assignmentId: assignment.id,
+      programmeId: params.programmeId,
+      groupId: params.groupId,
+      teamNumber: params.teamNumber,
     });
   };
 
@@ -888,9 +881,19 @@ export function AssignProgrammesClient({
     groupTeamPreview,
   ]);
 
-  const missingTeamLead = teamsNeedingLead.some(
-    (t) => !teamLeadChoice[t.teamNumber],
-  );
+  const missingTeamLead = teamsNeedingLead.some((t) => {
+    const chosenId = teamLeadChoice[t.teamNumber];
+    const existingLead =
+      existingTeamLeads[`${selectedProgramme?.id}:${t.teamNumber}`];
+    const isExistingLeadRemoved =
+      existingLead &&
+      removedParticipantIds.includes(existingLead.participantId);
+
+    if (chosenId) return false;
+    if (!isEditingAssignments && existingLead && !isExistingLeadRemoved)
+      return false;
+    return true;
+  });
 
   const onAssign = async () => {
     if (!canAssign) return;
@@ -977,22 +980,15 @@ export function AssignProgrammesClient({
     if (requiresTeamLead && selectedProgramme.type === "GROUP") {
       teamLeadsByTeam = {};
       for (const t of teamsNeedingLead) {
-        // If a new lead was selected in the dropdown, use it.
-        // Otherwise, if they already have a lead, preserve it so we don't accidentally remove it,
-        // unless they literally have no lead at all, in which case they MUST pick one.
         const chosenId = teamLeadChoice[t.teamNumber];
         const existingLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
+        const isExistingLeadRemoved = existingLead && removedParticipantIds.includes(existingLead.participantId);
 
         if (chosenId) {
-          teamLeadsByTeam[
-            `${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`
-          ] = chosenId;
-        } else if (existingLead) {
-           teamLeadsByTeam[
-            `${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`
-          ] = existingLead.participantId;
+          teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = chosenId;
+        } else if (!isEditingAssignments && existingLead && !isExistingLeadRemoved) {
+          teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = existingLead.participantId;
         } else {
-           // No existing lead, and none chosen -> Error
            toast.error(`Choose a team lead for Team ${t.teamNumber}`);
            return;
         }
@@ -1011,6 +1007,37 @@ export function AssignProgrammesClient({
 
   const onClearProgrammeAssignments = async () => {
     if (!canRemove || !selectedProgramme) return;
+
+    if (selectedProgramme.type === "GROUP") {
+      const teamNumbers = Array.from(
+        new Set(
+          (assignments as any[])
+            .filter(
+              (a) => (a.programme?.id ?? a.programmeId) === selectedProgramme.id
+            )
+            .map((a) => a.teamNumber)
+        )
+      );
+
+      if (teamNumbers.length === 0) return;
+
+      try {
+        await Promise.all(
+          teamNumbers.map((tn) =>
+            deleteTeamAssignment.mutateAsync({
+              festivalId,
+              programmeId: selectedProgramme.id,
+              groupId: leaderGroupId,
+              teamNumber: tn,
+            })
+          )
+        );
+        toast.success("Assignments cleared");
+      } catch (e) {
+        toast.error("Failed to clear some assignments");
+      }
+      return;
+    }
 
     const assignmentsToDelete = (assignments as any[]).filter((a) => {
       const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
@@ -1621,15 +1648,16 @@ export function AssignProgrammesClient({
                               {t.used}/{groupTeamPreview.maxPerTeam}
                             </span>
                           </div>
-                          {requiresTeamLead && t.used > 0 ? (
+                          {requiresTeamLead && t.used > 0 && (isEditingAssignments || t.newIds.length > 0) ? (
                             <div className="mt-3">
                               <Select
                                 value={
                                   teamLeadChoice[t.teamNumber] ??
-                                  existingTeamLeads[
-                                    `${selectedProgramme.id}:${t.teamNumber}`
-                                  ]?.participantId ??
-                                  ""
+                                  (isEditingAssignments
+                                    ? ""
+                                    : existingTeamLeads[
+                                        `${selectedProgramme.id}:${t.teamNumber}`
+                                      ]?.participantId ?? "")
                                 }
                                 onValueChange={(v) =>
                                   setTeamLeadChoice((prev) => ({
@@ -1929,7 +1957,10 @@ export function AssignProgrammesClient({
                       </AlertDialogContent>
                     </AlertDialog>
                     <Button
-                      onClick={() => setIsEditingAssignments(true)}
+                      onClick={() => {
+                        setIsEditingAssignments(true);
+                        setTeamLeadChoice({});
+                      }}
                       disabled={!canRemove || !isProgrammeEditable}
                       className="h-10 rounded-full px-7"
                     >
