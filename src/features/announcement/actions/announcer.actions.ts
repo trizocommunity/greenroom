@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, sql, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
@@ -9,6 +9,11 @@ import {
   festival as festivalTable,
   programme as programmeTable,
   result as resultTable,
+  programmeAssignment,
+  programmeAssignmentMember,
+  participant as participantTable,
+  group as groupTable,
+  programmeTeamLead,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
@@ -31,6 +36,34 @@ function revalidateAnnouncerPaths(slug: string) {
   revalidatePath(`/dashboard/${slug}/event-works/top-scorers`);
   revalidatePath(`/${slug}`);
   revalidatePath(`/${slug}/results`);
+}
+
+export async function getCallListAssignmentsAction(
+  festivalId: string,
+  programmeId: string
+) {
+  try {
+    await assertAnnouncerAccess(festivalId);
+    const assignments = await db
+      .select({
+        id: programmeAssignment.id,
+        teamNumber: programmeAssignment.teamNumber,
+        groupName: groupTable.name,
+        participantName: participantTable.name,
+        chestNumber: participantTable.chestNumber,
+        isTeamLead: sql<boolean>`CASE WHEN ${programmeTeamLead.participantId} IS NOT NULL THEN true ELSE false END`,
+      })
+      .from(programmeAssignment)
+      .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
+      .leftJoin(programmeAssignmentMember, eq(programmeAssignment.id, programmeAssignmentMember.assignmentId))
+      .leftJoin(participantTable, or(eq(programmeAssignment.participantId, participantTable.id), eq(programmeAssignmentMember.participantId, participantTable.id)))
+      .leftJoin(programmeTeamLead, and(eq(programmeTeamLead.programmeId, programmeId), eq(programmeTeamLead.participantId, participantTable.id)))
+      .where(eq(programmeAssignment.programmeId, programmeId));
+    
+    return { success: true, data: assignments };
+  } catch (error) {
+    return handleActionError(error);
+  }
 }
 
 async function getFestivalSlug(festivalId: string) {

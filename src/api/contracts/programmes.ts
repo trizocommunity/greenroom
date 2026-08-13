@@ -31,6 +31,9 @@ export const programmeSchema = z.object({
   maxTeamsPerGroup: z.number().int().positive().nullable(),
   maxParticipantsPerTeam: z.number().int().positive().nullable(),
   maxPoints: z.number().nullable(),
+  durationMode: z.enum(["SEQUENTIAL", "PARALLEL"]),
+  timePerUnitMinutes: z.number().int().positive(),
+  parallelDurationMinutes: z.number().int().positive().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
   category: programmeCategorySchema.nullable().optional(),
@@ -46,6 +49,9 @@ export const createProgrammeInput = z.object({
   maxTeamsPerGroup: z.number().int().positive().optional(),
   maxParticipantsPerTeam: z.number().int().positive().optional(),
   maxPoints: z.number().optional(),
+  durationMode: z.enum(["SEQUENTIAL", "PARALLEL"]).default("SEQUENTIAL"),
+  timePerUnitMinutes: z.number().int().positive().default(5),
+  parallelDurationMinutes: z.number().int().positive().optional().nullable(),
 });
 
 export const updateProgrammeInput = createProgrammeInput

@@ -64,7 +64,7 @@ export function ParticipantNavbar({
 
   if (isTeamLeader) {
     menuItems.push(
-      { label: "Assign", href: `${linkBase}/assign-programmes` },
+      { label: "Assignments", href: `${linkBase}/assign-programmes` },
       { label: "Participants", href: `${linkBase}/my-participants` },
       { label: "Programmes", href: `${linkBase}/all-programmes` },
       { label: "My programmes", href: `${linkBase}/assigned-programmes` },

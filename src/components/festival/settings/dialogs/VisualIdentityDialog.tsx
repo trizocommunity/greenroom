@@ -73,7 +73,11 @@ export function VisualIdentityDialog({
     }
 
     try {
-      const url = await uploadMutation.mutateAsync({ file, folder: "logo", festivalId: festival.id });
+      const url = await uploadMutation.mutateAsync({
+        file,
+        folder: "logo",
+        festivalId: festival.id,
+      });
       return url;
     } catch {
       return null;

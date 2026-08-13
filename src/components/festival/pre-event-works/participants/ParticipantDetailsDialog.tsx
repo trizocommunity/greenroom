@@ -1,9 +1,9 @@
 "use client";
 
 import { Crown, Eye, Loader2, Mail, Phone } from "lucide-react";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useState, useMemo } from "react";
 import { useAssignments } from "@/api/client/assignments";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamParticipantsDialog } from "@/components/festival/pre-event-works/assignments/TeamParticipantsDialog";
@@ -80,6 +80,15 @@ export function ParticipantDetailsDialog({
     teamLeadParticipantId: null,
   });
   const [loadingTeamFor, setLoadingTeamFor] = useState<string | null>(null);
+
+  const [filterType, setFilterType] = useState<string>("ALL");
+
+  const filteredParticipantAssignments = useMemo(() => {
+    return participantAssignments.filter((a: any) => {
+      if (filterType !== "ALL" && a.programme?.type !== filterType) return false;
+      return true;
+    });
+  }, [participantAssignments, filterType]);
 
   async function openTeamModal(assignment: any) {
     if (assignment.programme?.type !== "GROUP") return;
@@ -267,7 +276,6 @@ export function ParticipantDetailsDialog({
                 )}
               </div>
 
-              {/* Programmes Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -275,40 +283,33 @@ export function ParticipantDetailsDialog({
                       Assigned Programmes
                     </h4>
                     <Badge variant="secondary" className="rounded-full">
-                      {participantAssignments.length}
+                      {filteredParticipantAssignments.length}
                     </Badge>
                   </div>
-                  {festivalContext?.slug && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2 text-xs"
-                      asChild
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                      className="h-7 text-xs border rounded-md px-2 py-1 bg-background"
                     >
-                      <Link
-                        href={
-                          pathname?.includes("/dashboard/")
-                            ? `/dashboard/${festivalContext.slug}/pre-event-works/assignments?participantId=${participant.id}`
-                            : `/festival/${festivalContext.slug}/${participant.profileSlug || participant.id}/assign`
-                        }
-                      >
-                        Edit assignments
-                      </Link>
-                    </Button>
-                  )}
+                      <option value="ALL">All Types</option>
+                      <option value="INDIVIDUAL">Individual</option>
+                      <option value="GROUP">Group</option>
+                    </select>
+                  </div>
                 </div>
 
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 border rounded-xl border-dashed">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : participantAssignments.length === 0 ? (
+                ) : filteredParticipantAssignments.length === 0 ? (
                   <div className="text-center text-muted-foreground text-sm py-8 border rounded-xl border-dashed bg-muted/20">
                     Not assigned to any programmes yet.
                   </div>
                 ) : (
                   <div className="grid gap-2">
-                    {participantAssignments.map((assignment: any) => {
+                    {filteredParticipantAssignments.map((assignment: any) => {
                       const isGroup = assignment.programme?.type === "GROUP";
                       const isLoadingTeam = loadingTeamFor === assignment.id;
                       return (

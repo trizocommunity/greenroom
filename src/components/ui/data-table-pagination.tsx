@@ -1,16 +1,16 @@
+import type { Table } from "@tanstack/react-table";
 import * as React from "react";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
   PaginationFirst,
+  PaginationItem,
+  PaginationLast,
+  PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationLast,
 } from "@/components/ui/pagination";
-import type { Table } from "@tanstack/react-table";
 
 interface DataTablePaginationProps<TData> {
   table?: Table<TData>;
@@ -30,8 +30,8 @@ export function DataTablePagination<TData>({
 }: DataTablePaginationProps<TData>) {
   const pageIndex = table
     ? table.getState().pagination.pageIndex
-    : manualPageIndex ?? 0;
-  const pageCount = table ? table.getPageCount() : manualPageCount ?? 1;
+    : (manualPageIndex ?? 0);
+  const pageCount = table ? table.getPageCount() : (manualPageCount ?? 1);
 
   const setPage = (page: number) => {
     if (table) {

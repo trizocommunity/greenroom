@@ -2,9 +2,10 @@
 
 import { Loader2, Megaphone, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnnouncerCallListDrawer } from "@/components/dashboard/announcement/AnnouncerCallListDrawer";
 import {
   Table,
   TableBody,
@@ -15,8 +16,9 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
 import { announceStandings } from "@/features/announcement/actions/announcer.actions";
-import type { TeamStandingRow } from "@/features/announcement/services/announcer.service";
+import type { TeamStandingRow, ActiveReportingProgramme } from "@/features/announcement/services/announcer.service";
 import { toast } from "@/lib/toast";
+import { format } from "date-fns";
 
 const MEDAL_ROWS = [
   "bg-amber-500/10",
@@ -50,15 +52,18 @@ interface Props {
   festivalId: string;
   queuedStandings: TeamStandingRow[];
   afterCount: number | null;
+  callList: ActiveReportingProgramme[];
 }
 
 export function AnnouncerConsoleClient({
   festivalId,
   queuedStandings,
   afterCount,
+  callList,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [selectedCallItem, setSelectedCallItem] = useState<ActiveReportingProgramme | null>(null);
 
   function handleAnnounce() {
     startTransition(async () => {
@@ -73,30 +78,32 @@ export function AnnouncerConsoleClient({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/40 p-4 rounded-xl border border-muted">
-        <div>
-          <h2 className="font-semibold text-lg">Staged Standings</h2>
-          <p className="text-sm text-muted-foreground">
-            {afterCount
-              ? `Calculated after result #${afterCount}`
-              : "No specific after count."}
-          </p>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {/* Left Column: Standings */}
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/40 p-4 rounded-xl border border-muted">
+          <div>
+            <h2 className="font-semibold text-lg">Staged Standings</h2>
+            <p className="text-sm text-muted-foreground">
+              {afterCount
+                ? `Calculated after result #${afterCount}`
+                : "No specific after count."}
+            </p>
+          </div>
+          <Button
+            size="lg"
+            className="bg-sky-600 hover:bg-sky-700 text-white shadow-sm shrink-0"
+            disabled={isPending || queuedStandings.length === 0}
+            onClick={handleAnnounce}
+          >
+            {isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Megaphone className="h-4 w-4 mr-2" />
+            )}
+            Announce
+          </Button>
         </div>
-        <Button
-          size="lg"
-          className="bg-sky-600 hover:bg-sky-700 text-white shadow-sm shrink-0"
-          disabled={isPending || queuedStandings.length === 0}
-          onClick={handleAnnounce}
-        >
-          {isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Megaphone className="h-4 w-4 mr-2" />
-          )}
-          Announce to Public
-        </Button>
-      </div>
 
       {queuedStandings.length === 0 ? (
         <Card className="border-dashed">
@@ -169,6 +176,57 @@ export function AnnouncerConsoleClient({
           </div>
         </div>
       )}
+    </div>
+
+      {/* Right Column: Call List */}
+      <div className="space-y-4">
+        <h2 className="font-semibold text-lg">Call List</h2>
+        {callList.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="py-12 text-center text-muted-foreground">
+              <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+                <Megaphone className="h-7 w-7 text-muted-foreground/60" />
+              </span>
+              <p className="font-medium">No programmes currently called</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {callList.map((item) => (
+              <Card 
+                key={item.id} 
+                className="cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => setSelectedCallItem(item)}
+              >
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex justify-between items-start gap-4">
+                    <CardTitle className="text-base leading-tight">
+                      {item.name}
+                    </CardTitle>
+                    {item.startedAt && (
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {format(new Date(item.startedAt), "h:mm a")}
+                      </span>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 text-sm text-muted-foreground flex items-center gap-3 flex-wrap">
+                  {item.categoryName && <span>{item.categoryName}</span>}
+                  {item.categoryName && item.stageName && <span>•</span>}
+                  {item.stageName && <span>{item.stageName}</span>}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <AnnouncerCallListDrawer
+        open={!!selectedCallItem}
+        onOpenChange={(open) => !open && setSelectedCallItem(null)}
+        item={selectedCallItem}
+        festivalId={festivalId}
+      />
     </div>
   );
 }

@@ -13,8 +13,8 @@ import {
   useProgramme,
   useUpdateProgramme,
 } from "@/api/client/programmes";
-import { useFestival } from "@/components/festival/FestivalContext";
 import { StatusPill } from "@/components/app/AppSection";
+import { useFestival } from "@/components/festival/FestivalContext";
 import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,9 @@ const ProgrammeBaseSchema = z.object({
   maxParticipantsPerGroup: z.coerce.number().min(0).default(1),
   maxTeamsPerGroup: z.coerce.number().min(0).default(1),
   maxParticipantsPerTeam: z.coerce.number().min(0).default(1),
+  durationMode: z.enum(["SEQUENTIAL", "PARALLEL"]).default("SEQUENTIAL"),
+  timePerUnitMinutes: z.coerce.number().min(1).default(5),
+  parallelDurationMinutes: z.coerce.number().min(1).optional().nullable(),
 });
 
 const ProgrammeSchema = ProgrammeBaseSchema.superRefine((data, ctx) => {
@@ -131,6 +134,8 @@ export function ProgrammeDialog({
       maxParticipantsPerGroup: 1,
       maxTeamsPerGroup: 1,
       maxParticipantsPerTeam: 1,
+      durationMode: "SEQUENTIAL",
+      timePerUnitMinutes: 5,
     },
   });
 
@@ -187,6 +192,9 @@ export function ProgrammeDialog({
           maxParticipantsPerGroup: programme.maxParticipantsPerGroup || 1,
           maxTeamsPerGroup: programme.maxTeamsPerGroup || 1,
           maxParticipantsPerTeam: programme.maxParticipantsPerTeam || 1,
+          durationMode: programme.durationMode || "SEQUENTIAL",
+          timePerUnitMinutes: programme.timePerUnitMinutes || 5,
+          parallelDurationMinutes: programme.parallelDurationMinutes,
         });
       } else {
         form.reset({
@@ -197,6 +205,8 @@ export function ProgrammeDialog({
           maxParticipantsPerGroup: 1,
           maxTeamsPerGroup: 1,
           maxParticipantsPerTeam: 1,
+          durationMode: "SEQUENTIAL",
+          timePerUnitMinutes: 5,
         });
       }
       form.trigger();
@@ -204,6 +214,7 @@ export function ProgrammeDialog({
   }, [open, programme, form]);
 
   const programmeType = form.watch("type");
+  const durationMode = form.watch("durationMode");
 
   const syncHiddenLimitFields = useCallback(
     (type: ProgrammeFormValues["type"]) => {
@@ -385,20 +396,6 @@ export function ProgrammeDialog({
                 {assignments.length} in {groupBlocks.length} group
                 {groupBlocks.length === 1 ? "" : "s"}
               </span>
-              {festival?.slug && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2 text-xs"
-                  asChild
-                >
-                  <Link
-                    href={`/dashboard/${festival.slug}/pre-event-works/assignments?programmeId=${details.id}`}
-                  >
-                    Edit assignments
-                  </Link>
-                </Button>
-              )}
             </div>
           </div>
 
@@ -452,9 +449,14 @@ export function ProgrammeDialog({
                                   ) : null}
                                 </div>
                                 <ul className="divide-y divide-border border-y border-border">
-                                  {members.map((a: any) =>
-                                    renderMember(a, lead?.participantId),
-                                  )}
+                                  {members.map((assignment: any) => {
+                                    // If this is a group programme, we might have multiple members inside the assignment
+                                    if (assignment.members && Array.isArray(assignment.members) && assignment.members.length > 0) {
+                                      return assignment.members.map((m: any) => renderMember(m, lead?.participantId));
+                                    }
+                                    // Fallback for legacy assignments where participant is directly on assignment
+                                    return renderMember(assignment, lead?.participantId);
+                                  })}
                                 </ul>
                               </div>
                             );
@@ -733,6 +735,88 @@ export function ProgrammeDialog({
                       />
                     </>
                   )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 border-t pt-4 mt-2">
+                  <div className="sm:col-span-2">
+                    <h3 className="text-sm font-medium mb-1">
+                      Timing & Scheduling
+                    </h3>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="durationMode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Duration Mode</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isLoadingAction}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select duration mode" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="SEQUENTIAL">
+                              Sequential
+                            </SelectItem>
+                            <SelectItem value="PARALLEL">Parallel</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex flex-row gap-4">
+                    <FormField
+                      control={form.control}
+                      name="timePerUnitMinutes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Time per Entry (Mins)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="1"
+                              className="h-9"
+                              disabled={isLoadingAction}
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {durationMode === "PARALLEL" && (
+                      <FormField
+                        control={form.control}
+                        name="parallelDurationMinutes"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel>Total Duration (Mins)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="1"
+                                className="h-9"
+                                disabled={isLoadingAction}
+                                {...field}
+                                value={field.value ?? ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 

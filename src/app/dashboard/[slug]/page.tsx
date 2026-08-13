@@ -10,6 +10,7 @@ import { VolunteerOverview } from "@/components/dashboard/overview/VolunteerOver
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import { getActiveReportingSessions } from "@/features/announcement/services/announcer.service";
 import {
   ALL_FESTIVAL_ROLES,
   PRIVILEGED_ROLES,
@@ -43,9 +44,38 @@ export default async function FestivalDashboardPage({
 
   const greetingName = session?.name || "there";
 
+  const activeReportingSessions = await getActiveReportingSessions(festival.id);
+
   return (
     <div className="flex flex-col gap-5 pt-4 sm:pt-6 pb-12">
       <DashboardGreeting name={greetingName} timezone={festival.timezone} />
+
+      {activeReportingSessions.length > 0 && (
+        <div className="space-y-3">
+          {activeReportingSessions.map((session) => (
+            <div
+              key={session.id}
+              className="flex items-center gap-4 bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-200 p-4 rounded-xl border border-sky-200 dark:border-sky-800"
+            >
+              <div className="shrink-0">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+                </span>
+              </div>
+              <div>
+                <p className="font-semibold text-base">
+                  Now Calling: {session.name}
+                </p>
+                <p className="text-sm opacity-90">
+                  {session.categoryName ? `${session.categoryName} • ` : ""}
+                  Please report to {session.stageName || "Green Room / Office"}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {effectiveRole === "STAGE_MANAGER" ? (
         <Suspense fallback={<OverviewSkeleton />}>
           <StageManagerOverview

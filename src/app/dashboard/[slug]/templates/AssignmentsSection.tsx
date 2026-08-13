@@ -4,6 +4,7 @@ import { Eye, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import { Button } from "@/components/ui/button";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Drawer,
   DrawerClose,
@@ -22,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Table,
   TableBody,
@@ -354,35 +354,37 @@ export function AssignmentsSection({
               assignments
                 .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
                 .map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell className="font-medium">
-                    {a.assignmentKind.replace("_", " ")}
-                  </TableCell>
-                  <TableCell className="font-mono">{a.templateCode}</TableCell>
-                  <TableCell>{getAssignmentDetailsString(a)}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setViewDetailsAssignment(a)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {!readOnly && (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">
+                      {a.assignmentKind.replace("_", " ")}
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      {a.templateCode}
+                    </TableCell>
+                    <TableCell>{getAssignmentDetailsString(a)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2 justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(a.id)}
-                          disabled={isPending}
+                          onClick={() => setViewDetailsAssignment(a)}
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                        {!readOnly && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(a.id)}
+                            disabled={isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
             )}
           </TableBody>
         </Table>
@@ -397,44 +399,44 @@ export function AssignmentsSection({
           assignments
             .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
             .map((a) => (
-            <div
-              key={a.id}
-              className="border rounded-md p-4 space-y-3 shadow-sm"
-            >
-              <div className="flex justify-between items-center gap-2">
-                <div>
-                  <div className="font-medium text-sm">
-                    {a.assignmentKind.replace("_", " ")}
+              <div
+                key={a.id}
+                className="border rounded-md p-4 space-y-3 shadow-sm"
+              >
+                <div className="flex justify-between items-center gap-2">
+                  <div>
+                    <div className="font-medium text-sm">
+                      {a.assignmentKind.replace("_", " ")}
+                    </div>
+                    <div className="font-mono text-xs text-muted-foreground mt-0.5">
+                      {a.templateCode}
+                    </div>
                   </div>
-                  <div className="font-mono text-xs text-muted-foreground mt-0.5">
-                    {a.templateCode}
-                  </div>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setViewDetailsAssignment(a)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  {!readOnly && (
+                  <div className="flex gap-1 shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(a.id)}
-                      disabled={isPending}
+                      onClick={() => setViewDetailsAssignment(a)}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Eye className="h-4 w-4" />
                     </Button>
-                  )}
+                    {!readOnly && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(a.id)}
+                        disabled={isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs bg-muted/50 p-2 rounded border">
+                  {getAssignmentDetailsString(a)}
                 </div>
               </div>
-              <div className="text-xs bg-muted/50 p-2 rounded border">
-                {getAssignmentDetailsString(a)}
-              </div>
-            </div>
-          ))
+            ))
         )}
       </div>
 

@@ -650,211 +650,218 @@ export function JudgementWizardClient({
           <>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredJudgeProgrammes
-                .slice(judgePageIndex * pageSize, (judgePageIndex + 1) * pageSize)
+                .slice(
+                  judgePageIndex * pageSize,
+                  (judgePageIndex + 1) * pageSize,
+                )
                 .map((p) => {
-                const active = activeByProgrammeId.get(p.id);
-                const isUnscheduled = Boolean(
-                p.reportingDetails && p.reportingDetails.stageId === null,
-              );
-              return (
-                <Card
-                  key={p.id}
-                  className="flex flex-col overflow-hidden rounded-xl bg-background/40 transition-colors hover:bg-muted/20"
-                >
-                  <CardHeader className="space-y-2 p-4 pb-2.5 sm:p-5 sm:pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <CardTitle className="text-base font-semibold leading-snug line-clamp-2 sm:text-lg">
-                        {p.name}
-                      </CardTitle>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <Badge variant="secondary" className="text-[11px]">
-                          {p.status}
-                        </Badge>
-                        {isUnscheduled && (
-                          <Badge
-                            variant="outline"
-                            className="border-amber-500/60 bg-amber-500/10 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300"
-                          >
-                            Off-Stage
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {p.programmeType === "GROUP" ? "Group" : "Individual"}
-                      {p.programmeCategory ? ` · ${p.programmeCategory}` : ""}
-                      {p.reportingDetails?.stageName
-                        ? ` · Stage ${p.reportingDetails.stageName}`
-                        : ""}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col gap-2.5 p-4 pt-0 sm:gap-3 sm:p-5 sm:pt-0">
-                    {p.reportingDetails ? (
-                      <ProgrammeProgressFunnel
-                        assigned={p.reportingDetails.assignedCount}
-                        reported={p.reportingDetails.reportedCount}
-                        absent={p.reportingDetails.absentCount}
-                        scored={
-                          judgedByProgrammeId.get(p.id)?.requiredCodeLetters
-                        }
-                      />
-                    ) : null}
-                    {active ? (
-                      <>
-                        <div
-                          className={`flex flex-col gap-1.5 rounded-md border px-2 py-1.5 text-[10px] ${
-                            active.judgementStatus === "COMPLETED"
-                              ? "border-green-500/25 bg-green-500/[0.06] text-green-700 dark:text-green-400"
-                              : "border-primary/25 bg-primary/[0.06] text-primary"
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 font-medium">
-                            {active.judgementStatus === "COMPLETED" ? (
-                              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
-                              </span>
-                            ) : (
-                              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
-                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-                              </span>
+                  const active = activeByProgrammeId.get(p.id);
+                  const isUnscheduled = Boolean(
+                    p.reportingDetails && p.reportingDetails.stageId === null,
+                  );
+                  return (
+                    <Card
+                      key={p.id}
+                      className="flex flex-col overflow-hidden rounded-xl bg-background/40 transition-colors hover:bg-muted/20"
+                    >
+                      <CardHeader className="space-y-2 p-4 pb-2.5 sm:p-5 sm:pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <CardTitle className="text-base font-semibold leading-snug line-clamp-2 sm:text-lg">
+                            {p.name}
+                          </CardTitle>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <Badge variant="secondary" className="text-[11px]">
+                              {p.status}
+                            </Badge>
+                            {isUnscheduled && (
+                              <Badge
+                                variant="outline"
+                                className="border-amber-500/60 bg-amber-500/10 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300"
+                              >
+                                Off-Stage
+                              </Badge>
                             )}
-                            <span>
-                              {active.judgementStatus === "COMPLETED"
-                                ? "Submitted"
-                                : "Live"}{" "}
-                              · {active.judges.length} judge
-                              {active.judges.length !== 1 ? "s" : ""} ·{" "}
-                              {active.judgingMode}
-                            </span>
                           </div>
-                          {judgedByProgrammeId.get(p.id) && (
-                            <div className="flex flex-col border-t border-primary/10 pt-1.5 mt-0.5">
-                              <span className="font-semibold">
-                                {
-                                  judgedByProgrammeId.get(p.id)!
-                                    .completionSummary
-                                }
-                              </span>
-                              {judgedByProgrammeId.get(p.id)!.pendingJudgeNames
-                                .length > 0 && (
-                                <span className="text-primary/70 line-clamp-1 mt-0.5">
-                                  Pending:{" "}
-                                  {judgedByProgrammeId
-                                    .get(p.id)!
-                                    .pendingJudgeNames.join(", ")}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {p.programmeType === "GROUP" ? "Group" : "Individual"}
+                          {p.programmeCategory
+                            ? ` · ${p.programmeCategory}`
+                            : ""}
+                          {p.reportingDetails?.stageName
+                            ? ` · Stage ${p.reportingDetails.stageName}`
+                            : ""}
+                        </p>
+                      </CardHeader>
+                      <CardContent className="flex flex-1 flex-col gap-2.5 p-4 pt-0 sm:gap-3 sm:p-5 sm:pt-0">
+                        {p.reportingDetails ? (
+                          <ProgrammeProgressFunnel
+                            assigned={p.reportingDetails.assignedCount}
+                            reported={p.reportingDetails.reportedCount}
+                            absent={p.reportingDetails.absentCount}
+                            scored={
+                              judgedByProgrammeId.get(p.id)?.requiredCodeLetters
+                            }
+                          />
+                        ) : null}
+                        {active ? (
+                          <>
+                            <div
+                              className={`flex flex-col gap-1.5 rounded-md border px-2 py-1.5 text-[10px] ${
+                                active.judgementStatus === "COMPLETED"
+                                  ? "border-green-500/25 bg-green-500/[0.06] text-green-700 dark:text-green-400"
+                                  : "border-primary/25 bg-primary/[0.06] text-primary"
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 font-medium">
+                                {active.judgementStatus === "COMPLETED" ? (
+                                  <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                                  </span>
+                                ) : (
+                                  <span className="relative flex h-1.5 w-1.5 shrink-0">
+                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/70" />
+                                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                                  </span>
+                                )}
+                                <span>
+                                  {active.judgementStatus === "COMPLETED"
+                                    ? "Submitted"
+                                    : "Live"}{" "}
+                                  · {active.judges.length} judge
+                                  {active.judges.length !== 1 ? "s" : ""} ·{" "}
+                                  {active.judgingMode}
                                 </span>
+                              </div>
+                              {judgedByProgrammeId.get(p.id) && (
+                                <div className="flex flex-col border-t border-primary/10 pt-1.5 mt-0.5">
+                                  <span className="font-semibold">
+                                    {
+                                      judgedByProgrammeId.get(p.id)!
+                                        .completionSummary
+                                    }
+                                  </span>
+                                  {judgedByProgrammeId.get(p.id)!
+                                    .pendingJudgeNames.length > 0 && (
+                                    <span className="text-primary/70 line-clamp-1 mt-0.5">
+                                      Pending:{" "}
+                                      {judgedByProgrammeId
+                                        .get(p.id)!
+                                        .pendingJudgeNames.join(", ")}
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                        <div className="mt-auto pt-1 flex flex-col gap-1 sm:gap-1.5">
-                          {(() => {
-                            const sid = p.reportingDetails?.stageId;
-                            const sname = p.reportingDetails?.stageName ?? null;
-                            if (!sid) return null;
-                            return (
+                            <div className="mt-auto pt-1 flex flex-col gap-1 sm:gap-1.5">
+                              {(() => {
+                                const sid = p.reportingDetails?.stageId;
+                                const sname =
+                                  p.reportingDetails?.stageName ?? null;
+                                if (!sid) return null;
+                                return (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+                                    onClick={() =>
+                                      setCredentialView({
+                                        stageId: sid,
+                                        stageName: sname,
+                                      })
+                                    }
+                                  >
+                                    <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+                                    View credentials
+                                  </Button>
+                                );
+                              })()}
+                              <div className="flex w-full">
+                                {active.judgementStatus === "COMPLETED" ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="default"
+                                    className="h-7 w-full text-[11px] sm:h-8 sm:text-xs bg-green-600 hover:bg-green-700 text-white"
+                                    disabled={isCompleting}
+                                    onClick={() => {
+                                      completeJudgement(active.id);
+                                    }}
+                                  >
+                                    Submit
+                                  </Button>
+                                ) : active.judgementStatus === "CANCELLED" ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 w-full text-[11px] sm:h-8 sm:text-xs text-green-600 border-green-600 hover:bg-green-50"
+                                    onClick={() =>
+                                      openWizardForProgramme(p.id, "rejudge")
+                                    }
+                                  >
+                                    Restart
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="destructive"
+                                    className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
+                                    onClick={() => setCancelProgrammeId(p.id)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="mt-auto">
+                            <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
-                                onClick={() =>
-                                  setCredentialView({
-                                    stageId: sid,
-                                    stageName: sname,
-                                  })
-                                }
-                              >
-                                <KeyRound className="mr-1.5 h-3.5 w-3.5" />
-                                View credentials
-                              </Button>
-                            );
-                          })()}
-                          <div className="flex w-full">
-                            {active.judgementStatus === "COMPLETED" ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="default"
-                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs bg-green-600 hover:bg-green-700 text-white"
-                                disabled={isCompleting}
+                                className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
                                 onClick={() => {
-                                  completeJudgement(active.id);
+                                  if (!p.reportingDetails) return;
+                                  setReportedParticipantsView({
+                                    programmeName: p.name,
+                                    programmeCategory:
+                                      p.programmeCategory ?? null,
+                                    programmeType: p.programmeType,
+                                    details: p.reportingDetails,
+                                  });
                                 }}
+                                disabled={!p.reportingDetails}
                               >
-                                Submit
+                                View
                               </Button>
-                            ) : active.judgementStatus === "CANCELLED" ? (
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="outline"
-                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs text-green-600 border-green-600 hover:bg-green-50"
+                                className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
                                 onClick={() =>
-                                  openWizardForProgramme(p.id, "rejudge")
+                                  openWizardForProgramme(p.id, "create")
+                                }
+                                title={
+                                  isUnscheduled
+                                    ? "This programme is unscheduled. It will be judged using the Off-Stage portal."
+                                    : undefined
                                 }
                               >
-                                Restart
+                                <Play className="mr-1.5 h-3.5 w-3.5" />
+                                Start Judgement
                               </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="destructive"
-                                className="h-7 w-full text-[11px] sm:h-8 sm:text-xs"
-                                onClick={() => setCancelProgrammeId(p.id)}
-                              >
-                                Cancel
-                              </Button>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="mt-auto">
-                        <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
-                            onClick={() => {
-                              if (!p.reportingDetails) return;
-                              setReportedParticipantsView({
-                                programmeName: p.name,
-                                programmeCategory: p.programmeCategory ?? null,
-                                programmeType: p.programmeType,
-                                details: p.reportingDetails,
-                              });
-                            }}
-                            disabled={!p.reportingDetails}
-                          >
-                            View
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="h-7 text-[11px] sm:h-8 sm:flex-1 sm:text-xs"
-                            onClick={() =>
-                              openWizardForProgramme(p.id, "create")
-                            }
-                            title={
-                              isUnscheduled
-                                ? "This programme is unscheduled. It will be judged using the Off-Stage portal."
-                                : undefined
-                            }
-                          >
-                            <Play className="mr-1.5 h-3.5 w-3.5" />
-                            Start Judgement
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
             </div>
             {filteredJudgeProgrammes.length > pageSize && (
               <DataTablePagination
@@ -886,59 +893,62 @@ export function JudgementWizardClient({
             <>
               <div className="space-y-2">
                 {completedJudgements
-                  .slice(completedPageIndex * pageSize, (completedPageIndex + 1) * pageSize)
+                  .slice(
+                    completedPageIndex * pageSize,
+                    (completedPageIndex + 1) * pageSize,
+                  )
                   .map((item) => (
-                  <div
-                    key={item.configId}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors bg-card"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-sm line-clamp-1">
-                          {item.programmeName}
-                        </h4>
-                        {(item.programmeStatus ?? "")
-                          .toUpperCase()
-                          .includes("PUBLISHED") && (
-                          <Badge
-                            variant="outline"
-                            className="border-purple/60 text-purple bg-purple/10 text-[10px] hidden sm:inline-flex"
-                          >
-                            Published
+                    <div
+                      key={item.configId}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors bg-card"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-sm line-clamp-1">
+                            {item.programmeName}
+                          </h4>
+                          {(item.programmeStatus ?? "")
+                            .toUpperCase()
+                            .includes("PUBLISHED") && (
+                            <Badge
+                              variant="outline"
+                              className="border-purple/60 text-purple bg-purple/10 text-[10px] hidden sm:inline-flex"
+                            >
+                              Published
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          <Badge variant="default" className="text-[10px]">
+                            {judgementStatusLabel(item.judgementStatus)}
                           </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <Badge variant="default" className="text-[10px]">
-                          {judgementStatusLabel(item.judgementStatus)}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {item.judgingMode}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {item.totalJudgements} entries
-                        </span>
-                        {item.programmeCategory && (
-                          <span className="text-xs text-muted-foreground hidden sm:inline-block">
-                            · {item.programmeCategory}
+                          <Badge variant="secondary" className="text-[10px]">
+                            {item.judgingMode}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {item.totalJudgements} entries
                           </span>
-                        )}
-                        <span className="text-xs text-muted-foreground hidden md:inline-block">
-                          · Created {formatCardDateTime(item.createdAt)}
-                        </span>
+                          {item.programmeCategory && (
+                            <span className="text-xs text-muted-foreground hidden sm:inline-block">
+                              · {item.programmeCategory}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground hidden md:inline-block">
+                            · Created {formatCardDateTime(item.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pl-3 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setCombinedDrawerDetail(item)}
+                        >
+                          View
+                        </Button>
                       </div>
                     </div>
-                    <div className="pl-3 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCombinedDrawerDetail(item)}
-                      >
-                        View
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
               {completedJudgements.length > pageSize && (
                 <DataTablePagination
@@ -968,51 +978,58 @@ export function JudgementWizardClient({
             <>
               <div className="space-y-2">
                 {filteredRejudgeProgrammes
-                  .slice(rejudgePageIndex * pageSize, (rejudgePageIndex + 1) * pageSize)
+                  .slice(
+                    rejudgePageIndex * pageSize,
+                    (rejudgePageIndex + 1) * pageSize,
+                  )
                   .map((p) => (
-                  <div
-                    key={p.id}
-                    className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-[13px] font-semibold sm:text-sm">
-                            {p.name}
-                          </p>
-                          {p.programmeCategory ? (
-                            <p className="text-[11px] text-muted-foreground">
-                              {p.programmeCategory}
+                    <div
+                      key={p.id}
+                      className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-[13px] font-semibold sm:text-sm">
+                              {p.name}
                             </p>
-                          ) : null}
+                            {p.programmeCategory ? (
+                              <p className="text-[11px] text-muted-foreground">
+                                {p.programmeCategory}
+                              </p>
+                            ) : null}
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="w-fit text-[10px] font-normal"
+                          >
+                            {p.status}
+                          </Badge>
                         </div>
-                        <Badge
-                          variant="outline"
-                          className="w-fit text-[10px] font-normal"
-                        >
-                          {p.status}
-                        </Badge>
-                      </div>
-                      <div className="shrink-0 self-center">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                          onClick={() => openWizardForProgramme(p.id, "rejudge")}
-                        >
-                          <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                          Rejudge
-                        </Button>
+                        <div className="shrink-0 self-center">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                            onClick={() =>
+                              openWizardForProgramme(p.id, "rejudge")
+                            }
+                          >
+                            <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
+                            Rejudge
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
               {filteredRejudgeProgrammes.length > pageSize && (
                 <DataTablePagination
                   pageIndex={rejudgePageIndex}
-                  pageCount={Math.ceil(filteredRejudgeProgrammes.length / pageSize)}
+                  pageCount={Math.ceil(
+                    filteredRejudgeProgrammes.length / pageSize,
+                  )}
                   onPageChange={(page) => setRejudgePageIndex(page)}
                   className="mt-6"
                 />
@@ -1284,51 +1301,43 @@ export function JudgementWizardClient({
           <div className="flex-1 overflow-y-auto pb-6 min-h-0">
             <div className="space-y-2">
               {searchResults
-                .slice(searchPageIndex * pageSize, (searchPageIndex + 1) * pageSize)
+                .slice(
+                  searchPageIndex * pageSize,
+                  (searchPageIndex + 1) * pageSize,
+                )
                 .map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div>
-                    <h4 className="font-semibold line-clamp-1">{item.name}</h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      {item.programmeCategory && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          {item.programmeCategory}
-                        </Badge>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {item.status}
-                      </span>
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div>
+                      <h4 className="font-semibold line-clamp-1">
+                        {item.name}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        {item.programmeCategory && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {item.programmeCategory}
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {item.status}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="pl-3 shrink-0 flex items-center gap-2">
-                    {item._kind === "READY" && (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSearchDrawerOpen(false);
-                          openWizardForProgramme(item.id, "create");
-                        }}
-                      >
-                        Start judgement
-                      </Button>
-                    )}
-                    {item._kind === "REJUDGE" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSearchDrawerOpen(false);
-                          openWizardForProgramme(item.id, "rejudge");
-                        }}
-                      >
-                        Restart judgement
-                      </Button>
-                    )}
-                    {item._kind === "COMPLETED" && (
-                      <>
+                    <div className="pl-3 shrink-0 flex items-center gap-2">
+                      {item._kind === "READY" && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSearchDrawerOpen(false);
+                            openWizardForProgramme(item.id, "create");
+                          }}
+                        >
+                          Start judgement
+                        </Button>
+                      )}
+                      {item._kind === "REJUDGE" && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -1337,22 +1346,35 @@ export function JudgementWizardClient({
                             openWizardForProgramme(item.id, "rejudge");
                           }}
                         >
-                          Rejudge
+                          Restart judgement
                         </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSearchDrawerOpen(false);
-                            setCombinedDrawerDetail(item._completedItem);
-                          }}
-                        >
-                          View
-                        </Button>
-                      </>
-                    )}
+                      )}
+                      {item._kind === "COMPLETED" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSearchDrawerOpen(false);
+                              openWizardForProgramme(item.id, "rejudge");
+                            }}
+                          >
+                            Rejudge
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSearchDrawerOpen(false);
+                              setCombinedDrawerDetail(item._completedItem);
+                            }}
+                          >
+                            View
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
               {searchResults.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">
                   No results found.

@@ -1031,3 +1031,45 @@ export async function swapScheduleSlots(
   } catch (e) {}
   return { success: true };
 }
+
+export async function notifyCallList(festivalId: string, entryId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+  await db
+    .update(scheduleEntryTable)
+    .set({
+      callListNotifiedAt: serverNowIso(),
+      updatedBy: session?.userId,
+      updatedAt: serverNowIso(),
+    })
+    .where(
+      and(
+        eq(scheduleEntryTable.festivalId, festivalId),
+        eq(scheduleEntryTable.id, entryId)
+      )
+    );
+  
+  await revalidateSchedulePaths(festivalId);
+  return { success: true };
+}
+
+export async function cancelCallListNotification(festivalId: string, entryId: string) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+  await db
+    .update(scheduleEntryTable)
+    .set({
+      callListNotifiedAt: null,
+      updatedBy: session?.userId,
+      updatedAt: serverNowIso(),
+    })
+    .where(
+      and(
+        eq(scheduleEntryTable.festivalId, festivalId),
+        eq(scheduleEntryTable.id, entryId)
+      )
+    );
+  
+  await revalidateSchedulePaths(festivalId);
+  return { success: true };
+}

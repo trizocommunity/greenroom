@@ -14,7 +14,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useBulkCreateAssignments } from "@/api/client/assignments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,8 @@ interface AssignmentModalProps {
    * member has a lead on record, so the review step has to collect one.
    */
   requiresTeamLead?: boolean;
+  defaultCategoryId?: string;
+  defaultProgrammeId?: string;
 }
 
 interface QueueItem {
@@ -100,6 +102,8 @@ export function AssignmentModal({
   groups = [],
   fixedGroupId,
   requiresTeamLead = false,
+  defaultCategoryId,
+  defaultProgrammeId,
 }: AssignmentModalProps) {
   const bulkCreateAssignment = useBulkCreateAssignments();
 
@@ -110,11 +114,15 @@ export function AssignmentModal({
 
   // State
   const [view, setView] = useState<ModalView>("SELECTION");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
+    defaultCategoryId ?? "",
+  );
   const [selectedGroupId, setSelectedGroupId] = useState<string>(
     fixedGroupId ?? "",
   );
-  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>("");
+  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string>(
+    defaultProgrammeId ?? "",
+  );
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<
     Set<string>
   >(new Set());
@@ -125,6 +133,20 @@ export function AssignmentModal({
   const [teamLeadChoice, setTeamLeadChoice] = useState<Record<string, string>>(
     {},
   );
+
+  // Reset state on open
+  useEffect(() => {
+    if (open) {
+      setSelectedCategoryId(defaultCategoryId ?? "");
+      setSelectedGroupId(fixedGroupId ?? "");
+      setSelectedProgrammeId(defaultProgrammeId ?? "");
+      setSelectedParticipantIds(new Set());
+      setParticipantSearch("");
+      setQueue([]);
+      setTeamLeadChoice({});
+      setView("SELECTION");
+    }
+  }, [open, defaultCategoryId, defaultProgrammeId, fixedGroupId]);
 
   /* Which queued teams already have a lead? Only fetched when the tier needs
      it, and only for the programmes actually in the queue. */

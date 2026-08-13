@@ -59,6 +59,9 @@ export const ProgrammeService = {
       maxTeamsPerGroup?: number;
       maxParticipantsPerTeam?: number;
       maxPoints?: number;
+      durationMode?: "SEQUENTIAL" | "PARALLEL";
+      timePerUnitMinutes?: number;
+      parallelDurationMinutes?: number | null;
     },
     actor?: { createdByEmail?: string; createdByName?: string },
   ) {
@@ -91,6 +94,9 @@ export const ProgrammeService = {
         maxParticipantsPerGroup: data.maxParticipantsPerGroup || 1,
         maxTeamsPerGroup: data.maxTeamsPerGroup || 1,
         maxParticipantsPerTeam: data.maxParticipantsPerTeam || 1,
+        durationMode: data.durationMode || "SEQUENTIAL",
+        timePerUnitMinutes: data.timePerUnitMinutes || 5,
+        parallelDurationMinutes: data.parallelDurationMinutes,
         ...(actor?.createdByEmail
           ? { createdByEmail: actor.createdByEmail }
           : {}),
@@ -116,6 +122,9 @@ export const ProgrammeService = {
       maxParticipantsPerGroup?: number;
       maxTeamsPerGroup?: number;
       maxParticipantsPerTeam?: number;
+      durationMode?: "SEQUENTIAL" | "PARALLEL";
+      timePerUnitMinutes?: number;
+      parallelDurationMinutes?: number | null;
     }[],
   ) {
     const festival = await findFestivalById(festivalId);
@@ -141,6 +150,9 @@ export const ProgrammeService = {
         maxParticipantsPerGroup: p.maxParticipantsPerGroup || 1,
         maxTeamsPerGroup: p.maxTeamsPerGroup || 1,
         maxParticipantsPerTeam: p.maxParticipantsPerTeam || 1,
+        durationMode: p.durationMode || "SEQUENTIAL",
+        timePerUnitMinutes: p.timePerUnitMinutes || 5,
+        parallelDurationMinutes: p.parallelDurationMinutes,
       }));
 
       return await db.transaction(async (tx) => {
@@ -178,6 +190,9 @@ export const ProgrammeService = {
       maxTeamsPerGroup?: number;
       maxParticipantsPerTeam?: number;
       maxPoints?: number;
+      durationMode?: "SEQUENTIAL" | "PARALLEL";
+      timePerUnitMinutes?: number;
+      parallelDurationMinutes?: number | null;
     },
   ) {
     const existingDetails = await this.getDetails(id, festivalId);
@@ -216,6 +231,9 @@ export const ProgrammeService = {
       maxParticipantsPerGroup: data.maxParticipantsPerGroup,
       maxTeamsPerGroup: data.maxTeamsPerGroup,
       maxParticipantsPerTeam: data.maxParticipantsPerTeam,
+      durationMode: data.durationMode,
+      timePerUnitMinutes: data.timePerUnitMinutes,
+      parallelDurationMinutes: data.parallelDurationMinutes,
     });
   },
 

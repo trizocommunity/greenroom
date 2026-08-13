@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   doublePrecision,
   foreignKey,
@@ -10,7 +11,6 @@ import {
   pgTable,
   text,
   uniqueIndex,
-  bigint,
 } from "drizzle-orm/pg-core";
 
 import {
@@ -1033,6 +1033,7 @@ export const scheduleEntry = pgTable(
     description: text(),
     speakers: text(),
     sessionType: sessionType(),
+    callListNotifiedAt: tzTimestampNamed("call_list_notified_at"),
   },
   (table) => [
     index("schedule_entry_festivalId_idx").using(

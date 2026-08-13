@@ -9,9 +9,9 @@ import {
   Mail,
   Phone,
   Plus,
+  Search,
   ShieldAlert,
   Trash2,
-  Search,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -22,18 +22,29 @@ import {
 import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { AssignmentModal } from "@/components/festival/pre-event-works/assignments/AssignmentModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
+  PaginationFirst,
   PaginationItem,
+  PaginationLast,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationFirst,
-  PaginationLast,
 } from "@/components/ui/pagination";
 import {
   Select,
@@ -49,7 +60,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   CategoryType,
   ProgrammeStatus,
@@ -177,7 +187,7 @@ export function AssignProgrammesClient({
   // Category filter: choose which (non-GENERAL) programme category to show.
   // GENERAL programmes are always allowed for any participant selection.
   const [selectedProgrammeCategoryId, setSelectedProgrammeCategoryId] =
-    useState<string>(leaderCategoryId);
+    useState<string>("ALL");
 
   const [assignPageIndex, setAssignPageIndex] = useState(0);
   const [assignmentsPageIndex, setAssignmentsPageIndex] = useState(0);
@@ -199,7 +209,8 @@ export function AssignProgrammesClient({
   const [programmeSearch, setProgrammeSearch] = useState("");
 
   const [assignmentsSearch, setAssignmentsSearch] = useState("");
-  const [assignmentsCategoryId, setAssignmentsCategoryId] = useState<string>("ALL");
+  const [assignmentsCategoryId, setAssignmentsCategoryId] =
+    useState<string>("ALL");
   const [assignmentsProgrammeType, setAssignmentsProgrammeType] = useState<
     "ALL" | "GROUP" | "INDIVIDUAL"
   >("ALL");
@@ -213,18 +224,60 @@ export function AssignProgrammesClient({
     return () => window.clearInterval(intervalId);
   }, [festivalId, refetch]);
 
+  /* ── Per-programme capacity for this leader's group ───────────────── */
+  const groupCapacityByProgrammeId = useMemo(() => {
+    const getProgrammeId = (a: any) => a?.programmeId ?? a?.programme?.id;
+    const getGroupId = (a: any) =>
+      a?.groupId ??
+      a?.group?.id ??
+      a?.participant?.groupId ??
+      a?.participant?.group?.id;
+
+    const usedByProgramme = new Map<string, number>();
+    for (const a of assignments as any[]) {
+      if (getGroupId(a) !== leaderGroupId) continue;
+      const pid = getProgrammeId(a);
+      if (!pid) continue;
+      usedByProgramme.set(pid, (usedByProgramme.get(pid) ?? 0) + 1);
+    }
+
+    const map = new Map<
+      string,
+      { used: number; total: number; isFull: boolean }
+    >();
+    for (const p of programmes) {
+      const total =
+        p.type === "INDIVIDUAL"
+          ? (p.maxParticipantsPerGroup ?? 1)
+          : (p.maxTeamsPerGroup ?? 1) * (p.maxParticipantsPerTeam ?? 1);
+      const used = usedByProgramme.get(p.id) ?? 0;
+      map.set(p.id, { used, total, isFull: total > 0 && used >= total });
+    }
+    return map;
+  }, [programmes, assignments, leaderGroupId]);
+
+  const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<
+    "ALL" | "COMPLETED" | "NOT_COMPLETED"
+  >("ALL");
+
   useEffect(() => {
     setAssignPageIndex(0);
-  }, [selectedProgrammeCategoryId, selectedProgrammeType, programmeSearch]);
+  }, [
+    selectedProgrammeCategoryId,
+    selectedProgrammeType,
+    programmeSearch,
+    assignmentStatusFilter,
+  ]);
 
   useEffect(() => {
     if (!programmeCategoryOptions.length) return;
+    if (selectedProgrammeCategoryId === "ALL") return;
     if (
       programmeCategoryOptions.some((c) => c.id === selectedProgrammeCategoryId)
     ) {
       return;
     }
-    setSelectedProgrammeCategoryId(programmeCategoryOptions[0]?.id);
+    setSelectedProgrammeCategoryId("ALL");
   }, [programmeCategoryOptions, selectedProgrammeCategoryId]);
 
   const eligibleProgrammes = useMemo(() => {
@@ -245,6 +298,20 @@ export function AssignProgrammesClient({
         if (!p.name.toLowerCase().includes(q)) return false;
       }
 
+      // Assignment Status Filter
+      if (assignmentStatusFilter !== "ALL") {
+        const capacity = groupCapacityByProgrammeId.get(p.id);
+        const isCompleted = capacity?.isFull ?? false;
+        if (assignmentStatusFilter === "COMPLETED" && !isCompleted)
+          return false;
+        if (assignmentStatusFilter === "NOT_COMPLETED" && isCompleted)
+          return false;
+      }
+
+      if (selectedProgrammeCategoryId === "ALL") {
+        return true;
+      }
+
       // default to SINGLE behaviour
       return p.category.id === selectedProgrammeCategoryId;
     });
@@ -254,6 +321,8 @@ export function AssignProgrammesClient({
     selectedProgrammeType,
     selectedProgrammeCategoryType,
     programmeSearch,
+    assignmentStatusFilter,
+    groupCapacityByProgrammeId,
   ]);
 
   const [selectedProgrammeId, setSelectedProgrammeId] = useState<string | null>(
@@ -277,23 +346,15 @@ export function AssignProgrammesClient({
     string[]
   >([]);
 
-  const [assignProgrammesTab, setAssignProgrammesTab] = useState<
-    "ASSIGN" | "ASSIGNMENTS"
-  >("ASSIGN");
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
-
-  // When the team leader can't assign (window closed/upcoming, or the manager
-  // disabled adding), make sure we can't sit on a now-hidden Assign tab.
-  useEffect(() => {
-    if (!canAssign && assignProgrammesTab === "ASSIGN") {
-      setAssignProgrammesTab("ASSIGNMENTS");
-    }
-  }, [canAssign, assignProgrammesTab]);
 
   // AssignmentModal expects a top-level `categoryId` on each programme (this
   // component's ProgrammeForAssignment only nests it under `category.id`).
   const assignmentModalProgrammes = useMemo(
-    () => programmes.map((p) => ({ ...p, categoryId: p.category.id })),
+    () =>
+      programmes
+        .filter((p) => ["DRAFT", "ASSIGNED", "SCHEDULED"].includes(p.status))
+        .map((p) => ({ ...p, categoryId: p.category.id })),
     [programmes],
   );
 
@@ -328,6 +389,10 @@ export function AssignProgrammesClient({
   const selectedProgramme = useMemo(() => {
     return eligibleProgrammes.find((p) => p.id === selectedProgrammeId) ?? null;
   }, [eligibleProgrammes, selectedProgrammeId]);
+
+  const isProgrammeEditable = selectedProgramme
+    ? ["DRAFT", "ASSIGNED", "SCHEDULED"].includes(selectedProgramme.status)
+    : false;
 
   const participantsForSelectedProgramme = useMemo(() => {
     if (!selectedProgramme) return myParticipants;
@@ -374,9 +439,14 @@ export function AssignProgrammesClient({
   // NOTE: we display remaining capacity based on only "new" selections
   // (participants not already assigned for the selected programme).
 
+  const [removedParticipantIds, setRemovedParticipantIds] = useState<string[]>(
+    [],
+  );
+
   const clearSelection = () => {
     if (runtimeIsReadOnly) return;
     setSelectedParticipantIds([]);
+    setRemovedParticipantIds([]);
   };
 
   const alreadyAssignedParticipantIdsForSelectedProgramme = useMemo(() => {
@@ -472,14 +542,16 @@ export function AssignProgrammesClient({
     });
 
     const existingMembersCount = dbAssignmentsForProgrammeInLeaderGroup.length;
+    const activeExistingCount =
+      existingMembersCount - removedParticipantIds.length;
 
     if (selectedProgramme.type === "INDIVIDUAL") {
       const max = selectedProgramme.maxParticipantsPerGroup ?? 1;
       return {
         type: "INDIVIDUAL",
         max,
-        existingMembersCount,
-        remaining: max - existingMembersCount - selectedNewCount,
+        existingMembersCount: activeExistingCount,
+        remaining: max - activeExistingCount - selectedNewCount,
       };
     }
 
@@ -490,10 +562,16 @@ export function AssignProgrammesClient({
       type: "GROUP",
       maxTeams,
       maxPerTeam,
-      existingMembersCount,
-      remainingSlots: totalCapacity - existingMembersCount - selectedNewCount,
+      existingMembersCount: activeExistingCount,
+      remainingSlots: totalCapacity - activeExistingCount - selectedNewCount,
     };
-  }, [assignments, selectedProgramme, leaderGroupId, selectedNewCount]);
+  }, [
+    assignments,
+    selectedProgramme,
+    leaderGroupId,
+    selectedNewCount,
+    removedParticipantIds,
+  ]);
 
   const isOverLimit =
     limitTracking?.type === "INDIVIDUAL"
@@ -510,6 +588,15 @@ export function AssignProgrammesClient({
         : false;
 
   const toggleParticipant = (participantId: string) => {
+    if (alreadyAssignedParticipantIdsForSelectedProgramme.has(participantId)) {
+      setRemovedParticipantIds((prev) => {
+        if (prev.includes(participantId))
+          return prev.filter((id) => id !== participantId);
+        return [...prev, participantId];
+      });
+      return;
+    }
+
     setSelectedParticipantIds((prev) => {
       const has = prev.includes(participantId);
       if (has) return prev.filter((id) => id !== participantId);
@@ -532,7 +619,8 @@ export function AssignProgrammesClient({
         return (
           assignmentProgrammeId === programme.id &&
           assignmentGroupId === leaderGroupId &&
-          a?.teamNumber != null
+          a?.teamNumber != null &&
+          !removedParticipantIds.includes(a?.participant?.id)
         );
       });
 
@@ -611,6 +699,8 @@ export function AssignProgrammesClient({
 
       const tn = Number(a.teamNumber) || 1;
       if (tn < 1 || tn > maxTeams) continue;
+
+      if (removedParticipantIds.includes(a.participant.id)) continue;
 
       teamToExistingParticipantIds.get(tn)!.add(a.participant.id);
       participantIdToTeamNumber.set(a.participant.id, tn);
@@ -795,8 +885,43 @@ export function AssignProgrammesClient({
   const onAssign = async () => {
     if (!canAssign) return;
     if (!selectedProgramme) return;
+    if (selectedNewCount === 0 && removedParticipantIds.length === 0) {
+      toast.error("No changes to save");
+      return;
+    }
+
+    if (removedParticipantIds.length > 0) {
+      const assignmentsToDelete = (assignments as any[]).filter((a) => {
+        const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
+        const assignmentGroupId =
+          a?.group?.id ?? a?.participant?.groupId ?? a?.participant?.group?.id;
+        return (
+          assignmentProgrammeId === selectedProgramme.id &&
+          assignmentGroupId === leaderGroupId &&
+          removedParticipantIds.includes(a.participant?.id)
+        );
+      });
+
+      if (assignmentsToDelete.length > 0) {
+        try {
+          await Promise.all(
+            assignmentsToDelete.map((a) =>
+              deleteAssignment.mutateAsync({ festivalId, assignmentId: a.id }),
+            ),
+          );
+        } catch (e) {
+          toast.error("Failed to remove some assignments");
+          return;
+        }
+      }
+    }
+
     if (selectedNewCount === 0) {
-      toast.error("Select at least one participant");
+      toast.success("Assignments updated");
+      setSelectedParticipantIds([]);
+      setRemovedParticipantIds([]);
+      setTeamLeadChoice({});
+      setIsEditingAssignments(false);
       return;
     }
 
@@ -860,43 +985,37 @@ export function AssignProgrammesClient({
       data: { assignments: bulkPayload as any[], teamLeadsByTeam },
     });
     setSelectedParticipantIds([]);
+    setRemovedParticipantIds([]);
     setTeamLeadChoice({});
+    setIsEditingAssignments(false);
   };
 
-  /* ── Per-programme capacity for this leader's group ─────────────────
-     `limitTracking` only covers the programme currently being edited, but
-     the programme list and the drawer both need to know whether a given
-     programme still has room. */
-  const groupCapacityByProgrammeId = useMemo(() => {
-    const getProgrammeId = (a: any) => a?.programmeId ?? a?.programme?.id;
-    const getGroupId = (a: any) =>
-      a?.groupId ??
-      a?.group?.id ??
-      a?.participant?.groupId ??
-      a?.participant?.group?.id;
+  const onClearProgrammeAssignments = async () => {
+    if (!canRemove || !selectedProgramme) return;
 
-    const usedByProgramme = new Map<string, number>();
-    for (const a of assignments as any[]) {
-      if (getGroupId(a) !== leaderGroupId) continue;
-      const pid = getProgrammeId(a);
-      if (!pid) continue;
-      usedByProgramme.set(pid, (usedByProgramme.get(pid) ?? 0) + 1);
-    }
+    const assignmentsToDelete = (assignments as any[]).filter((a) => {
+      const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
+      const assignmentGroupId =
+        a?.group?.id ?? a?.participant?.groupId ?? a?.participant?.group?.id;
+      return (
+        assignmentProgrammeId === selectedProgramme.id &&
+        assignmentGroupId === leaderGroupId
+      );
+    });
 
-    const map = new Map<
-      string,
-      { used: number; total: number; isFull: boolean }
-    >();
-    for (const p of programmes) {
-      const total =
-        p.type === "INDIVIDUAL"
-          ? (p.maxParticipantsPerGroup ?? 1)
-          : (p.maxTeamsPerGroup ?? 1) * (p.maxParticipantsPerTeam ?? 1);
-      const used = usedByProgramme.get(p.id) ?? 0;
-      map.set(p.id, { used, total, isFull: total > 0 && used >= total });
+    if (assignmentsToDelete.length === 0) return;
+
+    try {
+      await Promise.all(
+        assignmentsToDelete.map((a) =>
+          deleteAssignment.mutateAsync({ festivalId, assignmentId: a.id }),
+        ),
+      );
+      toast.success("Assignments cleared");
+    } catch (e) {
+      toast.error("Failed to clear some assignments");
     }
-    return map;
-  }, [programmes, assignments, leaderGroupId]);
+  };
 
   /** Props carry the full category; assignment payloads may not. */
   const programmeDetailsById = useMemo(
@@ -988,12 +1107,14 @@ export function AssignProgrammesClient({
      list and assigning into it are one task, so they belong in one surface
      instead of two columns that only fit on a desktop. */
   const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
+  const [isEditingAssignments, setIsEditingAssignments] = useState(false);
 
   const openAssignDrawer = useCallback((programmeId: string) => {
     setSelectedProgrammeId(programmeId);
     setParticipantSearch("");
     setParticipantFilter("ALL");
     setAssignDrawerOpen(true);
+    setIsEditingAssignments(false);
   }, []);
 
   const visibleParticipants = useMemo(() => {
@@ -1027,7 +1148,6 @@ export function AssignProgrammesClient({
         ? Math.max(0, limitTracking.remaining)
         : 0;
 
-
   // configured, or the window is upcoming/closed). The Assignments tab stays
   // visible so they can still review what's already been assigned.
 
@@ -1046,12 +1166,7 @@ export function AssignProgrammesClient({
         requiresTeamLead={requiresTeamLead}
       />
 
-      <Tabs
-        value={assignProgrammesTab}
-        onValueChange={(v) =>
-          setAssignProgrammesTab(v as "ASSIGN" | "ASSIGNMENTS")
-        }
-      >
+      <div className="flex flex-col">
         {/* Compact deadline notice when no window is configured. */}
         {isUnconfigured && (
           <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-blue-500/30 bg-blue-500/[0.06] px-4 py-3 text-sm text-blue-600">
@@ -1164,55 +1279,29 @@ export function AssignProgrammesClient({
           </div>
         )}
 
-        {tlHasAccess && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <TabsList className="justify-start gap-1">
-              {canAssign && <TabsTrigger value="ASSIGN">Assign</TabsTrigger>}
-              <TabsTrigger value="ASSIGNMENTS">
-                Assignments
-                {programmeAssignmentRows.length > 0 && (
-                  <span className="ml-1.5 text-xs tabular-nums opacity-70">
-                    {programmeAssignmentRows.length}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-            {canAssign && (
-              <Button
-                size="sm"
-                className="h-9 rounded-full"
-                onClick={() => setAssignmentModalOpen(true)}
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                New assignment
-              </Button>
-            )}
-          </div>
-        )}
-
         {/* ── Assign: pick a programme, assign inside the drawer ─────── */}
-        {canAssign && (
-          <TabsContent value="ASSIGN" className="mt-5">
-            <div className="mb-4 flex flex-col gap-3">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder="Search programmes..."
-                  value={programmeSearch}
-                  onChange={(e) => setProgrammeSearch(e.target.value)}
-                  className="h-10 w-full rounded-full pl-9"
-                />
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
-                  <Select
+        <div>
+          <div className="mb-3 sm:mb-5 flex flex-col xl:flex-row xl:items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Search programmes..."
+                value={programmeSearch}
+                onChange={(e) => setProgrammeSearch(e.target.value)}
+                className="h-10 w-full rounded-full pl-9"
+              />
+            </div>
+            <div className="flex flex-wrap lg:flex-row items-center gap-2">
+              <div className="w-full grid grid-cols-3 gap-2 lg:w-auto">
+                <Select
                   value={selectedProgrammeCategoryId}
                   onValueChange={setSelectedProgrammeCategoryId}
                 >
-                  <SelectTrigger className="h-9 rounded-full text-sm sm:w-[190px]">
+                  <SelectTrigger className="h-9 rounded-full text-sm w-auto">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="ALL">All categories</SelectItem>
                     {programmeCategoryOptions.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
@@ -1229,7 +1318,7 @@ export function AssignProgrammesClient({
                     )
                   }
                 >
-                  <SelectTrigger className="h-9 rounded-full text-sm sm:w-[160px]">
+                  <SelectTrigger className="h-9 rounded-full text-sm w-auto">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1238,330 +1327,91 @@ export function AssignProgrammesClient({
                     <SelectItem value="INDIVIDUAL">Individual</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {eligibleProgrammes.length} programme
-                {eligibleProgrammes.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            </div>
-
-            {eligibleProgrammes.length === 0 ? (
-              <AppEmptyState
-                title="No programmes"
-                description="Nothing matches these filters."
-              />
-            ) : (
-              <>
-                <ul className="divide-y divide-border border-y border-border">
-                  {eligibleProgrammes
-                    .slice(
-                      assignPageIndex * pageSize,
-                      (assignPageIndex + 1) * pageSize,
-                    )
-                    .map((p) => {
-                      const capacity = groupCapacityByProgrammeId.get(p.id);
-                      const isFull = capacity?.isFull ?? false;
-
-                      return (
-                        <li key={p.id}>
-                          <button
-                            type="button"
-                            onClick={() => openAssignDrawer(p.id)}
-                            className="group flex w-full items-center gap-4 py-4 text-left transition-opacity hover:opacity-80"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="truncate text-[15px] font-medium text-heading">
-                                  {p.name}
-                                </span>
-                                <ProgrammeStatusBadge
-                                  status={getUiProgrammeStatus(p)}
-                                />
-                              </div>
-                              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                                {p.category.name} ·{" "}
-                                {stageTypeLabel(p.stageType)} ·{" "}
-                                {p.type === "GROUP"
-                                  ? `Team · ${p.maxTeamsPerGroup} teams of ${p.maxParticipantsPerTeam}`
-                                  : `Individual · max ${p.maxParticipantsPerGroup}`}
-                                {p.category.type === "GENERAL"
-                                  ? " · open to all categories"
-                                  : ""}
-                              </p>
-                            </div>
-
-                            <StatusPill
-                              tone={isFull ? "live" : "muted"}
-                              className="shrink-0 tabular-nums"
-                            >
-                              {capacity
-                                ? `${capacity.used}/${capacity.total}`
-                                : "—"}
-                            </StatusPill>
-                            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                          </button>
-                        </li>
-                      );
-                    })}
-                </ul>
-
-                {eligibleProgrammes.length > pageSize && (
-                  <Pagination className="mt-4">
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationFirst
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setAssignPageIndex(0);
-                          }}
-                          className={
-                            assignPageIndex === 0
-                              ? "pointer-events-none opacity-50"
-                              : ""
-                          }
-                        />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (assignPageIndex > 0)
-                              setAssignPageIndex((p) => p - 1);
-                          }}
-                          className={
-                            assignPageIndex === 0
-                              ? "pointer-events-none opacity-50"
-                              : ""
-                          }
-                        />
-                      </PaginationItem>
-
-                      {[
-                        ...Array(
-                          Math.ceil(eligibleProgrammes.length / pageSize),
-                        ),
-                      ].map((_, i) => {
-                        const targetPage = i;
-                        const totalPages = Math.ceil(
-                          eligibleProgrammes.length / pageSize,
-                        );
-
-                        if (
-                          targetPage === 0 ||
-                          targetPage === totalPages - 1 ||
-                          (targetPage >= assignPageIndex - 1 &&
-                            targetPage <= assignPageIndex + 1)
-                        ) {
-                          return (
-                            <PaginationItem key={i}>
-                              <PaginationLink
-                                isActive={assignPageIndex === targetPage}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setAssignPageIndex(targetPage);
-                                }}
-                              >
-                                {targetPage + 1}
-                              </PaginationLink>
-                            </PaginationItem>
-                          );
-                        }
-
-                        if (
-                          targetPage === assignPageIndex - 2 ||
-                          targetPage === assignPageIndex + 2
-                        ) {
-                          return (
-                            <PaginationItem key={i}>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          );
-                        }
-
-                        return null;
-                      })}
-
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (
-                              (assignPageIndex + 1) * pageSize <
-                              eligibleProgrammes.length
-                            )
-                              setAssignPageIndex((p) => p + 1);
-                          }}
-                          className={
-                            (assignPageIndex + 1) * pageSize >=
-                            eligibleProgrammes.length
-                              ? "pointer-events-none opacity-50"
-                              : ""
-                          }
-                        />
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationLast
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setAssignPageIndex(
-                              Math.ceil(eligibleProgrammes.length / pageSize) -
-                                1,
-                            );
-                          }}
-                          className={
-                            (assignPageIndex + 1) * pageSize >=
-                            eligibleProgrammes.length
-                              ? "pointer-events-none opacity-50"
-                              : ""
-                          }
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                )}
-              </>
-            )}
-          </TabsContent>
-        )}
-
-        {/* ── Assignments, per programme ─────────────────────────────── */}
-        <TabsContent value="ASSIGNMENTS" className="mt-5">
-          <div className="mb-4 flex flex-col gap-3">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search assignments..."
-                value={assignmentsSearch}
-                onChange={(e) => setAssignmentsSearch(e.target.value)}
-                className="h-10 w-full rounded-full pl-9"
-              />
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="grid grid-cols-2 gap-2 sm:w-auto sm:grid-cols-none sm:grid-flow-col">
-                <Select
-                  value={assignmentsCategoryId}
-                  onValueChange={setAssignmentsCategoryId}
-                >
-                  <SelectTrigger className="h-9 rounded-full text-sm sm:w-[190px]">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All categories</SelectItem>
-                    {programmeCategoryOptions.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
 
                 <Select
-                  value={assignmentsProgrammeType}
+                  value={assignmentStatusFilter}
                   onValueChange={(v) =>
-                    setAssignmentsProgrammeType(
-                      v as "ALL" | "GROUP" | "INDIVIDUAL",
+                    setAssignmentStatusFilter(
+                      v as "ALL" | "COMPLETED" | "NOT_COMPLETED",
                     )
                   }
                 >
-                  <SelectTrigger className="h-9 rounded-full text-sm sm:w-[160px]">
-                    <SelectValue placeholder="Type" />
+                  <SelectTrigger className="h-9 rounded-full text-sm w-auto">
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">All types</SelectItem>
-                    <SelectItem value="GROUP">Group</SelectItem>
-                    <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                    <SelectItem value="ALL">All statuses</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="NOT_COMPLETED">Uncompleted</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {filteredProgrammeAssignmentRows.length} assignment
-                {filteredProgrammeAssignmentRows.length === 1 ? "" : "s"}
-              </span>
+              {canAssign && (
+                <Button
+                  size="sm"
+                  className="h-9 w-full lg:w-auto rounded-full xl:ml-2"
+                  onClick={() => setAssignmentModalOpen(true)}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  New assignment
+                </Button>
+              )}
             </div>
           </div>
 
-          {filteredProgrammeAssignmentRows.length === 0 ? (
+          {eligibleProgrammes.length === 0 ? (
             <AppEmptyState
-              title={
-                programmeAssignmentRows.length === 0
-                  ? "Nothing assigned yet"
-                  : "No assignments"
-              }
-              description={
-                programmeAssignmentRows.length === 0
-                  ? "Once you assign participants to a programme, it will appear here."
-                  : "Nothing matches these filters."
-              }
+              title="No programmes"
+              description="Nothing matches these filters."
             />
           ) : (
             <>
               <ul className="divide-y divide-border border-y border-border">
-                {filteredProgrammeAssignmentRows
+                {eligibleProgrammes
                   .slice(
-                    assignmentsPageIndex * pageSize,
-                    (assignmentsPageIndex + 1) * pageSize,
+                    assignPageIndex * pageSize,
+                    (assignPageIndex + 1) * pageSize,
                   )
-                  .map((row) => {
-                    const details = programmeDetailsById.get(row.programmeId);
-                    const isGroup =
-                      (details?.type ?? row.programme?.type) === "GROUP";
-                    const memberCount = row.assignments.length;
-                    const categoryName =
-                      details?.category?.name ?? row.programme?.category?.name;
-                    const stageLabel = stageTypeLabel(
-                      details?.stageType ?? row.programme?.stageType,
-                    );
-                    const capacity = groupCapacityByProgrammeId.get(row.programmeId);
+                  .map((p) => {
+                    const capacity = groupCapacityByProgrammeId.get(p.id);
                     const isFull = capacity?.isFull ?? false;
 
                     return (
-                      <li key={row.programmeId}>
+                      <li key={p.id}>
                         <button
                           type="button"
-                          onClick={() => openAssignDrawer(row.programmeId)}
+                          onClick={() => openAssignDrawer(p.id)}
                           className="group flex w-full items-center gap-4 py-4 text-left transition-opacity hover:opacity-80"
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="truncate text-[15px] font-medium text-heading">
-                                {row.programme?.name ?? "Programme"}
+                                {p.name}
                               </span>
-                              {row.programme && (
-                                <ProgrammeStatusBadge
-                                  status={getUiProgrammeStatus(
-                                    row.programme as any,
-                                  )}
-                                />
-                              )}
                             </div>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {categoryName ? `${categoryName} · ` : ""}
-                              {stageLabel} ·{" "}
-                              {isGroup
-                                ? `${row.teams.size} team${row.teams.size === 1 ? "" : "s"} · ${memberCount} participant${memberCount === 1 ? "" : "s"}`
-                                : `${memberCount} participant${memberCount === 1 ? "" : "s"}`}
-                              {row.lastAssignedAt
-                                ? ` · last assigned ${format(new Date(row.lastAssignedAt), "PP")}`
+                              {p.category.name} · {stageTypeLabel(p.stageType)}{" "}
+                              ·{" "}
+                              {p.type === "GROUP"
+                                ? `Team · ${p.maxTeamsPerGroup} teams of ${p.maxParticipantsPerTeam}`
+                                : `Individual · max ${p.maxParticipantsPerGroup}`}
+                              {p.category.type === "GENERAL"
+                                ? " · open to all categories"
                                 : ""}
                             </p>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {isFull && (
-                              <StatusPill tone="live" className="tabular-nums">
-                                Completed
-                              </StatusPill>
-                            )}
-                            <StatusPill
-                              tone="muted"
-                              className="tabular-nums"
-                            >
-                              {memberCount}
-                            </StatusPill>
-                          </div>
+                          <StatusPill
+                            tone={isFull ? "live" : "muted"}
+                            className="shrink-0 tabular-nums"
+                          >
+                            {isFull
+                              ? "Completed"
+                              : capacity
+                                ? `${capacity.used}/${capacity.total} Assigned`
+                                : "—"}
+                          </StatusPill>
                           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                         </button>
                       </li>
@@ -1569,17 +1419,17 @@ export function AssignProgrammesClient({
                   })}
               </ul>
 
-              {filteredProgrammeAssignmentRows.length > pageSize && (
+              {eligibleProgrammes.length > pageSize && (
                 <Pagination className="mt-4">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationFirst
                         onClick={(e) => {
                           e.preventDefault();
-                          setAssignmentsPageIndex(0);
+                          setAssignPageIndex(0);
                         }}
                         className={
-                          assignmentsPageIndex === 0
+                          assignPageIndex === 0
                             ? "pointer-events-none opacity-50"
                             : ""
                         }
@@ -1589,11 +1439,11 @@ export function AssignProgrammesClient({
                       <PaginationPrevious
                         onClick={(e) => {
                           e.preventDefault();
-                          if (assignmentsPageIndex > 0)
-                            setAssignmentsPageIndex((p) => p - 1);
+                          if (assignPageIndex > 0)
+                            setAssignPageIndex((p) => p - 1);
                         }}
                         className={
-                          assignmentsPageIndex === 0
+                          assignPageIndex === 0
                             ? "pointer-events-none opacity-50"
                             : ""
                         }
@@ -1601,28 +1451,26 @@ export function AssignProgrammesClient({
                     </PaginationItem>
 
                     {[
-                      ...Array(
-                        Math.ceil(filteredProgrammeAssignmentRows.length / pageSize),
-                      ),
+                      ...Array(Math.ceil(eligibleProgrammes.length / pageSize)),
                     ].map((_, i) => {
                       const targetPage = i;
                       const totalPages = Math.ceil(
-                        filteredProgrammeAssignmentRows.length / pageSize,
+                        eligibleProgrammes.length / pageSize,
                       );
 
                       if (
                         targetPage === 0 ||
                         targetPage === totalPages - 1 ||
-                        (targetPage >= assignmentsPageIndex - 1 &&
-                          targetPage <= assignmentsPageIndex + 1)
+                        (targetPage >= assignPageIndex - 1 &&
+                          targetPage <= assignPageIndex + 1)
                       ) {
                         return (
                           <PaginationItem key={i}>
                             <PaginationLink
-                              isActive={assignmentsPageIndex === targetPage}
+                              isActive={assignPageIndex === targetPage}
                               onClick={(e) => {
                                 e.preventDefault();
-                                setAssignmentsPageIndex(targetPage);
+                                setAssignPageIndex(targetPage);
                               }}
                             >
                               {targetPage + 1}
@@ -1632,8 +1480,8 @@ export function AssignProgrammesClient({
                       }
 
                       if (
-                        targetPage === assignmentsPageIndex - 2 ||
-                        targetPage === assignmentsPageIndex + 2
+                        targetPage === assignPageIndex - 2 ||
+                        targetPage === assignPageIndex + 2
                       ) {
                         return (
                           <PaginationItem key={i}>
@@ -1650,14 +1498,14 @@ export function AssignProgrammesClient({
                         onClick={(e) => {
                           e.preventDefault();
                           if (
-                            (assignmentsPageIndex + 1) * pageSize <
-                            filteredProgrammeAssignmentRows.length
+                            (assignPageIndex + 1) * pageSize <
+                            eligibleProgrammes.length
                           )
-                            setAssignmentsPageIndex((p) => p + 1);
+                            setAssignPageIndex((p) => p + 1);
                         }}
                         className={
-                          (assignmentsPageIndex + 1) * pageSize >=
-                          filteredProgrammeAssignmentRows.length
+                          (assignPageIndex + 1) * pageSize >=
+                          eligibleProgrammes.length
                             ? "pointer-events-none opacity-50"
                             : ""
                         }
@@ -1667,15 +1515,13 @@ export function AssignProgrammesClient({
                       <PaginationLast
                         onClick={(e) => {
                           e.preventDefault();
-                          setAssignmentsPageIndex(
-                            Math.ceil(
-                              filteredProgrammeAssignmentRows.length / pageSize,
-                            ) - 1,
+                          setAssignPageIndex(
+                            Math.ceil(eligibleProgrammes.length / pageSize) - 1,
                           );
                         }}
                         className={
-                          (assignmentsPageIndex + 1) * pageSize >=
-                          filteredProgrammeAssignmentRows.length
+                          (assignPageIndex + 1) * pageSize >=
+                          eligibleProgrammes.length
                             ? "pointer-events-none opacity-50"
                             : ""
                         }
@@ -1686,15 +1532,18 @@ export function AssignProgrammesClient({
               )}
             </>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       {/* ── Assign drawer ───────────────────────────────────────────── */}
       <Sheet
         open={assignDrawerOpen}
         onOpenChange={(open) => {
           setAssignDrawerOpen(open);
-          if (!open) clearSelection();
+          if (!open) {
+            clearSelection();
+            setIsEditingAssignments(false);
+          }
         }}
       >
         <SheetContent
@@ -1703,7 +1552,7 @@ export function AssignProgrammesClient({
         >
           {selectedProgramme ? (
             <>
-              <SheetHeader className="space-y-0 border-b border-border p-5 text-left">
+              <SheetHeader className="space-y-0 border-b border-border py-5 text-left">
                 <SheetTitle className="truncate text-lg font-semibold tracking-tight text-heading">
                   {selectedProgramme.name}
                 </SheetTitle>
@@ -1733,7 +1582,7 @@ export function AssignProgrammesClient({
                 </div>
               </SheetHeader>
 
-              <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <div className="min-h-0 flex-1 overflow-y-auto py-5">
                 {/* Team preview */}
                 {selectedProgramme.type === "GROUP" && groupTeamPreview && (
                   <div className="mb-6">
@@ -1795,7 +1644,7 @@ export function AssignProgrammesClient({
                       ))}
                     </div>
 
-                    {teamsNeedingLead.length > 0 && (
+                    {isEditingAssignments && teamsNeedingLead.length > 0 && (
                       <div className="mt-4 rounded-xl border border-border p-3">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                           Team lead required
@@ -1842,184 +1691,274 @@ export function AssignProgrammesClient({
                   </div>
                 )}
 
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Your participants
-                  </h3>
-                  <span className="text-xs tabular-nums text-muted-foreground">
-                    {assignedCountForSelected} already assigned
-                  </span>
-                </div>
-
-                <div className="mb-3 flex flex-col gap-2">
-                  <Input
-                    value={participantSearch}
-                    onChange={(e) => setParticipantSearch(e.target.value)}
-                    placeholder="Search name or chest number"
-                    className="h-9 rounded-full text-sm"
-                  />
-                  <div className="flex gap-1">
-                    {(["ALL", "AVAILABLE", "ASSIGNED"] as const).map((f) => (
-                      <button
-                        key={f}
-                        type="button"
-                        aria-pressed={participantFilter === f}
-                        onClick={() => setParticipantFilter(f)}
-                        className={cn(
-                          "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                          participantFilter === f
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {f === "ALL"
-                          ? "All"
-                          : f === "AVAILABLE"
-                            ? "Available"
-                            : "Assigned"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {visibleParticipants.length === 0 ? (
-                  <AppEmptyState
-                    title="No participants"
-                    description={
-                      participantFilter === "ASSIGNED"
-                        ? "Nobody from your group is assigned to this programme yet."
-                        : "No participants match this search or category."
-                    }
-                  />
-                ) : (
-                  <ul className="divide-y divide-border rounded-2xl border border-border">
-                    {visibleParticipants.map((s) => {
-                      const checked = selectedParticipantIds.includes(s.id);
-                      const isAssignedDB =
-                        alreadyAssignedParticipantIdsForSelectedProgramme.has(
-                          s.id,
-                        );
-                      const disableForLimit =
-                        !checked && !isAssignedDB && isCapacityFull;
-                      const teamNumber =
-                        selectedProgramme.type === "GROUP"
-                          ? groupTeamPreview?.participantIdToTeamNumber.get(
-                              s.id,
-                            )
-                          : undefined;
-
-                      return (
-                        <li key={s.id}>
-                          <label
-                            className={cn(
-                              "flex items-center gap-3 px-3.5 py-3 transition-colors",
-                              checked && "bg-primary/[0.06]",
-                              isAssignedDB && "bg-muted/40",
-                              disableForLimit && "opacity-45",
-                              !isAssignedDB &&
-                                !disableForLimit &&
-                                canAssign &&
-                                "cursor-pointer",
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 shrink-0 accent-[var(--primary)]"
-                              checked={checked || isAssignedDB}
-                              onChange={() => toggleParticipant(s.id)}
-                              disabled={
-                                !canAssign || isAssignedDB || disableForLimit
-                              }
-                            />
-
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-medium text-heading">
-                                {s.name}
+                {assignedCountForSelected > 0 && !isEditingAssignments ? (
+                  selectedProgramme.type === "INDIVIDUAL" && (
+                    <div className="mb-6">
+                      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Assigned Participants
+                      </h3>
+                      <ul className="divide-y divide-border rounded-2xl border border-border">
+                        {Array.from(
+                          alreadyAssignedParticipantIdsForSelectedProgramme,
+                        ).map((id) => {
+                          const s = participantByIdLookup.get(id);
+                          if (!s) return null;
+                          return (
+                            <li
+                              key={s.id}
+                              className="flex items-center gap-3 px-3.5 py-3"
+                            >
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-medium text-heading">
+                                  {s.name}
+                                </span>
+                                <span className="block truncate text-[11px] text-muted-foreground">
+                                  {s.chestNumber ?? "No chest number"}
+                                </span>
                               </span>
-                              <span className="block truncate text-[11px] text-muted-foreground">
-                                {s.chestNumber ?? "No chest number"}
-                              </span>
-                            </span>
-
-                            {/* Say plainly that they are already in, rather
-                                than only fading the row out. */}
-                            {isAssignedDB && (
                               <StatusPill tone="live" icon={Check}>
                                 Assigned
                               </StatusPill>
-                            )}
-                            {teamNumber != null && (
-                              <StatusPill tone="muted">
-                                Team {teamNumber}
-                              </StatusPill>
-                            )}
-                            {isAssignedDB && canRemove && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  const assignment = (assignments as any[]).find(a => 
-                                    (a.programme?.id ?? a.programmeId) === selectedProgramme.id && 
-                                    a.participant?.id === s.id && 
-                                    (a.group?.id ?? a.participant?.groupId ?? a.participant?.group?.id) === leaderGroupId
-                                  );
-                                  if (assignment) {
-                                    if (window.confirm(`Remove ${s.name} from this programme?`)) {
-                                      deleteAssignment.mutate({ festivalId, assignmentId: assignment.id });
-                                    }
-                                  }
-                                }}
-                                className="ml-2 rounded-full p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                disabled={deleteAssignment.isPending}
-                                aria-label={`Remove ${s.name}`}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )
+                ) : (
+                  <>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Your participants
+                      </h3>
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {assignedCountForSelected} already assigned
+                      </span>
+                    </div>
+
+                    <div className="mb-3 flex flex-col gap-2">
+                      <Input
+                        value={participantSearch}
+                        onChange={(e) => setParticipantSearch(e.target.value)}
+                        placeholder="Search name or chest number"
+                        className="h-9 rounded-full text-sm"
+                      />
+                      <div className="flex gap-1">
+                        {(["ALL", "AVAILABLE", "ASSIGNED"] as const).map(
+                          (f) => (
+                            <button
+                              key={f}
+                              type="button"
+                              aria-pressed={participantFilter === f}
+                              onClick={() => setParticipantFilter(f)}
+                              className={cn(
+                                "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                                participantFilter === f
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              {f === "ALL"
+                                ? "All"
+                                : f === "AVAILABLE"
+                                  ? "Available"
+                                  : "Assigned"}
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    </div>
+
+                    {visibleParticipants.length === 0 ? (
+                      <AppEmptyState
+                        title="No participants"
+                        description={
+                          participantFilter === "ASSIGNED"
+                            ? "Nobody from your group is assigned to this programme yet."
+                            : "No participants match this search or category."
+                        }
+                      />
+                    ) : (
+                      <ul className="divide-y divide-border rounded-2xl border border-border">
+                        {visibleParticipants.map((s) => {
+                          const isAssignedDB =
+                            alreadyAssignedParticipantIdsForSelectedProgramme.has(
+                              s.id,
+                            );
+                          const isRemoved = removedParticipantIds.includes(
+                            s.id,
+                          );
+                          const isNewSelected = selectedParticipantIds.includes(
+                            s.id,
+                          );
+
+                          const checked = isAssignedDB
+                            ? !isRemoved
+                            : isNewSelected;
+
+                          const disableForLimit = !checked && isCapacityFull;
+                          const teamNumber =
+                            selectedProgramme.type === "GROUP"
+                              ? groupTeamPreview?.participantIdToTeamNumber.get(
+                                  s.id,
+                                )
+                              : undefined;
+
+                          return (
+                            <li key={s.id}>
+                              <label
+                                className={cn(
+                                  "flex items-center gap-3 px-3.5 py-3 transition-colors",
+                                  checked && "bg-primary/[0.06]",
+                                  isAssignedDB && !isRemoved && "bg-muted/40",
+                                  disableForLimit && "opacity-45",
+                                  !(isAssignedDB && !isRemoved) &&
+                                    !disableForLimit &&
+                                    canAssign &&
+                                    "cursor-pointer",
+                                )}
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 shrink-0 accent-[var(--primary)]"
+                                  checked={checked}
+                                  onChange={() => toggleParticipant(s.id)}
+                                  disabled={
+                                    !isProgrammeEditable ||
+                                    !canAssign ||
+                                    (!isAssignedDB && disableForLimit) ||
+                                    (isAssignedDB && !canRemove)
+                                  }
+                                />
+
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-medium text-heading">
+                                    {s.name}
+                                  </span>
+                                  <span className="block truncate text-[11px] text-muted-foreground">
+                                    {s.chestNumber ?? "No chest number"}
+                                  </span>
+                                </span>
+
+                                {isAssignedDB && !isRemoved && (
+                                  <StatusPill tone="live" icon={Check}>
+                                    Assigned
+                                  </StatusPill>
+                                )}
+                                {teamNumber != null && !isRemoved && (
+                                  <StatusPill tone="muted">
+                                    Team {teamNumber}
+                                  </StatusPill>
+                                )}
+                              </label>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </>
                 )}
               </div>
 
               {/* Sticky action bar — reachable without scrolling back up */}
-              <div className="flex items-center justify-between gap-3 border-t border-border p-4">
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  disabled={!canAssign || selectedNewCount === 0}
-                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-                >
-                  Clear
-                </button>
+              <div className="flex items-center justify-between gap-3 border-t border-border py-4">
+                {assignedCountForSelected > 0 && !isEditingAssignments ? (
+                  <>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          disabled={
+                            !canRemove ||
+                            !isProgrammeEditable ||
+                            deleteAssignment.isPending
+                          }
+                          className="h-10 rounded-full px-5"
+                        >
+                          Clear Assignments
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Clear all assignments?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to clear all assignments for{" "}
+                            {selectedProgramme.name}? This action cannot be
+                            undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={onClearProgrammeAssignments}
+                          >
+                            Clear assignments
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <Button
+                      onClick={() => setIsEditingAssignments(true)}
+                      disabled={!canRemove || !isProgrammeEditable}
+                      className="h-10 rounded-full px-7"
+                    >
+                      Edit Assignments
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (isEditingAssignments && selectedNewCount === 0) {
+                          setIsEditingAssignments(false);
+                          clearSelection();
+                        } else {
+                          clearSelection();
+                        }
+                      }}
+                      disabled={
+                        !isEditingAssignments &&
+                        (!canAssign || !isProgrammeEditable)
+                      }
+                      className="h-10 px-5 rounded-full"
+                    >
+                      {isEditingAssignments && selectedNewCount === 0
+                        ? "Cancel"
+                        : "Clear"}
+                    </Button>
 
-                <Button
-                  onClick={onAssign}
-                  disabled={
-                    !canAssign ||
-                    selectedNewCount === 0 ||
-                    isOverLimit ||
-                    missingTeamLead ||
-                    bulkCreateAssignments.isPending
-                  }
-                  className="h-10 rounded-full px-7"
-                >
-                  {bulkCreateAssignments.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Assign{selectedNewCount > 0 ? ` ${selectedNewCount}` : ""}
-                </Button>
+                    <Button
+                      onClick={onAssign}
+                      disabled={
+                        !canAssign ||
+                        !isProgrammeEditable ||
+                        (selectedNewCount === 0 &&
+                          removedParticipantIds.length === 0) ||
+                        isOverLimit ||
+                        missingTeamLead ||
+                        bulkCreateAssignments.isPending ||
+                        deleteAssignment.isPending
+                      }
+                      className="h-10 rounded-full px-7"
+                    >
+                      {(bulkCreateAssignments.isPending ||
+                        deleteAssignment.isPending) && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      {isEditingAssignments
+                        ? "Save Changes"
+                        : `Assign${selectedNewCount > 0 ? ` ${selectedNewCount}` : ""}`}
+                    </Button>
+                  </>
+                )}
               </div>
             </>
           ) : null}
         </SheetContent>
       </Sheet>
-
     </div>
   );
 }
-
-

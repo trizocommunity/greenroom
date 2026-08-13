@@ -737,6 +737,7 @@ export const AssignmentService = {
 
         const existingRaw = await tx
           .select({
+            id: programmeAssignment.id,
             participantId: programmeAssignment.participantId,
             groupId: programmeAssignment.groupId,
             teamNumber: programmeAssignment.teamNumber,
@@ -776,11 +777,21 @@ export const AssignmentService = {
             const teams = teamsPerGroup.get(a.groupId) || new Set();
             if (a.teamNumber) teams.add(a.teamNumber);
             teamsPerGroup.set(a.groupId, teams);
+
+            let memberCount = 0;
+            const memberSet = memberSetByAssignment.get(a.id);
+            if (memberSet) {
+              memberCount = memberSet.size;
+            }
+            if (a.participantId && !memberSet?.has(a.participantId)) {
+              memberCount += 1;
+            }
+
             if (a.teamNumber) {
               const key = `${a.groupId}_${a.teamNumber}`;
               participantsPerTeam.set(
                 key,
-                (participantsPerTeam.get(key) || 0) + 1,
+                (participantsPerTeam.get(key) || 0) + memberCount,
               );
             }
           }
@@ -983,10 +994,6 @@ export const AssignmentService = {
               .returning();
             finalResults.push(created);
           }
-        }
-
-        if (!isGroupProgramme && legacyRows.length > 0) {
-          await insertGroupAssignment;
         }
 
         if (isGroupProgramme && teamLeadsRequired) {

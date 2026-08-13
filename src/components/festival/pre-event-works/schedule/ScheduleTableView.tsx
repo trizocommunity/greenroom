@@ -3,13 +3,19 @@
 import { format } from "date-fns";
 import {
   ArrowRightLeft,
+  Bell,
+  BellOff,
   Clock,
+  Flag,
   MapPin,
+  Megaphone,
   Pencil,
   Tag,
   Users,
+  Loader2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -26,6 +32,9 @@ interface ScheduleTableViewProps {
   entries: EnrichedScheduleEntry[];
   onEdit: (entry: EnrichedScheduleEntry) => void;
   onSwap: (entry: EnrichedScheduleEntry) => void;
+  onNotify: (entry: EnrichedScheduleEntry) => void;
+  onCancelNotify: (entry: EnrichedScheduleEntry) => void;
+  onStartReporting: (entry: EnrichedScheduleEntry) => void;
   isReadOnly: boolean;
   searchQuery: string;
 }
@@ -89,9 +98,15 @@ export function ScheduleTableView({
   entries,
   onEdit,
   onSwap,
+  onNotify,
+  onCancelNotify,
+  onStartReporting,
   isReadOnly,
   searchQuery,
 }: ScheduleTableViewProps) {
+  const [isPending, startTransition] = useTransition();
+  const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null);
+
   const [sortField, setSortField] = useState<"schedule" | "name" | "stage">(
     "schedule",
   );
@@ -258,23 +273,70 @@ export function ScheduleTableView({
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {entry.type === "PROGRAMME" && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => onSwap(entry)}
-                                  >
-                                    <ArrowRightLeft className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  Switch schedule slot
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className={cn(
+                                        "h-8 w-8",
+                                        entry.callListNotifiedAt
+                                          ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                          : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                      )}
+                                      onClick={() => entry.callListNotifiedAt ? onCancelNotify(entry) : onNotify(entry)}
+                                    >
+                                      {entry.callListNotifiedAt ? (
+                                        <BellOff className="h-4 w-4" />
+                                      ) : (
+                                        <Bell className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {entry.callListNotifiedAt ? "Cancel Call List Notification" : "Notify Call List"}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+                                      onClick={() => onStartReporting(entry)}
+                                    >
+                                      <Flag className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Start Reporting
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => onSwap(entry)}
+                                    >
+                                      <ArrowRightLeft className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Switch schedule slot
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </>
                           )}
                           <TooltipProvider>
                             <Tooltip>
@@ -331,14 +393,41 @@ export function ScheduleTableView({
                 {!isReadOnly && (
                   <div className="flex items-center gap-0.5 shrink-0">
                     {entry.type === "PROGRAMME" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => onSwap(entry)}
-                      >
-                        <ArrowRightLeft className="h-4 w-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-8 w-8",
+                            entry.callListNotifiedAt
+                              ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                              : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          )}
+                          onClick={() => entry.callListNotifiedAt ? onCancelNotify(entry) : onNotify(entry)}
+                        >
+                          {entry.callListNotifiedAt ? (
+                            <BellOff className="h-4 w-4" />
+                          ) : (
+                            <Bell className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+                          onClick={() => onStartReporting(entry)}
+                        >
+                          <Flag className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onSwap(entry)}
+                        >
+                          <ArrowRightLeft className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                     <Button
                       variant="ghost"
