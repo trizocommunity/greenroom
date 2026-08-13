@@ -1621,9 +1621,43 @@ export function AssignProgrammesClient({
                               {t.used}/{groupTeamPreview.maxPerTeam}
                             </span>
                           </div>
-                          {existingTeamLeads[
-                            `${selectedProgramme.id}:${t.teamNumber}`
-                          ] && (
+                          {requiresTeamLead && t.used > 0 ? (
+                            <div className="mt-3">
+                              <Select
+                                value={
+                                  teamLeadChoice[t.teamNumber] ??
+                                  existingTeamLeads[
+                                    `${selectedProgramme.id}:${t.teamNumber}`
+                                  ]?.participantId ??
+                                  ""
+                                }
+                                onValueChange={(v) =>
+                                  setTeamLeadChoice((prev) => ({
+                                    ...prev,
+                                    [t.teamNumber]: v,
+                                  }))
+                                }
+                              >
+                                <SelectTrigger className="h-8 w-full rounded-md border-border text-xs shadow-none">
+                                  <div className="flex min-w-0 items-center gap-1.5">
+                                    <Crown className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                    <span className="truncate">
+                                      <SelectValue placeholder="Select team lead" />
+                                    </span>
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[...t.existingIds, ...t.newIds].map((id) => (
+                                    <SelectItem key={id} value={id}>
+                                      {participantByIdLookup.get(id)?.name ?? id}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : existingTeamLeads[
+                              `${selectedProgramme.id}:${t.teamNumber}`
+                            ] ? (
                             <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
                               <Crown className="h-3 w-3 text-primary" />
                               Lead:{" "}
@@ -1633,78 +1667,36 @@ export function AssignProgrammesClient({
                                 ].name
                               }
                             </p>
-                          )}
+                          ) : null}
                           <div className="mt-2 flex flex-wrap gap-1">
                             {[...t.existingIds, ...t.newIds].length === 0 ? (
                               <span className="text-xs text-muted-foreground">
                                 Empty
                               </span>
                             ) : (
-                              [...t.existingIds, ...t.newIds].map((id) => (
+                              [...t.existingIds, ...t.newIds].map((id) => {
+                                const isLead = id === (teamLeadChoice[t.teamNumber] ?? existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`]?.participantId);
+                                return (
                                 <span
                                   key={id}
                                   className={cn(
-                                    "rounded-full px-2 py-0.5 text-[11px]",
-                                    t.newIds.includes(id)
-                                      ? "bg-primary/12 text-primary"
-                                      : "bg-muted text-muted-foreground",
+                                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+                                    isLead
+                                      ? "border border-primary/30 bg-primary/20 font-medium text-primary"
+                                      : t.newIds.includes(id)
+                                        ? "bg-primary/12 text-primary"
+                                        : "bg-muted text-muted-foreground",
                                   )}
                                 >
+                                  {isLead && <Crown className="h-2.5 w-2.5" />}
                                   {participantByIdLookup.get(id)?.name ?? id}
                                 </span>
-                              ))
+                              )})
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
-
-                    {isEditingAssignments && teamsNeedingLead.length > 0 && (
-                      <div className="mt-4 rounded-xl border border-border p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Team Leads
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Select a team lead for your teams.
-                        </p>
-
-                        <div className="mt-3 space-y-2">
-                          {teamsNeedingLead.map((t) => {
-                            const currentLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`]?.participantId;
-                            return (
-                            <div
-                              key={t.teamNumber}
-                              className="flex items-center gap-3"
-                            >
-                              <span className="w-16 shrink-0 text-xs font-medium text-heading">
-                                Team {t.teamNumber}
-                              </span>
-                              <Select
-                                value={teamLeadChoice[t.teamNumber] ?? currentLead ?? ""}
-                                onValueChange={(v) =>
-                                  setTeamLeadChoice((prev) => ({
-                                    ...prev,
-                                    [t.teamNumber]: v,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger className="h-9 flex-1 rounded-full text-sm">
-                                  <SelectValue placeholder="Choose a lead" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {t.candidateIds.map((id) => (
-                                    <SelectItem key={id} value={id}>
-                                      {participantByIdLookup.get(id)?.name ??
-                                        id}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )})}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 
