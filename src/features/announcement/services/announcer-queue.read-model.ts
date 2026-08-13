@@ -8,6 +8,9 @@ import {
   programmeCodeLetter as programmeCodeLetterTable,
   programme as programmeTable,
   result as resultTable,
+  programmeReportingSession,
+  scheduleEntry,
+  stage as stageTable,
 } from "@/core/database/schema";
 import {
   formatParticipantLabel,
@@ -41,6 +44,100 @@ type ResultQueryRow = {
   individualChestNumber: string | null;
   participantId: string | null;
 };
+
+export type ActiveReportingProgramme = {
+  id: string;
+  name: string;
+  type: string;
+  stageName: string | null;
+  categoryName: string | null;
+  startedAt: string | null;
+};
+
+export async function getCallListProgrammes(
+  festivalId: string,
+): Promise<ActiveReportingProgramme[]> {
+  const inProgressSessions = await getActiveReportingSessions(festivalId);
+
+  const schedules = await db.query.scheduleEntry.findMany({
+    where: and(
+      eq(scheduleEntry.festivalId, festivalId),
+      eq(scheduleEntry.type, "PROGRAMME"),
+    ),
+    with: {
+      programme: { with: { category: true } },
+      stage: true,
+    }
+  });
+
+  const notified = schedules
+    .filter(s => s.callListNotifiedAt != null)
+    .map(s => ({
+      id: s.programme!.id,
+      name: s.programme!.name,
+      type: s.programme!.type,
+      stageName: s.stage?.name ?? null,
+      categoryName: s.programme!.category?.name ?? null,
+      startedAt: s.callListNotifiedAt as string | null, // string|null type
+    }));
+
+  const inProgressMap = new Map(inProgressSessions.map(s => [s.id, s]));
+  
+  for (const n of notified) {
+    if (!inProgressMap.has(n.id)) {
+      inProgressMap.set(n.id, n);
+    }
+  }
+
+  return Array.from(inProgressMap.values()).sort((a, b) => {
+    const aTime = a.startedAt ? new Date(a.startedAt).getTime() : 0;
+    const bTime = b.startedAt ? new Date(b.startedAt).getTime() : 0;
+    return aTime - bTime; // ascending
+  });
+}
+
+export async function getActiveReportingSessions(
+  festivalId: string,
+): Promise<ActiveReportingProgramme[]> {
+  const sessions = await db
+    .select({
+      id: programmeTable.id,
+      name: programmeTable.name,
+      type: programmeTable.type,
+      stageName: stageTable.name,
+      startedAt: programmeReportingSession.startedAt,
+    })
+    .from(programmeReportingSession)
+    .innerJoin(programmeTable, eq(programmeReportingSession.programmeId, programmeTable.id))
+    .leftJoin(stageTable, eq(programmeReportingSession.stageId, stageTable.id))
+    .where(
+      and(
+        eq(programmeReportingSession.festivalId, festivalId),
+        eq(programmeReportingSession.status, "IN_PROGRESS")
+      )
+    )
+    .orderBy(asc(programmeReportingSession.startedAt));
+
+  if (sessions.length === 0) return [];
+
+  // Fetch categories separately since we didn't join them above
+  const programmeIds = sessions.map((s) => s.id);
+  const programmesWithCategories = await db.query.programme.findMany({
+    where: inArray(programmeTable.id, programmeIds),
+    with: { category: { columns: { name: true } } },
+    columns: { id: true }
+  });
+  
+  const categoryMap = new Map<string, string | null>();
+  for (const p of programmesWithCategories) {
+    categoryMap.set(p.id, p.category?.name ?? null);
+  }
+
+  return sessions.map((s) => ({
+    ...s,
+    categoryName: categoryMap.get(s.id) ?? null,
+  }));
+}
 
 export async function getAnnouncerQueue(
   festivalId: string,

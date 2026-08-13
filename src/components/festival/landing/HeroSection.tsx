@@ -139,14 +139,18 @@ export function HeroSection({
                   </div>
                 ))}
               </dl>
-              
+
               <div className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-muted-foreground">Registration:</span>
+                  <span className="font-medium text-muted-foreground">
+                    Registration:
+                  </span>
                   <WindowStatusBadge state={registrationWindow.state} />
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-muted-foreground">Assignments:</span>
+                  <span className="font-medium text-muted-foreground">
+                    Assignments:
+                  </span>
                   <WindowStatusBadge state={assignmentWindow.state} />
                 </div>
               </div>

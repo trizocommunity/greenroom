@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Drawer,
   DrawerContent,
@@ -14,7 +15,6 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,

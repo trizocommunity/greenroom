@@ -2,9 +2,6 @@ import "server-only";
 
 import crypto from "crypto";
 import { eq, sql } from "drizzle-orm";
-import { db } from "@/core/database/client";
-import { festival } from "@/core/database/schema";
-import { TIER_CONFIG } from "@/config/pricing";
 import { uploadInput } from "@/api/contracts/upload";
 import {
   badRequest,
@@ -12,6 +9,9 @@ import {
   ok,
   tooManyRequests,
 } from "@/api/lib";
+import { TIER_CONFIG } from "@/config/pricing";
+import { db } from "@/core/database/client";
+import { festival } from "@/core/database/schema";
 import { MS, serverNowMs } from "@/core/datetime/server";
 import { checkRateLimit } from "@/core/http/rate-limit";
 
@@ -60,10 +60,16 @@ const handler = createProtectedHandler({
 
     const tierConfig = TIER_CONFIG[festivalRecord.tier] || TIER_CONFIG.BASIC;
     const tierLimitBytes = tierConfig.limits.storageMB * 1024 * 1024;
-    const totalStorage = festivalRecord.storageUsedBytes + festivalRecord.dbStorageBytes + buffer.length;
+    const totalStorage =
+      festivalRecord.storageUsedBytes +
+      festivalRecord.dbStorageBytes +
+      buffer.length;
 
     if (totalStorage > tierLimitBytes) {
-      return badRequest("STORAGE_LIMIT_EXCEEDED", "Storage limit exceeded for this tier.");
+      return badRequest(
+        "STORAGE_LIMIT_EXCEEDED",
+        "Storage limit exceeded for this tier.",
+      );
     }
 
     const timestamp = Math.round(serverNowMs() / 1000);
@@ -102,7 +108,9 @@ const handler = createProtectedHandler({
 
     await db
       .update(festival)
-      .set({ storageUsedBytes: sql`${festival.storageUsedBytes} + ${buffer.length}` })
+      .set({
+        storageUsedBytes: sql`${festival.storageUsedBytes} + ${buffer.length}`,
+      })
       .where(eq(festival.id, festivalRecord.id));
 
     return ok({

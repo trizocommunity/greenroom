@@ -24,6 +24,7 @@ import { useStages } from "@/api/client/stages";
 import { StagePickerCards } from "@/components/festival/stage-assignment/StagePickerCards";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Drawer,
@@ -41,7 +42,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ERROR_MESSAGES } from "@/core/errors/errors";

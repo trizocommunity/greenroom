@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Crown, Loader2, Mail, Phone } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamParticipantsDialog } from "@/components/festival/pre-event-works/assignments/TeamParticipantsDialog";
@@ -96,6 +96,15 @@ export function ParticipantProfileView({
     participants: [],
   });
   const [loadingTeamFor, setLoadingTeamFor] = useState<string | null>(null);
+
+  const [filterType, setFilterType] = useState<string>("ALL");
+
+  const filteredParticipantAssignments = useMemo(() => {
+    return assignments.filter((a: any) => {
+      if (filterType !== "ALL" && a.programme?.type !== filterType) return false;
+      return true;
+    });
+  }, [assignments, filterType]);
 
   async function openTeamModal(assignment: (typeof assignments)[number]) {
     const programme = assignment.programme;
@@ -311,21 +320,20 @@ export function ParticipantProfileView({
             <CardTitle className="text-base flex items-center gap-2">
               Assigned Programmes
               <Badge variant="secondary" className="text-xs">
-                {assignments.length}
+                {filteredParticipantAssignments.length}
               </Badge>
             </CardTitle>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              asChild
-            >
-              <Link
-                href={`/dashboard/${festivalSlug}/pre-event-works/assignments?participantId=${participant.id}`}
+            <div className="flex items-center gap-2">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="h-8 text-xs border rounded-md px-2 py-1 bg-background"
               >
-                Edit assignments
-              </Link>
-            </Button>
+                <option value="ALL">All Types</option>
+                <option value="INDIVIDUAL">Individual</option>
+                <option value="GROUP">Group</option>
+              </select>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="border rounded-md overflow-hidden">
@@ -338,7 +346,7 @@ export function ParticipantProfileView({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {assignments.map((assignment) => {
+                  {filteredParticipantAssignments.map((assignment) => {
                     const isGroup = assignment.programme?.type === "GROUP";
                     const isLoading =
                       loadingTeamFor === assignment.assignmentId;
@@ -379,7 +387,7 @@ export function ParticipantProfileView({
                       </TableRow>
                     );
                   })}
-                  {assignments.length === 0 && (
+                  {filteredParticipantAssignments.length === 0 && (
                     <TableRow>
                       <TableCell
                         colSpan={3}

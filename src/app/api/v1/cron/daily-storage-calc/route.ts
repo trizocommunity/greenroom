@@ -1,7 +1,7 @@
 import "server-only";
+import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/core/database/client";
-import { sql } from "drizzle-orm";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -32,9 +32,15 @@ export async function GET(request: Request) {
       WHERE festival.id = db_sizes.festival_id;
     `);
 
-    return NextResponse.json({ success: true, message: "Storage limits recalculated successfully." });
+    return NextResponse.json({
+      success: true,
+      message: "Storage limits recalculated successfully.",
+    });
   } catch (error) {
     console.error("Failed to run daily storage calc:", error);
-    return NextResponse.json({ error: "Failed to calculate storage" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to calculate storage" },
+      { status: 500 },
+    );
   }
 }

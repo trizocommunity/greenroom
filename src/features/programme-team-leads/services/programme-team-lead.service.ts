@@ -79,6 +79,11 @@ async function assertParticipantInTeam(
       "TEAM_NOT_FOUND",
     );
   }
+
+  if (team.participantId === participantId) {
+    return;
+  }
+
   const member = await executor.query.programmeAssignmentMember.findFirst({
     where: and(
       eq(assignmentMemberTable.assignmentId, team.id),

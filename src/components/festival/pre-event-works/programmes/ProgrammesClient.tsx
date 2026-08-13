@@ -29,8 +29,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -606,7 +606,9 @@ export function ProgrammesClient({
               <DataTablePagination
                 pageIndex={pagination.pageIndex}
                 pageCount={pageCount}
-                onPageChange={(page) => setPagination((p) => ({ ...p, pageIndex: page }))}
+                onPageChange={(page) =>
+                  setPagination((p) => ({ ...p, pageIndex: page }))
+                }
               />
             </div>
           )}

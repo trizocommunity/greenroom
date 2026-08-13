@@ -24,6 +24,7 @@ import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Dialog,
@@ -42,7 +43,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate, parseInstant } from "@/core/datetime";
@@ -229,7 +229,11 @@ export function NewsClient({
       return;
     }
     try {
-      const result = await uploadMutation.mutateAsync({ file, folder: "news", festivalId });
+      const result = await uploadMutation.mutateAsync({
+        file,
+        folder: "news",
+        festivalId,
+      });
       if (result?.url) setForm((f) => ({ ...f, imageUrl: result.url }));
     } catch {
       // Error toast is handled by the hook

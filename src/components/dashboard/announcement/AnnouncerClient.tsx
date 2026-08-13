@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Drawer,
   DrawerContent,
@@ -20,7 +21,6 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,

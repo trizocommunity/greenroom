@@ -5,6 +5,7 @@ import { AnnouncerConsoleClient } from "@/components/dashboard/announcement/Anno
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
+import { getCallListProgrammes } from "@/features/announcement/services/announcer.service";
 import type { TeamStandingRow } from "@/features/announcement/services/announcer.service";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 
@@ -46,6 +47,8 @@ export default async function AnnouncerPage({
   const queuedStandings =
     (festival.queuedTeamStandings as TeamStandingRow[] | null) ?? [];
 
+  const callList = await getCallListProgrammes(festival.id);
+
   return (
     <div className="pt-4 sm:pt-6 space-y-6">
       <div>
@@ -60,6 +63,7 @@ export default async function AnnouncerPage({
         festivalId={festival.id}
         queuedStandings={queuedStandings}
         afterCount={festival.standingsPublishedAtResultNumber}
+        callList={callList}
       />
     </div>
   );

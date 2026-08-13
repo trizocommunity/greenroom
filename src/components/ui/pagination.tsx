@@ -1,4 +1,10 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  MoreHorizontal,
+} from "lucide-react";
 import * as React from "react";
 import { type ButtonProps, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
@@ -19,7 +25,10 @@ const PaginationContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ul
     ref={ref}
-    className={cn("flex flex-row items-center gap-1", className)}
+    className={cn(
+      "flex flex-row items-center gap-1 flex-wrap justify-center",
+      className,
+    )}
     {...props}
   />
 ));

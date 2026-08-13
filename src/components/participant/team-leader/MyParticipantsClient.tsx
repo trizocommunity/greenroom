@@ -9,8 +9,8 @@ import {
   Pencil,
   Plus,
   QrCode,
-  ShieldAlert,
   Search,
+  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -40,16 +40,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
+  PaginationFirst,
   PaginationItem,
+  PaginationLast,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationFirst,
-  PaginationLast,
 } from "@/components/ui/pagination";
 import {
   Select,
@@ -64,7 +65,6 @@ import {
   getParticipantProfilePath,
   getQrCodeContent,
 } from "@/features/participants/services/participant-profile-url";
-import { Input } from "@/components/ui/input";
 
 type ParticipantForMyParticipants = {
   id: string;
@@ -162,7 +162,11 @@ export function MyParticipantsClient({
     }
     if (participantSearch.trim() !== "") {
       const q = participantSearch.toLowerCase();
-      filtered = filtered.filter((s) => s.name.toLowerCase().includes(q) || (s.chestNumber && s.chestNumber.toLowerCase().includes(q)));
+      filtered = filtered.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.chestNumber && s.chestNumber.toLowerCase().includes(q)),
+      );
     }
     return filtered;
   }, [participants, selectedCategoryId, participantSearch]);

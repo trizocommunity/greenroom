@@ -165,6 +165,18 @@ export async function findProgrammeWithAssignments(id: string) {
             with: { group: true },
           },
           group: true,
+          members: {
+            with: {
+              participant: {
+                columns: {
+                  id: true,
+                  name: true,
+                  groupId: true,
+                  chestNumber: true,
+                },
+              },
+            },
+          },
         },
       },
     },

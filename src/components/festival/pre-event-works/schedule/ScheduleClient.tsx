@@ -5,6 +5,8 @@ import { formatInTimeZone } from "date-fns-tz";
 import {
   AlertTriangle,
   Calendar,
+  Check,
+  ChevronsUpDown,
   Loader2,
   Plus,
   Search,
@@ -21,13 +23,22 @@ import {
 } from "@/api/client/schedule";
 import {
   type CalendarGroupBy,
-  ScheduleCalendarView,
+  ScheduleCalendarView 
 } from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
+import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import {
   Dialog,
@@ -70,6 +81,8 @@ import {
   clearScheduleEntries,
   type EnrichedScheduleEntry,
   getScheduleEntriesEnriched,
+  notifyCallList,
+  cancelCallListNotification,
   type SchedulableProgramme,
 } from "@/features/schedule/actions/schedule.actions";
 import {
@@ -145,6 +158,9 @@ export function ScheduleClient({
   const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [swapEntry, setSwapEntry] = useState<EnrichedScheduleEntry | null>(
+    null,
+  );
+  const [reportingEntry, setReportingEntry] = useState<EnrichedScheduleEntry | null>(
     null,
   );
   const [groupBy, setGroupBy] = useState<CalendarGroupBy>("date");
@@ -321,6 +337,30 @@ export function ScheduleClient({
       toast.error(error?.message);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleNotify = async (entry: EnrichedScheduleEntry) => {
+    try {
+      const res = await notifyCallList(festivalId, entry.id);
+      if (res.success) {
+        toast.success("Call list notified!");
+        refresh();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to notify call list");
+    }
+  };
+
+  const handleCancelNotify = async (entry: EnrichedScheduleEntry) => {
+    try {
+      const res = await cancelCallListNotification(festivalId, entry.id);
+      if (res.success) {
+        toast.success("Call list notification cancelled");
+        refresh();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to cancel notification");
     }
   };
 
@@ -592,6 +632,9 @@ export function ScheduleClient({
             setEditEntry(entry);
           }}
           onSwap={(entry) => setSwapEntry(entry)}
+          onNotify={handleNotify}
+          onCancelNotify={handleCancelNotify}
+          onStartReporting={setReportingEntry}
           isReadOnly={isReadOnly}
           searchQuery={searchQuery}
         />
@@ -813,6 +856,7 @@ function AddEntryDialog({
   const [sessionType, setSessionType] = useState<string>("GENERAL");
   const [categoryId, setCategoryId] = useState<string>("");
   const [programmeId, setProgrammeId] = useState("");
+  const [programmeOpen, setProgrammeOpen] = useState(false);
   const [stageId, setStageId] = useState("");
   const [dateStr, setDateStr] = useState(today);
   const [startTimeStr, setStartTimeStr] = useState("09:00");
@@ -933,8 +977,8 @@ function AddEntryDialog({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="flex flex-col">
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+      <DrawerContent className="flex flex-col p-0 sm:p-0 gap-0">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
           <DrawerHeader className="pb-3 px-0 pt-0">
             <DrawerTitle className="text-base">Add to schedule</DrawerTitle>
             <DrawerDescription className="text-xs">
@@ -994,44 +1038,82 @@ function AddEntryDialog({
                     <Label htmlFor="add-programme" className="text-xs">
                       Programme
                     </Label>
-                    <Select
-                      value={programmeId}
-                      onValueChange={setProgrammeId}
-                      required={entryType === "PROGRAMME"}
-                      disabled={!categoryId}
+                    <Popover
+                      open={programmeOpen}
+                      onOpenChange={setProgrammeOpen}
                     >
-                      <SelectTrigger id="add-programme" className="h-9 text-sm">
-                        <SelectValue
-                          placeholder={
-                            categoryId
-                              ? "Select programme"
-                              : "Select category first"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {visibleProgrammes.length === 0 ? (
-                          <SelectItem value="__none__" disabled>
-                            {categoryId
-                              ? "No programmes in this category"
-                              : "Select category first"}
-                          </SelectItem>
-                        ) : (
-                          visibleProgrammes.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              <div>
-                                <span>{p.name}</span>
-                                {p.nameSecondary && (
-                                  <span className="text-xs text-muted-foreground ml-2">
-                                    ({p.nameSecondary})
-                                  </span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="add-programme"
+                          variant="outline"
+                          role="combobox"
+                          disabled={!categoryId}
+                          aria-expanded={programmeOpen}
+                          className={cn(
+                            "h-9 w-full justify-between font-normal text-sm px-3",
+                            !programmeId && "text-muted-foreground",
+                          )}
+                        >
+                          <span className="truncate">
+                            {programmeId
+                              ? visibleProgrammes.find(
+                                  (p) => p.id === programmeId,
+                                )?.name || "Select programme"
+                              : categoryId
+                                ? "Select programme"
+                                : "Select category first"}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-[--radix-popover-trigger-width] p-0"
+                        align="start"
+                      >
+                        <Command>
+                          <CommandInput
+                            placeholder="Search programme..."
+                            className="h-9"
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              {categoryId
+                                ? "No matching programme."
+                                : "Select category first."}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {visibleProgrammes.map((p) => (
+                                <CommandItem
+                                  key={p.id}
+                                  value={p.name}
+                                  onSelect={() => {
+                                    setProgrammeId(p.id);
+                                    setProgrammeOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4 shrink-0",
+                                      programmeId === p.id
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  <div className="truncate">
+                                    <span>{p.name}</span>
+                                    {p.nameSecondary && (
+                                      <span className="text-xs text-muted-foreground ml-2">
+                                        ({p.nameSecondary})
+                                      </span>
+                                    )}
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   {/* Duration preview */}
@@ -1373,8 +1455,8 @@ function EditEntryDialog({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="flex flex-col">
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+      <DrawerContent className="flex flex-col p-0 sm:p-0 gap-0">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
           <DrawerHeader className="px-0 pt-0">
             <DrawerTitle>Edit schedule entry</DrawerTitle>
             <DrawerDescription>{getEntryLabel(entry)}</DrawerDescription>

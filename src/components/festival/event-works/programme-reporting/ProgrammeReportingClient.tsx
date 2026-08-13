@@ -16,7 +16,6 @@ import { usePathname, useRouter } from "next/navigation";
 import party from "party-js";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { CompactHistoryList } from "@/components/dashboard/event-works/CompactHistoryList";
-import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import {
   AlertDialog,
@@ -31,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Dialog,
   DialogContent,
@@ -190,6 +190,45 @@ export function ProgrammeReportingClient({
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoStartId = urlParams.get("autoStart");
+    if (autoStartId && board.length > 0) {
+      // Clean up the URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+
+      // Find the entry in the board by programme ID
+      const targetEntry = board.find((item) => item.programme?.id === autoStartId);
+      if (targetEntry) {
+        setSelectedEntryId(targetEntry.id);
+        const status = getUiReportingStatus(
+          targetEntry.reportingSession?.status,
+          targetEntry.reportingSession?.windowEndsAt ?? null,
+          true
+        );
+        if (status === "NOT_STARTED" || status === "RESET") {
+          setActiveAction("start");
+          startTransition(async () => {
+            try {
+              const res = await startProgrammeReportingAction(
+                festivalId,
+                targetEntry.id
+              );
+              toast.success("Reporting started and announcers notified!");
+            } catch (err) {
+              toast.error("Failed to start reporting");
+            } finally {
+              setActiveAction(null);
+            }
+          });
+        }
+      }
+    }
+  }, [mounted, board, festivalId]);
+
   const [activeAction, setActiveAction] = useState<
     | null
     | "start"

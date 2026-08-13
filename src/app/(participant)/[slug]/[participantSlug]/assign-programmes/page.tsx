@@ -98,7 +98,7 @@ export default async function AssignProgrammesPage({
     <div className={`${APP_CONTAINER} py-8`}>
       <AppPageHeader
         eyebrow="Team leader"
-        title="Assign programmes"
+        title="Programme assignments"
         description="Pick the programmes each of your participants will take part in."
         actions={<DeadlinesCard start={windowStart} end={deadline} />}
         className="mb-8"
