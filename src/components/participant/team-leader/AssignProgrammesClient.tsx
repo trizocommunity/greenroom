@@ -431,6 +431,9 @@ export function AssignProgrammesClient({
   const [teamLeadChoice, setTeamLeadChoice] = useState<Record<number, string>>(
     {},
   );
+  
+  const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
+  const [isEditingAssignments, setIsEditingAssignments] = useState(false);
   const filteredParticipants = useMemo(() => {
     let filtered = participantsForSelectedProgramme;
 
@@ -1152,8 +1155,6 @@ export function AssignProgrammesClient({
   /* The Assign flow is a drawer at every width — picking a programme from a
      list and assigning into it are one task, so they belong in one surface
      instead of two columns that only fit on a desktop. */
-  const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
-  const [isEditingAssignments, setIsEditingAssignments] = useState(false);
 
   const openAssignDrawer = useCallback((programmeId: string) => {
     setSelectedProgrammeId(programmeId);
