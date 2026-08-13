@@ -116,22 +116,19 @@ export function EditParticipantDialog({
     },
   });
 
-  // Re-seed the form each time the dialog opens for a (possibly different)
-  // participant, so edits always start from the current stored values.
+  // Re-seed the form when the participant changes, but NOT every time the
+  // drawer opens, so edits are preserved if the user accidentally closes the drawer.
   useEffect(() => {
-    if (open) {
-      form.reset({
-        name: participant.name ?? "",
-        email: participant.email ?? "",
-        phone: participant.phone ?? "",
-        categoryId: participant.category?.id ?? "",
-        gender: normalizeGender(participant.gender),
-        dateOfBirth: participant.dateOfBirth ?? "",
-        standard: participant.standard ?? "",
-      });
-      form.trigger();
-    }
-  }, [open, participant, form]);
+    form.reset({
+      name: participant.name ?? "",
+      email: participant.email ?? "",
+      phone: participant.phone ?? "",
+      categoryId: participant.category?.id ?? "",
+      gender: normalizeGender(participant.gender),
+      dateOfBirth: participant.dateOfBirth ?? "",
+      standard: participant.standard ?? "",
+    });
+  }, [participant, form]);
 
   const onSubmit = async (data: TeamLeaderParticipantFormValues) => {
     setIsLoading(true);

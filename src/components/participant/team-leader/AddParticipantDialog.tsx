@@ -98,26 +98,15 @@ export function AddParticipantDialog({
     },
   });
 
-  useEffect(() => {
-    if (open) {
-      form.reset({
-        name: "",
-        email: "",
-        phone: "",
-        categoryId: "",
-        gender: "MALE",
-        dateOfBirth: "",
-        standard: "",
-      });
-      form.trigger();
-    }
-  }, [open, form]);
+  // Form is no longer reset every time the drawer opens to preserve typed data.
+  // It is now reset on successful submission.
 
   const onSubmit = async (data: TeamLeaderParticipantFormValues) => {
     setIsLoading(true);
     try {
       await createParticipantAsTeamLeaderAction(festivalId, data);
       toast.success("Participant added successfully");
+      form.reset();
       setOpen(false);
       onCreated?.();
     } catch (error: any) {

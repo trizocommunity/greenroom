@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { AnnouncerOverview } from "@/components/dashboard/overview/AnnouncerOverview";
+import { AnnouncerConsoleClient } from "@/components/dashboard/announcement/AnnouncerConsoleClient";
 import { DashboardGreeting } from "@/components/dashboard/overview/DashboardGreeting";
 import { MediaOverview } from "@/components/dashboard/overview/MediaOverview";
 import { OverviewSkeleton } from "@/components/dashboard/overview/OverviewSkeleton";
@@ -10,7 +10,8 @@ import { VolunteerOverview } from "@/components/dashboard/overview/VolunteerOver
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { getActiveReportingSessions } from "@/features/announcement/services/announcer.service";
+import { getActiveReportingSessions, getCallListProgrammes } from "@/features/announcement/services/announcer.service";
+import type { TeamStandingRow } from "@/features/announcement/services/announcer.service";
 import {
   ALL_FESTIVAL_ROLES,
   PRIVILEGED_ROLES,
@@ -46,9 +47,22 @@ export default async function FestivalDashboardPage({
 
   const activeReportingSessions = await getActiveReportingSessions(festival.id);
 
+  // For ANNOUNCER role: fetch the full console data directly
+  const announcerData =
+    effectiveRole === "ANNOUNCER"
+      ? {
+          queuedStandings:
+            ((festival as any).queuedTeamStandings as TeamStandingRow[] | null) ?? [],
+          afterCount: (festival as any).standingsPublishedAtResultNumber ?? null,
+          callList: await getCallListProgrammes(festival.id),
+        }
+      : null;
+
   return (
     <div className="flex flex-col gap-5 pt-4 sm:pt-6 pb-12">
-      <DashboardGreeting name={greetingName} timezone={festival.timezone} />
+      {effectiveRole !== "ANNOUNCER" && (
+        <DashboardGreeting name={greetingName} timezone={festival.timezone} />
+      )}
 
       {activeReportingSessions.length > 0 && (
         <div className="space-y-3">
@@ -83,10 +97,14 @@ export default async function FestivalDashboardPage({
             userId={session?.userId ?? ""}
           />
         </Suspense>
-      ) : effectiveRole === "ANNOUNCER" ? (
-        <Suspense fallback={<OverviewSkeleton />}>
-          <AnnouncerOverview festivalSlug={slug} />
-        </Suspense>
+      ) : effectiveRole === "ANNOUNCER" && announcerData ? (
+        <AnnouncerConsoleClient
+          festivalId={festival.id}
+          queuedStandings={announcerData.queuedStandings}
+          afterCount={announcerData.afterCount}
+          callList={announcerData.callList}
+          userName={greetingName}
+        />
       ) : effectiveRole === "MEDIA" ? (
         <Suspense fallback={<OverviewSkeleton />}>
           <MediaOverview festivalSlug={slug} />

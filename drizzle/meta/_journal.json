@@ -239,6 +239,13 @@
       "when": 1786561319577,
       "tag": "0033_mixed_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1786629032083,
+      "tag": "0034_fuzzy_may_parker",
+      "breakpoints": true
     }
   ]
 }

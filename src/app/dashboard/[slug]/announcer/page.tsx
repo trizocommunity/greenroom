@@ -50,20 +50,13 @@ export default async function AnnouncerPage({
   const callList = await getCallListProgrammes(festival.id);
 
   return (
-    <div className="pt-4 sm:pt-6 space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          Announcer Console
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Review staged standings and announce them publicly.
-        </p>
-      </div>
+    <div className="pt-4 sm:pt-6 h-full">
       <AnnouncerConsoleClient
         festivalId={festival.id}
         queuedStandings={queuedStandings}
         afterCount={festival.standingsPublishedAtResultNumber}
         callList={callList}
+        userName={session?.name ?? undefined}
       />
     </div>
   );
