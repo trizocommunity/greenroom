@@ -168,8 +168,8 @@ export function LimitationPolicyClient({
             </div>
           ) : (
             <div className="w-full min-w-0">
-              {/* Universal View (Compact Swipe Cards for all screens) */}
-              <div className="flex w-full overflow-x-auto gap-4 pb-4 pt-1 px-1 snap-x snap-mandatory scroll-smooth max-w-[calc(100vw-2rem)] md:max-w-none">
+              {/* Universal View (Compact Swipe Cards on mobile, Grid on desktop) */}
+              <div className="flex w-full overflow-x-auto md:overflow-visible gap-4 pb-4 pt-1 px-1 snap-x snap-mandatory md:snap-none scroll-smooth max-w-[calc(100vw-2rem)] md:max-w-none md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:flex-none">
                 {categories.map((cat: any) => {
                   const limit = cat.limit;
                   const hasLimits =
@@ -182,7 +182,7 @@ export function LimitationPolicyClient({
                   return (
                     <div
                       key={cat.id}
-                      className="snap-center shrink-0 w-[240px] flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden"
+                      className="snap-center shrink-0 w-[240px] md:w-auto md:shrink md:flex-none flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden"
                     >
                       <div className="bg-muted/30 p-2 border-b flex flex-col justify-center min-h-[48px]">
                         <div
