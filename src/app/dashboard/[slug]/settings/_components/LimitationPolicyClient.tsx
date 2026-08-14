@@ -111,8 +111,8 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
             </div>
           ) : (
             <div className="rounded-md border-0 sm:border overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table className="hidden sm:table">
+              <div className="hidden sm:block overflow-x-auto">
+                <Table>
                   <TableHeader className="bg-muted/50">
                     <TableRow>
                       <TableHead className="w-[200px]">Category</TableHead>
@@ -339,8 +339,8 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                 </div>
               ) : (
                 <div className="rounded-md border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <Table className="hidden sm:table">
+                  <div className="hidden sm:block overflow-x-auto">
+                    <Table>
                       <TableHeader className="bg-muted/50">
                         <TableRow>
                           <TableHead>Participant</TableHead>
@@ -401,10 +401,11 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
 
-                    {/* Mobile View (Compact Cards) */}
-                    <div className="sm:hidden flex flex-col gap-3">
-                      {filteredViolators?.map((v, i) => (
+                  {/* Mobile View (Compact Cards) */}
+                  <div className="sm:hidden flex flex-col gap-3">
+                    {filteredViolators?.map((v, i) => (
                         <ParticipantDetailsDialog
                           key={i}
                           festivalId={festivalId}
@@ -461,7 +462,6 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                       ))}
                     </div>
                   </div>
-                </div>
               )}
             </div>
           )}
