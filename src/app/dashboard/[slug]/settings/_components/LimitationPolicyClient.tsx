@@ -167,9 +167,9 @@ export function LimitationPolicyClient({
               <p>No categories found in this festival.</p>
             </div>
           ) : (
-            <div className="w-full">
+            <div className="w-full min-w-0">
               {/* Universal View (Compact Swipe Cards for all screens) */}
-              <div className="flex w-full max-w-full overflow-x-auto gap-4 pb-4 pt-1 px-1 snap-x snap-mandatory scroll-smooth">
+              <div className="flex w-full overflow-x-auto gap-4 pb-4 pt-1 px-1 snap-x snap-mandatory scroll-smooth max-w-[calc(100vw-2rem)] md:max-w-none">
                 {categories.map((cat: any) => {
                   const limit = cat.limit;
                   const hasLimits =
