@@ -1,6 +1,6 @@
 "use client";
 
-import { Gavel, Globe, Settings2, Sparkles } from "lucide-react";
+import { Gavel, Globe, Settings2, Sparkles, ShieldAlert } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
 import { ScoringPolicyClient } from "@/components/dashboard/judgement/ScoringPolicyClient";
@@ -10,6 +10,7 @@ import {
   FestivalLiveClient,
 } from "./FestivalLiveClient";
 import { SettingsForm } from "./SettingsForm";
+import { LimitationPolicyClient } from "./LimitationPolicyClient";
 
 interface SettingsTabsProps {
   festival: any;
@@ -21,6 +22,7 @@ interface SettingsTabsProps {
   customDomain: CustomDomainState;
   canManageScoring: boolean;
   canManageFestivalLive: boolean;
+  canManageLimits: boolean;
 }
 
 import {
@@ -41,6 +43,7 @@ export function SettingsTabs({
   customDomain,
   canManageScoring,
   canManageFestivalLive,
+  canManageLimits,
 }: SettingsTabsProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -73,6 +76,13 @@ export function SettingsTabs({
       value: "festival-live",
       label: "Launch Website",
       icon: Sparkles,
+    });
+  }
+  if (canManageLimits) {
+    navItems.push({
+      value: "limits",
+      label: "Limitation Policy",
+      icon: ShieldAlert,
     });
   }
 
@@ -158,6 +168,10 @@ export function SettingsTabs({
             customDomain={customDomain}
             onExit={() => handleTabChange("general")}
           />
+        )}
+
+        {currentTab === "limits" && canManageLimits && (
+          <LimitationPolicyClient festivalId={festival.id} />
         )}
       </main>
     </div>

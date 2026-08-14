@@ -132,20 +132,28 @@ export default async function FestivalDashboardLayout({
   const actualRole = role;
 
   // 4c. Stage manager's own stage filter (banner selector) — only relevant
-  // when they're assigned more than one stage.
+  // when they're assigned more than one stage (or if they are admin).
   let myStages: Array<{ id: string; name: string }> = [];
   let currentStageId: string | null = null;
   if (userRole === "STAGE_MANAGER") {
-    const assignedStageIds = await StageAssignmentService.getAssignedStageIds(
-      festival.id,
-      session.userId,
-    );
-    myStages = assignedStageIds.length
-      ? await db.query.stage.findMany({
-          where: inArray(stageTable.id, assignedStageIds),
-          columns: { id: true, name: true },
-        })
-      : [];
+    if (PRIVILEGED_ROLES.includes(actualRole as any)) {
+      myStages = await db.query.stage.findMany({
+        where: (stage, { eq }) => eq(stage.festivalId, festival.id),
+        columns: { id: true, name: true },
+      });
+    } else {
+      const assignedStageIds = await StageAssignmentService.getAssignedStageIds(
+        festival.id,
+        session.userId,
+      );
+      myStages = assignedStageIds.length
+        ? await db.query.stage.findMany({
+            where: inArray(stageTable.id, assignedStageIds),
+            columns: { id: true, name: true },
+          })
+        : [];
+    }
+    
     currentStageId = await getStageFilterCookie(
       festival.id,
       myStages.map((s) => s.id),
