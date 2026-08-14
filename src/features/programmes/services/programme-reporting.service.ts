@@ -260,6 +260,7 @@ export const ProgrammeReportingService = {
         ? {
             id: reportingSession.id,
             status: reportingSession.status,
+            startedAt: reportingSession.startedAt ? parseInstant(reportingSession.startedAt) : null,
             endedAt: reportingSession.endedAt,
             updatedAt: reportingSession.updatedAt,
             windowEndsAt: parseInstant(reportingSession.windowEndsAt),
@@ -293,6 +294,9 @@ export const ProgrammeReportingService = {
           name: programme.name,
           type: programme.type,
           status: programme.status,
+          durationMode: programme.durationMode,
+          timePerUnitMinutes: programme.timePerUnitMinutes,
+          parallelDurationMinutes: programme.parallelDurationMinutes,
           category: programme.category
             ? { id: programme.category.id, name: programme.category.name }
             : null,

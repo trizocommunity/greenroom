@@ -1,7 +1,6 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import {
   AlertTriangle,
   Calendar,
@@ -23,7 +22,7 @@ import {
 } from "@/api/client/schedule";
 import {
   type CalendarGroupBy,
-  ScheduleCalendarView 
+  ScheduleCalendarView,
 } from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
 import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
@@ -113,6 +112,7 @@ interface ScheduleClientProps {
   festivalEndDate: string | null;
   initialStageId?: string | null;
   hideStageFilter?: boolean;
+  isStageManager?: boolean;
 }
 
 function getEntryLabel(entry: EnrichedScheduleEntry): string {
@@ -139,6 +139,9 @@ export function ScheduleClient({
   stages,
   festivalStartDate,
   festivalEndDate,
+  initialStageId,
+  hideStageFilter,
+  isStageManager = false,
 }: ScheduleClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
   const displayTz = useDisplayTimezone();
@@ -160,9 +163,8 @@ export function ScheduleClient({
   const [swapEntry, setSwapEntry] = useState<EnrichedScheduleEntry | null>(
     null,
   );
-  const [reportingEntry, setReportingEntry] = useState<EnrichedScheduleEntry | null>(
-    null,
-  );
+  const [reportingEntry, setReportingEntry] =
+    useState<EnrichedScheduleEntry | null>(null);
   const [groupBy, setGroupBy] = useState<CalendarGroupBy>("date");
   const [clearOpen, setClearOpen] = useState(false);
   const [clearStageId, setClearStageId] = useState("");
@@ -348,7 +350,9 @@ export function ScheduleClient({
         refresh();
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to notify call list");
+      toast.error(
+        e instanceof Error ? e.message : "Failed to notify call list",
+      );
     }
   };
 
@@ -360,7 +364,9 @@ export function ScheduleClient({
         refresh();
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to cancel notification");
+      toast.error(
+        e instanceof Error ? e.message : "Failed to cancel notification",
+      );
     }
   };
 
@@ -431,21 +437,25 @@ export function ScheduleClient({
           <hr className="border-border mt-5 " />
 
           <div className="flex flex-wrap sm:flex-row items-center gap-2 md:gap-5 lg:gap-10 justify-between">
-            <Tabs
-              value={viewMode}
-              onValueChange={(v) => setViewMode(v as "calendar" | "table")}
-            >
-              <TabsList className="h-9 ">
-                <TabsTrigger value="table" className="gap-1.5 text-xs">
-                  <TableProperties className="h-3.5 w-3.5" />
-                  Table
-                </TabsTrigger>
-                <TabsTrigger value="calendar" className="gap-1.5 text-xs">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Calendar
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {!isStageManager ? (
+              <Tabs
+                value={viewMode}
+                onValueChange={(v) => setViewMode(v as "calendar" | "table")}
+              >
+                <TabsList className="h-9 ">
+                  <TabsTrigger value="table" className="gap-1.5 text-xs">
+                    <TableProperties className="h-3.5 w-3.5" />
+                    Table
+                  </TabsTrigger>
+                  <TabsTrigger value="calendar" className="gap-1.5 text-xs">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Calendar
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            ) : (
+              <div />
+            )}
             <div className="flex items-center gap-2 shrink-0">
               {viewMode === "calendar" && (
                 <Popover>
@@ -533,7 +543,7 @@ export function ScheduleClient({
                 </Popover>
               )}
 
-              {!isReadOnly && entries.length > 0 && (
+              {!isReadOnly && !isStageManager && entries.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -626,7 +636,11 @@ export function ScheduleClient({
         />
       ) : (
         <ScheduleTableView
+          festivalId={festivalId}
           entries={entries}
+          stages={stages}
+          hideStageFilter={hideStageFilter}
+          initialStageId={initialStageId}
           onEdit={(entry) => {
             if (isReadOnly) return;
             setEditEntry(entry);
@@ -703,6 +717,15 @@ export function ScheduleClient({
         open={!!swapEntry}
         onOpenChange={(open) => !open && setSwapEntry(null)}
         onSwapped={refresh}
+      />
+
+      {/* Reporting Drawer */}
+      <ScheduleReportingDrawer
+        festivalId={festivalId}
+        entry={reportingEntry}
+        open={!!reportingEntry}
+        onOpenChange={(open) => !open && setReportingEntry(null)}
+        onSuccess={refresh}
       />
 
       {/* Clear Schedule Dialog */}
@@ -1461,11 +1484,13 @@ function EditEntryDialog({
             <DrawerTitle>Edit schedule entry</DrawerTitle>
             <DrawerDescription>{getEntryLabel(entry)}</DrawerDescription>
           </DrawerHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             {isSession && (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-session-title">Title</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-session-title" className="text-xs">
+                    Title
+                  </Label>
                   <Input
                     id="edit-session-title"
                     value={title}
@@ -1475,8 +1500,10 @@ function EditEntryDialog({
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-session-type">Session Type</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-session-type" className="text-xs">
+                    Session Type
+                  </Label>
                   <Select value={sessionType} onValueChange={setSessionType}>
                     <SelectTrigger
                       id="edit-session-type"
@@ -1495,8 +1522,8 @@ function EditEntryDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-session-description">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-session-description" className="text-xs">
                     Description (opt)
                   </Label>
                   <textarea
@@ -1509,10 +1536,10 @@ function EditEntryDialog({
                 </div>
               </>
             )}
-            <div className="space-y-2">
-              <Label>Stage</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Stage</Label>
               <Select value={stageId} onValueChange={setStageId}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 text-sm">
                   <SelectValue placeholder="Select stage" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1520,7 +1547,7 @@ function EditEntryDialog({
                     <SelectItem key={s.id} value={s.id}>
                       <span className="block font-medium">{s.name}</span>
                       {s.description && (
-                        <span className="block text-xs text-muted-foreground font-normal line-clamp-2">
+                        <span className="block text-xs text-muted-foreground font-normal line-clamp-1">
                           {s.description}
                         </span>
                       )}
@@ -1529,9 +1556,11 @@ function EditEntryDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-date">Date</Label>
+            <div className="grid grid-cols-2 gap-2 items-end">
+              <div className="space-y-1.5 col-span-2">
+                <Label htmlFor="edit-date" className="text-xs">
+                  Date
+                </Label>
                 <Input
                   id="edit-date"
                   type="date"
@@ -1540,24 +1569,25 @@ function EditEntryDialog({
                     festivalEndDate ? festivalEndDate.split("T")[0] : undefined
                   }
                   onChange={(e) => setDateStr(e.target.value)}
+                  className="h-9 text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Start time</Label>
+              <div className="space-y-1.5 col-span-1">
+                <Label className="text-xs">Start time</Label>
                 <TimePicker
                   value={startTimeStr}
                   onChange={setStartTimeStr}
                   className="h-9 text-sm w-full"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>End time (optional)</Label>
-              <TimePicker
-                value={endTimeStr}
-                onChange={setEndTimeStr}
-                className="h-9 text-sm w-full"
-              />
+              <div className="space-y-1.5">
+                <Label className="text-xs">End time (optional)</Label>
+                <TimePicker
+                  value={endTimeStr}
+                  onChange={setEndTimeStr}
+                  className="h-9 text-sm w-full"
+                />
+              </div>
             </div>
             {conflictError && (
               <div

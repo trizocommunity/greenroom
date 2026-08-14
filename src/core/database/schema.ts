@@ -591,7 +591,56 @@ export const category = pgTable(
   ],
 );
 
+// ─── 4.1 category_programme_limit (depends on: festival, category) ────────────
+// Per-category soft caps on how many programmes a participant can be assigned to.
+// Limits are broken down by stageType (STAGE / NON_STAGE) plus a combined total.
+// NULL = unlimited for that dimension. One row per category, created on demand.
+// Violations surface as warnings; assignments are never hard-blocked.
+
+export const categoryProgrammeLimit = pgTable(
+  "category_programme_limit",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text("festival_id").notNull(),
+    categoryId: text("category_id").notNull(),
+    maxStage: integer("max_stage"),
+    maxNonStage: integer("max_non_stage"),
+    maxAll: integer("max_all"),
+    createdAt: tzTimestampNamed("created_at")
+      .default(currentTimestampSql())
+      .notNull(),
+    updatedAt: tzTimestampNamed("updated_at")
+      .default(currentTimestampSql())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("category_programme_limit_category_id_key").using(
+      "btree",
+      table.categoryId.asc().nullsLast(),
+    ),
+    index("category_programme_limit_festival_id_idx").using(
+      "btree",
+      table.festivalId.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "category_programme_limit_festival_id_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.categoryId],
+      foreignColumns: [category.id],
+      name: "category_programme_limit_category_id_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ],
+);
+
 // ─── 5. group (depends on: festival) ─────────────────────────────────────────
+
 
 export const group = pgTable(
   "group",

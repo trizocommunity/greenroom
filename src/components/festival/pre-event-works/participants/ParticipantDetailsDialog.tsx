@@ -1,6 +1,7 @@
 "use client";
 
-import { Crown, Eye, Loader2, Mail, Phone } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Crown, Eye, Loader2, Mail, Phone, ShieldAlert, BadgeInfo } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useMemo } from "react";
@@ -21,6 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { formatDate, formatDateTime } from "@/core/datetime";
 import { getProgrammeTeamMembersAction } from "@/features/assignments/actions/assignment.actions";
+import { getParticipantLimitStatusAction } from "@/features/category-limits/actions/category-limit.actions";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
 import { getTeamLeadForTeamAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
 import { computeAgeFromDateOfBirth } from "@/lib/age";
@@ -59,6 +61,12 @@ export function ParticipantDetailsDialog({
   const setOpen =
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
+  const { data: limitStatus } = useQuery({
+    queryKey: ["participant-limit-status", festivalId, participant.id],
+    queryFn: () => getParticipantLimitStatusAction(participant.id, festivalId),
+    enabled: open,
+  });
+
   const [teamDialog, setTeamDialog] = useState<{
     open: boolean;
     programmeName: string;
@@ -82,13 +90,29 @@ export function ParticipantDetailsDialog({
   const [loadingTeamFor, setLoadingTeamFor] = useState<string | null>(null);
 
   const [filterType, setFilterType] = useState<string>("ALL");
+  const [filterCategory, setFilterCategory] = useState<string>("ALL");
+
+  const assignmentCategories = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of participantAssignments) {
+      const c = a.programme?.category;
+      if (c?.id && c?.name) {
+        map.set(c.id, c.name);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [participantAssignments]);
 
   const filteredParticipantAssignments = useMemo(() => {
     return participantAssignments.filter((a: any) => {
       if (filterType !== "ALL" && a.programme?.type !== filterType) return false;
+      if (filterCategory !== "ALL") {
+        const catId = a.programme?.category?.id;
+        if (catId !== filterCategory) return false;
+      }
       return true;
     });
-  }, [participantAssignments, filterType]);
+  }, [participantAssignments, filterType, filterCategory]);
 
   async function openTeamModal(assignment: any) {
     if (assignment.programme?.type !== "GROUP") return;
@@ -276,6 +300,51 @@ export function ParticipantDetailsDialog({
                 )}
               </div>
 
+              {limitStatus && (limitStatus.maxStage !== null || limitStatus.maxNonStage !== null || limitStatus.maxAll !== null) && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-semibold tracking-tight">
+                      Programme Limits
+                    </h4>
+                    {limitStatus?.isOverLimit && (
+                      <Badge variant="destructive" className="flex items-center gap-1">
+                        <ShieldAlert className="h-3 w-3" />
+                        Limit Exceeded
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="space-y-2 border rounded-xl p-4 bg-muted/10">
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Stage:</span>
+                        <span className={limitStatus?.isOverStage ? "text-destructive font-medium flex items-center gap-1" : "font-medium"}>
+                          {limitStatus?.stageCount} / {limitStatus?.maxStage ?? "∞"}
+                          {limitStatus?.isOverStage && <ShieldAlert className="h-3 w-3" />}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Non-Stage:</span>
+                        <span className={limitStatus?.isOverNonStage ? "text-destructive font-medium flex items-center gap-1" : "font-medium"}>
+                          {limitStatus?.nonStageCount} / {limitStatus?.maxNonStage ?? "∞"}
+                          {limitStatus?.isOverNonStage && <ShieldAlert className="h-3 w-3" />}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">All Programmes:</span>
+                        <span className={limitStatus?.isOverAll ? "text-destructive font-medium flex items-center gap-1" : "font-medium"}>
+                          {limitStatus?.allCount} / {limitStatus?.maxAll ?? "∞"}
+                          {limitStatus?.isOverAll && <ShieldAlert className="h-3 w-3" />}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -286,7 +355,21 @@ export function ParticipantDetailsDialog({
                       {filteredParticipantAssignments.length}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {assignmentCategories.length > 0 && (
+                      <select
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                        className="h-7 text-xs border rounded-md px-2 py-1 bg-background"
+                      >
+                        <option value="ALL">All Categories</option>
+                        {assignmentCategories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <select
                       value={filterType}
                       onChange={(e) => setFilterType(e.target.value)}
@@ -356,10 +439,22 @@ export function ParticipantDetailsDialog({
                                 <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
                               )}
                             </div>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground font-mono">
-                              <span>{assignment.programme?.type}</span>
-                              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                              <span>{assignment.programme?.stageType}</span>
+                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              {assignment.programme?.category?.name && (
+                                <>
+                                  <span className="font-medium text-foreground bg-muted px-1.5 py-0.5 rounded text-[11px]">
+                                    {assignment.programme.category.name}
+                                  </span>
+                                  <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                </>
+                              )}
+                              <span className="font-mono">{assignment.programme?.type}</span>
+                              {assignment.programme?.stageType && (
+                                <>
+                                  <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                  <span className="font-mono">{assignment.programme?.stageType}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

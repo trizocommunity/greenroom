@@ -1,8 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { formatInTimeZone } from "date-fns-tz";
 import {
   BarChart3,
+  Calendar,
   History,
   Loader2,
   MoreHorizontal,
@@ -176,6 +178,10 @@ export function ProgrammeReportingClient({
     "ALL",
   );
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [filterScheduleState, setFilterScheduleState] = useState<
+    "ALL" | "SCHEDULED" | "UNSCHEDULED"
+  >("ALL");
+  const [filterDate, setFilterDate] = useState<string>("ALL");
   /** Queue hides ended sessions by default; the filter drawer can reveal them. */
   const [showEnded, setShowEnded] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
@@ -194,36 +200,41 @@ export function ProgrammeReportingClient({
   useEffect(() => {
     if (!mounted || typeof window === "undefined") return;
     const urlParams = new URLSearchParams(window.location.search);
-    const autoStartId = urlParams.get("autoStart");
-    if (autoStartId && board.length > 0) {
-      // Clean up the URL
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, "", newUrl);
-
-      // Find the entry in the board by programme ID
-      const targetEntry = board.find((item) => item.programme?.id === autoStartId);
+    const programmeParam =
+      urlParams.get("programmeId") ||
+      urlParams.get("open") ||
+      urlParams.get("autoStart");
+    if (programmeParam && board.length > 0) {
+      // Find the entry in the board by programme ID or entry ID
+      const targetEntry = board.find(
+        (item) =>
+          item.programme?.id === programmeParam || item.id === programmeParam,
+      );
       if (targetEntry) {
         setSelectedEntryId(targetEntry.id);
-        const status = getUiReportingStatus(
-          targetEntry.reportingSession?.status,
-          targetEntry.reportingSession?.windowEndsAt ?? null,
-          true
-        );
-        if (status === "NOT_STARTED" || status === "RESET") {
-          setActiveAction("start");
-          startTransition(async () => {
-            try {
-              const res = await startProgrammeReportingAction(
-                festivalId,
-                targetEntry.id
-              );
-              toast.success("Reporting started and announcers notified!");
-            } catch (err) {
-              toast.error("Failed to start reporting");
-            } finally {
-              setActiveAction(null);
-            }
-          });
+        const autoStartId = urlParams.get("autoStart");
+        if (autoStartId) {
+          const status = getUiReportingStatus(
+            targetEntry.reportingSession?.status,
+            targetEntry.reportingSession?.windowEndsAt ?? null,
+            true,
+          );
+          if (status === "NOT_STARTED" || status === "RESET") {
+            setActiveAction("start");
+            startTransition(async () => {
+              try {
+                await startProgrammeReportingAction(
+                  festivalId,
+                  targetEntry.id,
+                );
+                toast.success("Reporting started and announcers notified!");
+              } catch (err) {
+                toast.error("Failed to start reporting");
+              } finally {
+                setActiveAction(null);
+              }
+            });
+          }
         }
       }
     }
@@ -293,6 +304,23 @@ export function ProgrammeReportingClient({
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [board, festivalStages]);
 
+  const scheduledDates = useMemo(() => {
+    const datesMap = new Map<string, string>();
+    for (const item of board) {
+      if (item.startTime) {
+        const d = parseInstant(item.startTime);
+        if (d) {
+          const key = formatInTimeZone(d, displayTz, "yyyy-MM-dd");
+          const label = formatInTimeZone(d, displayTz, "EEE, MMM d, yyyy");
+          datesMap.set(key, label);
+        }
+      }
+    }
+    return Array.from(datesMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([key, label]) => ({ key, label }));
+  }, [board, displayTz]);
+
   const filteredBoard = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -302,8 +330,29 @@ export function ProgrammeReportingClient({
         item.reportingSession?.windowEndsAt ?? null,
         mounted,
       );
-      // Queue default: hide ended sessions unless the filter drawer opts in.
-      if (!showEnded && status === "CLOSED") return false;
+      // Queue default: hide ended sessions unless the filter drawer opts in OR performance timer is still active.
+      if (!showEnded && status === "CLOSED") {
+        const submittedAt = item.reportingSession?.endedAt
+          ? parseInstant(item.reportingSession.endedAt)
+          : null;
+        if (submittedAt) {
+          const durationMins =
+            item.programme.durationMode === "PARALLEL"
+              ? (item.programme.parallelDurationMinutes ??
+                item.programme.timePerUnitMinutes)
+              : item.programme.timePerUnitMinutes;
+          if (durationMins && durationMins > 0) {
+            const timerEndTime =
+              submittedAt.getTime() + durationMins * 60 * 1000;
+            const isTimerActive = Date.now() < timerEndTime;
+            if (!isTimerActive) return false;
+          } else {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
 
       const matchesStatus =
         filterStatus === "ALL" ||
@@ -320,6 +369,17 @@ export function ProgrammeReportingClient({
         return false;
       if (filterType !== "ALL" && item.programme?.type !== filterType)
         return false;
+      if (filterScheduleState === "SCHEDULED" && !item.scheduleEntry)
+        return false;
+      if (filterScheduleState === "UNSCHEDULED" && item.scheduleEntry)
+        return false;
+      if (filterDate !== "ALL") {
+        if (!item.startTime) return false;
+        const d = parseInstant(item.startTime);
+        if (!d) return false;
+        const key = formatInTimeZone(d, displayTz, "yyyy-MM-dd");
+        if (key !== filterDate) return false;
+      }
       if (query) {
         const haystack = [
           item.programme?.name,
@@ -363,6 +423,19 @@ export function ProgrammeReportingClient({
       );
       const ra = statusRank(aStatus);
       const rb = statusRank(bStatus);
+
+      // In-progress items always come first at the very top
+      if (ra === 0 || rb === 0) {
+        if (ra !== rb) return ra - rb;
+      }
+
+      // Scheduled programmes appear on top of unscheduled programmes
+      const aIsScheduled = Boolean(a.scheduleEntry || a.startTime);
+      const bIsScheduled = Boolean(b.scheduleEntry || b.startTime);
+      if (aIsScheduled !== bIsScheduled) {
+        return aIsScheduled ? -1 : 1;
+      }
+
       if (ra !== rb) return ra - rb;
       const aTime = a.startTime
         ? a.startTime.getTime()
@@ -381,6 +454,9 @@ export function ProgrammeReportingClient({
     filterCategoryId,
     filterStageId,
     filterType,
+    filterScheduleState,
+    filterDate,
+    displayTz,
     mounted,
   ]);
 
@@ -1239,6 +1315,8 @@ export function ProgrammeReportingClient({
     (filterStageId !== "ALL" ? 1 : 0) +
     (filterType !== "ALL" ? 1 : 0) +
     (filterStatus !== "ALL" ? 1 : 0) +
+    (filterScheduleState !== "ALL" ? 1 : 0) +
+    (filterDate !== "ALL" ? 1 : 0) +
     (showEnded ? 1 : 0);
 
   const closeDetail = () => {
@@ -1251,8 +1329,8 @@ export function ProgrammeReportingClient({
       {/* Section 1 — the queue. Full-width, search + a single filter drawer.
           Picking a programme opens the workspace drawer (Section 2). */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-5">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-2 pb-5">
+          <div className="relative min-w-[200px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchQuery}
@@ -1277,6 +1355,30 @@ export function ProgrammeReportingClient({
               </button>
             ) : null}
           </div>
+
+          <div className="w-[140px] sm:w-[170px] shrink-0">
+            <Select
+              value={filterDate}
+              onValueChange={(val) => {
+                setFilterDate(val);
+                setPageIndex(0);
+              }}
+            >
+              <SelectTrigger className="h-10 text-xs sm:text-sm">
+                <Calendar className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <SelectValue placeholder="All Dates" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Dates</SelectItem>
+                {scheduledDates.map((d) => (
+                  <SelectItem key={d.key} value={d.key}>
+                    {d.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button
             type="button"
             variant="outline"
@@ -1880,6 +1982,55 @@ export function ProgrammeReportingClient({
               </Select>
             </div>
 
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">
+                Schedule State
+              </p>
+              <Select
+                value={filterScheduleState}
+                onValueChange={(val: any) => {
+                  setFilterScheduleState(val);
+                  setPageIndex(0);
+                }}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Schedule state" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All programmes</SelectItem>
+                  <SelectItem value="SCHEDULED">Scheduled only</SelectItem>
+                  <SelectItem value="UNSCHEDULED">Unscheduled only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {filterScheduleState !== "UNSCHEDULED" && scheduledDates.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Date
+                </p>
+                <Select
+                  value={filterDate}
+                  onValueChange={(v) => {
+                    setFilterDate(v);
+                    setPageIndex(0);
+                  }}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All dates</SelectItem>
+                    {scheduledDates.map((d) => (
+                      <SelectItem key={d.key} value={d.key}>
+                        {d.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5">
               <span className="text-sm font-medium">Show ended sessions</span>
               <input
@@ -1899,6 +2050,8 @@ export function ProgrammeReportingClient({
                 setFilterStageId(initialStageId ?? "ALL");
                 setFilterType("ALL");
                 setFilterStatus("ALL");
+                setFilterScheduleState("ALL");
+                setFilterDate("ALL");
                 setShowEnded(false);
                 setPageIndex(0);
               }}

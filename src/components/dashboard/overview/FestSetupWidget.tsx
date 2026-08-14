@@ -26,6 +26,7 @@ import { OffStageProvisionDrawer } from "./OffStageProvisionDrawer";
 interface FestSetupWidgetProps {
   festivalSlug: string;
   festivalId: string;
+  isProTier?: boolean;
   /** Institutional PRO festivals show the soft "Verify custom subdomain" step. */
   showVerifySubdomainStep?: boolean;
   subdomainVerified?: boolean;
@@ -39,6 +40,7 @@ interface FestSetupWidgetProps {
     hasSchedule: boolean;
     hasOffStageTasks: boolean;
     hasStaff: boolean;
+    hasLimitationPolicy?: boolean;
     isLaunched: boolean;
   };
 }
@@ -46,6 +48,7 @@ interface FestSetupWidgetProps {
 export function FestSetupWidget({
   festivalSlug,
   festivalId,
+  isProTier = false,
   showVerifySubdomainStep = false,
   subdomainVerified = false,
   setupStatus,
@@ -73,6 +76,7 @@ export function FestSetupWidget({
         setupStatus.hasParticipants &&
         setupStatus.hasChestNumbers &&
         setupStatus.hasOffStageTasks &&
+        (!isProTier || setupStatus.hasLimitationPolicy) &&
         (!showVerifySubdomainStep || subdomainVerified) &&
         setupStatus.isLaunched;
 
@@ -80,7 +84,7 @@ export function FestSetupWidget({
         setIsExpanded(false);
       }
     }
-  }, [festivalSlug, setupStatus, showVerifySubdomainStep, subdomainVerified]);
+  }, [festivalSlug, setupStatus, isProTier, showVerifySubdomainStep, subdomainVerified]);
 
   const handleScoringClick = () => {
     localStorage.setItem(`visited_scoring_${festivalSlug}`, "true");
@@ -145,6 +149,18 @@ export function FestSetupWidget({
       isComplete: setupStatus.hasOffStageTasks,
       onClick: () => setOffStageDrawerOpen(true),
     },
+    ...(isProTier
+      ? [
+          {
+            id: "limitation_policy",
+            title: "Set Participation Limits",
+            mobileTitle: "Set programme limits",
+            icon: ListTodo,
+            isComplete: setupStatus.hasLimitationPolicy ?? false,
+            href: `/dashboard/${festivalSlug}/settings?tab=limits`,
+          },
+        ]
+      : []),
     ...(showVerifySubdomainStep
       ? [
           {

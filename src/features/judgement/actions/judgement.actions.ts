@@ -192,7 +192,15 @@ export async function getJudgementWizardDataAction(festivalId: string) {
           ),
         ),
       ),
-      columns: { id: true, name: true, status: true, type: true },
+      columns: {
+        id: true,
+        name: true,
+        status: true,
+        type: true,
+        durationMode: true,
+        timePerUnitMinutes: true,
+        parallelDurationMinutes: true,
+      },
       with: { category: { columns: { name: true } } },
       orderBy: [asc(programmeTable.name)],
     }),
@@ -202,7 +210,15 @@ export async function getJudgementWizardDataAction(festivalId: string) {
         programmeScope,
         inArray(programmeTable.status, ["PENDING_PUBLICATION", "JUDGING"]),
       ),
-      columns: { id: true, name: true, status: true, type: true },
+      columns: {
+        id: true,
+        name: true,
+        status: true,
+        type: true,
+        durationMode: true,
+        timePerUnitMinutes: true,
+        parallelDurationMinutes: true,
+      },
       with: { category: { columns: { name: true } } },
       orderBy: [asc(programmeTable.name)],
     }),
@@ -344,6 +360,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       assignedCount: number;
       absentCount: number;
       stageId: string | null;
+      submittedAt: Date | null;
     }
   >();
 
@@ -449,6 +466,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       assignedCount: assignedUnitsByProgramme.get(sessionRow.programmeId) ?? 0,
       absentCount: absentBySessionId.get(sessionRow.id) ?? 0,
       stageId: sessionRow.stageId ?? null,
+      submittedAt: sessionRow.endedAt ? parseInstant(sessionRow.endedAt) : null,
     });
   }
 
@@ -459,6 +477,9 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       status: p.status,
       programmeType: p.type,
       programmeCategory: p.category?.name ?? null,
+      durationMode: p.durationMode,
+      timePerUnitMinutes: p.timePerUnitMinutes,
+      parallelDurationMinutes: p.parallelDurationMinutes,
       reportingDetails: reportingByProgrammeId.get(p.id) ?? null,
     })),
     rejudgeProgrammes: rejudgeProgrammes.map((p) => ({
@@ -467,6 +488,9 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       status: p.status,
       programmeType: p.type,
       programmeCategory: p.category?.name ?? null,
+      durationMode: p.durationMode,
+      timePerUnitMinutes: p.timePerUnitMinutes,
+      parallelDurationMinutes: p.parallelDurationMinutes,
       reportingDetails: reportingByProgrammeId.get(p.id) ?? null,
     })),
     judges,

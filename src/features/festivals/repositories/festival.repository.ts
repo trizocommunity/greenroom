@@ -13,6 +13,7 @@ import {
   result as results,
   festivalScoringPolicy as scoringPolicies,
   stage as stages,
+  categoryProgrammeLimit,
 } from "@/core/database/schema";
 import { isAfter, parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
@@ -430,6 +431,7 @@ export async function getDashboardOverviewData(festivalId: string) {
     chestNumbersCount,
     offStageCount,
     staffCount,
+    categoryProgrammeLimitCount,
   ] = await Promise.all([
     db
       .select({ c: count() })
@@ -519,6 +521,10 @@ export async function getDashboardOverviewData(festivalId: string) {
       .select({ c: count() })
       .from(members)
       .where(eq(members.festivalId, festivalId)),
+    db
+      .select({ c: count() })
+      .from(categoryProgrammeLimit)
+      .where(eq(categoryProgrammeLimit.festivalId, festivalId)),
   ]);
 
   return {
@@ -544,6 +550,7 @@ export async function getDashboardOverviewData(festivalId: string) {
     hasSchedule: tst[0].c > 0, // A stage is required for scheduling
     hasOffStageTasks: offStageCount[0].c > 0,
     hasStaff: staffCount[0].c > 0,
+    hasLimitationPolicy: categoryProgrammeLimitCount[0].c > 0,
   };
 }
 

@@ -16,7 +16,15 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -27,9 +35,14 @@ import { cn } from "@/core/utils/cn";
 import type { EnrichedScheduleEntry } from "@/features/schedule/actions/schedule.actions";
 import { calculateProgrammeDuration } from "@/features/schedule/utils/programme-duration";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
+import { ScheduleAssignmentDrawer } from "./ScheduleAssignmentDrawer";
 
 interface ScheduleTableViewProps {
+  festivalId: string;
   entries: EnrichedScheduleEntry[];
+  stages?: Array<{ id: string; name: string }>;
+  hideStageFilter?: boolean;
+  initialStageId?: string | null;
   onEdit: (entry: EnrichedScheduleEntry) => void;
   onSwap: (entry: EnrichedScheduleEntry) => void;
   onNotify: (entry: EnrichedScheduleEntry) => void;
@@ -94,8 +107,33 @@ function getScheduleLabel(entry: EnrichedScheduleEntry): string {
   return `${dateStr}, ${startStr} → ${endStr}`;
 }
 
+export function isEntryInProgress(entry: EnrichedScheduleEntry): boolean {
+  if (entry.type !== "PROGRAMME") return false;
+  return (
+    entry.reportingSession?.status === "IN_PROGRESS" ||
+    entry.programme?.status === "REPORTING"
+  );
+}
+
+export function isEntryCompleted(entry: EnrichedScheduleEntry): boolean {
+  if (entry.type !== "PROGRAMME") return false;
+  return (
+    entry.reportingSession?.status === "CLOSED" ||
+    entry.reportingSession?.status === "ENDED" ||
+    entry.reportingSession?.status === "TIMED_OUT" ||
+    entry.programme?.status === "PENDING_JUDGMENT" ||
+    entry.programme?.status === "JUDGING" ||
+    entry.programme?.status === "PENDING_PUBLICATION" ||
+    entry.programme?.status === "ANNOUNCED"
+  );
+}
+
 export function ScheduleTableView({
+  festivalId,
   entries,
+  stages = [],
+  hideStageFilter = false,
+  initialStageId = null,
   onEdit,
   onSwap,
   onNotify,
@@ -106,11 +144,59 @@ export function ScheduleTableView({
 }: ScheduleTableViewProps) {
   const [isPending, startTransition] = useTransition();
   const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null);
+  const [selectedEntry, setSelectedEntry] =
+    useState<EnrichedScheduleEntry | null>(null);
+
+  const [filterDay, setFilterDay] = useState<string>("ALL");
+  const [filterCategory, setFilterCategory] = useState<string>("ALL");
+  const [filterStage, setFilterStage] = useState<string>(
+    initialStageId ?? "ALL",
+  );
 
   const [sortField, setSortField] = useState<"schedule" | "name" | "stage">(
     "schedule",
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const days = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of entries) {
+      const d = parseStoredScheduleInstant(e.startTime);
+      if (!Number.isNaN(d.getTime())) {
+        const key = format(d, "yyyy-MM-dd");
+        const label = format(d, "MMM d, yyyy");
+        map.set(key, label);
+      }
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([key, label], idx) => ({
+        key,
+        label: `Day ${idx + 1} (${label})`,
+      }));
+  }, [entries]);
+
+  const categories = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of entries) {
+      const c = e.programme?.category;
+      if (c?.id && c?.name) {
+        map.set(c.id, c.name);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [entries]);
+
+  const stageList = useMemo(() => {
+    if (stages.length > 0) return stages;
+    const map = new Map<string, string>();
+    for (const e of entries) {
+      if (e.stage?.id && e.stage?.name) {
+        map.set(e.stage.id, e.stage.name);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [stages, entries]);
 
   const filtered = useMemo(() => {
     let result = entries;
@@ -131,7 +217,28 @@ export function ScheduleTableView({
         );
       });
     }
+    if (filterDay !== "ALL") {
+      result = result.filter((e) => {
+        const d = parseStoredScheduleInstant(e.startTime);
+        return format(d, "yyyy-MM-dd") === filterDay;
+      });
+    }
+    if (filterCategory !== "ALL") {
+      result = result.filter(
+        (e) => e.programme?.category?.id === filterCategory,
+      );
+    }
+    if (filterStage !== "ALL") {
+      result = result.filter(
+        (e) => e.stageId === filterStage || e.stage?.id === filterStage,
+      );
+    }
     return [...result].sort((a, b) => {
+      const aDone = isEntryCompleted(a);
+      const bDone = isEntryCompleted(b);
+      if (aDone && !bDone) return 1;
+      if (!aDone && bDone) return -1;
+
       const dir = sortDir === "asc" ? 1 : -1;
       if (sortField === "schedule") {
         return (
@@ -151,7 +258,15 @@ export function ScheduleTableView({
       }
       return 0;
     });
-  }, [entries, searchQuery, sortField, sortDir]);
+  }, [
+    entries,
+    searchQuery,
+    filterDay,
+    filterCategory,
+    filterStage,
+    sortField,
+    sortDir,
+  ]);
 
   const toggleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -167,18 +282,94 @@ export function ScheduleTableView({
     return <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
   };
 
+  const hasActiveFilters =
+    filterDay !== "ALL" ||
+    filterCategory !== "ALL" ||
+    (filterStage !== "ALL" && filterStage !== initialStageId);
+
+  const filterBar = (
+    <div className="flex flex-wrap items-center gap-2 pb-1">
+      {days.length > 1 && (
+        <Select value={filterDay} onValueChange={setFilterDay}>
+          <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs">
+            <SelectValue placeholder="All days" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All days</SelectItem>
+            {days.map((d) => (
+              <SelectItem key={d.key} value={d.key}>
+                {d.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {categories.length > 0 && (
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="h-8 w-auto min-w-[130px] text-xs">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All categories</SelectItem>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {!hideStageFilter && stageList.length > 1 && (
+        <Select value={filterStage} onValueChange={setFilterStage}>
+          <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs">
+            <SelectValue placeholder="All stages" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All stages</SelectItem>
+            {stageList.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {hasActiveFilters && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            setFilterDay("ALL");
+            setFilterCategory("ALL");
+            setFilterStage(initialStageId ?? "ALL");
+          }}
+        >
+          Reset filters
+        </Button>
+      )}
+    </div>
+  );
+
   if (filtered.length === 0) {
     return (
-      <div className="rounded-lg border bg-card px-4 py-8 text-center text-muted-foreground">
-        {searchQuery.trim()
-          ? "No entries match your search."
-          : "No schedule entries yet."}
+      <div className="space-y-3">
+        {filterBar}
+        <div className="rounded-lg border bg-card px-4 py-8 text-center text-muted-foreground">
+          {searchQuery.trim() || hasActiveFilters
+            ? "No entries match your search or filters."
+            : "No schedule entries yet."}
+        </div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="space-y-3">
+      {filterBar}
       {/* ── Desktop / Tablet table ── */}
       <div className="hidden md:block rounded-lg border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -220,16 +411,46 @@ export function ScheduleTableView({
                 const typeInfo = getTypeLabel(entry);
                 const participantsLabel = getParticipantsLabel(entry);
                 const [countLine, durationLine] = participantsLabel.split("\n");
+                const inProgress = isEntryInProgress(entry);
+                const completed = isEntryCompleted(entry);
                 return (
                   <tr
                     key={entry.id}
-                    className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                    className={cn(
+                      "border-b last:border-b-0 transition-colors cursor-pointer",
+                      inProgress &&
+                        "bg-amber-300/10 hover:bg-amber-300/15 border-l-4 border-l-amber-300",
+                      completed &&
+                        "bg-muted/40 opacity-70 hover:opacity-100 border-l-4 border-l-emerald-500/60",
+                      !inProgress && !completed && "hover:bg-muted/30",
+                    )}
+                    onClick={() => setSelectedEntry(entry)}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium">
-                        {entry.type === "PROGRAMME"
-                          ? (entry.programme?.name ?? "—")
-                          : (entry.title ?? "—")}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div
+                          className={cn(
+                            "font-medium",
+                            completed && "line-through opacity-80",
+                          )}
+                        >
+                          {entry.type === "PROGRAMME"
+                            ? (entry.programme?.name ?? "—")
+                            : (entry.title ?? "—")}
+                        </div>
+                        {inProgress && (
+                          <Badge className="bg-amber-300 hover:bg-amber-400 text-white font-bold text-[9px] px-1.5 h-4 uppercase tracking-wider animate-pulse shrink-0">
+                            In Progress
+                          </Badge>
+                        )}
+                        {completed && (
+                          <Badge
+                            variant="outline"
+                            className="text-emerald-700 dark:text-emerald-400 border-emerald-500/40 bg-emerald-500/10 text-[9px] px-1.5 h-4 uppercase font-semibold shrink-0"
+                          >
+                            Done
+                          </Badge>
+                        )}
                       </div>
                       {entry.type === "PROGRAMME" &&
                         entry.programme?.nameSecondary && (
@@ -270,7 +491,10 @@ export function ScheduleTableView({
                       {getScheduleLabel(entry)}
                     </td>
                     {!isReadOnly && (
-                      <td className="px-4 py-3 text-right">
+                      <td
+                        className="px-4 py-3 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-end gap-1">
                           {entry.type === "PROGRAMME" && (
                             <>
@@ -284,9 +508,13 @@ export function ScheduleTableView({
                                         "h-8 w-8",
                                         entry.callListNotifiedAt
                                           ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                                          : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                          : "text-amber-600 hover:text-amber-700 hover:bg-amber-50",
                                       )}
-                                      onClick={() => entry.callListNotifiedAt ? onCancelNotify(entry) : onNotify(entry)}
+                                      onClick={() =>
+                                        entry.callListNotifiedAt
+                                          ? onCancelNotify(entry)
+                                          : onNotify(entry)
+                                      }
                                     >
                                       {entry.callListNotifiedAt ? (
                                         <BellOff className="h-4 w-4" />
@@ -296,7 +524,9 @@ export function ScheduleTableView({
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    {entry.callListNotifiedAt ? "Cancel Call List Notification" : "Notify Call List"}
+                                    {entry.callListNotifiedAt
+                                      ? "Cancel Call List Notification"
+                                      : "Notify Call List"}
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
@@ -307,14 +537,25 @@ export function ScheduleTableView({
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
-                                      onClick={() => onStartReporting(entry)}
+                                      disabled={inProgress}
+                                      className={cn(
+                                        "h-8 w-8",
+                                        inProgress
+                                          ? "text-muted-foreground opacity-40 cursor-not-allowed"
+                                          : "text-sky-600 hover:text-sky-700 hover:bg-sky-50",
+                                      )}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!inProgress) onStartReporting(entry);
+                                      }}
                                     >
                                       <Flag className="h-4 w-4" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    Start Reporting
+                                    {inProgress
+                                      ? "Reporting in progress"
+                                      : "Start Reporting"}
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
@@ -370,18 +611,50 @@ export function ScheduleTableView({
           const typeInfo = getTypeLabel(entry);
           const participantsLabel = getParticipantsLabel(entry);
           const [countLine, durationLine] = participantsLabel.split("\n");
+          const inProgress = isEntryInProgress(entry);
+          const completed = isEntryCompleted(entry);
           return (
             <div
               key={entry.id}
-              className="rounded-lg border bg-card p-4 space-y-2.5"
+              className={cn(
+                "rounded-lg border p-4 space-y-2.5 cursor-pointer transition-colors",
+                inProgress &&
+                  "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30",
+                completed &&
+                  "border-emerald-500/30 bg-muted/40 opacity-75 hover:opacity-100",
+                !inProgress &&
+                  !completed &&
+                  "border-border bg-card hover:border-primary/50",
+              )}
+              onClick={() => setSelectedEntry(entry)}
             >
               {/* Title row */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium leading-tight">
-                    {entry.type === "PROGRAMME"
-                      ? (entry.programme?.name ?? "—")
-                      : (entry.title ?? "—")}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div
+                      className={cn(
+                        "font-medium leading-tight",
+                        completed && "line-through opacity-80",
+                      )}
+                    >
+                      {entry.type === "PROGRAMME"
+                        ? (entry.programme?.name ?? "—")
+                        : (entry.title ?? "—")}
+                    </div>
+                    {inProgress && (
+                      <Badge className="bg-amber-500 hover:bg-amber-500 text-white font-bold text-[9px] px-1.5 h-4 uppercase tracking-wider animate-pulse shrink-0">
+                        In Progress
+                      </Badge>
+                    )}
+                    {completed && (
+                      <Badge
+                        variant="outline"
+                        className="text-emerald-700 dark:text-emerald-400 border-emerald-500/40 bg-emerald-500/10 text-[9px] px-1.5 h-4 uppercase font-semibold shrink-0"
+                      >
+                        Done
+                      </Badge>
+                    )}
                   </div>
                   {entry.type === "PROGRAMME" &&
                     entry.programme?.nameSecondary && (
@@ -391,7 +664,10 @@ export function ScheduleTableView({
                     )}
                 </div>
                 {!isReadOnly && (
-                  <div className="flex items-center gap-0.5 shrink-0">
+                  <div
+                    className="flex items-center gap-0.5 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {entry.type === "PROGRAMME" && (
                       <>
                         <Button
@@ -401,9 +677,13 @@ export function ScheduleTableView({
                             "h-8 w-8",
                             entry.callListNotifiedAt
                               ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                              : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              : "text-amber-600 hover:text-amber-700 hover:bg-amber-50",
                           )}
-                          onClick={() => entry.callListNotifiedAt ? onCancelNotify(entry) : onNotify(entry)}
+                          onClick={() =>
+                            entry.callListNotifiedAt
+                              ? onCancelNotify(entry)
+                              : onNotify(entry)
+                          }
                         >
                           {entry.callListNotifiedAt ? (
                             <BellOff className="h-4 w-4" />
@@ -414,8 +694,17 @@ export function ScheduleTableView({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
-                          onClick={() => onStartReporting(entry)}
+                          disabled={inProgress}
+                          className={cn(
+                            "h-8 w-8",
+                            inProgress
+                              ? "text-muted-foreground opacity-40 cursor-not-allowed"
+                              : "text-sky-600 hover:text-sky-700 hover:bg-sky-50",
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!inProgress) onStartReporting(entry);
+                          }}
                         >
                           <Flag className="h-4 w-4" />
                         </Button>
@@ -478,6 +767,17 @@ export function ScheduleTableView({
           );
         })}
       </div>
-    </>
+
+      <ScheduleAssignmentDrawer
+        festivalId={festivalId}
+        entry={selectedEntry}
+        open={!!selectedEntry}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEntry(null);
+        }}
+        onEdit={onEdit}
+        isReadOnly={isReadOnly}
+      />
+    </div>
   );
 }

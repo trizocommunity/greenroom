@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm/relations";
 import {
   accountType,
   category,
+  categoryProgrammeLimit,
   festival,
   festivalCategoryPreference,
   festivalLifecycleEvent,
@@ -134,7 +135,25 @@ export const categoryRelations = relations(category, ({ one, many }) => ({
   participants: many(participant),
   assignments: many(programmeAssignment),
   scoringAwardRules: many(festivalScoringAwardRule),
+  programmeLimit: one(categoryProgrammeLimit, {
+    fields: [category.id],
+    references: [categoryProgrammeLimit.categoryId],
+  }),
 }));
+
+export const categoryProgrammeLimitRelations = relations(
+  categoryProgrammeLimit,
+  ({ one }) => ({
+    category: one(category, {
+      fields: [categoryProgrammeLimit.categoryId],
+      references: [category.id],
+    }),
+    festival: one(festival, {
+      fields: [categoryProgrammeLimit.festivalId],
+      references: [festival.id],
+    }),
+  }),
+);
 
 export const groupRelations = relations(group, ({ one, many }) => ({
   festival: one(festival, {

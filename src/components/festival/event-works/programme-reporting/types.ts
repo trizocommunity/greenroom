@@ -21,6 +21,9 @@ export type ReportingBoardItem = {
     name: string;
     type: "INDIVIDUAL" | "GROUP";
     status?: string;
+    durationMode: "SEQUENTIAL" | "PARALLEL";
+    timePerUnitMinutes: number;
+    parallelDurationMinutes: number | null;
     category: { id: string; name: string } | null;
   };
   scheduleEntry: {
@@ -31,6 +34,7 @@ export type ReportingBoardItem = {
   reportingSession: {
     id: string;
     status: string;
+    startedAt?: Date | null;
     /** Present when loaded from DB; used for history sort */
     endedAt?: string | null;
     updatedAt?: string | null;

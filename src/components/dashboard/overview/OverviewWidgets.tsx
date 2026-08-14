@@ -246,6 +246,7 @@ export default async function OverviewWidgets({
       <FestSetupWidget
         festivalSlug={slug}
         festivalId={festival.id}
+        isProTier={tier === "PRO"}
         showVerifySubdomainStep={showVerifySubdomainStep}
         subdomainVerified={subdomainVerified}
         setupStatus={{
@@ -258,6 +259,7 @@ export default async function OverviewWidgets({
           hasSchedule: overviewData.hasSchedule,
           hasOffStageTasks: overviewData.hasOffStageTasks,
           hasStaff: overviewData.hasStaff,
+          hasLimitationPolicy: overviewData.hasLimitationPolicy,
           isLaunched: festival.publicSiteEnabled ?? false,
         }}
       />

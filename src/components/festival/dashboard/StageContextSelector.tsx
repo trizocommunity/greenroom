@@ -42,9 +42,13 @@ export function StageContextSelector({
       value={currentStageId ?? ALL_STAGES_VALUE}
       onValueChange={handleChange}
     >
-      <SelectTrigger className="h-8 w-[160px] text-xs sm:text-sm">
-        <Radio className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <SelectValue placeholder="All stages" />
+      <SelectTrigger className="h-8 w-8 sm:w-auto sm:min-w-[140px] px-0 sm:px-3 justify-center sm:justify-between text-xs sm:text-sm [&>svg:last-child]:hidden sm:[&>svg:last-child]:block">
+        <div className="flex items-center gap-2">
+          <Radio className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0 text-foreground sm:text-muted-foreground" />
+          <span className="hidden sm:inline-flex">
+            <SelectValue placeholder="All stages" />
+          </span>
+        </div>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={ALL_STAGES_VALUE}>All my stages</SelectItem>

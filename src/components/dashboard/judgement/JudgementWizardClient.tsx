@@ -69,6 +69,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { formatDateTime, parseInstant } from "@/core/datetime";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
 import {
   getJudgementDashboardDataAction,
   restartJudgementAction,
@@ -84,6 +85,9 @@ type Programme = {
   status: string;
   programmeType: "INDIVIDUAL" | "GROUP";
   programmeCategory?: string | null;
+  durationMode?: "PARALLEL" | "PER_UNIT" | null;
+  timePerUnitMinutes?: number | null;
+  parallelDurationMinutes?: number | null;
   reportingDetails?: {
     stageName: string | null;
     scheduleStart: string | null;
@@ -98,8 +102,59 @@ type Programme = {
     assignedCount: number;
     absentCount: number;
     stageId: string | null;
+    submittedAt?: Date | string | null;
   } | null;
 };
+
+function ProgrammeTimer({
+  startedAt,
+  durationMinutes,
+}: {
+  startedAt: Date;
+  durationMinutes: number;
+}) {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    const end = startedAt.getTime() + durationMinutes * 60 * 1000;
+    const update = () => {
+      setTimeLeft(end - Date.now());
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [startedAt, durationMinutes]);
+
+  if (durationMinutes <= 0) return null;
+
+  const isEnding = timeLeft <= 60000 && timeLeft > 0;
+  const isOver = timeLeft <= 0;
+
+  if (isOver) {
+    return (
+      <span className="text-[10px] font-mono font-bold text-red-500 animate-pulse bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded">
+        00:00
+      </span>
+    );
+  }
+
+  const m = Math.floor(timeLeft / 60000);
+  const s = Math.floor((timeLeft % 60000) / 1000);
+  const formatted = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+
+  return (
+    <span
+      className={cn(
+        "text-[10px] font-mono font-bold px-1.5 py-0.5 rounded",
+        isEnding
+          ? "text-red-500 animate-pulse bg-red-50 dark:bg-red-950/30"
+          : "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30",
+      )}
+    >
+      {formatted}
+    </span>
+  );
+}
 type ActiveConfig = {
   id: string;
   programmeId: string;
@@ -659,6 +714,18 @@ export function JudgementWizardClient({
                   const isUnscheduled = Boolean(
                     p.reportingDetails && p.reportingDetails.stageId === null,
                   );
+                  const durationMinutes =
+                    p.durationMode === "PARALLEL"
+                      ? (p.parallelDurationMinutes ??
+                        p.timePerUnitMinutes ??
+                        0)
+                      : (p.timePerUnitMinutes ?? 0);
+                  const submittedAt = p.reportingDetails?.submittedAt
+                    ? typeof p.reportingDetails.submittedAt === "string"
+                      ? parseInstant(p.reportingDetails.submittedAt)
+                      : p.reportingDetails.submittedAt
+                    : null;
+
                   return (
                     <Card
                       key={p.id}
@@ -670,9 +737,20 @@ export function JudgementWizardClient({
                             {p.name}
                           </CardTitle>
                           <div className="flex flex-col items-end gap-1 shrink-0">
-                            <Badge variant="secondary" className="text-[11px]">
-                              {p.status}
-                            </Badge>
+                            <div className="flex items-center gap-1.5">
+                              {submittedAt && durationMinutes > 0 && (
+                                <ProgrammeTimer
+                                  startedAt={submittedAt}
+                                  durationMinutes={durationMinutes}
+                                />
+                              )}
+                              <Badge
+                                variant="secondary"
+                                className="text-[11px]"
+                              >
+                                {p.status}
+                              </Badge>
+                            </div>
                             {isUnscheduled && (
                               <Badge
                                 variant="outline"
@@ -982,47 +1060,69 @@ export function JudgementWizardClient({
                     rejudgePageIndex * pageSize,
                     (rejudgePageIndex + 1) * pageSize,
                   )
-                  .map((p) => (
-                    <div
-                      key={p.id}
-                      className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate text-[13px] font-semibold sm:text-sm">
-                              {p.name}
-                            </p>
-                            {p.programmeCategory ? (
-                              <p className="text-[11px] text-muted-foreground">
-                                {p.programmeCategory}
+                  .map((p) => {
+                    const durationMinutes =
+                      p.durationMode === "PARALLEL"
+                        ? (p.parallelDurationMinutes ??
+                          p.timePerUnitMinutes ??
+                          0)
+                        : (p.timePerUnitMinutes ?? 0);
+                    const submittedAt = p.reportingDetails?.submittedAt
+                      ? typeof p.reportingDetails.submittedAt === "string"
+                        ? parseInstant(p.reportingDetails.submittedAt)
+                        : p.reportingDetails.submittedAt
+                      : null;
+
+                    return (
+                      <div
+                        key={p.id}
+                        className="rounded-xl border border-border/60 bg-linear-to-br from-background to-muted/30 px-3 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:px-4"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-[13px] font-semibold sm:text-sm">
+                                {p.name}
                               </p>
-                            ) : null}
+                              {p.programmeCategory ? (
+                                <p className="text-[11px] text-muted-foreground">
+                                  {p.programmeCategory}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Badge
+                                variant="outline"
+                                className="w-fit text-[10px] font-normal"
+                              >
+                                {p.status}
+                              </Badge>
+                              {submittedAt && durationMinutes > 0 && (
+                                <ProgrammeTimer
+                                  startedAt={submittedAt}
+                                  durationMinutes={durationMinutes}
+                                />
+                              )}
+                            </div>
                           </div>
-                          <Badge
-                            variant="outline"
-                            className="w-fit text-[10px] font-normal"
-                          >
-                            {p.status}
-                          </Badge>
-                        </div>
-                        <div className="shrink-0 self-center">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
-                            onClick={() =>
-                              openWizardForProgramme(p.id, "rejudge")
-                            }
-                          >
-                            <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                            Rejudge
-                          </Button>
+                          <div className="shrink-0 self-center">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="h-8 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
+                              onClick={() =>
+                                openWizardForProgramme(p.id, "rejudge")
+                              }
+                            >
+                              <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
+                              Rejudge
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
               {filteredRejudgeProgrammes.length > pageSize && (
                 <DataTablePagination
