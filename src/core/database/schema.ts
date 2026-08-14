@@ -98,6 +98,7 @@ export const programmeReportingStatus = pgEnum("ProgrammeReportingStatus", [
   "IN_PROGRESS",
   "RESET",
   "CLOSED",
+  "COMPLETED",
 ]);
 export const sessionStatus = pgEnum("SessionStatus", ["OPEN", "CLOSED"]);
 export const programmeStatus = pgEnum("ProgrammeStatus", [

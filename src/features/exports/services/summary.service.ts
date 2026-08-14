@@ -43,16 +43,23 @@ export function buildExportSummary(config: ExportConfig): ExportSummary {
   switch (config.type) {
     case "CALL_LIST":
       summary = `${orientation(config.listType)} call list`;
+      if (config.programmeType && config.programmeType !== "ALL")
+        badges.push(`Type: ${config.programmeType.toLowerCase()}`);
       badges.push(`Gender: ${genderLabel(config.gender)}`);
       if (config.onlyWithParticipants) badges.push("With participants only");
       if (config.scheduleState !== "ALL")
         badges.push(`Schedule: ${config.scheduleState.toLowerCase()}`);
+      if (config.teamIds?.length)
+        badges.push(`${config.teamIds.length} groups`);
       if (config.categoryIds.length)
         badges.push(`${config.categoryIds.length} categories`);
       if (config.programmeIds.length)
         badges.push(`${config.programmeIds.length} competitions`);
+      if (config.includeStage) badges.push("Stage");
       if (config.includeDob) badges.push("DOB");
       if (config.includePhone) badges.push("Phone");
+      if (config.includeSignatureLine) badges.push("Signature");
+      if (config.includeRemarks) badges.push("Remarks");
       break;
     case "RESULTS":
       summary = `${orientation(config.listType)} results`;

@@ -304,7 +304,7 @@ export const ProgrammeReportingService = {
         scheduleEntry,
         reportingSession: sessionPayload,
       };
-    });
+    }).filter((item) => item.reportingSession?.status !== "COMPLETED");
 
     if (accessibleStageIds === "all") {
       return items.sort((a, b) => {
@@ -316,7 +316,7 @@ export const ProgrammeReportingService = {
 
     return items
       .filter((item) => {
-        if (!item.stage) return true;
+        if (!item.stage?.id) return true;
         return accessibleStageIds.includes(item.stage.id);
       })
       .sort((a, b) => {
@@ -573,6 +573,24 @@ export const ProgrammeReportingService = {
       .where(eq(programmeTable.id, session.programmeId));
 
     return { participantCodes };
+  },
+
+  async complete(reportingSessionId: string, actorName: string) {
+    const session = await db.query.programmeReportingSession.findFirst({
+      where: eq(prsTable.id, reportingSessionId),
+      columns: { status: true },
+    });
+    if (!session || session.status !== "CLOSED") {
+      throw new Error("Only closed sessions can be completed.");
+    }
+
+    await db
+      .update(prsTable)
+      .set({
+        status: "COMPLETED",
+        updatedAt: serverNowIso(),
+      })
+      .where(eq(prsTable.id, reportingSessionId));
   },
 
   async unlockByScheduleEntryChange(scheduleEntryId: string) {

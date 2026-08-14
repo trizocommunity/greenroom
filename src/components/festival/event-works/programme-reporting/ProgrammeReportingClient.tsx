@@ -87,6 +87,7 @@ import { requireProgrammeType } from "@/features/programmes/utils/assert-program
 import { toast } from "@/lib/toast";
 import { QrScanner } from "./QrScanner";
 import { ReportingBoardList } from "./ReportingBoardList";
+import { LargeTimerDrawer } from "./LargeTimerDrawer";
 import { ReportingQuickAddSection } from "./ReportingQuickAddSection";
 import { ReportingRosterTable } from "./ReportingRosterTable";
 import { type ScanEntry, ScanResponseFooter } from "./ScanResponseFooter";
@@ -193,6 +194,9 @@ export function ProgrammeReportingClient({
   const [manualRosterOpen, setManualRosterOpen] = useState(false);
   const [recentScans, setRecentScans] = useState<ScanEntry[]>([]);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [timerDrawerEntryId, setTimerDrawerEntryId] = useState<string | null>(
+    null,
+  );
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -782,8 +786,7 @@ export function ProgrammeReportingClient({
     : null;
 
   useEffect(() => {
-    if (!filteredBoard.length) {
-      setSelectedEntryId(null);
+    if (board.length === 0) {
       return;
     }
     if (
@@ -792,7 +795,7 @@ export function ProgrammeReportingClient({
     ) {
       setSelectedEntryId(null);
     }
-  }, [filteredBoard, selectedEntryId]);
+  }, [filteredBoard, selectedEntryId, board.length]);
 
   const selected = useMemo(
     () => board.find((item) => item.id === selectedEntryId) ?? null,
@@ -1315,7 +1318,7 @@ export function ProgrammeReportingClient({
     (filterStageId !== "ALL" ? 1 : 0) +
     (filterType !== "ALL" ? 1 : 0) +
     (filterStatus !== "ALL" ? 1 : 0) +
-    (filterScheduleState !== "ALL" ? 1 : 0) +
+(filterScheduleState !== "ALL" ? 1 : 0) +
     (filterDate !== "ALL" ? 1 : 0) +
     (showEnded ? 1 : 0);
 
@@ -1414,6 +1417,11 @@ export function ProgrammeReportingClient({
           )}
           selectedId={selectedEntryId}
           onSelect={(id) => {
+            const item = filteredBoard.find((b) => b.id === id);
+            if (item?.reportingSession?.status === "CLOSED") {
+              setTimerDrawerEntryId(id);
+              return;
+            }
             if (id === selectedEntryId) return;
             setIsEntrySwitching(true);
             setSelectedEntryId(id);
@@ -2281,6 +2289,19 @@ export function ProgrammeReportingClient({
           </div>
         </DrawerContent>
       </Drawer>
+
+      <LargeTimerDrawer
+        festivalId={festivalId}
+        item={
+          timerDrawerEntryId
+            ? filteredBoard.find((b) => b.id === timerDrawerEntryId) ?? null
+            : null
+        }
+        isOpen={!!timerDrawerEntryId}
+        onOpenChange={(open) => {
+          if (!open) setTimerDrawerEntryId(null);
+        }}
+      />
     </div>
   );
 }

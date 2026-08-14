@@ -118,11 +118,13 @@ export function ReportingBoardList({
                     {item.programme.name}
                   </p>
                   {(() => {
+                    if (item.reportingSession?.status !== "CLOSED") return null;
+
                     const timerStart = item.reportingSession?.endedAt
                       ? (typeof item.reportingSession.endedAt === "string"
                           ? parseInstant(item.reportingSession.endedAt)
                           : item.reportingSession.endedAt)
-                      : item.reportingSession?.startedAt;
+                      : null;
 
                     if (!timerStart) return null;
 

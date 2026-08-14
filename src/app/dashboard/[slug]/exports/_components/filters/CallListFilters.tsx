@@ -1,6 +1,7 @@
 "use client";
 
 import { useCategories } from "@/api/client/categories";
+import { useGroups } from "@/api/client/groups";
 import { useProgrammes } from "@/api/client/programmes";
 import { useStages } from "@/api/client/stages";
 import type { CallListConfig } from "@/features/exports/schemas/export-config.schema";
@@ -22,6 +23,7 @@ interface Props {
 export function CallListFilters({ festivalId, value, onChange }: Props) {
   const { data: categories } = useCategories(festivalId);
   const { data: programmes } = useProgrammes(festivalId);
+  const { data: groups } = useGroups(festivalId);
   const { data: stages } = useStages(festivalId);
   const set = (patch: Partial<CallListConfig>) =>
     onChange({ ...value, ...patch });
@@ -43,10 +45,30 @@ export function CallListFilters({ festivalId, value, onChange }: Props) {
         ]}
       />
       <SegmentedControl
+        label="Programme Type"
+        value={value.programmeType ?? "ALL"}
+        onChange={(v) => set({ programmeType: v })}
+        options={[
+          { value: "ALL", label: "All" },
+          { value: "INDIVIDUAL", label: "Individual" },
+          { value: "GROUP", label: "Group" },
+        ]}
+      />
+      <SegmentedControl
         label="Gender filter"
         value={value.gender}
         onChange={(v) => set({ gender: v })}
         options={GENDER_OPTIONS}
+      />
+      <SegmentedControl
+        label="Sort Order"
+        value={value.sortBy ?? "CHEST_NUMBER"}
+        onChange={(v) => set({ sortBy: v })}
+        options={[
+          { value: "CHEST_NUMBER", label: "Chest No" },
+          { value: "NAME", label: "Name" },
+          { value: "TEAM", label: "Team" },
+        ]}
       />
 
       <div className="space-y-2.5">
@@ -66,6 +88,11 @@ export function CallListFilters({ festivalId, value, onChange }: Props) {
           onChange={(v) => set({ includeTeam: v })}
         />
         <ToggleRow
+          label="Include stage & schedule"
+          checked={value.includeStage ?? false}
+          onChange={(v) => set({ includeStage: v })}
+        />
+        <ToggleRow
           label="Include date of birth"
           checked={value.includeDob}
           onChange={(v) => set({ includeDob: v })}
@@ -74,6 +101,16 @@ export function CallListFilters({ festivalId, value, onChange }: Props) {
           label="Include phone number"
           checked={value.includePhone}
           onChange={(v) => set({ includePhone: v })}
+        />
+        <ToggleRow
+          label="Include attendance / signature column"
+          checked={value.includeSignatureLine ?? false}
+          onChange={(v) => set({ includeSignatureLine: v })}
+        />
+        <ToggleRow
+          label="Include remarks column"
+          checked={value.includeRemarks ?? false}
+          onChange={(v) => set({ includeRemarks: v })}
         />
       </div>
 
@@ -88,6 +125,15 @@ export function CallListFilters({ festivalId, value, onChange }: Props) {
         ]}
       />
 
+      <CheckList
+        label="Groups / Teams"
+        hint="Leave empty to include all groups"
+        options={groups ?? []}
+        selected={value.teamIds ?? []}
+        onToggle={(id, v) =>
+          set({ teamIds: toggleId(value.teamIds ?? [], id, v) })
+        }
+      />
       <CheckList
         label="Categories"
         hint="Leave empty to include all"
