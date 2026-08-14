@@ -243,7 +243,7 @@ export const CategoryLimitService = {
     festivalId: string,
   ): Promise<
     Array<{
-      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
+      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; dateOfBirth: string | Date | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
       status: ParticipantLimitStatus;
     }>
   > {
@@ -256,7 +256,7 @@ export const CategoryLimitService = {
           eq(p.categoryId, categoryId),
           eq(p.festivalId, festivalId),
         ),
-      columns: { id: true, name: true, chestNumber: true, groupId: true, categoryId: true },
+      columns: { id: true, name: true, chestNumber: true, groupId: true, categoryId: true, dateOfBirth: true },
       with: {
         group: { columns: { id: true, name: true, color: true } },
         category: { columns: { id: true, name: true } },
@@ -271,7 +271,7 @@ export const CategoryLimitService = {
     );
 
     const violators: Array<{
-      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
+      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; dateOfBirth: string | Date | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
       status: ParticipantLimitStatus;
     }> = [];
 
@@ -298,7 +298,7 @@ export const CategoryLimitService = {
   async getAllViolatorsForFestival(festivalId: string): Promise<
     Array<{
       category: { id: string; name: string };
-      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
+      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; dateOfBirth: string | Date | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
       status: ParticipantLimitStatus;
     }>
   > {
@@ -309,7 +309,7 @@ export const CategoryLimitService = {
 
     let allViolators: Array<{
       category: { id: string; name: string };
-      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
+      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; dateOfBirth: string | Date | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
       status: ParticipantLimitStatus;
     }> = [];
 

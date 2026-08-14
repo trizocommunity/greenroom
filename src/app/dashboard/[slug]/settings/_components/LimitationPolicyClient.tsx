@@ -84,39 +84,36 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="p-16 flex flex-col justify-center items-center text-muted-foreground gap-4">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <p>Loading limitation policies...</p>
-        </CardContent>
-      </Card>
+      <div className="p-16 flex flex-col justify-center items-center text-muted-foreground gap-4">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p>Loading limitation policies...</p>
+      </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      <Card>
-        <CardHeader className="bg-muted/30 border-b">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="text-xl">Category Limits Configuration</CardTitle>
-              <CardDescription className="mt-1.5">
-                Set maximum participation limits per category. Leave fields empty for no limit.
-              </CardDescription>
-            </div>
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-xl font-semibold">Category Limits Configuration</h2>
+            <p className="text-muted-foreground text-sm mt-1.5">
+              Set maximum participation limits per category. Leave fields empty for no limit.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="p-0 sm:p-6">
+        </div>
+        
+        <div className="pt-2">
           {!categories || categories.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
+            <div className="p-8 text-center text-muted-foreground border rounded-md">
               <Info className="h-8 w-8 mx-auto mb-3 opacity-50" />
               <p>No categories found in this festival.</p>
             </div>
           ) : (
             <div className="rounded-md border-0 sm:border overflow-hidden">
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-muted/50 hidden sm:table-header-group">
+                <Table className="hidden sm:table">
+                  <TableHeader className="bg-muted/50">
                     <TableRow>
                       <TableHead className="w-[200px]">Category</TableHead>
                       <TableHead className="text-center">Max Stage</TableHead>
@@ -133,16 +130,12 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                       const hasViolations = cat.violationCounts?.total > 0;
                       
                       return (
-                        <TableRow key={cat.id} className="group flex flex-col sm:table-row border-b last:border-b-0 sm:border-b">
-                          <TableCell className="font-semibold text-base sm:text-sm pt-4 sm:pt-4 bg-muted/20 sm:bg-transparent">
+                        <TableRow key={cat.id} className="group hover:bg-muted/30">
+                          <TableCell className="font-semibold text-sm py-4">
                             {cat.name}
-                            <div className="text-xs text-muted-foreground mt-1 sm:hidden">
-                              {hasLimits ? "Limits configured" : "No limits set"}
-                            </div>
                           </TableCell>
                           
-                          <TableCell className="sm:text-center flex justify-between sm:table-cell py-2 sm:py-4">
-                            <span className="text-muted-foreground sm:hidden text-sm">Max Stage:</span>
+                          <TableCell className="text-center py-4">
                             {limit?.maxStage !== null && limit?.maxStage !== undefined ? (
                               <Badge variant="outline" className="font-mono">{limit.maxStage}</Badge>
                             ) : (
@@ -150,8 +143,7 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                             )}
                           </TableCell>
                           
-                          <TableCell className="sm:text-center flex justify-between sm:table-cell py-2 sm:py-4">
-                            <span className="text-muted-foreground sm:hidden text-sm">Max Non-Stage:</span>
+                          <TableCell className="text-center py-4">
                             {limit?.maxNonStage !== null && limit?.maxNonStage !== undefined ? (
                               <Badge variant="outline" className="font-mono">{limit.maxNonStage}</Badge>
                             ) : (
@@ -159,8 +151,7 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                             )}
                           </TableCell>
                           
-                          <TableCell className="sm:text-center flex justify-between sm:table-cell py-2 sm:py-4">
-                            <span className="text-muted-foreground sm:hidden text-sm">Max Total:</span>
+                          <TableCell className="text-center py-4">
                             {limit?.maxAll !== null && limit?.maxAll !== undefined ? (
                               <Badge variant="outline" className="font-mono">{limit.maxAll}</Badge>
                             ) : (
@@ -168,15 +159,14 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                             )}
                           </TableCell>
                           
-                          <TableCell className="sm:text-center flex justify-between sm:table-cell py-2 sm:py-4">
-                            <span className="text-muted-foreground sm:hidden text-sm">Violations:</span>
+                          <TableCell className="text-center py-4">
                             {hasViolations ? (
-                              <Badge variant="destructive" className="flex items-center gap-1 w-fit sm:mx-auto">
+                              <Badge variant="destructive" className="flex items-center justify-center gap-1 w-fit mx-auto">
                                 <ShieldAlert className="h-3 w-3" />
                                 {cat.violationCounts.total}
                               </Badge>
                             ) : hasLimits ? (
-                              <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 w-fit sm:mx-auto border-0">
+                              <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 w-fit mx-auto border-0">
                                 0
                               </Badge>
                             ) : (
@@ -184,11 +174,10 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                             )}
                           </TableCell>
                           
-                          <TableCell className="text-right py-3 sm:py-4 bg-muted/10 sm:bg-transparent">
+                          <TableCell className="text-right py-4">
                             <Button
                               variant={hasLimits ? "secondary" : "default"}
                               size="sm"
-                              className="w-full sm:w-auto"
                               onClick={() => setEditingCategory(cat)}
                             >
                               {hasLimits ? (
@@ -203,28 +192,104 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                     })}
                   </TableBody>
                 </Table>
+                
+                {/* Mobile View (Compact Swipe Cards) */}
+                <div className="sm:hidden flex overflow-x-auto gap-3 pb-2 pt-1 px-1 snap-x">
+                  {categories.map((cat: any) => {
+                    const limit = cat.limit;
+                    const hasLimits = limit && (limit.maxStage !== null || limit.maxNonStage !== null || limit.maxAll !== null);
+                    const hasViolations = cat.violationCounts?.total > 0;
+                    
+                    return (
+                      <div key={cat.id} className="snap-start shrink-0 w-[200px] flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden">
+                        <div className="bg-muted/30 p-3 border-b flex flex-col justify-center min-h-[60px]">
+                          <div className="font-semibold text-sm truncate">{cat.name}</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            {hasLimits ? "Limits configured" : "No limits set"}
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col flex-1 p-3 gap-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Max Stage:</span>
+                            {limit?.maxStage !== null && limit?.maxStage !== undefined ? (
+                              <Badge variant="outline" className="font-mono text-[10px] py-0 h-4">{limit.maxStage}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground/50 text-xs font-mono">∞</span>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Max Non-Stage:</span>
+                            {limit?.maxNonStage !== null && limit?.maxNonStage !== undefined ? (
+                              <Badge variant="outline" className="font-mono text-[10px] py-0 h-4">{limit.maxNonStage}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground/50 text-xs font-mono">∞</span>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Max Total:</span>
+                            {limit?.maxAll !== null && limit?.maxAll !== undefined ? (
+                              <Badge variant="outline" className="font-mono text-[10px] py-0 h-4">{limit.maxAll}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground/50 text-xs font-mono">∞</span>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center pt-2 mt-auto border-t">
+                            <span className="text-xs text-muted-foreground">Violations:</span>
+                            {hasViolations ? (
+                              <Badge variant="destructive" className="flex items-center gap-1 text-[10px] py-0 h-4">
+                                <ShieldAlert className="h-2.5 w-2.5" />
+                                {cat.violationCounts.total}
+                              </Badge>
+                            ) : hasLimits ? (
+                              <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 border-0 text-[10px] py-0 h-4">
+                                0
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground/30 text-xs">-</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="p-2 bg-muted/10 border-t mt-auto">
+                          <Button
+                            variant={hasLimits ? "secondary" : "default"}
+                            size="sm"
+                            className="w-full h-8 text-xs"
+                            onClick={() => setEditingCategory(cat)}
+                          >
+                            {hasLimits ? (
+                              <><Edit className="h-3 w-3 mr-1.5" /> Edit</>
+                            ) : (
+                              "Set Limits"
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Violations Section */}
-      <Card className="border-destructive/20 shadow-sm">
-        <CardHeader className="bg-destructive/5 border-b border-destructive/10">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
-              <ShieldAlert className="h-4 w-4 text-destructive" />
-            </div>
-            <div>
-              <CardTitle className="text-lg text-destructive">Participation Violations</CardTitle>
-              <CardDescription className="mt-1">
-                Participants who are assigned to more programmes than their category allows.
-              </CardDescription>
-            </div>
+      <div className="mt-12 space-y-4">
+        <div className="flex items-center gap-2 border-b border-destructive/10 pb-4">
+          <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
+            <ShieldAlert className="h-4 w-4 text-destructive" />
           </div>
-        </CardHeader>
-        <CardContent className="p-0 sm:p-6">
+          <div>
+            <h3 className="text-lg font-semibold text-destructive">Participation Violations</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Participants who are assigned to more programmes than their category allows.
+            </p>
+          </div>
+        </div>
+        
+        <div className="pt-2">
           {isLoadingViolators ? (
             <div className="p-12 flex justify-center items-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -273,7 +338,7 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                   No violators match the selected filters.
                 </div>
               ) : (
-                <div className="rounded-md border-0 sm:border overflow-hidden">
+                <div className="rounded-md border overflow-hidden">
                   <div className="overflow-x-auto">
                     <Table className="hidden sm:table">
                       <TableHeader className="bg-muted/50">
@@ -337,62 +402,60 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                       </TableBody>
                     </Table>
 
-                    {/* Mobile View (Cards) */}
-                    <div className="sm:hidden flex flex-col gap-4">
+                    {/* Mobile View (Compact Cards) */}
+                    <div className="sm:hidden flex flex-col gap-3">
                       {filteredViolators?.map((v, i) => (
                         <ParticipantDetailsDialog
                           key={i}
                           festivalId={festivalId}
                           participant={v.participant}
                           trigger={
-                            <Card className="border border-destructive/20 hover:bg-destructive/5 transition-colors cursor-pointer rounded-lg text-left shadow-sm">
-                              <CardContent className="p-4 space-y-3">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="font-semibold text-primary">{v.participant.name}</div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {v.participant.chestNumber && (
-                                        <Badge variant="secondary" className="text-[10px] py-0 font-mono">
-                                          {v.participant.chestNumber}
-                                        </Badge>
-                                      )}
-                                      <div className="flex items-center gap-1">
-                                        <span 
-                                          className="w-1.5 h-1.5 rounded-full shrink-0" 
-                                          style={{ backgroundColor: v.participant.group?.color || "#2563eb" }} 
-                                        />
-                                        <span className="text-xs text-muted-foreground">{v.participant.group?.name ?? "—"}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <Badge variant="outline" className="text-xs shrink-0">{v.category.name}</Badge>
-                                </div>
-                                
-                                <div className="grid grid-cols-3 gap-2 pt-2 border-t text-sm">
-                                  <div className="flex flex-col items-center">
-                                    <span className="text-muted-foreground text-[10px] uppercase">Stage</span>
-                                    <div>
-                                      <span className={v.status.isOverStage ? "text-destructive font-bold" : ""}>{v.status.stageCount}</span>
-                                      <span className="text-muted-foreground text-xs">/{v.status.maxStage ?? "∞"}</span>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-col items-center">
-                                    <span className="text-muted-foreground text-[10px] uppercase">Non-Stage</span>
-                                    <div>
-                                      <span className={v.status.isOverNonStage ? "text-destructive font-bold" : ""}>{v.status.nonStageCount}</span>
-                                      <span className="text-muted-foreground text-xs">/{v.status.maxNonStage ?? "∞"}</span>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-col items-center">
-                                    <span className="text-muted-foreground text-[10px] uppercase">Total</span>
-                                    <div>
-                                      <span className={v.status.isOverAll ? "text-destructive font-bold" : ""}>{v.status.allCount}</span>
-                                      <span className="text-muted-foreground text-xs">/{v.status.maxAll ?? "∞"}</span>
+                            <div className="border border-destructive/20 hover:bg-destructive/5 transition-colors cursor-pointer rounded-lg text-left shadow-sm bg-card p-3">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="min-w-0 pr-2">
+                                  <div className="font-medium text-sm text-primary truncate">{v.participant.name}</div>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {v.participant.chestNumber && (
+                                      <span className="text-[10px] text-muted-foreground font-mono">
+                                        #{v.participant.chestNumber}
+                                      </span>
+                                    )}
+                                    <div className="flex items-center gap-1 min-w-0">
+                                      <span 
+                                        className="w-1.5 h-1.5 rounded-full shrink-0" 
+                                        style={{ backgroundColor: v.participant.group?.color || "#2563eb" }} 
+                                      />
+                                      <span className="text-[10px] text-muted-foreground truncate">{v.participant.group?.name ?? "—"}</span>
                                     </div>
                                   </div>
                                 </div>
-                              </CardContent>
-                            </Card>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 shrink-0 whitespace-nowrap">{v.category.name}</Badge>
+                              </div>
+                              
+                              <div className="grid grid-cols-3 gap-1 pt-2 border-t border-border/50">
+                                <div className="flex flex-col items-center justify-center bg-muted/20 rounded py-1">
+                                  <span className="text-muted-foreground text-[9px] uppercase mb-0.5">Stage</span>
+                                  <div className="text-xs leading-none">
+                                    <span className={v.status.isOverStage ? "text-destructive font-bold" : ""}>{v.status.stageCount}</span>
+                                    <span className="text-muted-foreground text-[10px]">/{v.status.maxStage ?? "∞"}</span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-center justify-center bg-muted/20 rounded py-1">
+                                  <span className="text-muted-foreground text-[9px] uppercase mb-0.5">Non-Stage</span>
+                                  <div className="text-xs leading-none">
+                                    <span className={v.status.isOverNonStage ? "text-destructive font-bold" : ""}>{v.status.nonStageCount}</span>
+                                    <span className="text-muted-foreground text-[10px]">/{v.status.maxNonStage ?? "∞"}</span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-center justify-center bg-muted/20 rounded py-1">
+                                  <span className="text-muted-foreground text-[9px] uppercase mb-0.5">Total</span>
+                                  <div className="text-xs leading-none">
+                                    <span className={v.status.isOverAll ? "text-destructive font-bold" : ""}>{v.status.allCount}</span>
+                                    <span className="text-muted-foreground text-[10px]">/{v.status.maxAll ?? "∞"}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           }
                         />
                       ))}
@@ -402,8 +465,8 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {editingCategory && (
         <EditLimitModal
