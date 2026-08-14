@@ -192,6 +192,7 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                     })}
                   </TableBody>
                 </Table>
+              </div>
                 
                 {/* Mobile View (Compact Swipe Cards) */}
                 <div className="sm:hidden flex overflow-x-auto gap-3 pb-2 pt-1 px-1 snap-x">
@@ -201,9 +202,9 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                     const hasViolations = cat.violationCounts?.total > 0;
                     
                     return (
-                      <div key={cat.id} className="snap-start shrink-0 w-[200px] flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden">
-                        <div className="bg-muted/30 p-3 border-b flex flex-col justify-center min-h-[60px]">
-                          <div className="font-semibold text-sm truncate">{cat.name}</div>
+                      <div key={cat.id} className="snap-start shrink-0 w-[180px] flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden">
+                        <div className="bg-muted/30 p-2 border-b flex flex-col justify-center min-h-[48px]">
+                          <div className="font-semibold text-[13px] truncate" title={cat.name}>{cat.name}</div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">
                             {hasLimits ? "Limits configured" : "No limits set"}
                           </div>
@@ -269,7 +270,6 @@ export function LimitationPolicyClient({ festivalId }: LimitationPolicyClientPro
                     );
                   })}
                 </div>
-              </div>
             </div>
           )}
         </div>
