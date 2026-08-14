@@ -466,98 +466,63 @@ export function LimitationPolicyClient({
                         festivalId={festivalId}
                         participant={v.participant}
                         trigger={
-                          <div className="border border-destructive/20 hover:bg-destructive/5 transition-colors cursor-pointer rounded-lg text-left shadow-sm bg-card p-3">
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="min-w-0 pr-2">
+                          <div className="border border-destructive/20 hover:bg-destructive/5 transition-colors cursor-pointer rounded-md text-left shadow-sm bg-card p-2.5">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <div className="flex items-center gap-2 min-w-0 pr-2">
                                 <div className="font-medium text-sm text-primary truncate">
                                   {v.participant.name}
                                 </div>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {v.participant.chestNumber && (
-                                    <span className="text-[10px] text-muted-foreground font-mono">
-                                      #{v.participant.chestNumber}
-                                    </span>
-                                  )}
-                                  <div className="flex items-center gap-1 min-w-0">
-                                    <span
-                                      className="w-1.5 h-1.5 rounded-full shrink-0"
-                                      style={{
-                                        backgroundColor:
-                                          v.participant.group?.color ||
-                                          "#2563eb",
-                                      }}
-                                    />
-                                    <span className="text-[10px] text-muted-foreground truncate">
-                                      {v.participant.group?.name ?? "—"}
-                                    </span>
-                                  </div>
-                                </div>
+                                {v.participant.chestNumber && (
+                                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                                    #{v.participant.chestNumber}
+                                  </span>
+                                )}
                               </div>
                               <Badge
                                 variant="outline"
-                                className="text-[10px] px-1.5 py-0 h-5 shrink-0 whitespace-nowrap"
+                                className="text-[9px] px-1.5 py-0 h-4 shrink-0 whitespace-nowrap bg-muted/20"
                               >
                                 {v.category.name}
                               </Badge>
                             </div>
+                            
+                            <div className="flex items-center gap-1.5 mb-2 min-w-0">
+                              <span
+                                className="w-1.5 h-1.5 rounded-full shrink-0"
+                                style={{
+                                  backgroundColor:
+                                    v.participant.group?.color ||
+                                    "#2563eb",
+                                }}
+                              />
+                              <span className="text-[10px] text-muted-foreground truncate">
+                                {v.participant.group?.name ?? "—"}
+                              </span>
+                            </div>
 
-                            <div className="grid grid-cols-3 gap-1 pt-2 border-t border-border/50">
-                              <div className="flex flex-col items-center justify-center bg-muted/20 rounded py-1">
-                                <span className="text-muted-foreground text-[9px] uppercase mb-0.5">
-                                  Stage
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-2 border-t border-border/50 text-[10px]">
+                              <div className="flex items-center gap-0.5">
+                                <span className="text-muted-foreground">Stg:</span>
+                                <span className={v.status.isOverStage ? "text-destructive font-bold" : ""}>
+                                  {v.status.stageCount}
                                 </span>
-                                <div className="text-xs leading-none">
-                                  <span
-                                    className={
-                                      v.status.isOverStage
-                                        ? "text-destructive font-bold"
-                                        : ""
-                                    }
-                                  >
-                                    {v.status.stageCount}
-                                  </span>
-                                  <span className="text-muted-foreground text-[10px]">
-                                    /{v.status.maxStage ?? "∞"}
-                                  </span>
-                                </div>
+                                <span className="text-muted-foreground">/{v.status.maxStage ?? "∞"}</span>
                               </div>
-                              <div className="flex flex-col items-center justify-center bg-muted/20 rounded py-1">
-                                <span className="text-muted-foreground text-[9px] uppercase mb-0.5">
-                                  Non-Stage
+                              <span className="text-muted-foreground/30">•</span>
+                              <div className="flex items-center gap-0.5">
+                                <span className="text-muted-foreground">Non:</span>
+                                <span className={v.status.isOverNonStage ? "text-destructive font-bold" : ""}>
+                                  {v.status.nonStageCount}
                                 </span>
-                                <div className="text-xs leading-none">
-                                  <span
-                                    className={
-                                      v.status.isOverNonStage
-                                        ? "text-destructive font-bold"
-                                        : ""
-                                    }
-                                  >
-                                    {v.status.nonStageCount}
-                                  </span>
-                                  <span className="text-muted-foreground text-[10px]">
-                                    /{v.status.maxNonStage ?? "∞"}
-                                  </span>
-                                </div>
+                                <span className="text-muted-foreground">/{v.status.maxNonStage ?? "∞"}</span>
                               </div>
-                              <div className="flex flex-col items-center justify-center bg-muted/20 rounded py-1">
-                                <span className="text-muted-foreground text-[9px] uppercase mb-0.5">
-                                  Total
+                              <span className="text-muted-foreground/30">•</span>
+                              <div className="flex items-center gap-0.5">
+                                <span className="text-muted-foreground">Tot:</span>
+                                <span className={v.status.isOverAll ? "text-destructive font-bold" : ""}>
+                                  {v.status.allCount}
                                 </span>
-                                <div className="text-xs leading-none">
-                                  <span
-                                    className={
-                                      v.status.isOverAll
-                                        ? "text-destructive font-bold"
-                                        : ""
-                                    }
-                                  >
-                                    {v.status.allCount}
-                                  </span>
-                                  <span className="text-muted-foreground text-[10px]">
-                                    /{v.status.maxAll ?? "∞"}
-                                  </span>
-                                </div>
+                                <span className="text-muted-foreground">/{v.status.maxAll ?? "∞"}</span>
                               </div>
                             </div>
                           </div>
