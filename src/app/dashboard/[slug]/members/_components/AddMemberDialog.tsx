@@ -232,7 +232,7 @@ export function AddMemberDialog({
                               aria-pressed={selected}
                               onClick={() => field.onChange(option.value)}
                               className={cn(
-                                "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all",
+                                "flex flex-col items-start gap-1.5 rounded-xl border p-3 text-left transition-all",
                                 selected
                                   ? "border-primary bg-primary/5 ring-1 ring-primary/30 shadow-sm"
                                   : "border-border/70 hover:border-primary/40 hover:bg-muted/40",
@@ -241,28 +241,28 @@ export function AddMemberDialog({
                               <div className="flex w-full items-start justify-between gap-2">
                                 <span
                                   className={cn(
-                                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
                                     option.accent,
                                   )}
                                 >
-                                  <Icon className="h-4 w-4" />
+                                  <Icon className="h-3.5 w-3.5" />
                                 </span>
                                 <span
                                   className={cn(
-                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                                    "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
                                     selected
                                       ? "border-primary bg-primary text-primary-foreground"
                                       : "border-border",
                                   )}
                                 >
-                                  {selected && <Check className="h-3 w-3" />}
+                                  {selected && <Check className="h-2.5 w-2.5" />}
                                 </span>
                               </div>
-                              <div className="min-w-0 flex-1 mt-1">
-                                <span className="text-sm font-semibold text-foreground">
+                              <div className="min-w-0 flex-1 mt-0.5">
+                                <span className="text-sm font-semibold text-foreground leading-none">
                                   {option.label}
                                 </span>
-                                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                                <span className="mt-1 block text-[11px] leading-tight text-muted-foreground line-clamp-2">
                                   {option.description}
                                 </span>
                               </div>

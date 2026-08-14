@@ -5,9 +5,9 @@ import { db } from "@/core/database/client";
 import {
   category as categoryTable,
   group as groupTable,
-  participant as participantTable,
   programme as programmeTable,
   scheduleEntry,
+  stage as stageTable,
 } from "@/core/database/schema";
 import { formatDate, parseInstant } from "@/core/datetime";
 import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
@@ -29,7 +29,9 @@ import type {
 interface CallRow {
   programmeId: string;
   programmeName: string;
+  programmeType: "INDIVIDUAL" | "GROUP";
   categoryName: string;
+  stageName: string;
   chestNumber: string;
   name: string;
   teamName: string;
@@ -49,44 +51,66 @@ async function loadCallRows(
   config: CallListConfig,
   festivalTz: string,
 ): Promise<CallRow[]> {
-  // Resolve which programmes are in scope (category / programme / schedule).
+  // Resolve which programmes are in scope (category / programme / type / schedule).
   const progConditions = [eq(programmeTable.festivalId, festivalId)];
   if (config.programmeIds.length)
     progConditions.push(inArray(programmeTable.id, config.programmeIds));
   if (config.categoryIds.length)
     progConditions.push(inArray(programmeTable.categoryId, config.categoryIds));
+  if (config.programmeType && config.programmeType !== "ALL")
+    progConditions.push(eq(programmeTable.type, config.programmeType));
 
   const programmes = await db
     .select({
       id: programmeTable.id,
       name: programmeTable.name,
+      type: programmeTable.type,
       categoryName: categoryTable.name,
     })
     .from(programmeTable)
     .innerJoin(categoryTable, eq(programmeTable.categoryId, categoryTable.id))
     .where(and(...progConditions));
 
+  // Schedule & stage lookup.
+  const scheduled = await db
+    .select({
+      programmeId: scheduleEntry.programmeId,
+      stageId: scheduleEntry.stageId,
+      stageName: stageTable.name,
+      startTime: scheduleEntry.startTime,
+    })
+    .from(scheduleEntry)
+    .leftJoin(stageTable, eq(scheduleEntry.stageId, stageTable.id))
+    .where(
+      and(
+        eq(scheduleEntry.festivalId, festivalId),
+        eq(scheduleEntry.type, "PROGRAMME"),
+      ),
+    );
+
+  const scheduledStages = new Map<string, Set<string>>();
+  const stageInfoMap = new Map<string, string>();
+  for (const s of scheduled) {
+    if (!s.programmeId) continue;
+    const set = scheduledStages.get(s.programmeId) ?? new Set<string>();
+    if (s.stageId) set.add(s.stageId);
+    scheduledStages.set(s.programmeId, set);
+
+    if (s.stageName) {
+      let info = s.stageName;
+      if (s.startTime) {
+        const timeStr = formatDate(s.startTime, {
+          tz: festivalTz,
+          style: "short",
+        });
+        info = `${s.stageName} (${timeStr})`;
+      }
+      stageInfoMap.set(s.programmeId, info);
+    }
+  }
+
   // Schedule state filter.
   if (config.scheduleState !== "ALL" || config.stageIds.length) {
-    const scheduled = await db
-      .select({
-        programmeId: scheduleEntry.programmeId,
-        stageId: scheduleEntry.stageId,
-      })
-      .from(scheduleEntry)
-      .where(
-        and(
-          eq(scheduleEntry.festivalId, festivalId),
-          eq(scheduleEntry.type, "PROGRAMME"),
-        ),
-      );
-    const scheduledStages = new Map<string, Set<string>>();
-    for (const s of scheduled) {
-      if (!s.programmeId) continue;
-      const set = scheduledStages.get(s.programmeId) ?? new Set<string>();
-      if (s.stageId) set.add(s.stageId);
-      scheduledStages.set(s.programmeId, set);
-    }
     const keep = new Set(
       programmes
         .filter((p) => {
@@ -128,13 +152,19 @@ async function loadCallRows(
     for (const row of enrolled) {
       if (config.gender !== "ALL" && row.participant.gender !== config.gender)
         continue;
+      const groupId = row.groupId ?? row.participant.groupId ?? null;
+      if (config.teamIds?.length) {
+        if (!groupId || !config.teamIds.includes(groupId)) {
+          continue;
+        }
+      }
       enrolledRows.push({
         programmeId,
         chestNumber: row.participant.chestNumber,
         name: row.participant.name,
         dob: row.participant.dateOfBirth,
         phone: row.participant.phone,
-        groupId: row.groupId ?? row.participant.groupId ?? null,
+        groupId,
       });
     }
   }
@@ -160,7 +190,9 @@ async function loadCallRows(
     return {
       programmeId: r.programmeId,
       programmeName: meta?.name ?? "",
+      programmeType: meta?.type ?? "INDIVIDUAL",
       categoryName: meta?.categoryName ?? "",
+      stageName: stageInfoMap.get(r.programmeId) ?? "",
       chestNumber: r.chestNumber ?? "",
       name: r.name,
       teamName: r.groupId ? (groupNameMap.get(r.groupId) ?? "") : "",
@@ -192,6 +224,27 @@ export async function generateCallList(
 
   const teamWise = config.listType === "TEAM_WISE";
 
+  const sortComparator = (a: CallRow, b: CallRow) => {
+    if (config.sortBy === "NAME") {
+      return a.name.localeCompare(b.name);
+    }
+    if (config.sortBy === "TEAM") {
+      const cmp = (a.teamName || "").localeCompare(b.teamName || "");
+      if (cmp !== 0) return cmp;
+      return (a.chestNumber || "").localeCompare(b.chestNumber || "", undefined, {
+        numeric: true,
+      });
+    }
+    // Default: CHEST_NUMBER
+    const chestCmp = (a.chestNumber || "").localeCompare(
+      b.chestNumber || "",
+      undefined,
+      { numeric: true },
+    );
+    if (chestCmp !== 0) return chestCmp;
+    return a.name.localeCompare(b.name);
+  };
+
   if (format === "CSV") {
     const header = [
       teamWise ? "Team" : "Competition",
@@ -199,17 +252,26 @@ export async function generateCallList(
       ...(config.includeChestNumber ? ["Chest No"] : []),
       "Name",
       ...(!teamWise && config.includeTeam ? ["Team"] : []),
+      ...(config.includeStage ? ["Stage & Schedule"] : []),
       ...(config.includeDob ? ["DOB"] : []),
       ...(config.includePhone ? ["Phone"] : []),
+      ...(config.includeSignatureLine ? ["Signature"] : []),
+      ...(config.includeRemarks ? ["Remarks"] : []),
     ];
-    const body = rows.map((r) => [
+
+    const sortedRows = [...rows].sort(sortComparator);
+
+    const body = sortedRows.map((r) => [
       teamWise ? r.teamName : r.programmeName,
       teamWise ? r.programmeName : r.categoryName,
       ...(config.includeChestNumber ? [r.chestNumber] : []),
       r.name,
       ...(!teamWise && config.includeTeam ? [r.teamName] : []),
+      ...(config.includeStage ? [r.stageName] : []),
       ...(config.includeDob ? [r.dob] : []),
       ...(config.includePhone ? [r.phone] : []),
+      ...(config.includeSignatureLine ? [""] : []),
+      ...(config.includeRemarks ? [""] : []),
     ]);
     return {
       bytes: buildCsv([header, ...body]),
@@ -225,8 +287,11 @@ export async function generateCallList(
     "Name",
     ...(teamWise ? ["Competition"] : config.includeTeam ? ["Team"] : []),
     ...(!teamWise && config.includeCategory ? ["Category"] : []),
+    ...(config.includeStage ? ["Stage"] : []),
     ...(config.includeDob ? ["DOB"] : []),
     ...(config.includePhone ? ["Phone"] : []),
+    ...(config.includeSignatureLine ? ["Sign / Attend"] : []),
+    ...(config.includeRemarks ? ["Remarks"] : []),
   ];
 
   const grouped = groupBy(rows, (r) => (teamWise ? r.teamName : r.programmeId));
@@ -235,12 +300,15 @@ export async function generateCallList(
     const heading = teamWise ? first.teamName || "—" : first.programmeName;
     const subheading = teamWise
       ? `${groupRows.length} participants`
-      : first.categoryName;
+      : `${first.categoryName}${first.stageName ? ` · Stage: ${first.stageName}` : ""} · ${groupRows.length} participants`;
+
+    const sortedGroupRows = [...groupRows].sort(sortComparator);
+
     return {
       heading,
       subheading,
       columns,
-      rows: groupRows.map((r) => [
+      rows: sortedGroupRows.map((r) => [
         ...(config.includeChestNumber ? [r.chestNumber] : []),
         r.name,
         ...(teamWise
@@ -249,8 +317,11 @@ export async function generateCallList(
             ? [r.teamName]
             : []),
         ...(!teamWise && config.includeCategory ? [r.categoryName] : []),
+        ...(config.includeStage ? [r.stageName] : []),
         ...(config.includeDob ? [r.dob] : []),
         ...(config.includePhone ? [r.phone] : []),
+        ...(config.includeSignatureLine ? ["_______"] : []),
+        ...(config.includeRemarks ? [""] : []),
       ]),
     };
   });

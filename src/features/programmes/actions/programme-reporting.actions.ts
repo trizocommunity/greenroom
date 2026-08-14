@@ -195,6 +195,29 @@ export async function closeProgrammeReportingAction(
   return { success: true, data: res };
 }
 
+export async function completeProgrammeReportingAction(
+  festivalId: string,
+  reportingSessionId: string,
+) {
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
+  await ProgrammeReportingService.complete(
+    reportingSessionId,
+    actorName,
+  );
+  await createAuditLog({
+    action: "COMPLETE_REPORTING" as any,
+    targetType: "REPORTING_SESSION",
+    targetId: reportingSessionId,
+    metadata: {
+      festivalId,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
+  }).catch((err) => console.error("[AuditLog] COMPLETE_REPORTING failed", err));
+  await revalidateProgrammeReporting(festivalId, "reporting");
+  return { success: true };
+}
+
 export async function reopenProgrammeReportingAction(
   festivalId: string,
   reportingSessionId: string,

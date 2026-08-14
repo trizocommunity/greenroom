@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
-import { Check, Crown, Loader2 } from "lucide-react";
+import { Check, Crown, Loader2, ShieldAlert } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -28,6 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
 import { cn } from "@/core/utils/cn";
 import type { CategoryType, StageType } from "@/core/types/app-enums";
@@ -803,8 +804,22 @@ export function AssignProgrammeDrawer({
                             className="flex items-center gap-3 px-3.5 py-3"
                           >
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-medium text-heading">
+                              <span className="flex items-center gap-2 truncate text-sm font-medium text-heading">
                                 {s.name}
+                                {assignments.some((a: any) => a.participant?.id === s.id && a.limitWarning?.isOverLimit) && (
+                                  <TooltipProvider>
+                                    <Tooltip delayDuration={300}>
+                                      <TooltipTrigger>
+                                        <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="right">
+                                        <p className="text-xs">
+                                          Participant has exceeded their allowed limit for a category.
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                               </span>
                               <span className="block truncate text-[11px] text-muted-foreground">
                                 {s.chestNumber ?? "No chest number"}
@@ -951,8 +966,22 @@ export function AssignProgrammeDrawer({
                               />
 
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium text-heading">
+                                <span className="flex items-center gap-2 truncate text-sm font-medium text-heading">
                                   {s.name}
+                                  {assignments.some((a: any) => a.participant?.id === s.id && a.limitWarning?.isOverLimit) && (
+                                    <TooltipProvider>
+                                      <Tooltip delayDuration={300}>
+                                        <TooltipTrigger>
+                                          <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
+                                          <p className="text-xs">
+                                            Participant has exceeded their allowed limit for a category.
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
                                 </span>
                                 <span className="block truncate text-[11px] text-muted-foreground">
                                   {s.chestNumber ?? "No chest number"}

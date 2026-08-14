@@ -140,6 +140,12 @@ export default async function ProgrammeReportingPage({
     reportingSession: item.reportingSession
       ? {
           ...item.reportingSession,
+          startedAt:
+            item.reportingSession.startedAt instanceof Date
+              ? item.reportingSession.startedAt
+              : item.reportingSession.startedAt
+                ? new Date(item.reportingSession.startedAt)
+                : null,
           windowEndsAt:
             item.reportingSession.windowEndsAt instanceof Date
               ? item.reportingSession.windowEndsAt

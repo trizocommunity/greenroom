@@ -16,6 +16,7 @@ import {
 } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { CategoryLimitService } from "@/features/category-limits/services/category-limit.service";
 import type { BulkAssignmentInput } from "@/features/assignments/services/assignment.service";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
@@ -25,6 +26,7 @@ import {
   resolveDeadlineWindow,
 } from "@/features/festivals/services/deadline-window";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
+import { isProTier } from "@/features/plan-features/services/tier";
 
 function auditActorForContext(actorContext: AssignmentActorContext) {
   return actorContext.type === "user"
@@ -171,8 +173,39 @@ export async function resolveAssignmentActorContext(
 export async function getAssignmentsAction(festivalId: string) {
   const actor = await resolveAssignmentActorContext(festivalId);
   const all = await AssignmentService.getAll(festivalId);
-  if (actor.type === "user") return all;
-  return all.filter((a: any) => {
+
+  // Attach limit warnings (PRO tier only – skip silently for others)
+  let limitWarnings: Map<string, any | null> | null = null;
+  try {
+    const festival = await findFestivalById(festivalId);
+    if (festival && isProTier(festival.tier)) {
+      // Collect all unique participant IDs from the fanned-out rows
+      const participantIds = [
+        ...new Set(
+          all
+            .map((a: any) => a.participant?.id ?? a.participantId)
+            .filter(Boolean) as string[],
+        ),
+      ];
+      if (participantIds.length > 0) {
+        limitWarnings = await CategoryLimitService.batchComputeLimitStatuses(
+          participantIds,
+          festivalId,
+        );
+      }
+    }
+  } catch {
+    // Non-fatal: limit warnings are best-effort
+  }
+
+  const withWarnings = all.map((a: any) => {
+    const pid = a.participant?.id ?? a.participantId;
+    const warning = pid && limitWarnings ? (limitWarnings.get(pid) ?? null) : null;
+    return { ...a, limitWarning: warning };
+  });
+
+  if (actor.type === "user") return withWarnings;
+  return withWarnings.filter((a: any) => {
     const groupId =
       a?.groupId ??
       a?.group?.id ??

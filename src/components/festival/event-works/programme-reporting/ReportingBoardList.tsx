@@ -6,6 +6,55 @@ import { Badge } from "@/components/ui/badge";
 import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import type { ReportingBoardItem } from "./types";
+import { useEffect, useState } from "react";
+
+function ProgrammeTimer({
+  startedAt,
+  durationMinutes,
+}: {
+  startedAt: Date;
+  durationMinutes: number;
+}) {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    const end = startedAt.getTime() + durationMinutes * 60 * 1000;
+    const update = () => {
+      setTimeLeft(end - Date.now());
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [startedAt, durationMinutes]);
+
+  const isEnding = timeLeft <= 60000 && timeLeft > 0; // last minute
+  const isOver = timeLeft <= 0;
+
+  if (isOver) {
+    return (
+      <span className="text-xs font-mono font-bold text-red-500 animate-pulse bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded">
+        00:00
+      </span>
+    );
+  }
+
+  const m = Math.floor(timeLeft / 60000);
+  const s = Math.floor((timeLeft % 60000) / 1000);
+  const formatted = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+
+  return (
+    <span
+      className={cn(
+        "text-xs font-mono font-bold px-1.5 py-0.5 rounded",
+        isEnding
+          ? "text-red-500 animate-pulse bg-red-50 dark:bg-red-950/30"
+          : "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30"
+      )}
+    >
+      {formatted}
+    </span>
+  );
+}
 
 interface ReportingBoardListProps {
   items: ReportingBoardItem[];
@@ -68,12 +117,34 @@ export function ReportingBoardList({
                   >
                     {item.programme.name}
                   </p>
-                  {item.reportingSession?.status === "IN_PROGRESS" && (
-                    <div className="relative flex items-center justify-center shrink-0 mt-1">
-                      <div className="absolute h-3.5 w-3.5 animate-ping rounded-full bg-red-400 opacity-75" />
-                      <div className="relative h-2.5 w-2.5 rounded-full bg-red-500" />
-                    </div>
-                  )}
+                  {(() => {
+                    if (item.reportingSession?.status !== "CLOSED") return null;
+
+                    const timerStart = item.reportingSession?.endedAt
+                      ? (typeof item.reportingSession.endedAt === "string"
+                          ? parseInstant(item.reportingSession.endedAt)
+                          : item.reportingSession.endedAt)
+                      : null;
+
+                    if (!timerStart) return null;
+
+                    const durationMinutes =
+                      item.programme.durationMode === "PARALLEL"
+                        ? (item.programme.parallelDurationMinutes ??
+                          item.programme.timePerUnitMinutes)
+                        : item.programme.timePerUnitMinutes;
+
+                    if (!durationMinutes || durationMinutes <= 0) return null;
+
+                    return (
+                      <div className="shrink-0 mt-1">
+                        <ProgrammeTimer
+                          startedAt={timerStart}
+                          durationMinutes={durationMinutes}
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
                 {item.programme.category?.name ? (
                   <p className="text-sm text-muted-foreground truncate">
@@ -91,12 +162,34 @@ export function ReportingBoardList({
                   >
                     {uiStatus.replace("_", " ")}
                   </Badge>
-                  <span className="text-xs text-muted-foreground font-mono">
+                  <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
                     {(() => {
-                      const d = item.startTime
+                      const scheduled = item.startTime
                         ? parseInstant(item.startTime)
                         : null;
-                      return d ? formatInTimeZone(d, displayTz, "h:mm a") : "—";
+                      const started = item.reportingSession?.endedAt
+                        ? (typeof item.reportingSession.endedAt === "string"
+                            ? parseInstant(item.reportingSession.endedAt)
+                            : item.reportingSession.endedAt)
+                        : item.reportingSession?.startedAt;
+
+                      const schStr = scheduled
+                        ? formatInTimeZone(scheduled, displayTz, "h:mm a")
+                        : "—";
+
+                      if (started) {
+                        return (
+                          <>
+                            <span className="line-through opacity-70">
+                              {schStr}
+                            </span>
+                            <span className="text-foreground font-medium">
+                              {formatInTimeZone(started, displayTz, "h:mm a")}
+                            </span>
+                          </>
+                        );
+                      }
+                      return schStr;
                     })()}
                   </span>
                   {item.stage?.name ? (

@@ -9,6 +9,7 @@ import { db } from "@/core/database/client";
 import {
   programmeAssignment as assignmentTable,
   programme as programmeTable,
+  programmeReportingSession as prsTable,
   scheduleEntry as scheduleEntryTable,
   user as userTable,
 } from "@/core/database/schema";
@@ -221,6 +222,7 @@ export async function getSchedulableProgrammesAction(
       timePerUnitMinutes: true,
       parallelDurationMinutes: true,
       maxTeamsPerGroup: true,
+      status: true,
     },
     with: {
       category: { columns: { id: true, name: true } },
@@ -257,8 +259,18 @@ export async function getSchedulableProgrammesAction(
       .map((r) => [r.programmeId, { count: r.count, teamCount: r.teamCount }]),
   );
 
+  const lockedStatuses = new Set([
+    "REPORTING",
+    "PENDING_JUDGMENT",
+    "JUDGING",
+    "PENDING_PUBLICATION",
+    "PUBLISHED",
+    "ANNOUNCED",
+    "CANCELLED",
+  ]);
+
   return allProgrammes
-    .filter((p) => !scheduledProgrammeIds.has(p.id) && countMap.has(p.id))
+    .filter((p) => !scheduledProgrammeIds.has(p.id) && countMap.has(p.id) && !lockedStatuses.has(p.status))
     .map((p) => ({
       id: p.id,
       name: p.name,
@@ -896,18 +908,41 @@ export async function getScheduleEntriesEnriched(festivalId: string) {
     .filter((id): id is string => !!id);
 
   if (programmeIds.length === 0) {
-    return entries.map((e) => ({ ...e, assignmentCount: 0, teamCount: 0 }));
+    return entries.map((e) => ({
+      ...e,
+      assignmentCount: 0,
+      teamCount: 0,
+      reportingSession: null as {
+        status: string;
+        startedAt: Date | null;
+        endedAt: Date | null;
+      } | null,
+    }));
   }
 
-  const assignmentCounts = await db
-    .select({
-      programmeId: assignmentTable.programmeId,
-      count: count(),
-      teamCount: sql<number>`COUNT(DISTINCT ${assignmentTable.teamNumber})`,
-    })
-    .from(assignmentTable)
-    .where(inArray(assignmentTable.programmeId, programmeIds))
-    .groupBy(assignmentTable.programmeId);
+  const [assignmentCounts, reportingSessions] = await Promise.all([
+    db
+      .select({
+        programmeId: assignmentTable.programmeId,
+        count: count(),
+        teamCount: sql<number>`COUNT(DISTINCT ${assignmentTable.teamNumber})`,
+      })
+      .from(assignmentTable)
+      .where(inArray(assignmentTable.programmeId, programmeIds))
+      .groupBy(assignmentTable.programmeId),
+    db.query.programmeReportingSession.findMany({
+      where: and(
+        eq(prsTable.festivalId, festivalId),
+        inArray(prsTable.programmeId, programmeIds),
+      ),
+      columns: {
+        programmeId: true,
+        status: true,
+        startedAt: true,
+        endedAt: true,
+      },
+    }),
+  ]);
 
   const countMap = new Map(
     assignmentCounts
@@ -915,15 +950,29 @@ export async function getScheduleEntriesEnriched(festivalId: string) {
       .map((r) => [r.programmeId, { count: r.count, teamCount: r.teamCount }]),
   );
 
-  return entries.map((e) => ({
-    ...e,
-    assignmentCount: e.programmeId
-      ? (countMap.get(e.programmeId)?.count ?? 0)
-      : 0,
-    teamCount: e.programmeId
-      ? (countMap.get(e.programmeId)?.teamCount ?? 0)
-      : 0,
-  }));
+  const reportingMap = new Map(
+    reportingSessions.map((r) => [r.programmeId, r]),
+  );
+
+  return entries.map((e) => {
+    const session = e.programmeId ? reportingMap.get(e.programmeId) : undefined;
+    return {
+      ...e,
+      assignmentCount: e.programmeId
+        ? (countMap.get(e.programmeId)?.count ?? 0)
+        : 0,
+      teamCount: e.programmeId
+        ? (countMap.get(e.programmeId)?.teamCount ?? 0)
+        : 0,
+      reportingSession: session
+        ? {
+            status: session.status,
+            startedAt: session.startedAt,
+            endedAt: session.endedAt,
+          }
+        : null,
+    };
+  });
 }
 
 export type EnrichedScheduleEntry = Awaited<

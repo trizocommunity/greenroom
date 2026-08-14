@@ -69,8 +69,10 @@ export default async function SchedulePage({ params }: PageProps) {
         festivalStartDate={festival.startDate}
         festivalEndDate={festival.endDate}
         initialStageId={initialStageId}
-        hideStageFilter={isStageManager}
+        hideStageFilter={isStageManager ? stages.length <= 1 : false}
+        isStageManager={isStageManager}
       />
     </div>
   );
 }
+

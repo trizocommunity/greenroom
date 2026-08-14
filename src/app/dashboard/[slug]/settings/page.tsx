@@ -13,7 +13,7 @@ import { getPublicFestivalBaseUrl } from "@/features/institutions/lib/custom-dom
 import { findInstitutionById } from "@/features/institutions/repositories/institution.repository";
 import { getScoringPolicyAction } from "@/features/judgement/actions/judgement.actions";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
-import { isBasicTier } from "@/features/plan-features/services/tier";
+import { isBasicTier, isProTier } from "@/features/plan-features/services/tier";
 import { SettingsTabs } from "./_components/SettingsTabs";
 
 export default async function SettingsPage({
@@ -53,6 +53,7 @@ export default async function SettingsPage({
 
   const canManageScoring = true;
   const canManageFestivalLive = !isBasicTier(festival.tier as any);
+  const canManageLimits = isProTier(festival.tier as any);
 
   const [policy, categories, programmes, institution, viewer] =
     await Promise.all([
@@ -122,6 +123,7 @@ export default async function SettingsPage({
       }}
       canManageScoring={canManageScoring}
       canManageFestivalLive={canManageFestivalLive}
+      canManageLimits={canManageLimits}
     />
   );
 }

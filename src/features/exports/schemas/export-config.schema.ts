@@ -10,6 +10,9 @@ export const exportQuality = z.enum(["SCREEN", "STANDARD", "PRINT"]);
 export const printLayout = z.enum(["ONE_PER_PAGE", "MULTIPLE_PER_PAGE"]);
 export const judgeGrouping = z.enum(["JUDGE_WISE", "PROGRAMME_WISE"]);
 
+export const programmeTypeFilter = z.enum(["ALL", "INDIVIDUAL", "GROUP"]);
+export const callListSortBy = z.enum(["CHEST_NUMBER", "NAME", "TEAM"]);
+
 const idList = z.array(z.string()).default([]);
 
 // ─── Per-type config variants ────────────────────────────────────────────────
@@ -18,14 +21,20 @@ export const callListConfig = z.object({
   type: z.literal("CALL_LIST"),
   onlyWithParticipants: z.boolean().default(true),
   listType: listOrientation.default("PROGRAMME_WISE"),
+  programmeType: programmeTypeFilter.default("ALL"),
   gender: genderFilter.default("ALL"),
+  sortBy: callListSortBy.default("CHEST_NUMBER"),
   includeChestNumber: z.boolean().default(true),
   includeCategory: z.boolean().default(true),
   includeTeam: z.boolean().default(true),
+  includeStage: z.boolean().default(false),
   includeDob: z.boolean().default(false),
   includePhone: z.boolean().default(false),
+  includeSignatureLine: z.boolean().default(false),
+  includeRemarks: z.boolean().default(false),
   categoryIds: idList,
   programmeIds: idList,
+  teamIds: idList,
   scheduleState: scheduleState.default("ALL"),
   stageIds: idList,
   pageLayout: pageLayout.default("CONTINUOUS_GRID"),

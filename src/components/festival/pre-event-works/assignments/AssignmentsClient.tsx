@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Crown, Loader2, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { Crown, Loader2, Plus, Search, Trash2, Users, X, ShieldAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
 import { useCategories } from "@/api/client/categories";
@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   formatDate,
   formatDateTime,
@@ -1201,9 +1202,25 @@ export function AssignmentsClient({
                               {r.assignment.participant?.chestNumber ?? "—"}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-heading">
-                                {r.assignment.participant?.name ?? "—"}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-sm font-medium text-heading">
+                                  {r.assignment.participant?.name ?? "—"}
+                                </p>
+                                {r.assignment.limitWarning?.isOverLimit && (
+                                  <TooltipProvider>
+                                    <Tooltip delayDuration={300}>
+                                      <TooltipTrigger>
+                                        <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="right">
+                                        <p className="text-xs">
+                                          Participant has exceeded their allowed limit for this category.
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
                               <p className="truncate text-[11px] text-muted-foreground">
                                 {r.assignment.group?.name ??
                                   r.assignment.participant?.group?.name ??
@@ -1297,9 +1314,25 @@ export function AssignmentsClient({
                                         <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                                           {a.participant?.chestNumber ?? "—"}
                                         </span>
-                                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
-                                          {a.participant?.name ?? "—"}
-                                        </span>
+                                        <div className="min-w-0 flex-1 flex items-center gap-2">
+                                          <span className="truncate text-sm font-medium text-heading">
+                                            {a.participant?.name ?? "—"}
+                                          </span>
+                                          {a.limitWarning?.isOverLimit && (
+                                            <TooltipProvider>
+                                              <Tooltip delayDuration={300}>
+                                                <TooltipTrigger>
+                                                  <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right">
+                                                  <p className="text-xs">
+                                                    Participant has exceeded their allowed limit for this category.
+                                                  </p>
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            </TooltipProvider>
+                                          )}
+                                        </div>
                                         {isLead ? (
                                           <StatusPill
                                             tone="ready"

@@ -13,8 +13,9 @@ import {
   result as results,
   festivalScoringPolicy as scoringPolicies,
   stage as stages,
+  categoryProgrammeLimit,
 } from "@/core/database/schema";
-import { isAfter, parseInstant } from "@/core/datetime";
+import { isAfter, isExpired, parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
 
 export async function findAllFestivals(
@@ -430,6 +431,7 @@ export async function getDashboardOverviewData(festivalId: string) {
     chestNumbersCount,
     offStageCount,
     staffCount,
+    categoryProgrammeLimitCount,
   ] = await Promise.all([
     db
       .select({ c: count() })
@@ -519,6 +521,10 @@ export async function getDashboardOverviewData(festivalId: string) {
       .select({ c: count() })
       .from(members)
       .where(eq(members.festivalId, festivalId)),
+    db
+      .select({ c: count() })
+      .from(categoryProgrammeLimit)
+      .where(eq(categoryProgrammeLimit.festivalId, festivalId)),
   ]);
 
   return {
@@ -544,6 +550,7 @@ export async function getDashboardOverviewData(festivalId: string) {
     hasSchedule: tst[0].c > 0, // A stage is required for scheduling
     hasOffStageTasks: offStageCount[0].c > 0,
     hasStaff: staffCount[0].c > 0,
+    hasLimitationPolicy: categoryProgrammeLimitCount[0].c > 0,
   };
 }
 
@@ -600,4 +607,51 @@ export async function getFestivalAnalyticsData(festivalId: string) {
     categoriesCount: cc[0].c,
     judgesCount: fest?.judgesCount ?? 0,
   };
+}
+
+/**
+ * Resolves the primary valid (non-expired) festival for a user:
+ * 1. Checks owned festival first.
+ * 2. Checks active joined festival memberships.
+ * Returns the valid festival record or null if none is active/valid.
+ */
+export async function findUserValidFestival(userId: string) {
+  // 1. Check owned festival
+  const owned = await db.query.festival.findFirst({
+    where: eq(festivals.ownerId, userId),
+    orderBy: [desc(festivals.createdAt)],
+  });
+
+  if (owned) {
+    const isOwnerExpired =
+      owned.status === "EXPIRED" || isExpired(owned.expiresAt);
+    if (!isOwnerExpired) {
+      return owned;
+    }
+  }
+
+  // 2. Check joined memberships
+  const memberships = await db
+    .select({
+      festival: festivals,
+    })
+    .from(members)
+    .innerJoin(festivals, eq(festivals.id, members.festivalId))
+    .where(
+      and(
+        eq(members.userId, userId),
+        eq(members.isActive, true),
+      ),
+    )
+    .orderBy(desc(members.createdAt));
+
+  for (const m of memberships) {
+    const isMemberExpired =
+      m.festival.status === "EXPIRED" || isExpired(m.festival.expiresAt);
+    if (!isMemberExpired) {
+      return m.festival;
+    }
+  }
+
+  return null;
 }
