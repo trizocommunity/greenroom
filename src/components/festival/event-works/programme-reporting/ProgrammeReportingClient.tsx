@@ -11,10 +11,8 @@ import { ReportingPollingRefresh } from "./ReportingPollingRefresh";
 import { ReportingQueue } from "./ReportingQueue";
 import { ReportingWorkspace } from "./ReportingWorkspace";
 import { getUiReportingStatus } from "./reporting-status";
-import type {
-  ProgrammeReportingAssignmentRow,
-  ReportingBoardItem,
-} from "./types";
+import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
+import type { ReportingBoardItem } from "./types";
 import {
   matchesReportingFilters,
   useReportingFilters,

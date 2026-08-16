@@ -105,8 +105,6 @@ export type ParticipantsViewState = {
   details: ReportingDetails;
 };
 
-export type ReportedParticipantsViewState = ParticipantsViewState;
-
 export const POLICY_SCORE_LIMIT = 100;
 export const PAGE_SIZE = 12;
 

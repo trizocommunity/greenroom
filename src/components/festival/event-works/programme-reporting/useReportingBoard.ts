@@ -11,9 +11,9 @@ import {
   sortReportingBoard,
 } from "./reporting-status";
 import { matchesReportingFilters } from "./useReportingFilters";
+import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
 import type {
   AssignmentWithReported,
-  ProgrammeReportingAssignmentRow,
   ReportingBoardItem,
   RosterTableRow,
   ScratchTile,
