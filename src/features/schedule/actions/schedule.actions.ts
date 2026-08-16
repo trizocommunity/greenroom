@@ -270,7 +270,12 @@ export async function getSchedulableProgrammesAction(
   ]);
 
   return allProgrammes
-    .filter((p) => !scheduledProgrammeIds.has(p.id) && countMap.has(p.id) && !lockedStatuses.has(p.status))
+    .filter(
+      (p) =>
+        !scheduledProgrammeIds.has(p.id) &&
+        countMap.has(p.id) &&
+        !lockedStatuses.has(p.status),
+    )
     .map((p) => ({
       id: p.id,
       name: p.name,
@@ -916,6 +921,7 @@ export async function getScheduleEntriesEnriched(festivalId: string) {
         status: string;
         startedAt: Date | null;
         endedAt: Date | null;
+        windowEndsAt: Date | null;
       } | null,
     }));
   }
@@ -940,6 +946,7 @@ export async function getScheduleEntriesEnriched(festivalId: string) {
         status: true,
         startedAt: true,
         endedAt: true,
+        windowEndsAt: true,
       },
     }),
   ]);
@@ -969,6 +976,7 @@ export async function getScheduleEntriesEnriched(festivalId: string) {
             status: session.status,
             startedAt: session.startedAt,
             endedAt: session.endedAt,
+            windowEndsAt: session.windowEndsAt,
           }
         : null,
     };
@@ -1094,15 +1102,18 @@ export async function notifyCallList(festivalId: string, entryId: string) {
     .where(
       and(
         eq(scheduleEntryTable.festivalId, festivalId),
-        eq(scheduleEntryTable.id, entryId)
-      )
+        eq(scheduleEntryTable.id, entryId),
+      ),
     );
-  
+
   await revalidateSchedulePaths(festivalId);
   return { success: true };
 }
 
-export async function cancelCallListNotification(festivalId: string, entryId: string) {
+export async function cancelCallListNotification(
+  festivalId: string,
+  entryId: string,
+) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
   await db
@@ -1115,10 +1126,10 @@ export async function cancelCallListNotification(festivalId: string, entryId: st
     .where(
       and(
         eq(scheduleEntryTable.festivalId, festivalId),
-        eq(scheduleEntryTable.id, entryId)
-      )
+        eq(scheduleEntryTable.id, entryId),
+      ),
     );
-  
+
   await revalidateSchedulePaths(festivalId);
   return { success: true };
 }

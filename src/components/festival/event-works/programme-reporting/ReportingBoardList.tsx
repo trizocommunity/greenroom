@@ -8,24 +8,18 @@ import { cn } from "@/core/utils/cn";
 import type { ReportingBoardItem } from "./types";
 import { useEffect, useState } from "react";
 
-function ProgrammeTimer({
-  startedAt,
-  durationMinutes,
-}: {
-  startedAt: Date;
-  durationMinutes: number;
-}) {
+export function ProgrammeTimer({ windowEndsAt }: { windowEndsAt: Date }) {
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
   useEffect(() => {
-    const end = startedAt.getTime() + durationMinutes * 60 * 1000;
+    const end = windowEndsAt.getTime();
     const update = () => {
       setTimeLeft(end - Date.now());
     };
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [startedAt, durationMinutes]);
+  }, [windowEndsAt]);
 
   const isEnding = timeLeft <= 60000 && timeLeft > 0; // last minute
   const isOver = timeLeft <= 0;
@@ -48,7 +42,7 @@ function ProgrammeTimer({
         "text-xs font-mono font-bold px-1.5 py-0.5 rounded",
         isEnding
           ? "text-red-500 animate-pulse bg-red-50 dark:bg-red-950/30"
-          : "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30"
+          : "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30",
       )}
     >
       {formatted}
@@ -120,28 +114,17 @@ export function ReportingBoardList({
                   {(() => {
                     if (item.reportingSession?.status !== "CLOSED") return null;
 
-                    const timerStart = item.reportingSession?.endedAt
-                      ? (typeof item.reportingSession.endedAt === "string"
-                          ? parseInstant(item.reportingSession.endedAt)
-                          : item.reportingSession.endedAt)
+                    const windowEndsAt = item.reportingSession?.windowEndsAt
+                      ? typeof item.reportingSession.windowEndsAt === "string"
+                        ? parseInstant(item.reportingSession.windowEndsAt)
+                        : item.reportingSession.windowEndsAt
                       : null;
 
-                    if (!timerStart) return null;
-
-                    const durationMinutes =
-                      item.programme.durationMode === "PARALLEL"
-                        ? (item.programme.parallelDurationMinutes ??
-                          item.programme.timePerUnitMinutes)
-                        : item.programme.timePerUnitMinutes;
-
-                    if (!durationMinutes || durationMinutes <= 0) return null;
+                    if (!windowEndsAt) return null;
 
                     return (
                       <div className="shrink-0 mt-1">
-                        <ProgrammeTimer
-                          startedAt={timerStart}
-                          durationMinutes={durationMinutes}
-                        />
+                        <ProgrammeTimer windowEndsAt={windowEndsAt} />
                       </div>
                     );
                   })()}
@@ -168,9 +151,9 @@ export function ReportingBoardList({
                         ? parseInstant(item.startTime)
                         : null;
                       const started = item.reportingSession?.endedAt
-                        ? (typeof item.reportingSession.endedAt === "string"
-                            ? parseInstant(item.reportingSession.endedAt)
-                            : item.reportingSession.endedAt)
+                        ? typeof item.reportingSession.endedAt === "string"
+                          ? parseInstant(item.reportingSession.endedAt)
+                          : item.reportingSession.endedAt
                         : item.reportingSession?.startedAt;
 
                       const schStr = scheduled

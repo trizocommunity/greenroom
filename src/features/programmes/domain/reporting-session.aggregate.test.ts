@@ -23,6 +23,7 @@ function makeState(
     endedAt: null,
     endedBy: null,
     checkoutCompletedAt: null,
+    windowEndsAt: null,
     programmeType: "INDIVIDUAL",
     programmeStatus: "SCHEDULED",
     programmeName: "Test Programme",

@@ -78,6 +78,7 @@ export type ReportingSessionState = {
    * Gates the scratch step and lets the client resume after a refresh.
    */
   checkoutCompletedAt: string | null;
+  windowEndsAt: string | null;
   programmeType: ProgrammeType;
   programmeStatus: string;
   programmeName: string;
@@ -149,6 +150,10 @@ export class ReportingSession {
 
   get checkoutCompletedAt(): string | null {
     return this.state.checkoutCompletedAt;
+  }
+
+  get windowEndsAt(): string | null {
+    return this.state.windowEndsAt;
   }
 
   get reportedParticipants(): readonly ReportedParticipant[] {
@@ -465,7 +470,11 @@ export class ReportingSession {
     });
   }
 
-  close(actorName: string, effectiveEndedAt?: string): void {
+  close(
+    actorName: string,
+    effectiveEndedAt?: string,
+    windowEndsAt?: string | null,
+  ): void {
     if (this.state.isLocked) {
       throw new Error("Reporting is already locked");
     }
@@ -481,6 +490,7 @@ export class ReportingSession {
     this.state.isLocked = true;
     this.state.endedAt = endedAt;
     this.state.endedBy = actorName;
+    this.state.windowEndsAt = windowEndsAt ?? null;
 
     this.record({
       type: "REPORTING_CLOSED",
@@ -507,6 +517,7 @@ export class ReportingSession {
     this.state.endedAt = now;
     this.state.endedBy = actorName;
     this.state.checkoutCompletedAt = null;
+    this.state.windowEndsAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 
@@ -537,6 +548,7 @@ export class ReportingSession {
     this.state.endedAt = now;
     this.state.endedBy = actorName;
     this.state.checkoutCompletedAt = null;
+    this.state.windowEndsAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 
@@ -605,6 +617,7 @@ export class ReportingSession {
     this.state.endedAt = null;
     this.state.endedBy = null;
     this.state.checkoutCompletedAt = null;
+    this.state.windowEndsAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 

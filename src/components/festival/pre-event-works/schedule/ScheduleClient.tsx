@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Calendar,
@@ -24,8 +25,9 @@ import {
   type CalendarGroupBy,
   ScheduleCalendarView,
 } from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
-import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
+
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
+import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
 import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
@@ -143,6 +145,7 @@ export function ScheduleClient({
   hideStageFilter,
   isStageManager = false,
 }: ScheduleClientProps) {
+  const router = useRouter();
   const { isReadOnly } = useFestivalReadOnly();
   const displayTz = useDisplayTimezone();
   const [entries, setEntries] =
@@ -648,7 +651,11 @@ export function ScheduleClient({
           onSwap={(entry) => setSwapEntry(entry)}
           onNotify={handleNotify}
           onCancelNotify={handleCancelNotify}
-          onStartReporting={setReportingEntry}
+          onStartReporting={(entry) => {
+            if (entry.programmeId) {
+              setReportingEntry(entry);
+            }
+          }}
           isReadOnly={isReadOnly}
           searchQuery={searchQuery}
         />
@@ -717,15 +724,6 @@ export function ScheduleClient({
         open={!!swapEntry}
         onOpenChange={(open) => !open && setSwapEntry(null)}
         onSwapped={refresh}
-      />
-
-      {/* Reporting Drawer */}
-      <ScheduleReportingDrawer
-        festivalId={festivalId}
-        entry={reportingEntry}
-        open={!!reportingEntry}
-        onOpenChange={(open) => !open && setReportingEntry(null)}
-        onSuccess={refresh}
       />
 
       {/* Clear Schedule Dialog */}
@@ -829,6 +827,18 @@ export function ScheduleClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ScheduleReportingDrawer
+        festivalId={festivalId}
+        open={!!reportingEntry}
+        onOpenChange={(open) => {
+          if (!open) setReportingEntry(null);
+        }}
+        entry={reportingEntry}
+        onSuccess={() => {
+          setReportingEntry(null);
+        }}
+      />
     </div>
   );
 }

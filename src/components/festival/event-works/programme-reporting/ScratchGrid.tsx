@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Sparkles } from "lucide-react";
+import { Crown, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
@@ -65,7 +65,12 @@ export function ScratchGrid({
                   (#{current.queuePosition} of {tiles.length})
                 </span>
               </p>
-              {current.subLabel ? (
+              {current.teamLeadName ? (
+                <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                  <Crown className="h-3 w-3 shrink-0 text-primary" />
+                  {current.teamLeadName}
+                </p>
+              ) : current.subLabel ? (
                 <p className="truncate text-muted-foreground text-xs">
                   {current.subLabel}
                 </p>
@@ -157,6 +162,49 @@ export function ScratchGrid({
           out the rest.
         </p>
       ) : null}
+
+      <div className="mt-6">
+        <h3 className="mb-2 text-[10px] font-semibold tracking-tight uppercase text-muted-foreground">
+          Reported Participants (A-Z)
+        </h3>
+        <div className="space-y-1 max-h-48 overflow-y-auto pr-2">
+          {[...tiles]
+            .sort((a, b) =>
+              a.label.localeCompare(b.label, undefined, {
+                sensitivity: "base",
+              }),
+            )
+            .map((tile) => {
+              const code = tile.revealedAt && tile.code ? tile.code : "—";
+              return (
+                <div
+                  key={tile.codeLetterId}
+                  className="flex items-center justify-between gap-2 rounded-sm bg-muted/30 px-2 py-1.5 text-xs"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">
+                      {tile.label}
+                    </span>
+                    {tile.teamLeadName ? (
+                      <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <Crown className="h-2.5 w-2.5 shrink-0 text-primary" />
+                        {tile.teamLeadName}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-bold tabular-nums shrink-0",
+                      code !== "—" ? "text-primary" : "text-muted-foreground",
+                    )}
+                  >
+                    {code}
+                  </span>
+                </div>
+              );
+            })}
+        </div>
+      </div>
     </div>
   );
 }

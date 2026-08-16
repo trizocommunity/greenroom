@@ -45,6 +45,7 @@ function mapDbSessionToState(
     endedAt: (session.endedAt as string | null) ?? null,
     endedBy: (session.endedBy as string | null) ?? null,
     checkoutCompletedAt: (session.checkoutCompletedAt as string | null) ?? null,
+    windowEndsAt: (session.windowEndsAt as string | null) ?? null,
     programmeType: programme.type,
     programmeStatus: programme.status,
     programmeName: programme.name,
@@ -232,6 +233,7 @@ export const ReportingSessionRepository = {
       endedAt: null,
       endedBy: null,
       checkoutCompletedAt: null,
+      windowEndsAt: null,
       programmeType: programme.type,
       programmeStatus: programme.status,
       programmeName: programme.name,
@@ -336,7 +338,7 @@ export const ReportingSessionRepository = {
         endedAt: state.endedAt,
         endedBy: state.endedBy,
         checkoutCompletedAt: state.checkoutCompletedAt,
-        windowEndsAt: null,
+        windowEndsAt: state.windowEndsAt,
         updatedAt: nowStr,
       };
 

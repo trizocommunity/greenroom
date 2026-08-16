@@ -226,85 +226,89 @@ export const ProgrammeReportingService = {
       },
     });
 
-    const items = programmes.map((programme) => {
-      const reportingSession =
-        programme.programmeReportingSessions?.[0] ?? null;
-      const latestEntry = programme.scheduleEntries?.[0] ?? null;
-      const sessionStartTime = reportingSession?.scheduleEntry?.startTime;
-      const entryStartTime = latestEntry?.startTime;
-      const rawStart = sessionStartTime ?? entryStartTime ?? null;
-      const startTime = rawStart ? parseInstant(rawStart) : null;
-      const sessionStage = reportingSession?.stage
-        ? { id: reportingSession.stage.id, name: reportingSession.stage.name }
-        : null;
-      const entryStage = latestEntry?.stage
-        ? { id: latestEntry.stage.id, name: latestEntry.stage.name }
-        : null;
-      const stage = sessionStage ?? entryStage;
+    const items = programmes
+      .map((programme) => {
+        const reportingSession =
+          programme.programmeReportingSessions?.[0] ?? null;
+        const latestEntry = programme.scheduleEntries?.[0] ?? null;
+        const sessionStartTime = reportingSession?.scheduleEntry?.startTime;
+        const entryStartTime = latestEntry?.startTime;
+        const rawStart = sessionStartTime ?? entryStartTime ?? null;
+        const startTime = rawStart ? parseInstant(rawStart) : null;
+        const sessionStage = reportingSession?.stage
+          ? { id: reportingSession.stage.id, name: reportingSession.stage.name }
+          : null;
+        const entryStage = latestEntry?.stage
+          ? { id: latestEntry.stage.id, name: latestEntry.stage.name }
+          : null;
+        const stage = sessionStage ?? entryStage;
 
-      const scheduleEntry = reportingSession?.scheduleEntry
-        ? {
-            id: reportingSession.scheduleEntry.id,
-            startTime: reportingSession.scheduleEntry.startTime,
-            stageId: reportingSession.scheduleEntry.stageId,
-          }
-        : latestEntry
+        const scheduleEntry = reportingSession?.scheduleEntry
           ? {
-              id: latestEntry.id,
-              startTime: latestEntry.startTime,
-              stageId: latestEntry.stageId,
+              id: reportingSession.scheduleEntry.id,
+              startTime: reportingSession.scheduleEntry.startTime,
+              stageId: reportingSession.scheduleEntry.stageId,
+            }
+          : latestEntry
+            ? {
+                id: latestEntry.id,
+                startTime: latestEntry.startTime,
+                stageId: latestEntry.stageId,
+              }
+            : null;
+
+        const sessionPayload = reportingSession
+          ? {
+              id: reportingSession.id,
+              status: reportingSession.status,
+              startedAt: reportingSession.startedAt
+                ? parseInstant(reportingSession.startedAt)
+                : null,
+              endedAt: reportingSession.endedAt,
+              updatedAt: reportingSession.updatedAt,
+              windowEndsAt: parseInstant(reportingSession.windowEndsAt),
+              isLocked: reportingSession.isLocked,
+              checkoutCompletedAt: reportingSession.checkoutCompletedAt,
+              programmeReportedParticipants:
+                reportingSession.programmeReportedParticipants ?? [],
+              // The code under an unscratched tile is withheld even from the
+              // stage manager's own payload — otherwise the draw is readable in
+              // devtools before anyone has scratched.
+              programmeCodeLetters:
+                reportingSession.programmeCodeLetters?.map((cl) => ({
+                  id: cl.id,
+                  code: cl.revealedAt ? cl.code : "",
+                  issuedAt: cl.issuedAt,
+                  queuePosition: cl.queuePosition,
+                  revealedAt: cl.revealedAt,
+                  revealedBy: cl.revealedBy,
+                  programmeCodeLetterRecipients:
+                    cl.programmeCodeLetterRecipients ?? [],
+                })) ?? [],
             }
           : null;
 
-      const sessionPayload = reportingSession
-        ? {
-            id: reportingSession.id,
-            status: reportingSession.status,
-            startedAt: reportingSession.startedAt ? parseInstant(reportingSession.startedAt) : null,
-            endedAt: reportingSession.endedAt,
-            updatedAt: reportingSession.updatedAt,
-            windowEndsAt: parseInstant(reportingSession.windowEndsAt),
-            isLocked: reportingSession.isLocked,
-            checkoutCompletedAt: reportingSession.checkoutCompletedAt,
-            programmeReportedParticipants:
-              reportingSession.programmeReportedParticipants ?? [],
-            // The code under an unscratched tile is withheld even from the
-            // stage manager's own payload — otherwise the draw is readable in
-            // devtools before anyone has scratched.
-            programmeCodeLetters:
-              reportingSession.programmeCodeLetters?.map((cl) => ({
-                id: cl.id,
-                code: cl.revealedAt ? cl.code : "",
-                issuedAt: cl.issuedAt,
-                queuePosition: cl.queuePosition,
-                revealedAt: cl.revealedAt,
-                revealedBy: cl.revealedBy,
-                programmeCodeLetterRecipients:
-                  cl.programmeCodeLetterRecipients ?? [],
-              })) ?? [],
-          }
-        : null;
-
-      return {
-        id: programme.id,
-        startTime,
-        stage,
-        programme: {
+        return {
           id: programme.id,
-          name: programme.name,
-          type: programme.type,
-          status: programme.status,
-          durationMode: programme.durationMode,
-          timePerUnitMinutes: programme.timePerUnitMinutes,
-          parallelDurationMinutes: programme.parallelDurationMinutes,
-          category: programme.category
-            ? { id: programme.category.id, name: programme.category.name }
-            : null,
-        },
-        scheduleEntry,
-        reportingSession: sessionPayload,
-      };
-    }).filter((item) => item.reportingSession?.status !== "COMPLETED");
+          startTime,
+          stage,
+          programme: {
+            id: programme.id,
+            name: programme.name,
+            type: programme.type,
+            status: programme.status,
+            durationMode: programme.durationMode,
+            timePerUnitMinutes: programme.timePerUnitMinutes,
+            parallelDurationMinutes: programme.parallelDurationMinutes,
+            category: programme.category
+              ? { id: programme.category.id, name: programme.category.name }
+              : null,
+          },
+          scheduleEntry,
+          reportingSession: sessionPayload,
+        };
+      })
+      .filter((item) => item.reportingSession?.status !== "COMPLETED");
 
     if (accessibleStageIds === "all") {
       return items.sort((a, b) => {
@@ -553,14 +557,28 @@ export const ProgrammeReportingService = {
     const dbSession = await db.query.programmeReportingSession.findFirst({
       where: eq(prsTable.id, reportingSessionId),
       with: {
-        scheduleEntry: { columns: { startTime: true } },
+        scheduleEntry: { columns: { startTime: true, endTime: true } },
       },
     });
 
     const effectiveEndedAt =
       dbSession?.scheduleEntry?.startTime || serverNowIso();
 
-    session.close(actorName, effectiveEndedAt);
+    let windowEndsAt: string | null = null;
+    if (
+      dbSession?.scheduleEntry?.startTime &&
+      dbSession?.scheduleEntry?.endTime
+    ) {
+      const startMs = parseInstant(
+        dbSession.scheduleEntry.startTime,
+      )?.getTime();
+      const endMs = parseInstant(dbSession.scheduleEntry.endTime)?.getTime();
+      if (startMs && endMs && endMs > startMs) {
+        windowEndsAt = new Date(Date.now() + (endMs - startMs)).toISOString();
+      }
+    }
+
+    session.close(actorName, effectiveEndedAt, windowEndsAt);
     const events = await ReportingSessionRepository.save(session);
     const { participantCodes } = await ReportingEventAdapter.dispatch(events);
 

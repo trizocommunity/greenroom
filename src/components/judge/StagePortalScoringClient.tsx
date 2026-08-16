@@ -22,6 +22,14 @@ import {
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { humanizeError } from "@/core/errors/humanize";
 import { cn } from "@/core/utils/cn";
@@ -339,6 +347,62 @@ function SubmissionReviewView({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-10 overflow-hidden rounded-xl border border-border bg-card">
+        <div className="border-b border-border bg-muted/30 px-4 py-3">
+          <h2 className="text-sm font-semibold tracking-tight text-heading">
+            Results Summary
+          </h2>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/10 hover:bg-muted/10">
+              <TableHead className="w-[80px] font-semibold text-heading">
+                Code
+              </TableHead>
+              <TableHead className="font-semibold text-heading">
+                Avg (Pts)
+              </TableHead>
+              <TableHead className="font-semibold text-heading">
+                Grade
+              </TableHead>
+              <TableHead className="font-semibold text-heading">
+                Award Points
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {[...codeLetters]
+              .sort((a, b) => a.code.localeCompare(b.code))
+              .map((c) => {
+                const policy = policyByCode.get(c.id);
+
+                return (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-mono font-medium text-heading">
+                      {c.code}
+                    </TableCell>
+                    <TableCell className="font-semibold tabular-nums text-primary">
+                      {policy?.points ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      {policy?.grade ? (
+                        <StatusPill tone="live">{policy.grade}</StatusPill>
+                      ) : (
+                        <span className="text-xs font-medium text-muted-foreground">
+                          No grade
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-semibold tabular-nums text-heading">
+                      {policy?.awardPoints ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+          </TableBody>
+        </Table>
       </div>
 
       {submitError && (

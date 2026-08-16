@@ -73,6 +73,8 @@ export type ScratchTile = {
   revealedAt: string | null;
   label: string;
   subLabel: string | null;
+  /** GROUP-only: the appointed lead for this team, when there is one. */
+  teamLeadName?: string | null;
   participantIds: string[];
 };
 
