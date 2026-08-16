@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/core/database/client";
 import {
@@ -8,13 +8,25 @@ import {
   group as groupTable,
   participant as participantTable,
   programmeAssignmentMember as programmeAssignmentMemberTable,
+  programme as programmeTable,
   programmeTeamLead as programmeTeamLeadTable,
 } from "@/core/database/schema";
-import type { ProgrammeReportingAssignmentRow } from "@/components/festival/event-works/programme-reporting/types";
+import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
+import { teamKey } from "@/features/programmes/domain/team-key";
 
+/**
+ * Fetches every assignment row for the festival, joined with the participant
+ * (name + chest number + their own group), the assignment's group, the XOR
+ * migration's team members, and the appointed team lead per team. Assembled
+ * into the `ProgrammeReportingAssignmentRow` shape consumed by the programme
+ * reporting board.
+ *
+ * The page that mounts the reporting client renders this server-side and
+ * passes the result down. There is no call site that needs a single
+ * programme's assignments, so this action is festival-scoped.
+ */
 export async function getProgrammeAssignmentsAction(
   festivalId: string,
-  programmeId: string,
 ): Promise<ProgrammeReportingAssignmentRow[]> {
   const participantGroupTable = alias(groupTable, "participant_group");
 
@@ -43,19 +55,14 @@ export async function getProgrammeAssignmentsAction(
           participantGroupTable,
           eq(participantTable.groupId, participantGroupTable.id),
         )
-        .where(
-          and(
-            eq(assignmentTable.festivalId, festivalId),
-            eq(assignmentTable.programmeId, programmeId),
-          ),
-        ),
+        .where(eq(assignmentTable.festivalId, festivalId)),
       db
         .select({
           assignmentId: programmeAssignmentMemberTable.assignmentId,
           participantId: programmeAssignmentMemberTable.participantId,
         })
         .from(programmeAssignmentMemberTable)
-        .where(eq(programmeAssignmentMemberTable.festivalId, festivalId)), // can be optimized but fine for now
+        .where(eq(programmeAssignmentMemberTable.festivalId, festivalId)),
       db
         .select({
           programmeId: programmeTeamLeadTable.programmeId,
@@ -64,18 +71,26 @@ export async function getProgrammeAssignmentsAction(
           participantName: participantTable.name,
         })
         .from(programmeTeamLeadTable)
+        .innerJoin(
+          programmeTable,
+          eq(programmeTable.id, programmeTeamLeadTable.programmeId),
+        )
         .leftJoin(
           participantTable,
           eq(programmeTeamLeadTable.participantId, participantTable.id),
         )
-        .where(eq(programmeTeamLeadTable.programmeId, programmeId)),
+        .where(eq(programmeTable.festivalId, festivalId)),
     ]);
 
   const teamLeadsMap = new Map<string, string>();
   for (const tl of teamLeads) {
     if (tl.participantName) {
       teamLeadsMap.set(
-        `${tl.programmeId}::${tl.groupId}::${tl.teamNumber}`,
+        teamKey({
+          programmeId: tl.programmeId,
+          groupId: tl.groupId,
+          teamNumber: tl.teamNumber,
+        }),
         tl.participantName,
       );
     }
@@ -101,7 +116,11 @@ export async function getProgrammeAssignmentsAction(
       teamNumber: row.teamNumber ?? null,
       teamLeadName:
         teamLeadsMap.get(
-          `${row.programmeId}::${computedGroupId}::${row.teamNumber}`,
+          teamKey({
+            programmeId: row.programmeId,
+            groupId: computedGroupId,
+            teamNumber: row.teamNumber,
+          }),
         ) ?? null,
       teamParticipantIds: membersByAssignmentId.get(row.id) ?? [],
     };
