@@ -5,6 +5,7 @@ import {
   ArrowRightLeft,
   Bell,
   BellOff,
+  CalendarDays,
   Clock,
   Flag,
   MapPin,
@@ -18,6 +19,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -35,7 +37,8 @@ import { cn } from "@/core/utils/cn";
 import type { EnrichedScheduleEntry } from "@/features/schedule/actions/schedule.actions";
 import { calculateProgrammeDuration } from "@/features/schedule/utils/programme-duration";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
-import { ScheduleAssignmentDrawer } from "./ScheduleAssignmentDrawer";
+import { ProgrammeTimer } from "@/components/festival/event-works/programme-reporting/ReportingBoardList";
+import { parseInstant } from "@/core/datetime";
 
 interface ScheduleTableViewProps {
   festivalId: string;
@@ -144,10 +147,8 @@ export function ScheduleTableView({
 }: ScheduleTableViewProps) {
   const [isPending, startTransition] = useTransition();
   const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null);
-  const [selectedEntry, setSelectedEntry] =
-    useState<EnrichedScheduleEntry | null>(null);
 
-  const [filterDay, setFilterDay] = useState<string>("ALL");
+  const [filterDay, setFilterDay] = useState<Date | undefined>(new Date());
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [filterStage, setFilterStage] = useState<string>(
     initialStageId ?? "ALL",
@@ -217,10 +218,11 @@ export function ScheduleTableView({
         );
       });
     }
-    if (filterDay !== "ALL") {
+    if (filterDay) {
+      const dayStr = format(filterDay, "yyyy-MM-dd");
       result = result.filter((e) => {
         const d = parseStoredScheduleInstant(e.startTime);
-        return format(d, "yyyy-MM-dd") === filterDay;
+        return format(d, "yyyy-MM-dd") === dayStr;
       });
     }
     if (filterCategory !== "ALL") {
@@ -283,26 +285,22 @@ export function ScheduleTableView({
   };
 
   const hasActiveFilters =
-    filterDay !== "ALL" ||
+    (filterDay ? format(filterDay, "yyyy-MM-dd") : "ALL") !==
+      format(new Date(), "yyyy-MM-dd") ||
     filterCategory !== "ALL" ||
     (filterStage !== "ALL" && filterStage !== initialStageId);
 
   const filterBar = (
     <div className="flex flex-wrap items-center gap-2 pb-1">
       {days.length > 1 && (
-        <Select value={filterDay} onValueChange={setFilterDay}>
-          <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs">
-            <SelectValue placeholder="All days" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All days</SelectItem>
-            {days.map((d) => (
-              <SelectItem key={d.key} value={d.key}>
-                {d.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-[150px]">
+          <DatePicker
+            date={filterDay}
+            onChange={setFilterDay}
+            placeholder="All days"
+            className="h-8 text-xs"
+          />
+        </div>
       )}
 
       {categories.length > 0 && (
@@ -343,7 +341,7 @@ export function ScheduleTableView({
           size="sm"
           className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
           onClick={() => {
-            setFilterDay("ALL");
+            setFilterDay(new Date());
             setFilterCategory("ALL");
             setFilterStage(initialStageId ?? "ALL");
           }}
@@ -417,14 +415,19 @@ export function ScheduleTableView({
                   <tr
                     key={entry.id}
                     className={cn(
-                      "border-b last:border-b-0 transition-colors cursor-pointer",
+                      "border-b last:border-b-0 transition-colors",
+                      !isReadOnly ? "cursor-pointer" : "",
                       inProgress &&
                         "bg-amber-300/10 hover:bg-amber-300/15 border-l-4 border-l-amber-300",
                       completed &&
                         "bg-muted/40 opacity-70 hover:opacity-100 border-l-4 border-l-emerald-500/60",
                       !inProgress && !completed && "hover:bg-muted/30",
                     )}
-                    onClick={() => setSelectedEntry(entry)}
+                    onClick={() => {
+                      if (!isReadOnly) {
+                        onEdit(entry);
+                      }
+                    }}
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -438,11 +441,30 @@ export function ScheduleTableView({
                             ? (entry.programme?.name ?? "—")
                             : (entry.title ?? "—")}
                         </div>
-                        {inProgress && (
-                          <Badge className="bg-amber-300 hover:bg-amber-400 text-white font-bold text-[9px] px-1.5 h-4 uppercase tracking-wider animate-pulse shrink-0">
-                            In Progress
-                          </Badge>
-                        )}
+                        {inProgress &&
+                          (() => {
+                            const windowEndsAt = entry.reportingSession
+                              ?.windowEndsAt
+                              ? typeof entry.reportingSession.windowEndsAt ===
+                                "string"
+                                ? parseInstant(
+                                    entry.reportingSession.windowEndsAt,
+                                  )
+                                : entry.reportingSession.windowEndsAt
+                              : null;
+
+                            if (windowEndsAt) {
+                              return (
+                                <ProgrammeTimer windowEndsAt={windowEndsAt} />
+                              );
+                            }
+
+                            return (
+                              <Badge className="bg-amber-300 hover:bg-amber-400 text-white font-bold text-[9px] px-1.5 h-4 uppercase tracking-wider animate-pulse shrink-0">
+                                In Progress
+                              </Badge>
+                            );
+                          })()}
                         {completed && (
                           <Badge
                             variant="outline"
@@ -531,34 +553,37 @@ export function ScheduleTableView({
                                 </Tooltip>
                               </TooltipProvider>
 
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      disabled={inProgress}
-                                      className={cn(
-                                        "h-8 w-8",
-                                        inProgress
-                                          ? "text-muted-foreground opacity-40 cursor-not-allowed"
-                                          : "text-sky-600 hover:text-sky-700 hover:bg-sky-50",
-                                      )}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (!inProgress) onStartReporting(entry);
-                                      }}
-                                    >
-                                      <Flag className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {inProgress
-                                      ? "Reporting in progress"
-                                      : "Start Reporting"}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              {!completed && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={inProgress}
+                                        className={cn(
+                                          "h-8 w-8",
+                                          inProgress
+                                            ? "text-muted-foreground opacity-40 cursor-not-allowed"
+                                            : "text-sky-600 hover:text-sky-700 hover:bg-sky-50",
+                                        )}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!inProgress)
+                                            onStartReporting(entry);
+                                        }}
+                                      >
+                                        <Flag className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {inProgress
+                                        ? "Reporting in progress"
+                                        : "Start Reporting"}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
 
                               <TooltipProvider>
                                 <Tooltip>
@@ -614,10 +639,14 @@ export function ScheduleTableView({
           const inProgress = isEntryInProgress(entry);
           const completed = isEntryCompleted(entry);
           return (
+            // biome-ignore lint/a11y/noStaticElementInteractions: mobile card with nested action buttons (notify/start/swap/edit) — converting the card to <button> would nest interactive elements
             <div
               key={entry.id}
               className={cn(
-                "rounded-lg border p-4 space-y-2.5 cursor-pointer transition-colors",
+                "rounded-lg border p-4 space-y-2.5 transition-colors",
+                entry.type === "PROGRAMME" && !isReadOnly
+                  ? "cursor-pointer"
+                  : "",
                 inProgress &&
                   "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30",
                 completed &&
@@ -626,7 +655,11 @@ export function ScheduleTableView({
                   !completed &&
                   "border-border bg-card hover:border-primary/50",
               )}
-              onClick={() => setSelectedEntry(entry)}
+              onClick={() => {
+                if (entry.type === "PROGRAMME" && !isReadOnly) {
+                  onStartReporting(entry);
+                }
+              }}
             >
               {/* Title row */}
               <div className="flex items-start justify-between gap-2">
@@ -664,10 +697,7 @@ export function ScheduleTableView({
                     )}
                 </div>
                 {!isReadOnly && (
-                  <div
-                    className="flex items-center gap-0.5 shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div className="flex items-center gap-0.5 shrink-0">
                     {entry.type === "PROGRAMME" && (
                       <>
                         <Button
@@ -679,11 +709,14 @@ export function ScheduleTableView({
                               ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                               : "text-amber-600 hover:text-amber-700 hover:bg-amber-50",
                           )}
-                          onClick={() =>
-                            entry.callListNotifiedAt
-                              ? onCancelNotify(entry)
-                              : onNotify(entry)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (entry.callListNotifiedAt) {
+                              onCancelNotify(entry);
+                            } else {
+                              onNotify(entry);
+                            }
+                          }}
                         >
                           {entry.callListNotifiedAt ? (
                             <BellOff className="h-4 w-4" />
@@ -691,28 +724,33 @@ export function ScheduleTableView({
                             <Bell className="h-4 w-4" />
                           )}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={inProgress}
-                          className={cn(
-                            "h-8 w-8",
-                            inProgress
-                              ? "text-muted-foreground opacity-40 cursor-not-allowed"
-                              : "text-sky-600 hover:text-sky-700 hover:bg-sky-50",
-                          )}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!inProgress) onStartReporting(entry);
-                          }}
-                        >
-                          <Flag className="h-4 w-4" />
-                        </Button>
+                        {!completed && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={inProgress}
+                            className={cn(
+                              "h-8 w-8",
+                              inProgress
+                                ? "text-muted-foreground opacity-40 cursor-not-allowed"
+                                : "text-sky-600 hover:text-sky-700 hover:bg-sky-50",
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!inProgress) onStartReporting(entry);
+                            }}
+                          >
+                            <Flag className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => onSwap(entry)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSwap(entry);
+                          }}
                         >
                           <ArrowRightLeft className="h-4 w-4" />
                         </Button>
@@ -722,7 +760,10 @@ export function ScheduleTableView({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => onEdit(entry)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(entry);
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -767,17 +808,6 @@ export function ScheduleTableView({
           );
         })}
       </div>
-
-      <ScheduleAssignmentDrawer
-        festivalId={festivalId}
-        entry={selectedEntry}
-        open={!!selectedEntry}
-        onOpenChange={(open) => {
-          if (!open) setSelectedEntry(null);
-        }}
-        onEdit={onEdit}
-        isReadOnly={isReadOnly}
-      />
     </div>
   );
 }
