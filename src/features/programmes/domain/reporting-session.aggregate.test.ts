@@ -3,6 +3,7 @@ import {
   type Assignment,
   type AssignmentMember,
   type CodeLetter,
+  computeWindowEndsAt,
   ReportingSession,
   type ReportingSessionState,
 } from "./reporting-session.aggregate";
@@ -488,5 +489,37 @@ describe("ReportingSession aggregate", () => {
         "REPORTING_UNLOCKED_FOR_SCHEDULE_CHANGE",
       );
     });
+  });
+});
+
+describe("computeWindowEndsAt", () => {
+  const NOW = 1_700_000_000_000;
+  const MIN = 60_000;
+
+  it("returns now + scheduled duration when both bounds are valid", () => {
+    const start = NOW - 5 * MIN;
+    const end = start + 10 * MIN;
+    const result = computeWindowEndsAt(start, end, NOW);
+    expect(result).toBe(new Date(NOW + 10 * MIN).toISOString());
+  });
+
+  it("returns null when start is missing", () => {
+    expect(computeWindowEndsAt(null, NOW + MIN, NOW)).toBeNull();
+  });
+
+  it("returns null when end is missing", () => {
+    expect(computeWindowEndsAt(NOW - MIN, null, NOW)).toBeNull();
+  });
+
+  it("returns null when end <= start (zero or negative duration)", () => {
+    expect(computeWindowEndsAt(NOW, NOW, NOW)).toBeNull();
+    expect(computeWindowEndsAt(NOW + MIN, NOW, NOW)).toBeNull();
+  });
+
+  it("preserves the duration even when reporting opens after schedule start", () => {
+    const scheduledStart = NOW - 20 * MIN;
+    const scheduledEnd = scheduledStart + 30 * MIN;
+    const result = computeWindowEndsAt(scheduledStart, scheduledEnd, NOW);
+    expect(result).toBe(new Date(NOW + 30 * MIN).toISOString());
   });
 });

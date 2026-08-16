@@ -1,11 +1,10 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { formatDateTime, parseInstant } from "@/core/datetime";
 import type { CompactHistoryItem } from "@/components/dashboard/event-works/CompactHistoryList";
+import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
+import { teamKey } from "@/features/programmes/domain/team-key";
 import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
-import type {
-  ProgrammeReportingAssignmentRow,
-  ReportingBoardItem,
-} from "./types";
+import type { ReportingBoardItem } from "./types";
 
 export type ReportingUiStatus =
   | "NOT_STARTED"
@@ -70,10 +69,10 @@ export function formatHistoryTime(
   }
 }
 
-function teamKey(
+function partialTeamKey(
   row: Pick<ProgrammeReportingAssignmentRow, "groupId" | "teamNumber">,
 ): string {
-  return `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`;
+  return teamKey.partial({ groupId: row.groupId, teamNumber: row.teamNumber });
 }
 
 /**
@@ -86,7 +85,7 @@ export function bucketAssignmentsByTeam<
 >(assignments: T[]): Map<string, T[]> {
   const buckets = new Map<string, T[]>();
   for (const row of assignments) {
-    const key = teamKey(row);
+    const key = partialTeamKey(row);
     const bucket = buckets.get(key) ?? [];
     bucket.push(row);
     buckets.set(key, bucket);
@@ -163,8 +162,11 @@ export function buildProgrammeHistory(
       const reportedCount =
         programmeType === "GROUP"
           ? new Set(
-              reportedRows.map(
-                (r) => `${r.groupId ?? "no-group"}::${r.teamNumber ?? 0}`,
+              reportedRows.map((r) =>
+                partialTeamKey({
+                  groupId: r.groupId,
+                  teamNumber: r.teamNumber,
+                }),
               ),
             ).size
           : reportedRows.length;

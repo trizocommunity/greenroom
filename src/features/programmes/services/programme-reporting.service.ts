@@ -15,6 +15,8 @@ import {
 } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
 import { MS, nowPlus, serverNowIso, serverNowMs } from "@/core/datetime/server";
+import { computeWindowEndsAt } from "@/features/programmes/domain/reporting-session.aggregate";
+import { teamKey } from "@/features/programmes/domain/team-key";
 import { ReportingSessionRepository } from "@/features/programmes/repositories/reporting-session.repository";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
 import {
@@ -564,19 +566,13 @@ export const ProgrammeReportingService = {
     const effectiveEndedAt =
       dbSession?.scheduleEntry?.startTime || serverNowIso();
 
-    let windowEndsAt: string | null = null;
-    if (
-      dbSession?.scheduleEntry?.startTime &&
-      dbSession?.scheduleEntry?.endTime
-    ) {
-      const startMs = parseInstant(
-        dbSession.scheduleEntry.startTime,
-      )?.getTime();
-      const endMs = parseInstant(dbSession.scheduleEntry.endTime)?.getTime();
-      if (startMs && endMs && endMs > startMs) {
-        windowEndsAt = new Date(Date.now() + (endMs - startMs)).toISOString();
-      }
-    }
+    const startMs = dbSession?.scheduleEntry?.startTime
+      ? (parseInstant(dbSession.scheduleEntry.startTime)?.getTime() ?? null)
+      : null;
+    const endMs = dbSession?.scheduleEntry?.endTime
+      ? (parseInstant(dbSession.scheduleEntry.endTime)?.getTime() ?? null)
+      : null;
+    const windowEndsAt = computeWindowEndsAt(startMs, endMs, Date.now());
 
     session.close(actorName, effectiveEndedAt, windowEndsAt);
     const events = await ReportingSessionRepository.save(session);
@@ -654,16 +650,22 @@ export const ProgrammeReportingService = {
 
     const totalUnits = isGroupProgramme
       ? new Set(
-          assignments.map(
-            (row) => `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`,
+          assignments.map((row) =>
+            teamKey.partial({
+              groupId: row.groupId,
+              teamNumber: row.teamNumber,
+            }),
           ),
         ).size
       : assignments.length;
 
     const reportedCount = isGroupProgramme
       ? new Set(
-          session.reportedParticipants.map(
-            (row) => `${row.groupId ?? "no-group"}::${row.teamNumber ?? 0}`,
+          session.reportedParticipants.map((row) =>
+            teamKey.partial({
+              groupId: row.groupId,
+              teamNumber: row.teamNumber,
+            }),
           ),
         ).size
       : session.reportedParticipants.length;

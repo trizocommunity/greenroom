@@ -5,6 +5,8 @@ import { Crown, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
+import { reportedEntriesFromScratchTiles } from "@/features/programmes/domain/reported-entries";
+import { ReportedEntriesPanel } from "./ReportedEntriesPanel";
 import type { ScratchTile } from "./types";
 
 type ScratchGridProps = {
@@ -34,6 +36,8 @@ export function ScratchGrid({
   isRevealingAll,
 }: ScratchGridProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const reportedEntries = reportedEntriesFromScratchTiles({ tiles });
 
   const current = tiles.find((t) => t.queuePosition === currentQueuePosition);
   const remaining = tiles.filter((t) => !t.revealedAt).length;
@@ -163,48 +167,7 @@ export function ScratchGrid({
         </p>
       ) : null}
 
-      <div className="mt-6">
-        <h3 className="mb-2 text-[10px] font-semibold tracking-tight uppercase text-muted-foreground">
-          Reported Participants (A-Z)
-        </h3>
-        <div className="space-y-1 max-h-48 overflow-y-auto pr-2">
-          {[...tiles]
-            .sort((a, b) =>
-              a.label.localeCompare(b.label, undefined, {
-                sensitivity: "base",
-              }),
-            )
-            .map((tile) => {
-              const code = tile.revealedAt && tile.code ? tile.code : "—";
-              return (
-                <div
-                  key={tile.codeLetterId}
-                  className="flex items-center justify-between gap-2 rounded-sm bg-muted/30 px-2 py-1.5 text-xs"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">
-                      {tile.label}
-                    </span>
-                    {tile.teamLeadName ? (
-                      <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] uppercase tracking-wide text-muted-foreground">
-                        <Crown className="h-2.5 w-2.5 shrink-0 text-primary" />
-                        {tile.teamLeadName}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span
-                    className={cn(
-                      "font-bold tabular-nums shrink-0",
-                      code !== "—" ? "text-primary" : "text-muted-foreground",
-                    )}
-                  >
-                    {code}
-                  </span>
-                </div>
-              );
-            })}
-        </div>
-      </div>
+      <ReportedEntriesPanel entries={reportedEntries} />
     </div>
   );
 }

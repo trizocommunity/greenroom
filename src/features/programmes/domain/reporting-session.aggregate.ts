@@ -11,6 +11,29 @@ import type {
   ReportingUnlockedForScheduleChange,
 } from "./reporting-events";
 
+/**
+ * Compute the end of the post-close reporting window.
+ *
+ * Semantics: anchor on `nowMs` and add the scheduled duration
+ * (`scheduleEndMs - scheduleStartMs`). If reporting opens late, the judge
+ * still gets the full scheduled duration counted from the moment the
+ * session closed — they are not penalised for upstream delays.
+ *
+ * Returns `null` when either bound is missing or the window would be
+ * non-positive. Pure function; clock is passed in to keep it testable.
+ */
+export function computeWindowEndsAt(
+  scheduleStartMs: number | null,
+  scheduleEndMs: number | null,
+  nowMs: number,
+): string | null {
+  if (scheduleStartMs === null || scheduleEndMs === null) return null;
+  if (!Number.isFinite(scheduleStartMs) || !Number.isFinite(scheduleEndMs))
+    return null;
+  if (scheduleEndMs <= scheduleStartMs) return null;
+  return new Date(nowMs + (scheduleEndMs - scheduleStartMs)).toISOString();
+}
+
 export type ReportingStatus =
   | "NOT_STARTED"
   | "IN_PROGRESS"
@@ -656,3 +679,15 @@ export class ReportingSession {
     }
   }
 }
+
+// Re-export the reported-entries helpers so the aggregate is the single
+// import surface for `features/programmes` consumers. The actual
+// implementation lives in `reported-entries.ts` because it must stay
+// client-safe (the aggregate imports `node:crypto`).
+export {
+  type ReportedEntriesFromTilesInput,
+  type ReportedEntriesInput,
+  type ReportedEntry,
+  reportedEntriesFromReportedRows,
+  reportedEntriesFromScratchTiles,
+} from "./reported-entries";
