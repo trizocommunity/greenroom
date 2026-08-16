@@ -46,15 +46,6 @@ export function ScheduleReportingDrawer({
   const isGroup = programme.type === "GROUP";
 
   const handleStart = () => {
-    onSuccess();
-    onOpenChange(false);
-
-    if (slug) {
-      router.push(
-        `/dashboard/${slug}/event-works/reporting?programmeId=${programme.id}`,
-      );
-    }
-
     (async () => {
       try {
         const res = await startProgrammeReportingAction(
@@ -62,6 +53,13 @@ export function ScheduleReportingDrawer({
           programme.id,
         );
         if (res.success) {
+          onSuccess();
+          onOpenChange(false);
+          if (slug) {
+            router.push(
+              `/dashboard/${slug}/event-works/reporting?programmeId=${programme.id}`,
+            );
+          }
           await notifyCallList(festivalId, entry.id).catch(() => {});
           toast.success("Reporting started and Announcer notified!");
         } else {
