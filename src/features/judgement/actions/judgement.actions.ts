@@ -356,6 +356,8 @@ export async function getJudgementWizardDataAction(festivalId: string) {
         groupName: string | null;
         categoryName: string | null;
         codeLetter: string | null;
+        /** GROUP-only: party number used to render "Group · Party N". */
+        teamNumber: number | null;
       }>;
       assignedCount: number;
       absentCount: number;
@@ -388,6 +390,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 groupName: string | null;
                 categoryName: string | null;
                 codeLetter: string | null;
+                teamNumber: number | null;
               }
             >();
 
@@ -395,11 +398,12 @@ export async function getJudgementWizardDataAction(festivalId: string) {
               const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
               const groupName = r.group?.name ?? null;
               const key = `${groupName ?? "no-group"}::${teamNo ?? "no-team"}`;
-              const label = groupName
+              const fallbackLabel = groupName
                 ? teamNo
                   ? `${groupName} - Team ${teamNo}`
                   : groupName
                 : `Team ${teamNo ?? "—"}`;
+              const label = r.participant?.name || fallbackLabel;
               const codeLetter = r.participant?.id
                 ? (codeByParticipantId.get(r.participant.id) ?? null)
                 : null;
@@ -411,6 +415,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                   groupName,
                   categoryName: null,
                   codeLetter,
+                  teamNumber: teamNo ?? null,
                 });
                 continue;
               }
@@ -423,28 +428,40 @@ export async function getJudgementWizardDataAction(festivalId: string) {
             return Array.from(teamMap.values());
           })()
         : sessionRow.programmeReportedParticipants
-            .map((r) => {
-              const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
-              const label = r.participant?.name
-                ? r.participant.chestNumber
-                  ? `${r.participant.name} (${r.participant.chestNumber})`
-                  : r.participant.name
-                : r.group?.name
-                  ? teamNo
-                    ? `${r.group.name} - Team ${teamNo}`
-                    : r.group.name
-                  : null;
-              if (!label) return null;
+            .map(
+              (
+                r,
+              ): {
+                label: string;
+                groupName: string | null;
+                categoryName: string | null;
+                codeLetter: string | null;
+                teamNumber: number | null;
+              } | null => {
+                const teamNo =
+                  r.teamNumber ?? r.programmeAssignment?.teamNumber;
+                const label = r.participant?.name
+                  ? r.participant.chestNumber
+                    ? `${r.participant.name} (${r.participant.chestNumber})`
+                    : r.participant.name
+                  : r.group?.name
+                    ? teamNo
+                      ? `${r.group.name} - Team ${teamNo}`
+                      : r.group.name
+                    : null;
+                if (!label) return null;
 
-              return {
-                label,
-                groupName: r.group?.name ?? null,
-                categoryName: null as string | null,
-                codeLetter: r.participant?.id
-                  ? (codeByParticipantId.get(r.participant.id) ?? null)
-                  : null,
-              };
-            })
+                return {
+                  label,
+                  groupName: r.group?.name ?? null,
+                  categoryName: null as string | null,
+                  codeLetter: r.participant?.id
+                    ? (codeByParticipantId.get(r.participant.id) ?? null)
+                    : null,
+                  teamNumber: null,
+                };
+              },
+            )
             .filter(
               (
                 x,
@@ -453,6 +470,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 groupName: string | null;
                 categoryName: string | null;
                 codeLetter: string | null;
+                teamNumber: number | null;
               } => Boolean(x),
             );
 
