@@ -1,8 +1,10 @@
 import { eq } from "drizzle-orm";
 import { getFestivalDurationDays } from "@/config/pricing";
+import { cache } from "@/core/cache/instance";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
 import { MS } from "@/core/datetime/constants";
+import { keys } from "@/core/redis/keys";
 
 export type PublicFestivalData = {
   festival: {
@@ -39,7 +41,10 @@ export type PublicFestivalData = {
   } | null;
 };
 
-export async function getPublicFestivalData(
+const POSITIVE_TTL_MS = 5 * 60 * 1000;
+const NEGATIVE_TTL_MS = 30 * 1000;
+
+async function loadPublicFestivalData(
   festivalSlug: string,
 ): Promise<PublicFestivalData | null> {
   const festival = await db.query.festival.findFirst({
@@ -119,4 +124,21 @@ export async function getPublicFestivalData(
       status: festival.status,
     },
   };
+}
+
+/**
+ * Public festival profile + counters, cached per slug.
+ *
+ * Caches both the positive and negative result with separate TTLs:
+ * unknown slugs are short-lived to absorb bot scanners.
+ */
+export async function getPublicFestivalData(
+  festivalSlug: string,
+): Promise<PublicFestivalData | null> {
+  return cache.wrap(
+    keys.slugFestival(festivalSlug),
+    POSITIVE_TTL_MS,
+    async () => loadPublicFestivalData(festivalSlug),
+    { negativeTtlMs: NEGATIVE_TTL_MS },
+  );
 }

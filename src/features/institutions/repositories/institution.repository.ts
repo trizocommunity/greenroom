@@ -76,7 +76,7 @@ export async function findVerifiedInstitutionByCustomDomain(
   const normalized = normalizeCustomDomain(customDomain);
   if (!normalized) return null;
 
-  const cached = getCachedVerifiedInstitution(normalized);
+  const cached = await getCachedVerifiedInstitution(normalized);
   if (cached !== undefined) return cached;
 
   const row = await db.query.institution.findFirst({
@@ -88,7 +88,7 @@ export async function findVerifiedInstitutionByCustomDomain(
   });
 
   const value = row ? { institutionId: row.id } : null;
-  setCachedVerifiedInstitution(normalized, value);
+  await setCachedVerifiedInstitution(normalized, value);
   return value;
 }
 
@@ -127,8 +127,8 @@ export async function updateInstitutionCustomDomain(opts: {
     .where(eq(institution.id, opts.institutionId))
     .returning();
 
-  if (previousDomain) invalidateCustomDomainCache(previousDomain);
-  if (nextDomain) invalidateCustomDomainCache(nextDomain);
+  if (previousDomain) await invalidateCustomDomainCache(previousDomain);
+  if (nextDomain) await invalidateCustomDomainCache(nextDomain);
 
   return {
     institution: updated,
@@ -154,7 +154,7 @@ export async function markInstitutionDomainVerified(
     .where(eq(institution.id, institutionId))
     .returning();
 
-  invalidateCustomDomainCache(existing.customDomain);
+  await invalidateCustomDomainCache(existing.customDomain);
   return updated;
 }
 
@@ -185,7 +185,7 @@ export async function markInstitutionHttpsReady(
     .where(eq(institution.id, institutionId))
     .returning();
 
-  invalidateCustomDomainCache(existing.customDomain);
+  await invalidateCustomDomainCache(existing.customDomain);
   return updated;
 }
 
@@ -208,7 +208,7 @@ export async function clearInstitutionHttpsReady(
     .where(eq(institution.id, institutionId));
 
   if (existing.customDomain) {
-    invalidateCustomDomainCache(existing.customDomain);
+    await invalidateCustomDomainCache(existing.customDomain);
   }
 }
 
@@ -228,6 +228,6 @@ export async function clearInstitutionDomainVerification(
     .where(eq(institution.id, institutionId));
 
   if (existing.customDomain) {
-    invalidateCustomDomainCache(existing.customDomain);
+    await invalidateCustomDomainCache(existing.customDomain);
   }
 }

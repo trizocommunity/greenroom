@@ -3,6 +3,8 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { auditLog, user as users } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { getRedis } from "@/core/redis/client";
+import { keys } from "@/core/redis/keys";
 
 /**
  * Audit log actions. Exported so other modules (e.g. Better Auth
@@ -76,6 +78,10 @@ type TargetType =
   | "GENERAL_ENTRY"
   | "GENERAL_ENTRY_CATEGORY";
 
+/** Burst window — identical (actor, action, targetType, targetId) within
+ *  this many ms collapse into a single audit row. */
+const AUDIT_DEDUP_WINDOW_MS = 10_000;
+
 /**
  * Identifies the actor for contexts with no admin session cookie — the
  * team-leader OTP portal (participant session, no `user` row) and judge
@@ -110,6 +116,31 @@ export async function createAuditLog(params: CreateAuditLogParams) {
     }
     actorId = session.userId;
     actorRole = session.role;
+  }
+
+  // Dedupe bursty repeats: same actor + action + target within 10s collapse
+  // into a single row. Redis counter is the fast path; DB stays authoritative.
+  // Falls open to the DB on Redis failure — losing dedup briefly is better
+  // than 500'ing audit writes during an incident.
+  const dedupKey = keys.auditDedup(
+    actorId,
+    `${params.action}:${params.targetType}:${params.targetId}`,
+  );
+  try {
+    const results = (await getRedis()
+      .multi()
+      .incr(dedupKey)
+      .pexpire(dedupKey, AUDIT_DEDUP_WINDOW_MS, "NX")
+      .exec()) as Array<[Error | null, number]>;
+    const count = results[0]?.[1] ?? 1;
+    if (count > 1) {
+      return null;
+    }
+  } catch (err) {
+    console.warn(
+      "[audit-log] dedup fail-open (Redis unavailable):",
+      err instanceof Error ? err.message : err,
+    );
   }
 
   const { randomUUID } = await import("crypto");

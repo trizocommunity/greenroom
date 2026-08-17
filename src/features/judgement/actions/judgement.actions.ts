@@ -38,6 +38,8 @@ import {
 import { dateKeyLocal, isAfter, isBefore, parseInstant } from "@/core/datetime";
 import { serverNow, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { getRedis } from "@/core/redis/client";
+import { keys } from "@/core/redis/keys";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
@@ -1873,6 +1875,22 @@ export async function submitJudgeScoresAction(
   },
   options?: { deactivateLink?: boolean },
 ) {
+  // Absorb double-tap submissions from the Stage Portal — the first lands,
+  // the rest within 30s are dropped. Fails open to DB on Redis outage; the
+  // unique constraint on (configId, judgeId, codeLetterId) is the safety net.
+  const judgeLockKey = keys.judgeScoreDedup(input.judgeId, input.configId);
+  try {
+    const acquired = await getRedis().set(judgeLockKey, "1", "EX", 30, "NX");
+    if (acquired !== "OK") {
+      return { success: true as const, judgementComplete: false };
+    }
+  } catch (err) {
+    console.warn(
+      "[judge-score] dedup fail-open (Redis unavailable):",
+      err instanceof Error ? err.message : err,
+    );
+  }
+
   const config = await assertStagePortalAccessForConfig(input.configId);
 
   const programmeRow = await db.query.programme.findFirst({

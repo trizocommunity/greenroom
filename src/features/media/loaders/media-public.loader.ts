@@ -1,10 +1,12 @@
 import { asc, count, eq } from "drizzle-orm";
+import { cache } from "@/core/cache/instance";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
   festivalMediaImage as mediaImageTable,
   festivalMediaVideo as mediaVideoTable,
 } from "@/core/database/schema";
+import { keys } from "@/core/redis/keys";
 
 export type PublicMediaItem = { id: string; url: string; order: number };
 
@@ -21,6 +23,8 @@ export type PublicMediaData = {
 
 export const PUBLIC_MEDIA_PAGE_SIZE = 24;
 const MAX_PAGE_SIZE = 60;
+const PUBLIC_MEDIA_TTL_MS = 10 * 60 * 1000;
+const SLUG_TO_ID_TTL_MS = 60 * 60 * 1000;
 
 /**
  * A page of gallery images.
@@ -29,6 +33,8 @@ const MAX_PAGE_SIZE = 60;
  * every one of them used to arrive in the first payload — each becoming a
  * `next/image` request on paint. Images are paginated; videos are not, since
  * they are a handful of links and are only fetched with page 1.
+ *
+ * Page 1 is cached per festivalId for 10 minutes. Pages 2+ bypass the cache.
  */
 export async function getPublicMediaData(
   festivalSlug: string,
@@ -40,6 +46,23 @@ export async function getPublicMediaData(
     Math.max(1, Math.trunc(options?.pageSize ?? PUBLIC_MEDIA_PAGE_SIZE)),
   );
 
+  if (page !== 1) {
+    return loadPublicMediaPage(festivalSlug, page, pageSize);
+  }
+
+  const festivalId = await resolveFestivalId(festivalSlug);
+  if (!festivalId) return null;
+
+  return cache.wrap(keys.mediaList(festivalId), PUBLIC_MEDIA_TTL_MS, async () =>
+    loadPublicMediaPage(festivalSlug, 1, pageSize),
+  );
+}
+
+async function loadPublicMediaPage(
+  festivalSlug: string,
+  page: number,
+  pageSize: number,
+): Promise<PublicMediaData | null> {
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.slug, festivalSlug),
     columns: { id: true, name: true, slug: true },
@@ -78,4 +101,19 @@ export async function getPublicMediaData(
     pageSize,
     hasMore: page * pageSize < total,
   };
+}
+
+async function resolveFestivalId(festivalSlug: string): Promise<string | null> {
+  const cacheKey = `${keys.slugFestival(festivalSlug)}:id`;
+  const cached = await cache.get<string>(cacheKey);
+  if (cached !== null) return cached;
+
+  const row = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, festivalSlug),
+    columns: { id: true },
+  });
+  if (!row) return null;
+
+  await cache.set(cacheKey, row.id, { ttlMs: SLUG_TO_ID_TTL_MS });
+  return row.id;
 }

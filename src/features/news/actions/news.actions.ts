@@ -11,6 +11,7 @@ import { parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
+import { invalidatePublicFestivalCaches } from "@/features/festivals/services/public-cache-invalidation";
 import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
@@ -67,6 +68,10 @@ export async function createNewsPostAction(
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);
+  await invalidatePublicFestivalCaches({
+    festivalId,
+    slug: festival.slug,
+  });
   return { success: true };
 }
 
@@ -121,6 +126,10 @@ export async function updateNewsPostAction(
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);
+  await invalidatePublicFestivalCaches({
+    festivalId,
+    slug: festival.slug,
+  });
   return { success: true };
 }
 
@@ -149,5 +158,9 @@ export async function deleteNewsPostAction(festivalId: string, postId: string) {
 
   revalidatePath(`/dashboard/${festival.slug}/content/news`);
   revalidatePath(`/${festival.slug}/news`);
+  await invalidatePublicFestivalCaches({
+    festivalId,
+    slug: festival.slug,
+  });
   return { success: true };
 }

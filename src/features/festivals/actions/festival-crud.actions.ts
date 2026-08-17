@@ -25,6 +25,7 @@ import {
 } from "@/features/festivals/schemas/festival.schema";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
+import { invalidatePublicFestivalCaches } from "@/features/festivals/services/public-cache-invalidation";
 import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 import { reconcileFestivalDomain } from "@/features/institutions/services/custom-domain-provisioning.service";
 import { resolveInstitutionIdForOwner } from "@/features/institutions/services/festival-institution-link.service";
@@ -365,6 +366,10 @@ export async function updateFestivalSettingsAction(
       .returning();
 
     revalidatePath(`/dashboard/${festival.slug}/settings`);
+    await invalidatePublicFestivalCaches({
+      festivalId,
+      slug: festival.slug,
+    });
     return { success: true, data: updated };
   } catch (error) {
     return handleActionError(error);
@@ -424,6 +429,10 @@ export async function setPublicSiteEnabledAction(
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
     revalidatePath(`/dashboard/${festival.slug}`);
+    await invalidatePublicFestivalCaches({
+      festivalId,
+      slug: festival.slug,
+    });
     return { success: true };
   } catch (error) {
     return handleActionError(error);
@@ -495,6 +504,10 @@ export async function updateFestivalBrandingAction(data: {
     });
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
+    await invalidatePublicFestivalCaches({
+      festivalId: festival.id,
+      slug: festival.slug,
+    });
     return { success: true };
   } catch (error) {
     return handleActionError(error);

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   buildFestivalHost,
   buildFestivalLinkPath,
@@ -15,13 +15,6 @@ import {
   stripFestivalSlugPrefix,
   toFestivalRelativePath,
 } from "./custom-domain";
-import {
-  __resetCustomDomainCacheForTests,
-  getCachedVerifiedInstitution,
-  getCustomDomainCacheTtlMs,
-  invalidateCustomDomainCache,
-  setCachedVerifiedInstitution,
-} from "./custom-domain-cache";
 
 describe("custom-domain helpers", () => {
   const prevAppUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -29,7 +22,6 @@ describe("custom-domain helpers", () => {
   afterEach(() => {
     if (prevAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
     else process.env.NEXT_PUBLIC_APP_URL = prevAppUrl;
-    __resetCustomDomainCacheForTests();
   });
 
   it("parses suffamehil.ahlussuffa.in into slug + apex", () => {
@@ -300,29 +292,5 @@ describe("festival link paths", () => {
     expect(toFestivalRelativePath("/zenoraev/news", "zenoraev")).toBe("/news");
     expect(toFestivalRelativePath("/news", "zenoraev")).toBe("/news");
     expect(toFestivalRelativePath("", "zenoraev")).toBe("/");
-  });
-});
-
-describe("custom-domain cache", () => {
-  afterEach(() => {
-    __resetCustomDomainCacheForTests();
-    vi.useRealTimers();
-  });
-
-  it("returns cached value within TTL and miss after expiry", () => {
-    vi.useFakeTimers();
-    setCachedVerifiedInstitution("ahlussuffa.in", { institutionId: "i1" });
-    expect(getCachedVerifiedInstitution("ahlussuffa.in")).toEqual({
-      institutionId: "i1",
-    });
-
-    vi.advanceTimersByTime(getCustomDomainCacheTtlMs() + 1);
-    expect(getCachedVerifiedInstitution("ahlussuffa.in")).toBeUndefined();
-  });
-
-  it("invalidate clears entry immediately", () => {
-    setCachedVerifiedInstitution("ahlussuffa.in", { institutionId: "i1" });
-    invalidateCustomDomainCache("ahlussuffa.in");
-    expect(getCachedVerifiedInstitution("ahlussuffa.in")).toBeUndefined();
   });
 });

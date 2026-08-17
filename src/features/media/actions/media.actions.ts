@@ -10,6 +10,7 @@ import { festivalMediaImage, festivalMediaVideo } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
+import { invalidatePublicFestivalCaches } from "@/features/festivals/services/public-cache-invalidation";
 import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
@@ -66,6 +67,10 @@ export async function addMediaImageAction(festivalId: string, url: string) {
 
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
+  await invalidatePublicFestivalCaches({
+    festivalId,
+    slug: festival.slug,
+  });
   return { success: true };
 }
 
@@ -105,6 +110,10 @@ export async function addMediaImagesAction(festivalId: string, urls: string[]) {
 
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
+  await invalidatePublicFestivalCaches({
+    festivalId,
+    slug: festival.slug,
+  });
   return { success: true };
 }
 
@@ -135,6 +144,10 @@ export async function deleteMediaImageAction(
   });
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
+  await invalidatePublicFestivalCaches({
+    festivalId,
+    slug: festival.slug,
+  });
   return { success: true };
 }
 
@@ -170,6 +183,10 @@ export async function deleteMediaImagesAction(
   });
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
+  await invalidatePublicFestivalCaches({
+    festivalId,
+    slug: festival.slug,
+  });
   return { success: true };
 }
 
@@ -196,5 +213,9 @@ export async function reorderMediaImagesAction(
   });
   revalidatePath(`/dashboard/${festival.slug}/content/media`);
   revalidatePath(`/${festival.slug}/media`);
+  await invalidatePublicFestivalCaches({
+    festivalId,
+    slug: festival.slug,
+  });
   return { success: true };
 }

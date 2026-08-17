@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "img.youtube.com" },
     ],
   },
-  serverExternalPackages: ["pg"],
+  serverExternalPackages: ["pg", "ioredis"],
 };
 
 export default withSerwist(nextConfig);

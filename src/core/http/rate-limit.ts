@@ -1,56 +1,65 @@
 /**
- * Simple in-memory rate limiting utility.
- * Uses LRU cache with automatic expiry.
- * For production with multiple servers, replace with Redis-based rate limiting.
+ * Redis-backed rate limiter.
+ *
+ * Cross-instance correctness: every Vercel function hits the same counter,
+ * so a user cannot bypass the limit by hitting a different serverless
+ * instance. Fail-open on Redis outage — losing the limit briefly is better
+ * than 503'ing every request during an incident.
  */
 
-import { LRUCache } from "lru-cache";
+import { createHash } from "node:crypto";
 import { MS, serverNowMs } from "@/core/datetime/server";
+import { getRedis } from "@/core/redis/client";
+import { keys } from "@/core/redis/keys";
 
-type RateLimitEntry = {
-  count: number;
+/** sha1(ip)[:16] — short, deterministic, no raw PII in vendor dashboards. */
+function hashIdentifier(identifier: string): string {
+  return createHash("sha1").update(identifier).digest("hex").slice(0, 16);
+}
+
+export type RateLimitResult = {
+  allowed: boolean;
+  remaining: number;
   resetTime: number;
 };
 
-const rateLimitCache = new LRUCache<string, RateLimitEntry>({
-  max: 500,
-  ttl: 15 * MS.minute,
-});
-
-export function checkRateLimit(
+export async function checkRateLimit(
   identifier: string,
   maxRequests: number = 5,
   windowMs: number = 15 * MS.minute,
-): { allowed: boolean; remaining: number; resetTime: number } {
+): Promise<RateLimitResult> {
   const now = serverNowMs();
-  const key = identifier;
+  const resetTime = now + windowMs;
+  const key = keys.rateLimit(hashIdentifier(identifier));
 
-  const entry = rateLimitCache.get(key);
+  try {
+    // INCR + PEXPIRE NX in one pipeline. PEXPIRE ... NX (Redis 7+) sets the
+    // TTL only on the first request of the window, so we never reset it
+    // mid-window and never leave a key without a TTL.
+    const results = (await getRedis()
+      .multi()
+      .incr(key)
+      .pexpire(key, windowMs, "NX")
+      .exec()) as Array<[Error | null, number]>;
 
-  if (!entry || now > entry.resetTime) {
-    const resetTime = now + windowMs;
-    rateLimitCache.set(key, { count: 1, resetTime });
+    const count = results[0]?.[1] ?? 0;
+
+    if (count > maxRequests) {
+      return { allowed: false, remaining: 0, resetTime };
+    }
+
     return {
       allowed: true,
-      remaining: maxRequests - 1,
+      remaining: Math.max(0, maxRequests - count),
       resetTime,
     };
+  } catch (err) {
+    console.warn(
+      "[rate-limit] fail-open (Redis unavailable):",
+      err instanceof Error ? err.message : err,
+    );
+    return { allowed: true, remaining: maxRequests, resetTime };
   }
-
-  if (entry.count >= maxRequests) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetTime: entry.resetTime,
-    };
-  }
-
-  entry.count++;
-  return {
-    allowed: true,
-    remaining: maxRequests - entry.count,
-    resetTime: entry.resetTime,
-  };
 }
 
 export function getClientIP(request: Request): string {

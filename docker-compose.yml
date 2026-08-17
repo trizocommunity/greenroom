@@ -17,5 +17,23 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: greenroom-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-devpass}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli -a ${REDIS_PASSWORD:-devpass} --no-auth-warning ping | grep PONG
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   postgres_data:
+  redis_data:
