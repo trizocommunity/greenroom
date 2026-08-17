@@ -1,6 +1,9 @@
+import { cloudinaryTransform } from "./cloudinary-transform";
 import { cronDaily } from "./cron-daily";
+import { csvImport } from "./csv-import";
 import { emailSend } from "./email-send";
 import { exportJob } from "./export-job";
+import { posterRender } from "./poster-render";
 import { razorpayWebhook } from "./razorpay-webhook";
 import { resendWebhook } from "./resend-webhook";
 import { smokeTest } from "./smoke-test";
@@ -18,6 +21,9 @@ export const inngestFunctions = [
   cronDaily,
   emailSend,
   exportJob,
+  csvImport,
+  posterRender,
+  cloudinaryTransform,
   razorpayWebhook,
   resendWebhook,
   // Smoke test (remove before production)
