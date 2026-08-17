@@ -38,6 +38,7 @@ import {
 import { dateKeyLocal, isAfter, isBefore, parseInstant } from "@/core/datetime";
 import { serverNow, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
 import { getRedis } from "@/core/redis/client";
 import { keys } from "@/core/redis/keys";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
@@ -1958,6 +1959,13 @@ export async function submitJudgeScoresAction(
           set: { score, remark, updatedAt: now, submittedAt: now },
         });
     }
+  });
+
+  await publish(keys.programmeScoreEvents(config.programmeId), {
+    programmeId: config.programmeId,
+    judgeId: input.judgeId,
+    submittedAt: now,
+    scoresCount: Object.keys(input.scoresByCodeLetterId).length,
   });
 
   await createAuditLog({

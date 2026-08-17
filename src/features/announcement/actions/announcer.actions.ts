@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, isNotNull, sql, or } from "drizzle-orm";
+import { and, asc, count, eq, isNotNull, sql, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
@@ -17,6 +17,8 @@ import {
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import type { ActionResponse } from "@/core/types/actions";
 import { assertAnnouncerAccess } from "@/features/announcement/actions/announcement-access";
 import {
@@ -279,6 +281,40 @@ export async function announceResult(
         updatedAt: now,
       })
       .where(eq(programmeTable.id, programmeId));
+
+    const [standingsFestival, announcedCountRow] = await Promise.all([
+      db.query.festival.findFirst({
+        where: eq(festivalTable.id, festivalId),
+        columns: { teamStandings: true },
+      }),
+      db
+        .select({ value: count() })
+        .from(programmeTable)
+        .where(
+          and(
+            eq(programmeTable.festivalId, festivalId),
+            eq(programmeTable.status, "ANNOUNCED"),
+          ),
+        ),
+    ]);
+
+    await Promise.all([
+      publish(keys.festivalAnnounce(festivalId), {
+        programmeId,
+        position: programme.resultNumber,
+        resultNumber: programme.resultNumber,
+        startedAt: now,
+      }),
+      publish(keys.festivalStandings(festivalId), {
+        teamStandings: standingsFestival?.teamStandings ?? null,
+        lastUpdatedAt: now,
+      }),
+      publish(keys.festivalResultsCount(festivalId), {
+        festivalId,
+        count: announcedCountRow?.value ?? 0,
+        lastResultAt: now,
+      }),
+    ]);
 
     const slug = await getFestivalSlug(festivalId);
     if (slug) revalidateAnnouncerPaths(slug);
