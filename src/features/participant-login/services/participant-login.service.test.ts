@@ -51,6 +51,7 @@ vi.mock("@/core/auth/participant-session", () => ({
 
 vi.mock("@/core/integrations/email/index", () => ({
   sendEmail: (...args: unknown[]) => mockSendEmail(...args),
+  sendEmailSync: (...args: unknown[]) => mockSendEmail(...args),
 }));
 
 import { ParticipantLoginService } from "./participant-login.service";

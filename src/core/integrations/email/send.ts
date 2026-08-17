@@ -1,6 +1,6 @@
 import "server-only";
-import { Resend } from "resend";
 import { EmailPreferencesService } from "@/features/email-preferences/services/email-preferences.service";
+import { inngest } from "@/inngest/client";
 import { renderEmail } from "./render";
 import type { SendEmailOpts, SendEmailResult } from "./types";
 
@@ -10,9 +10,10 @@ import type { SendEmailOpts, SendEmailResult } from "./types";
  * during `next build`'s page-data-collection phase when env vars are
  * missing.
  */
-let _resend: Resend | undefined;
-function getResend(): Resend {
+let _resend: import("resend").Resend | undefined;
+async function getResend(): Promise<import("resend").Resend> {
   if (_resend) return _resend;
+  const { Resend } = await import("resend");
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     throw new Error("RESEND_API_KEY is not defined");
@@ -34,7 +35,8 @@ async function dispatchViaResend(
   to: string[],
 ): Promise<SendEmailResult> {
   try {
-    const { data, error } = await getResend().emails.send({
+    const resend = await getResend();
+    const { data, error } = await resend.emails.send({
       from: fromAddress(),
       to,
       subject: rendered.subject,
@@ -66,12 +68,7 @@ async function dispatchViaResend(
 /**
  * Dev fallback used when `RESEND_API_KEY` is unset. Prints the rendered
  * email to the console so a developer can see exactly what would have
- * been sent, without burning Resend quota. Returns a synthetic `{ id }`
- * so the caller can treat it as a successful no-op.
- *
- * This is the canonical local-dev path: leave `RESEND_API_KEY` unset in
- * your local `.env` (it lives in the Vercel dashboard for production)
- * and every send lands here.
+ * been sent, without burning Resend quota.
  */
 function devFallback(
   rendered: { subject: string; html: string; text: string },
@@ -93,14 +90,14 @@ function devFallback(
 }
 
 /**
- * Render an email from its kind and hand it to Resend.
+ * Send synchronously. Use this when the caller needs to know if Resend
+ * accepted the message (e.g. sign-in OTP — if Resend is down we delete
+ * the OTP row and surface the failure to the user).
  *
- * Returns `{ id }` on success (including the dev fallback path) and
- * `{ error }` on failure. The global super-admin per-kind toggle is
- * checked before rendering; disabled kinds return a synthetic `{ id }`
- * with `kindDisabled: true` so callers can branch if they care.
+ * For fire-and-forget notifications, prefer `sendEmail()` which queues
+ * via Inngest with automatic retries.
  */
-export async function sendEmail(
+export async function sendEmailSync(
   opts: SendEmailOpts,
 ): Promise<SendEmailResult | { id: string; kindDisabled: true }> {
   const enabled = await EmailPreferencesService.isEnabled(opts.kind.kind);
@@ -119,4 +116,30 @@ export async function sendEmail(
   }
 
   return dispatchViaResend(rendered, to);
+}
+
+/**
+ * Queue an email via Inngest. Returns immediately with a synthetic id.
+ *
+ * The actual send happens in the `email-send` Inngest function, which has
+ * 5 retries with exponential backoff and skips retrying on 4xx errors
+ * (bad template, bad address — not worth retrying).
+ *
+ * Use this for any notification that doesn't need a synchronous result:
+ * invitations, expiry warnings, dashboards, etc.
+ */
+export async function sendEmail(
+  opts: SendEmailOpts,
+): Promise<{ id: string; queued: true } | { id: string; kindDisabled: true }> {
+  const enabled = await EmailPreferencesService.isEnabled(opts.kind.kind);
+  if (!enabled) {
+    return { id: `skipped-${opts.kind.kind}`, kindDisabled: true };
+  }
+
+  await inngest.send({
+    name: "email.requested",
+    data: { opts },
+  });
+
+  return { id: `queued-${Date.now()}`, queued: true as const };
 }

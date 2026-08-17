@@ -10,7 +10,7 @@ import { participantOtp, participantSession } from "@/core/database/schema";
 import { dateKeyLocal, wallClockToInstant } from "@/core/datetime";
 import { fromNow, MS, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { sendEmail } from "@/core/integrations/email/index";
+import { sendEmail, sendEmailSync } from "@/core/integrations/email/index";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { findGroupsByFestival } from "@/features/groups/repositories/group.repository";
 
@@ -164,7 +164,7 @@ export const ParticipantLoginService = {
       updatedAt: now,
     });
 
-    const sendResult = await sendEmail({
+    const sendResult = await sendEmailSync({
       to: participantData.email,
       kind: {
         kind: "team_leader_otp",

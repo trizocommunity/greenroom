@@ -7,7 +7,7 @@
  */
 
 export { renderEmail, resolveTheme } from "./render";
-export { sendEmail } from "./send";
+export { sendEmail, sendEmailSync } from "./send";
 export type {
   EmailContext,
   EmailKind,
