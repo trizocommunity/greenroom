@@ -167,6 +167,48 @@ export const keys = {
     return key("judge-score", judgeId, codeLetterId);
   },
 
+  // ── Pub/Sub channels (Issue 46) ─────────────────────────────────────
+  /** `greenroom:programme:<programmeId>:score-events` — UC3 */
+  programmeScoreEvents(programmeId: string): string {
+    return key("programme", programmeId, "score-events");
+  },
+  /** `greenroom:festival:<festivalId>:announce` — UC6 */
+  festivalAnnounce(festivalId: string): string {
+    return key("festival", festivalId, "announce");
+  },
+  /** `greenroom:festival:<festivalId>:standings` — UC7 */
+  festivalStandings(festivalId: string): string {
+    return key("festival", festivalId, "standings");
+  },
+  /** `greenroom:festival:<festivalId>:chest-numbers` — UC14 */
+  festivalChestNumbers(festivalId: string): string {
+    return key("festival", festivalId, "chest-numbers");
+  },
+  /** `greenroom:festival:<festivalId>:schedule` — UC15 */
+  festivalSchedule(festivalId: string): string {
+    return key("festival", festivalId, "schedule");
+  },
+  /** `greenroom:festival:<festivalId>:countdown` — UC16 */
+  festivalCountdown(festivalId: string): string {
+    return key("festival", festivalId, "countdown");
+  },
+  /** `greenroom:festival:<festivalId>:results-count` — UC17 */
+  festivalResultsCount(festivalId: string): string {
+    return key("festival", festivalId, "results-count");
+  },
+  /** `greenroom:foodhall:<slotId>:events` — UC9 */
+  foodHallEvents(slotId: string): string {
+    return key("foodhall", slotId, "events");
+  },
+  /** `greenroom:super-admin:stats` — UC13 */
+  superAdminStats(): string {
+    return key("super-admin", "stats");
+  },
+  /** `greenroom:email:bounce` — UC18 (global, not per-festival) */
+  emailBounceChannel(): string {
+    return key("email", "bounce");
+  },
+
   // ── Cloudinary upload signatures ───────────────────────────────────
   /** `greenroom:cloudinary-sig:<userId>` */
   cloudinarySig(userId: string): string {

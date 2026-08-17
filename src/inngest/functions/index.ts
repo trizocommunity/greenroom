@@ -1,6 +1,8 @@
 import { cronDaily } from "./cron-daily";
 import { emailSend } from "./email-send";
 import { exportJob } from "./export-job";
+import { razorpayWebhook } from "./razorpay-webhook";
+import { resendWebhook } from "./resend-webhook";
 import { smokeTest } from "./smoke-test";
 
 /**
@@ -16,6 +18,8 @@ export const inngestFunctions = [
   cronDaily,
   emailSend,
   exportJob,
+  razorpayWebhook,
+  resendWebhook,
   // Smoke test (remove before production)
   smokeTest,
 ];
