@@ -5,6 +5,8 @@ import { generateId } from "@/core/database/ids";
 import { payment, userPurchaseSummary } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
 import { fromNow, MS, serverNowIso, serverNowMs } from "@/core/datetime/server";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import {
   getActivePaymentForUser,
   getLatestPaymentForUser,
@@ -207,6 +209,12 @@ export async function verifyPaymentByOrderIdDomain(payload: {
   }
 
   await updatePaymentStatus(paymentRecord.id, "PAID", razorpay_payment_id);
+
+  await publish(keys.superAdminStats(), {
+    type: "payment_received",
+    delta: 1,
+    occurredAt: serverNowIso(),
+  });
 
   return true;
 }

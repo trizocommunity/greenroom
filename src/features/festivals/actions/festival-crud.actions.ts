@@ -18,6 +18,8 @@ import {
   ERROR_MESSAGES,
   handleActionError,
 } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
   type CreateFestivalInput,
@@ -168,6 +170,12 @@ export async function createFestival(input: CreateFestivalInput) {
       targetType: "FESTIVAL",
       targetId: result.id,
       metadata: { name: result.name, tier: result.tier },
+    });
+
+    await publish(keys.superAdminStats(), {
+      type: "festival_created",
+      delta: 1,
+      occurredAt: result.createdAt,
     });
 
     revalidatePath("/profile");

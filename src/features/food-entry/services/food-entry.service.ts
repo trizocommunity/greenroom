@@ -3,6 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { participant } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import * as repo from "../repositories/food-entry.repository";
 
 export async function getFoodHallDashboardData(
@@ -100,6 +102,13 @@ export async function recordFoodEntry(
       scannedByName: scannedByName || "Unknown",
       scannedByEmail,
     });
+
+    await publish(keys.foodHallEvents(session.slotId), {
+      participantId: p.id,
+      chestNumber,
+      scannedAt: entry.scannedAt,
+    });
+
     return {
       ...entry,
       participantName: p.name,

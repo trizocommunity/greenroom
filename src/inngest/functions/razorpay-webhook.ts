@@ -1,3 +1,6 @@
+import { serverNowIso } from "@/core/datetime/server";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
   getPaymentByOrderId,
@@ -65,6 +68,12 @@ export const razorpayWebhook = inngest.createFunction(
         actor: { actorId: payment.userId, actorRole: "USER" },
       }),
     );
+
+    await publish(keys.superAdminStats(), {
+      type: "payment_received",
+      delta: 1,
+      occurredAt: serverNowIso(),
+    });
 
     return { ok: true, eventId, orderId };
   },
