@@ -46,16 +46,13 @@ export function ScheduleReportingDrawer({
   const isGroup = programme.type === "GROUP";
 
   const handleStart = () => {
-    startTransition(async () => {
+    (async () => {
       try {
         const res = await startProgrammeReportingAction(
           festivalId,
           programme.id,
         );
         if (res.success) {
-          // Additionally, automatically notify the announcer
-          await notifyCallList(festivalId, entry.id).catch(() => {});
-          toast.success("Reporting started and Announcer notified!");
           onSuccess();
           onOpenChange(false);
           if (slug) {
@@ -63,6 +60,8 @@ export function ScheduleReportingDrawer({
               `/dashboard/${slug}/event-works/reporting?programmeId=${programme.id}`,
             );
           }
+          await notifyCallList(festivalId, entry.id).catch(() => {});
+          toast.success("Reporting started and Announcer notified!");
         } else {
           toast.error("Failed to start reporting");
         }
@@ -71,7 +70,7 @@ export function ScheduleReportingDrawer({
           error instanceof Error ? error.message : "Failed to start reporting",
         );
       }
-    });
+    })();
   };
 
   return (
@@ -118,6 +117,17 @@ export function ScheduleReportingDrawer({
                 </h3>
                 <p className="font-medium text-sm">
                   {entry.stage?.name ?? "No stage assigned"}
+                </p>
+              </div>
+              <div className="col-span-2">
+                <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-1">
+                  <Users className="w-3.5 h-3.5" />
+                  Assigned Participants
+                </h3>
+                <p className="font-medium text-sm">
+                  {isGroup
+                    ? `${entry.teamCount} Teams (Team Lead & Party)`
+                    : `${entry.assignmentCount} Individuals`}
                 </p>
               </div>
             </div>

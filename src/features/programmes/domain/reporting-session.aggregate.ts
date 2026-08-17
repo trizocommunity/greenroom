@@ -11,6 +11,29 @@ import type {
   ReportingUnlockedForScheduleChange,
 } from "./reporting-events";
 
+/**
+ * Compute the end of the post-close reporting window.
+ *
+ * Semantics: anchor on `nowMs` and add the scheduled duration
+ * (`scheduleEndMs - scheduleStartMs`). If reporting opens late, the judge
+ * still gets the full scheduled duration counted from the moment the
+ * session closed — they are not penalised for upstream delays.
+ *
+ * Returns `null` when either bound is missing or the window would be
+ * non-positive. Pure function; clock is passed in to keep it testable.
+ */
+export function computeWindowEndsAt(
+  scheduleStartMs: number | null,
+  scheduleEndMs: number | null,
+  nowMs: number,
+): string | null {
+  if (scheduleStartMs === null || scheduleEndMs === null) return null;
+  if (!Number.isFinite(scheduleStartMs) || !Number.isFinite(scheduleEndMs))
+    return null;
+  if (scheduleEndMs <= scheduleStartMs) return null;
+  return new Date(nowMs + (scheduleEndMs - scheduleStartMs)).toISOString();
+}
+
 export type ReportingStatus =
   | "NOT_STARTED"
   | "IN_PROGRESS"
@@ -78,6 +101,7 @@ export type ReportingSessionState = {
    * Gates the scratch step and lets the client resume after a refresh.
    */
   checkoutCompletedAt: string | null;
+  windowEndsAt: string | null;
   programmeType: ProgrammeType;
   programmeStatus: string;
   programmeName: string;
@@ -149,6 +173,10 @@ export class ReportingSession {
 
   get checkoutCompletedAt(): string | null {
     return this.state.checkoutCompletedAt;
+  }
+
+  get windowEndsAt(): string | null {
+    return this.state.windowEndsAt;
   }
 
   get reportedParticipants(): readonly ReportedParticipant[] {
@@ -465,7 +493,11 @@ export class ReportingSession {
     });
   }
 
-  close(actorName: string, effectiveEndedAt?: string): void {
+  close(
+    actorName: string,
+    effectiveEndedAt?: string,
+    windowEndsAt?: string | null,
+  ): void {
     if (this.state.isLocked) {
       throw new Error("Reporting is already locked");
     }
@@ -481,6 +513,7 @@ export class ReportingSession {
     this.state.isLocked = true;
     this.state.endedAt = endedAt;
     this.state.endedBy = actorName;
+    this.state.windowEndsAt = windowEndsAt ?? null;
 
     this.record({
       type: "REPORTING_CLOSED",
@@ -507,6 +540,7 @@ export class ReportingSession {
     this.state.endedAt = now;
     this.state.endedBy = actorName;
     this.state.checkoutCompletedAt = null;
+    this.state.windowEndsAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 
@@ -537,6 +571,7 @@ export class ReportingSession {
     this.state.endedAt = now;
     this.state.endedBy = actorName;
     this.state.checkoutCompletedAt = null;
+    this.state.windowEndsAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 
@@ -605,6 +640,7 @@ export class ReportingSession {
     this.state.endedAt = null;
     this.state.endedBy = null;
     this.state.checkoutCompletedAt = null;
+    this.state.windowEndsAt = null;
     this.state.reportedParticipants = [];
     this.state.codeLetters = [];
 
@@ -643,3 +679,15 @@ export class ReportingSession {
     }
   }
 }
+
+// Re-export the reported-entries helpers so the aggregate is the single
+// import surface for `features/programmes` consumers. The actual
+// implementation lives in `reported-entries.ts` because it must stay
+// client-safe (the aggregate imports `node:crypto`).
+export {
+  type ReportedEntriesFromTilesInput,
+  type ReportedEntriesInput,
+  type ReportedEntry,
+  reportedEntriesFromReportedRows,
+  reportedEntriesFromScratchTiles,
+} from "./reported-entries";

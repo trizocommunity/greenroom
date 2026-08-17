@@ -1,7 +1,16 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Crown, Loader2, Plus, Search, Trash2, Users, X, ShieldAlert } from "lucide-react";
+import {
+  Crown,
+  Loader2,
+  Plus,
+  Search,
+  Trash2,
+  Users,
+  X,
+  ShieldAlert,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";
 import { useCategories } from "@/api/client/categories";
@@ -38,7 +47,12 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   formatDate,
   formatDateTime,
@@ -294,43 +308,6 @@ export function AssignmentsClient({
     if (isReadOnlyMode) setAssignmentModalOpen(false);
   }, [isReadOnlyMode]);
 
-  const filteredAssignments = useMemo(() => {
-    return assignments.filter((a: any) => {
-      if (filterGroup !== "ALL") {
-        const assignmentGroupId = a.group?.id || a.participant?.groupId;
-        if (assignmentGroupId !== filterGroup) return false;
-      }
-      if (filterCategory !== "ALL") {
-        const categoryId = a.category?.id || a.programme?.categoryId;
-        if (categoryId !== filterCategory) return false;
-      }
-      if (filterType !== "ALL") {
-        if (a.programme?.type !== filterType) return false;
-      }
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const participantName = a.participant?.name?.toLowerCase() || "";
-        const programmeName = a.programme?.name?.toLowerCase() || "";
-        const groupName =
-          (a.group?.name || a.participant?.group?.name)?.toLowerCase() || "";
-        if (
-          !participantName.includes(query) &&
-          !programmeName.includes(query) &&
-          !groupName.includes(query)
-        ) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [
-    assignments,
-    filterGroup,
-    filterCategory,
-    filterType,
-    searchQuery,
-  ]);
-
   const tableRows = useMemo<AssignmentTableRow[]>(() => {
     const rows: AssignmentTableRow[] = [];
     const teamMap = new Map<
@@ -346,7 +323,7 @@ export function AssignmentsClient({
       }
     >();
 
-    for (const a of filteredAssignments) {
+    for (const a of assignments) {
       if (a.programme?.type === "GROUP") {
         const gid = a.group?.id || a.participant?.groupId;
         if (!gid) continue;
@@ -401,7 +378,7 @@ export function AssignmentsClient({
     });
 
     return rows;
-  }, [filteredAssignments, displayTz]);
+  }, [assignments, displayTz]);
 
   const programmeCards = useMemo<ProgrammeCardRow[]>(() => {
     const map = new Map<
@@ -598,12 +575,90 @@ export function AssignmentsClient({
   }, [tableRows, participants, programmes, categories, groups, displayTz]);
 
   const finalCards = useMemo(() => {
-    return programmeCards.filter(card => {
-      if (filterCompletion === "COMPLETED" && card.progress < 100) return false;
-      if (filterCompletion === "UNCOMPLETED" && card.progress === 100) return false;
-      return true;
+    const query = searchQuery.trim().toLowerCase();
+
+    return programmeCards.filter((card) => {
+      if (filterType !== "ALL" && card.programmeType !== filterType) {
+        return false;
+      }
+
+      if (filterCompletion === "COMPLETED" && card.progress < 100) {
+        return false;
+      }
+      if (filterCompletion === "UNCOMPLETED" && card.progress === 100) {
+        return false;
+      }
+
+      const cardHasMatch = card.rows.some((row) => {
+        if (row.kind === "individual") {
+          const a = row.assignment;
+          const groupId = a.group?.id || a.participant?.groupId;
+          const categoryId = a.category?.id || a.programme?.categoryId;
+          const programmeType = a.programme?.type;
+
+          if (filterGroup !== "ALL" && groupId !== filterGroup) {
+            return false;
+          }
+          if (filterCategory !== "ALL" && categoryId !== filterCategory) {
+            return false;
+          }
+          if (filterType !== "ALL" && programmeType !== filterType) {
+            return false;
+          }
+          if (query) {
+            const haystack = [
+              a.participant?.name,
+              a.participant?.chestNumber,
+              a.programme?.name,
+              a.group?.name,
+              a.participant?.group?.name,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase();
+            if (!haystack.includes(query)) return false;
+          }
+          return true;
+        }
+
+        const programmeType = row.programme?.type;
+        const categoryId = row.category?.id || row.programme?.categoryId;
+
+        if (filterGroup !== "ALL" && row.groupId !== filterGroup) {
+          return false;
+        }
+        if (filterCategory !== "ALL" && categoryId !== filterCategory) {
+          return false;
+        }
+        if (filterType !== "ALL" && programmeType !== filterType) {
+          return false;
+        }
+        if (query) {
+          const teamHaystack = [
+            row.programme?.name,
+            row.groupName,
+            `team ${row.teamNumber}`,
+            ...row.assignments.map((a: any) => a.participant?.name),
+            ...row.assignments.map((a: any) => a.participant?.chestNumber),
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          if (!teamHaystack.includes(query)) return false;
+        }
+        return true;
+      });
+
+      return cardHasMatch;
     });
-  }, [programmeCards, filterCompletion]);
+  }, [
+    programmeCards,
+    filterGroup,
+    filterCategory,
+    filterType,
+    filterCompletion,
+    searchQuery,
+  ]);
 
   const hasFilters =
     filterGroup !== "ALL" ||
@@ -734,7 +789,10 @@ export function AssignmentsClient({
                 <SelectItem value="GROUP">Group</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterCompletion} onValueChange={setFilterCompletion}>
+            <Select
+              value={filterCompletion}
+              onValueChange={setFilterCompletion}
+            >
               <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs">
                 <SelectValue placeholder="Completion" />
               </SelectTrigger>
@@ -802,10 +860,10 @@ export function AssignmentsClient({
         </div>
       )}
 
-      {programmeCards.length > pageSize && (
+      {finalCards.length > pageSize && (
         <DataTablePagination
           pageIndex={pageIndex}
-          pageCount={Math.ceil(programmeCards.length / pageSize)}
+          pageCount={Math.ceil(finalCards.length / pageSize)}
           onPageChange={(page) => setPageIndex(page)}
           className="mt-4"
         />
@@ -1214,7 +1272,8 @@ export function AssignmentsClient({
                                       </TooltipTrigger>
                                       <TooltipContent side="right">
                                         <p className="text-xs">
-                                          Participant has exceeded their allowed limit for this category.
+                                          Participant has exceeded their allowed
+                                          limit for this category.
                                         </p>
                                       </TooltipContent>
                                     </Tooltip>
@@ -1326,7 +1385,9 @@ export function AssignmentsClient({
                                                 </TooltipTrigger>
                                                 <TooltipContent side="right">
                                                   <p className="text-xs">
-                                                    Participant has exceeded their allowed limit for this category.
+                                                    Participant has exceeded
+                                                    their allowed limit for this
+                                                    category.
                                                   </p>
                                                 </TooltipContent>
                                               </Tooltip>

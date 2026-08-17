@@ -1,10 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Sparkles } from "lucide-react";
+import { Crown, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
+import { reportedEntriesFromScratchTiles } from "@/features/programmes/domain/reported-entries";
+import { ReportedEntriesPanel } from "./ReportedEntriesPanel";
 import type { ScratchTile } from "./types";
 
 type ScratchGridProps = {
@@ -34,6 +36,8 @@ export function ScratchGrid({
   isRevealingAll,
 }: ScratchGridProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const reportedEntries = reportedEntriesFromScratchTiles({ tiles });
 
   const current = tiles.find((t) => t.queuePosition === currentQueuePosition);
   const remaining = tiles.filter((t) => !t.revealedAt).length;
@@ -65,7 +69,12 @@ export function ScratchGrid({
                   (#{current.queuePosition} of {tiles.length})
                 </span>
               </p>
-              {current.subLabel ? (
+              {current.teamLeadName ? (
+                <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                  <Crown className="h-3 w-3 shrink-0 text-primary" />
+                  {current.teamLeadName}
+                </p>
+              ) : current.subLabel ? (
                 <p className="truncate text-muted-foreground text-xs">
                   {current.subLabel}
                 </p>
@@ -157,6 +166,8 @@ export function ScratchGrid({
           out the rest.
         </p>
       ) : null}
+
+      <ReportedEntriesPanel entries={reportedEntries} />
     </div>
   );
 }

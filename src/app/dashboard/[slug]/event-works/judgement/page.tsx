@@ -71,6 +71,7 @@ export default async function JudgementPage({
     return (
       <JudgementWizardClient
         festivalId={festival.id}
+        festivalSlug={slug}
         initialDashboardData={initialDashboardData as any}
         stages={[]}
         initialStageId={null}
@@ -82,6 +83,7 @@ export default async function JudgementPage({
   return (
     <JudgementWizardClient
       festivalId={festival.id}
+      festivalSlug={slug}
       initialDashboardData={initialDashboardData as any}
       stages={stages.map((s) => ({ id: s.id, name: s.name }))}
       initialStageId={initialStageId}

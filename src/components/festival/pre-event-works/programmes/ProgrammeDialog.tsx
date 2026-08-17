@@ -36,7 +36,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -348,8 +347,8 @@ export function ProgrammeDialog({
     };
 
     const detailsBody = (
-      <div className="flex flex-col flex-1 min-h-0 space-y-4">
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm shrink-0">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
           <div className="space-y-1">
             <span className="text-muted-foreground">Category</span>
             <div className="font-medium">{details.category?.name}</div>
@@ -386,8 +385,8 @@ export function ProgrammeDialog({
           )}
         </div>
 
-        <div className="space-y-2 flex flex-col flex-1 min-h-0">
-          <div className="flex items-center justify-between gap-3 shrink-0">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
             <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Assigned participants
             </h4>
@@ -399,92 +398,94 @@ export function ProgrammeDialog({
             </div>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0 pr-1">
-            {groupBlocks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-1 py-12 text-muted-foreground">
-                <User className="h-5 w-5 opacity-50" />
-                <span className="text-xs">No assignments yet</span>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {groupBlocks.map((block) => (
-                  <div key={block.groupId}>
-                    <div className="mb-2 flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{
-                          backgroundColor: block.groupColor || "var(--primary)",
-                        }}
-                      />
-                      <h5 className="min-w-0 flex-1 truncate text-sm font-semibold text-heading">
-                        {block.groupName}
-                      </h5>
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {block.members.length}
-                      </span>
-                    </div>
-
-                    {isGroupProgramme ? (
-                      <div className="space-y-4 pl-4">
-                        {Array.from(block.teams.entries())
-                          .sort((x, y) => x[0] - y[0])
-                          .map(([teamNumber, members]) => {
-                            const lead = (teamLeads as any)?.[block.groupId]?.[
-                              teamNumber
-                            ];
-                            return (
-                              <div key={teamNumber}>
-                                <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                    Team {teamNumber}
-                                  </span>
-                                  {lead ? (
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                                      <Crown className="h-3 w-3 text-primary" />
-                                      Lead:{" "}
-                                      <span className="font-medium text-heading">
-                                        {lead.participantName}
-                                      </span>
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <ul className="divide-y divide-border border-y border-border">
-                                  {members.map((assignment: any) => {
-                                    // If this is a group programme, we might have multiple members inside the assignment
-                                    if (assignment.members && Array.isArray(assignment.members) && assignment.members.length > 0) {
-                                      return assignment.members.map((m: any) => renderMember(m, lead?.participantId));
-                                    }
-                                    // Fallback for legacy assignments where participant is directly on assignment
-                                    return renderMember(assignment, lead?.participantId);
-                                  })}
-                                </ul>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    ) : (
-                      <ul className="divide-y divide-border border-y border-border pl-4">
-                        {block.members.map((a: any) => renderMember(a))}
-                      </ul>
-                    )}
+          {groupBlocks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-1 py-12 text-muted-foreground">
+              <User className="h-5 w-5 opacity-50" />
+              <span className="text-xs">No assignments yet</span>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {groupBlocks.map((block) => (
+                <div key={block.groupId}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: block.groupColor || "var(--primary)",
+                      }}
+                    />
+                    <h5 className="min-w-0 flex-1 truncate text-sm font-semibold text-heading">
+                      {block.groupName}
+                    </h5>
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {block.members.length}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
+
+                  {isGroupProgramme ? (
+                    <div className="space-y-4 pl-4">
+                      {Array.from(block.teams.entries())
+                        .sort((x, y) => x[0] - y[0])
+                        .map(([teamNumber, members]) => {
+                          const lead = (teamLeads as any)?.[block.groupId]?.[
+                            teamNumber
+                          ];
+                          return (
+                            <div key={teamNumber}>
+                              <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                  Team {teamNumber}
+                                </span>
+                                {lead ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    <Crown className="h-3 w-3 text-primary" />
+                                    Lead:{" "}
+                                    <span className="font-medium text-heading">
+                                      {lead.participantName}
+                                    </span>
+                                  </span>
+                                ) : null}
+                              </div>
+                              <ul className="divide-y divide-border border-y border-border">
+                                {members.map((assignment: any) => {
+                                  if (
+                                    assignment.members &&
+                                    Array.isArray(assignment.members) &&
+                                    assignment.members.length > 0
+                                  ) {
+                                    return assignment.members.map((m: any) =>
+                                      renderMember(m, lead?.participantId),
+                                    );
+                                  }
+                                  return renderMember(
+                                    assignment,
+                                    lead?.participantId,
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border border-y border-border pl-4">
+                      {block.members.map((a: any) => renderMember(a))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
 
     return (
-      <div className="flex flex-col flex-1 min-h-0 space-y-4 py-1">
-        <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex flex-1 min-h-0 flex-col">
+        <div className="flex-1 overflow-y-auto px-1 min-h-0 space-y-3 sm:space-y-4 py-1">
           {canUseAuditDrawer ? (
-            <Tabs
-              defaultValue="details"
-              className="flex flex-col flex-1 min-h-0"
-            >
-              <TabsList className="w-full">
+            <Tabs defaultValue="details" className="flex flex-col">
+              <TabsList className="w-full shrink-0">
                 <TabsTrigger value="details" className="flex-1">
                   Details
                 </TabsTrigger>
@@ -492,22 +493,16 @@ export function ProgrammeDialog({
                   Activity
                 </TabsTrigger>
               </TabsList>
-              <TabsContent
-                value="details"
-                className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3"
-              >
+              <TabsContent value="details" className="mt-3">
                 {detailsBody}
               </TabsContent>
-              <TabsContent
-                value="activity"
-                className="flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden mt-3"
-              >
-                <div className="rounded-lg border overflow-hidden flex-1 flex flex-col">
+              <TabsContent value="activity" className="mt-3">
+                <div className="rounded-lg border overflow-hidden">
                   <ProgrammeActivityTimeline
                     entries={activityDetail?.auditTimeline ?? []}
                     isLoading={isLoadingActivity}
-                    className="p-3 flex-1"
-                    scrollClassName="flex-1"
+                    className="p-3"
+                    scrollClassName="max-h-[60vh]"
                   />
                 </div>
               </TabsContent>

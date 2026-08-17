@@ -1,5 +1,4 @@
-import { asc, eq, inArray } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ProgrammeReportingClient } from "@/components/festival/event-works/programme-reporting/ProgrammeReportingClient";
@@ -7,17 +6,13 @@ import type { ReportingBoardItem } from "@/components/festival/event-works/progr
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
-  programmeAssignment as assignmentTable,
   festival as festivalTable,
-  group as groupTable,
-  participant as participantTable,
-  programmeAssignmentMember as programmeAssignmentMemberTable,
-  programmeTeamLead as programmeTeamLeadTable,
   stage as stageTable,
 } from "@/core/database/schema";
 import type { Tier } from "@/core/types/app-enums";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import { getEffectiveFeatureTagEnabled } from "@/features/plan-features/services/plan-features-tags.service";
+import { getProgrammeAssignmentsAction } from "@/features/programmes/actions/get-assignments.action";
 import { getProgrammeReportingBoardAction } from "@/features/programmes/actions/programme-reporting.actions";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 import { getStageFilterCookie } from "@/features/stages/stage-filter-cookie.server";
@@ -53,68 +48,15 @@ export default async function ProgrammeReportingPage({
     notFound();
   }
 
-  const participantGroupTable = alias(groupTable, "participant_group");
-
-  const [boardResult, assignmentRowsRaw, assignmentMembersRaw, festivalStages] =
-    await Promise.all([
-      getProgrammeReportingBoardAction(festival.id),
-      db
-        .select({
-          id: assignmentTable.id,
-          programmeId: assignmentTable.programmeId,
-          participantId: assignmentTable.participantId,
-          groupId: assignmentTable.groupId,
-          teamNumber: assignmentTable.teamNumber,
-          participantName: participantTable.name,
-          participantChestNumber: participantTable.chestNumber,
-          participantGroupName: participantGroupTable.name,
-          participantGroupId: participantGroupTable.id,
-          groupName: groupTable.name,
-        })
-        .from(assignmentTable)
-        .leftJoin(
-          participantTable,
-          eq(assignmentTable.participantId, participantTable.id),
-        )
-        .leftJoin(groupTable, eq(assignmentTable.groupId, groupTable.id))
-        .leftJoin(
-          participantGroupTable,
-          eq(participantTable.groupId, participantGroupTable.id),
-        )
-        .where(eq(assignmentTable.festivalId, festival.id)),
-      db
-        .select({
-          assignmentId: programmeAssignmentMemberTable.assignmentId,
-          participantId: programmeAssignmentMemberTable.participantId,
-        })
-        .from(programmeAssignmentMemberTable)
-        .where(eq(programmeAssignmentMemberTable.festivalId, festival.id)),
-      db.query.stage.findMany({
-        where: eq(stageTable.festivalId, festival.id),
-        columns: { id: true, name: true },
-        orderBy: [asc(stageTable.name)],
-      }),
-    ]);
-
-  const programmeIds = Array.from(
-    new Set(assignmentRowsRaw.map((r) => r.programmeId)),
-  );
-  const teamLeads =
-    programmeIds.length > 0
-      ? await db
-          .select({
-            programmeId: programmeTeamLeadTable.programmeId,
-            groupId: programmeTeamLeadTable.groupId,
-            teamNumber: programmeTeamLeadTable.teamNumber,
-            participantName: participantTable.name,
-          })
-          .from(programmeTeamLeadTable)
-          .leftJoin(
-            participantTable,
-            eq(programmeTeamLeadTable.participantId, participantTable.id),
-          )
-          .where(inArray(programmeTeamLeadTable.programmeId, programmeIds))
-      : [];
+  const [boardResult, assignments, festivalStages] = await Promise.all([
+    getProgrammeReportingBoardAction(festival.id),
+    getProgrammeAssignmentsAction(festival.id),
+    db.query.stage.findMany({
+      where: eq(stageTable.festivalId, festival.id),
+      columns: { id: true, name: true },
+      orderBy: [asc(stageTable.name)],
+    }),
+  ]);
 
   const accessibleStageIds = await StageAssignmentService.getAccessibleStageIds(
     festival.id,
@@ -155,42 +97,6 @@ export default async function ProgrammeReportingPage({
         }
       : null,
   })) as ReportingBoardItem[];
-
-  const teamLeadsMap = new Map<string, string>();
-  for (const tl of teamLeads) {
-    if (tl.participantName) {
-      teamLeadsMap.set(
-        `${tl.programmeId}::${tl.groupId}::${tl.teamNumber}`,
-        tl.participantName,
-      );
-    }
-  }
-
-  const membersByAssignmentId = new Map<string, string[]>();
-  for (const m of assignmentMembersRaw) {
-    const existing = membersByAssignmentId.get(m.assignmentId) ?? [];
-    existing.push(m.participantId);
-    membersByAssignmentId.set(m.assignmentId, existing);
-  }
-
-  const assignments = assignmentRowsRaw.map((row) => {
-    const computedGroupId = row.groupId ?? row.participantGroupId ?? null;
-    return {
-      id: row.id,
-      programmeId: row.programmeId,
-      participantId: row.participantId ?? null,
-      participantName: row.participantName ?? null,
-      chestNumber: row.participantChestNumber ?? null,
-      groupId: computedGroupId,
-      groupName: row.groupName ?? row.participantGroupName ?? null,
-      teamNumber: row.teamNumber ?? null,
-      teamLeadName:
-        teamLeadsMap.get(
-          `${row.programmeId}::${computedGroupId}::${row.teamNumber}`,
-        ) ?? null,
-      teamParticipantIds: membersByAssignmentId.get(row.id) ?? [],
-    };
-  });
 
   return (
     <div className="space-y-4 pt-4 sm:pt-6">

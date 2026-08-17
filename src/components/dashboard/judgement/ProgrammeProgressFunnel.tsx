@@ -10,12 +10,14 @@ export function ProgrammeProgressFunnel({
   reported,
   absent,
   scored,
+  hideAbsent,
   className,
 }: {
   assigned: number;
   reported: number;
   absent: number;
   scored?: number;
+  hideAbsent?: boolean;
   className?: string;
 }) {
   const hasScored = typeof scored === "number";
@@ -43,14 +45,17 @@ export function ProgrammeProgressFunnel({
       color: "bg-emerald-500",
       bg: "bg-emerald-500/15",
     },
-    {
+  ];
+
+  if (!hideAbsent) {
+    bars.push({
       label: "Absent",
       value: absent,
       max: assigned,
       color: "bg-amber-500",
       bg: "bg-amber-500/15",
-    },
-  ];
+    });
+  }
 
   if (hasScored) {
     bars.push({
