@@ -311,7 +311,7 @@ export async function announceResult(
       }),
       publish(keys.festivalResultsCount(festivalId), {
         festivalId,
-        count: announcedCountRow?.value ?? 0,
+        count: announcedCountRow[0]?.value ?? 0,
         lastResultAt: now,
       }),
     ]);
