@@ -1,4 +1,5 @@
 import { cloudinaryTransform } from "./cloudinary-transform";
+import { countdownTicker } from "./countdown-ticker";
 import { cronDaily } from "./cron-daily";
 import { csvImport } from "./csv-import";
 import { emailSend } from "./email-send";
@@ -19,6 +20,7 @@ import { smokeTest } from "./smoke-test";
 export const inngestFunctions = [
   // Production queues
   cronDaily,
+  countdownTicker,
   emailSend,
   exportJob,
   csvImport,
