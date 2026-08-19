@@ -40,6 +40,7 @@ import type {
   PublishedResultProgramme,
   TeamStandingRow,
 } from "@/features/announcement/services/announcer.service";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 import { toast } from "@/lib/toast";
 
 function QueueActionButton({
@@ -128,10 +129,36 @@ export function AnnouncerClient({
   const [publishedPageIndex, setPublishedPageIndex] = useState(0);
   const pageSize = 15;
 
+  /* UC3 — score-events stream. The Stage Portal scoring client pushes
+     `{ programmeId, judgeId, score, at }` here on every score submission;
+     multiple judges might be marking the same programme concurrently.
+     A fresh event means the *current* programme's marks panel may be
+     stale — refresh the whole console so the announcer sees marks come
+     in without manual reloads. Hook auto-reconnects on disconnect. The
+     `activeProgramme` is whichever programme the announcer is currently
+     marking for; null/empty means there's no live programme to watch. */
+  const activeProgrammeId = activeProgramme?.id ?? "";
+  const { data: scoreEvent, status: liveStatus } = useLiveChannel<{
+    programmeId: string;
+    judgeId: string;
+    score: number | string;
+    at: string;
+  }>({
+    url: `/api/v1/programmes/${activeProgrammeId || "0"}/score-events/stream`,
+  });
+
   useEffect(() => {
+    if (!scoreEvent) return;
+    router.refresh();
+  }, [scoreEvent, router]);
+
+  /* Polling fallback. 15s cadence matches the pre-Issue-48 behaviour;
+     suppressed when SSE is open so we don't double-refresh. */
+  useEffect(() => {
+    if (liveStatus === "open") return;
     const interval = setInterval(() => router.refresh(), 15_000);
     return () => clearInterval(interval);
-  }, [router]);
+  }, [router, liveStatus]);
 
   const sorted = useMemo(() => {
     return [...queue].sort((a, b) => {
