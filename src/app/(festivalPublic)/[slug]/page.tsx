@@ -200,6 +200,7 @@ export default async function FestivalPage({
             <ResultsList
               festivalName={displayData.name}
               festivalSlug={displayData.slug}
+              festivalId={displayData.id}
               accentColor={accentColor}
               initialResults={basicResults}
               teamStandings={teamStandings}

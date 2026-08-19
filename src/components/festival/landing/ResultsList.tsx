@@ -32,6 +32,7 @@ import type {
   PublicProgrammeResults,
   PublicResultsPage,
 } from "@/features/festivals/loaders/festival-results.loader";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 import { TeamStandingsSection } from "./TeamStandingsSection";
 
 export interface Result {
@@ -60,6 +61,10 @@ export interface TeamStanding {
 interface ResultsListProps {
   festivalName: string;
   festivalSlug: string;
+  /** Festival ID for the SSE channel. Same value as `festival.id` on the
+   *  server-rendered loader. The slug routes the public API; the ID makes
+   *  the Redis Pub/Sub channel key unambiguous from other surfaces. */
+  festivalId: string;
   accentColor: string;
   /** Server-rendered first page of programme results. */
   initialResults: PublicResultsPage;
@@ -78,6 +83,7 @@ const selectProgrammes = (data: unknown) =>
 export function ResultsList({
   festivalName,
   festivalSlug,
+  festivalId,
   accentColor,
   initialResults,
   teamStandings: initialTeamStandings,
@@ -146,11 +152,34 @@ export function ResultsList({
     !searchQuery.trim() &&
     programTypeFilter === "ALL";
 
+  /* UC17 — `announceResult` publishes `{ festivalId, count, lastResultAt }`
+     to the public results-count channel. Treat every event as a "something
+     changed, refresh page 1" signal. The hook has its own exponential
+     backoff, so we don't need to wrap the EventSource here. */
+  const { data: resultsCountEvent, status: liveStatus } = useLiveChannel<{
+    festivalId: string;
+    count: number;
+    lastResultAt: string;
+  }>({
+    url: `/api/v1/festivals/${festivalId}/results-count/stream`,
+  });
+
   useEffect(() => {
     if (!canRefresh) return;
+    if (!resultsCountEvent) return;
+    refreshFirstPage();
+  }, [resultsCountEvent, canRefresh, refreshFirstPage]);
+
+  /* Polling fallback. Runs only when SSE is not `open` — when the channel
+     reconnects with backoff (>1s) or has failed, the 30s poll keeps the
+     page moving. Mirrors the pre-Issue-48 behaviour exactly so a broken
+     SSE handler never causes a visible regression. */
+  useEffect(() => {
+    if (!canRefresh) return;
+    if (liveStatus === "open") return;
     const id = window.setInterval(refreshFirstPage, REFRESH_MS);
     return () => window.clearInterval(id);
-  }, [canRefresh, refreshFirstPage]);
+  }, [canRefresh, liveStatus, refreshFirstPage]);
 
   /* Shared poster links land on ?programmeId=…, which may point at a
      programme outside the loaded page — so fetch just that one. */

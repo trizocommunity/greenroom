@@ -58,6 +58,7 @@ export default async function ResultsPage({
       <ResultsList
         festivalName={festival.name}
         festivalSlug={slug}
+        festivalId={festival.id}
         accentColor={accentColor}
         initialResults={initialResults}
         teamStandings={teamStandings}
