@@ -208,8 +208,8 @@ export function ProgrammesTab({
         </div>
       )}
 
-      <div>
-        <div className="mb-3 sm:mb-5 flex flex-col xl:flex-row xl:items-center gap-3">
+      <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
@@ -287,6 +287,7 @@ export function ProgrammesTab({
             )}
           </div>
         </div>
+      </div>
 
         {eligibleProgrammes.length === 0 ? (
           <AppEmptyState
