@@ -1,10 +1,18 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Crown, Eye, Loader2, Mail, Phone, ShieldAlert, BadgeInfo } from "lucide-react";
+import {
+  BadgeInfo,
+  Crown,
+  Eye,
+  Loader2,
+  Mail,
+  Phone,
+  ShieldAlert,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAssignments } from "@/api/client/assignments";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamParticipantsDialog } from "@/components/festival/pre-event-works/assignments/TeamParticipantsDialog";
@@ -103,7 +111,8 @@ export function ParticipantDetailsDialog({
 
   const filteredParticipantAssignments = useMemo(() => {
     return participantAssignments.filter((a: any) => {
-      if (filterType !== "ALL" && a.programme?.type !== filterType) return false;
+      if (filterType !== "ALL" && a.programme?.type !== filterType)
+        return false;
       if (filterCategory !== "ALL") {
         const catId = a.programme?.category?.id;
         if (catId !== filterCategory) return false;
@@ -240,7 +249,6 @@ export function ParticipantDetailsDialog({
                     </p>
                     <p className="text-sm font-medium">
                       {formatDate(participant.dateOfBirth, {
-                        
                         style: "long",
                       })}
                     </p>
@@ -298,50 +306,87 @@ export function ParticipantDetailsDialog({
                 )}
               </div>
 
-              {limitStatus && (limitStatus.maxStage !== null || limitStatus.maxNonStage !== null || limitStatus.maxAll !== null) && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-semibold tracking-tight">
-                      Programme Limits
-                    </h4>
-                    {limitStatus?.isOverLimit && (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <ShieldAlert className="h-3 w-3" />
-                        Limit Exceeded
-                      </Badge>
-                    )}
+              {limitStatus &&
+                (limitStatus.maxStage !== null ||
+                  limitStatus.maxNonStage !== null ||
+                  limitStatus.maxAll !== null) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-semibold tracking-tight">
+                        Programme Limits
+                      </h4>
+                      {limitStatus?.isOverLimit && (
+                        <Badge
+                          variant="destructive"
+                          className="flex items-center gap-1"
+                        >
+                          <ShieldAlert className="h-3 w-3" />
+                          Limit Exceeded
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-2 border rounded-xl p-4 bg-muted/10">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Stage:</span>
+                          <span
+                            className={
+                              limitStatus?.isOverStage
+                                ? "text-destructive font-medium flex items-center gap-1"
+                                : "font-medium"
+                            }
+                          >
+                            {limitStatus?.stageCount} /{" "}
+                            {limitStatus?.maxStage ?? "∞"}
+                            {limitStatus?.isOverStage && (
+                              <ShieldAlert className="h-3 w-3" />
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">
+                            Non-Stage:
+                          </span>
+                          <span
+                            className={
+                              limitStatus?.isOverNonStage
+                                ? "text-destructive font-medium flex items-center gap-1"
+                                : "font-medium"
+                            }
+                          >
+                            {limitStatus?.nonStageCount} /{" "}
+                            {limitStatus?.maxNonStage ?? "∞"}
+                            {limitStatus?.isOverNonStage && (
+                              <ShieldAlert className="h-3 w-3" />
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">
+                            All Programmes:
+                          </span>
+                          <span
+                            className={
+                              limitStatus?.isOverAll
+                                ? "text-destructive font-medium flex items-center gap-1"
+                                : "font-medium"
+                            }
+                          >
+                            {limitStatus?.allCount} /{" "}
+                            {limitStatus?.maxAll ?? "∞"}
+                            {limitStatus?.isOverAll && (
+                              <ShieldAlert className="h-3 w-3" />
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2 border rounded-xl p-4 bg-muted/10">
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">Stage:</span>
-                        <span className={limitStatus?.isOverStage ? "text-destructive font-medium flex items-center gap-1" : "font-medium"}>
-                          {limitStatus?.stageCount} / {limitStatus?.maxStage ?? "∞"}
-                          {limitStatus?.isOverStage && <ShieldAlert className="h-3 w-3" />}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">Non-Stage:</span>
-                        <span className={limitStatus?.isOverNonStage ? "text-destructive font-medium flex items-center gap-1" : "font-medium"}>
-                          {limitStatus?.nonStageCount} / {limitStatus?.maxNonStage ?? "∞"}
-                          {limitStatus?.isOverNonStage && <ShieldAlert className="h-3 w-3" />}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">All Programmes:</span>
-                        <span className={limitStatus?.isOverAll ? "text-destructive font-medium flex items-center gap-1" : "font-medium"}>
-                          {limitStatus?.allCount} / {limitStatus?.maxAll ?? "∞"}
-                          {limitStatus?.isOverAll && <ShieldAlert className="h-3 w-3" />}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
 
               <div className="space-y-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -446,11 +491,15 @@ export function ParticipantDetailsDialog({
                                   <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                                 </>
                               )}
-                              <span className="font-mono">{assignment.programme?.type}</span>
+                              <span className="font-mono">
+                                {assignment.programme?.type}
+                              </span>
                               {assignment.programme?.stageType && (
                                 <>
                                   <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                                  <span className="font-mono">{assignment.programme?.stageType}</span>
+                                  <span className="font-mono">
+                                    {assignment.programme?.stageType}
+                                  </span>
                                 </>
                               )}
                             </div>
@@ -468,7 +517,6 @@ export function ParticipantDetailsDialog({
                   <div>
                     Added{" "}
                     {formatDateTime(participant.createdAt, {
-                      
                       dateStyle: "long",
                       timeStyle: "short",
                     })}
@@ -478,7 +526,6 @@ export function ParticipantDetailsDialog({
                   <div>
                     Last updated{" "}
                     {formatDateTime(participant.updatedAt, {
-                      
                       dateStyle: "long",
                       timeStyle: "short",
                     })}

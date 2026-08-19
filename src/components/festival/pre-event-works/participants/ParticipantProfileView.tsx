@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Crown, Loader2, Mail, Phone } from "lucide-react";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamParticipantsDialog } from "@/components/festival/pre-event-works/assignments/TeamParticipantsDialog";
@@ -99,7 +99,8 @@ export function ParticipantProfileView({
 
   const filteredParticipantAssignments = useMemo(() => {
     return assignments.filter((a: any) => {
-      if (filterType !== "ALL" && a.programme?.type !== filterType) return false;
+      if (filterType !== "ALL" && a.programme?.type !== filterType)
+        return false;
       return true;
     });
   }, [assignments, filterType]);
@@ -239,7 +240,6 @@ export function ParticipantProfileView({
                   </span>
                   <div className="text-sm">
                     {formatDate(participant.dateOfBirth, {
-                      
                       style: "long",
                     })}
                   </div>
@@ -295,7 +295,6 @@ export function ParticipantProfileView({
                 <span>
                   Created{" "}
                   {formatDate(participant.createdAt, {
-                    
                     style: "long",
                   })}
                 </span>
@@ -304,7 +303,6 @@ export function ParticipantProfileView({
                 <span>
                   Updated{" "}
                   {formatDate(participant.updatedAt, {
-                    
                     style: "long",
                   })}
                 </span>

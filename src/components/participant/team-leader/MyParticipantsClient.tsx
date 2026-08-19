@@ -323,7 +323,9 @@ export function MyParticipantsClient({
                       <span className="truncate text-[15px] font-medium text-heading">
                         {s.name}
                       </span>
-                      {s.assignments?.some((a: any) => a.limitWarning?.isOverLimit) && (
+                      {s.assignments?.some(
+                        (a: any) => a.limitWarning?.isOverLimit,
+                      ) && (
                         <StatusPill tone="danger" icon={ShieldAlert}>
                           Limit Exceeded
                         </StatusPill>

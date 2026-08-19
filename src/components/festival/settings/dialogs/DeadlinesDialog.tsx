@@ -51,13 +51,19 @@ export function DeadlinesDialog({
   const [open, setOpen] = useState(false);
   const [programmeAssignment, setProgrammeAssignment] =
     useState<DateRangeValue>(() => ({
-      from: parseInstant(festival.programmeAssignmentStartDate ?? null) ?? undefined,
-      to: parseInstant(festival.programmeAssignmentDeadline ?? null) ?? undefined,
+      from:
+        parseInstant(festival.programmeAssignmentStartDate ?? null) ??
+        undefined,
+      to:
+        parseInstant(festival.programmeAssignmentDeadline ?? null) ?? undefined,
     }));
   const [participantCreation, setParticipantCreation] =
     useState<DateRangeValue>(() => ({
-      from: parseInstant(festival.participantCreationStartDate ?? null) ?? undefined,
-      to: parseInstant(festival.participantCreationDeadline ?? null) ?? undefined,
+      from:
+        parseInstant(festival.participantCreationStartDate ?? null) ??
+        undefined,
+      to:
+        parseInstant(festival.participantCreationDeadline ?? null) ?? undefined,
     }));
   const [assignmentCanAdd, setAssignmentCanAdd] = useState(
     festival.programmeAssignmentCanAdd !== false,
@@ -141,7 +147,9 @@ export function DeadlinesDialog({
       setOpen(false);
       onSaved?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update deadlines");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update deadlines",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -162,7 +170,8 @@ export function DeadlinesDialog({
           <DrawerHeader className="shrink-0 py-4 sm:py-6 pb-2 border-b">
             <DrawerTitle>Deadline windows</DrawerTitle>
             <DrawerDescription>
-              When team leaders can assign programmes and register new participants.
+              When team leaders can assign programmes and register new
+              participants.
             </DrawerDescription>
           </DrawerHeader>
 
@@ -274,11 +283,7 @@ function PermissionToggle({
         </Label>
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
-      <Switch
-        id={id}
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-      />
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
     </div>
   );
 }
