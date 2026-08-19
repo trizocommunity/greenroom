@@ -1,7 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
 import { AlertCircle, Loader2, Lock, ScanLine, UserCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -29,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 import {
   getFilteredEntriesAction,
   scanFoodEntryAction,
@@ -51,7 +51,6 @@ interface FoodEntryScannerProps {
     groups: { id: string; name: string }[];
     categories: { id: string; name: string }[];
   };
-  timezone: string;
 }
 
 function formatWindow(startMin: number, endMin: number) {
@@ -65,13 +64,9 @@ function formatWindow(startMin: number, endMin: number) {
   return `${fmt(startMin)} - ${fmt(endMin)}`;
 }
 
-function formatScannedAt(value: string | Date, timeZone: string) {
+function formatScannedAt(value: string | Date) {
   const d = typeof value === "string" ? new Date(value) : value;
-  try {
-    return formatInTimeZone(d, timeZone, "MMM d, hh:mm a");
-  } catch (e) {
-    return format(d, "MMM d, hh:mm a"); // fallback if timezone is invalid
-  }
+  return format(d, "MMM d, hh:mm a");
 }
 
 export function FoodEntryScanner({
@@ -80,7 +75,6 @@ export function FoodEntryScanner({
   slot,
   activeSlotId,
   filters,
-  timezone,
 }: FoodEntryScannerProps) {
   const router = useRouter();
   const [entries, setEntries] = useState<any[]>([]);
@@ -121,6 +115,22 @@ export function FoodEntryScanner({
   useEffect(() => {
     void fetchEntries();
   }, [fetchEntries]);
+
+  /* UC9 — food-hall per-slot channel. Other scanners (or the same one
+     after a `scanFoodEntryAction` race) push a delta here; refresh the
+     entries table on every event so the operator sees scans happen in
+     near-real-time without manual reloads. */
+  const { data: slotEvent } = useLiveChannel<{
+    slotId: string;
+    scannedAt: string;
+  }>({
+    url: `/api/v1/food-hall/${slot.id}/events/stream`,
+  });
+
+  useEffect(() => {
+    if (!slotEvent) return;
+    void fetchEntries();
+  }, [slotEvent, fetchEntries]);
 
   const handleProcessScan = async (chestNumber: string) => {
     if (!slot.sessionId || !isScannable) {
@@ -301,7 +311,7 @@ export function FoodEntryScanner({
                         <TableCell>{entry.groupName ?? "—"}</TableCell>
                         <TableCell>{entry.categoryName ?? "—"}</TableCell>
                         <TableCell className="text-right text-muted-foreground whitespace-nowrap">
-                          {formatScannedAt(entry.scannedAt, timezone)}
+                          {formatScannedAt(entry.scannedAt)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {entry.scannedByName ?? "—"}
@@ -324,7 +334,7 @@ export function FoodEntryScanner({
                         {entry.chestNumber}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatScannedAt(entry.scannedAt, timezone)}
+                        {formatScannedAt(entry.scannedAt)}
                       </span>
                     </div>
                     <p className="font-medium text-sm">
