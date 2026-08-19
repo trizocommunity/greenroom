@@ -18,7 +18,8 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCategories } from "@/api/client/categories";
 import { useGroups } from "@/api/client/groups";
 import {
@@ -30,7 +31,6 @@ import { FeatureGate } from "@/components/common/FeatureGate";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { ChestNumberSetup } from "@/components/festival/event-works/chest-numbers/ChestNumberSetup";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -70,6 +70,7 @@ import { formatDate, isAfter, parseInstant } from "@/core/datetime";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { getQrCodeContent } from "@/features/participants/services/participant-profile-url";
 import { useFeature } from "@/features/plan-features/hooks/use-feature";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 import { toast } from "@/lib/toast";
 import { AssignTeamLeadersModal } from "./AssignTeamLeadersModal";
 import { BulkUploadParticipantsModal } from "./BulkUploadParticipantsModal";
@@ -98,13 +99,30 @@ export function ParticipantsClient({
   onChestRevalidate,
   children,
 }: ParticipantsClientProps) {
+  const router = useRouter();
   const deleteParticipant = useDeleteParticipant();
   const { data: groups = [] } = useGroups(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
 
+  /* UC14 — chest-number assignment channel. Another admin tab regenerating
+     numbers should refresh *this* tab's participants list (chest numbers
+     appear inline) without a manual reload. Auto-reconnect backoff is
+     built into the hook. */
+  const { data: chestEvent } = useLiveChannel<{
+    festivalId: string;
+    action: "ASSIGNED" | "REGENERATED" | "RESET";
+    at: string;
+  }>({
+    url: `/api/v1/festivals/${festivalId}/chest-numbers/stream`,
+  });
+
+  useEffect(() => {
+    if (!chestEvent) return;
+    router.refresh();
+  }, [chestEvent, router]);
+
   const canUseQR = useFeature("qrCodes");
   const { isReadOnly } = useFestivalReadOnly();
-  const displayTz = useDisplayTimezone();
 
   const singleCategories = (categories ?? []).filter(
     (c: any) => c.type === "SINGLE",
@@ -555,7 +573,6 @@ export function ParticipantsClient({
                       <span>{participant.category?.name || "—"}</span>
                       <span className="text-muted-foreground/80">
                         {formatDate(participant.createdAt, {
-                          tz: displayTz,
                           style: "medium",
                         })}
                       </span>
@@ -704,7 +721,6 @@ export function ParticipantsClient({
                     <TableCell>{participant.category?.name || "-"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDate(participant.createdAt, {
-                        tz: displayTz,
                         style: "medium",
                       })}
                     </TableCell>
