@@ -1,7 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Calendar,
@@ -15,6 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useCreateScheduleItem,
@@ -25,11 +25,9 @@ import {
   type CalendarGroupBy,
   ScheduleCalendarView,
 } from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
-
-import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
+import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,12 +76,12 @@ import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type ConflictParts,
+  cancelCallListNotification,
   checkScheduleConflict,
   clearScheduleEntries,
   type EnrichedScheduleEntry,
   getScheduleEntriesEnriched,
   notifyCallList,
-  cancelCallListNotification,
   type SchedulableProgramme,
 } from "@/features/schedule/actions/schedule.actions";
 import {
@@ -94,6 +92,7 @@ import {
   localWallClockToDate,
   parseStoredScheduleInstant,
 } from "@/features/schedule/utils/schedule-datetime";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 import { toast } from "@/lib/toast";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
@@ -147,7 +146,6 @@ export function ScheduleClient({
 }: ScheduleClientProps) {
   const router = useRouter();
   const { isReadOnly } = useFestivalReadOnly();
-  const displayTz = useDisplayTimezone();
   const [entries, setEntries] =
     useState<EnrichedScheduleEntry[]>(initialEntries);
   const [viewMode, setViewMode] = useState<"calendar" | "table">("table");
@@ -177,6 +175,24 @@ export function ScheduleClient({
   const [timelineEnd, setTimelineEnd] = useState<string>("23:00");
 
   const dayTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  /* UC15 — schedule-channel delta. Another admin adding/moving a slot
+     pushes here; we re-pull the enriched entries (re-runs the conflict
+     check on the server with the latest data) and re-render the table +
+     calendar. Hook has its own backoff; auto-reconnect is built in. */
+  const { data: scheduleEvent } = useLiveChannel<{
+    festivalId: string;
+    entryId: string;
+    action: "CREATED" | "UPDATED" | "DELETED";
+    at: string;
+  }>({
+    url: `/api/v1/festivals/${festivalId}/schedule/stream`,
+  });
+
+  useEffect(() => {
+    if (!scheduleEvent) return;
+    router.refresh();
+  }, [scheduleEvent, router]);
 
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
