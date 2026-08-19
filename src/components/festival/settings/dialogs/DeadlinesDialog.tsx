@@ -1,12 +1,12 @@
 "use client";
 
 import { Loader2, Pencil } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DateRangePicker,
   type DateRangeValue,
-} from "@/components/ui/date-range-picker";
+} from "@/components/ui/date-picker";
 import {
   Drawer,
   DrawerContent,
@@ -18,57 +18,47 @@ import {
 } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { parseInstant, toDateOrNull } from "@/core/datetime";
-import { updateFestivalSettingsAction } from "@/features/festivals/actions/festival-crud.actions";
+import { parseInstant } from "@/core/datetime";
 import { toast } from "@/lib/toast";
 
 interface DeadlinesDialogProps {
   festival: {
     id: string;
-    programmeAssignmentStartDate?: Date | string | null;
-    programmeAssignmentDeadline?: Date | string | null;
-    participantCreationStartDate?: Date | string | null;
-    participantCreationDeadline?: Date | string | null;
+    startDate?: string | null | undefined;
+    createdAt?: string | null | undefined;
+    programmeAssignmentStartDate?: string | null;
+    programmeAssignmentDeadline?: string | null;
     programmeAssignmentCanAdd?: boolean | null;
     programmeAssignmentCanDelete?: boolean | null;
+    participantCreationStartDate?: string | null;
+    participantCreationDeadline?: string | null;
     participantCreationCanAdd?: boolean | null;
     participantCreationCanEdit?: boolean | null;
-    startDate?: Date | string | null;
-    createdAt?: Date | string | null;
-    /**
-     * IANA timezone the picked wall-clock is anchored to. Required so the
-     * stored UTC instant round-trips correctly regardless of the admin's
-     * browser TZ. Falls back to `DEFAULT_TZ` (`"UTC"`) when absent (e.g.
-     * for legacy festivals created before the migration).
-     */
-    timezone?: string | null;
   };
-  onSuccess?: () => void;
   trigger?: React.ReactNode;
+  onSaved?: () => void;
   isFeatureEnabled?: boolean;
   isParticipantDeadlineFeatureEnabled?: boolean;
 }
 
 export function DeadlinesDialog({
   festival,
-  onSuccess,
   trigger,
+  onSaved,
   isFeatureEnabled = true,
   isParticipantDeadlineFeatureEnabled = true,
 }: DeadlinesDialogProps) {
   const [open, setOpen] = useState(false);
   const [programmeAssignment, setProgrammeAssignment] =
     useState<DateRangeValue>(() => ({
-      start: parseInstant(festival.programmeAssignmentStartDate ?? null),
-      end: parseInstant(festival.programmeAssignmentDeadline ?? null),
+      from: parseInstant(festival.programmeAssignmentStartDate ?? null) ?? undefined,
+      to: parseInstant(festival.programmeAssignmentDeadline ?? null) ?? undefined,
     }));
   const [participantCreation, setParticipantCreation] =
     useState<DateRangeValue>(() => ({
-      start: parseInstant(festival.participantCreationStartDate ?? null),
-      end: parseInstant(festival.participantCreationDeadline ?? null),
+      from: parseInstant(festival.participantCreationStartDate ?? null) ?? undefined,
+      to: parseInstant(festival.participantCreationDeadline ?? null) ?? undefined,
     }));
-  // Per-window team-leader permissions. Default `true` so a window with no
-  // stored flag (legacy festivals) keeps today's full-access behaviour.
   const [assignmentCanAdd, setAssignmentCanAdd] = useState(
     festival.programmeAssignmentCanAdd !== false,
   );
@@ -83,83 +73,75 @@ export function DeadlinesDialog({
   );
   const [isSaving, setIsSaving] = useState(false);
 
-  const durationStart = festival.createdAt
-    ? (toDateOrNull(festival.createdAt) ?? new Date())
-    : new Date();
-
-  const festivalStartDate = useMemo(() => {
-    if (!festival.startDate) return null;
-    const d = new Date(festival.startDate);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }, [festival.startDate]);
-
-  const festivalHasStarted = useMemo(() => {
-    if (!festivalStartDate) return false;
-    return new Date() >= festivalStartDate;
-  }, [festivalStartDate]);
-
-  const handleSave = async () => {
+  const validateDates = () => {
     if (
       isFeatureEnabled &&
-      (!programmeAssignment.start || !programmeAssignment.end)
+      (!programmeAssignment.from || !programmeAssignment.to)
     ) {
       toast.error(
         "Pick both an open and a close date for the programme assignment window.",
       );
-      return;
+      return false;
     }
     if (
       isParticipantDeadlineFeatureEnabled &&
-      (!participantCreation.start || !participantCreation.end)
+      (!participantCreation.from || !participantCreation.to)
     ) {
       toast.error(
         "Pick both an open and a close date for the participant registration window.",
       );
-      return;
+      return false;
     }
     if (
-      programmeAssignment.start &&
-      programmeAssignment.end &&
-      programmeAssignment.start >= programmeAssignment.end
+      programmeAssignment.from &&
+      programmeAssignment.to &&
+      programmeAssignment.from >= programmeAssignment.to
     ) {
-      toast.error("Programme assignments must open before they close");
-      return;
+      toast.error("Assignment close must be after open.");
+      return false;
     }
     if (
-      participantCreation.start &&
-      participantCreation.end &&
-      participantCreation.start >= participantCreation.end
+      participantCreation.from &&
+      participantCreation.to &&
+      participantCreation.from >= participantCreation.to
     ) {
-      toast.error("Participant registration must open before it closes");
-      return;
+      toast.error("Registration close must be after open.");
+      return false;
     }
+    return true;
+  };
 
+  const handleSave = async () => {
+    if (!validateDates()) return;
     setIsSaving(true);
     try {
-      const res = await updateFestivalSettingsAction(festival.id, {
-        programmeAssignmentStartDate:
-          programmeAssignment.start?.toISOString() ?? null,
-        programmeAssignmentDeadline:
-          programmeAssignment.end?.toISOString() ?? null,
-        participantCreationStartDate:
-          participantCreation.start?.toISOString() ?? null,
-        participantCreationDeadline:
-          participantCreation.end?.toISOString() ?? null,
-        programmeAssignmentCanAdd: assignmentCanAdd,
-        programmeAssignmentCanDelete: assignmentCanDelete,
-        participantCreationCanAdd: participantCanAdd,
-        participantCreationCanEdit: participantCanEdit,
+      const res = await fetch(`/api/v1/festivals/${festival.id}/deadlines`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          programmeAssignmentStartDate:
+            programmeAssignment.from?.toISOString() ?? null,
+          programmeAssignmentDeadline:
+            programmeAssignment.to?.toISOString() ?? null,
+          participantCreationStartDate:
+            participantCreation.from?.toISOString() ?? null,
+          participantCreationDeadline:
+            participantCreation.to?.toISOString() ?? null,
+          programmeAssignmentCanAdd: assignmentCanAdd,
+          programmeAssignmentCanDelete: assignmentCanDelete,
+          participantCreationCanAdd: participantCanAdd,
+          participantCreationCanEdit: participantCanEdit,
+        }),
       });
-
-      if (res.success) {
-        toast.success("Deadlines updated");
-        setOpen(false);
-        onSuccess?.();
-      } else {
-        toast.error("Failed to update deadlines");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message ?? "Failed to update deadlines");
       }
-    } catch {
-      toast.error("Something went wrong");
+      toast.success("Deadline windows updated.");
+      setOpen(false);
+      onSaved?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update deadlines");
     } finally {
       setIsSaving(false);
     }
@@ -168,24 +150,23 @@ export function DeadlinesDialog({
   const defaultTrigger = (
     <Button variant="outline" size="sm" className="gap-2">
       <Pencil className="h-4 w-4" />
-      Edit
+      Edit deadlines
     </Button>
   );
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>{trigger ?? defaultTrigger}</DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>Deadlines</DrawerTitle>
-          <DrawerDescription>
-            Set the windows during which Team Leaders can assign programmes and
-            register participants.
-          </DrawerDescription>
-        </DrawerHeader>
+      <DrawerContent className="p-0 sm:p-0 gap-0">
+        <div className="mx-auto w-full max-w-2xl flex flex-col h-full overflow-hidden">
+          <DrawerHeader className="shrink-0 py-4 sm:py-6 pb-2 border-b">
+            <DrawerTitle>Deadline windows</DrawerTitle>
+            <DrawerDescription>
+              When team leaders can assign programmes and register new participants.
+            </DrawerDescription>
+          </DrawerHeader>
 
-        <div className="grid gap-6 py-4">
-          {isFeatureEnabled && (
+          <div className="flex-1 min-h-0 overflow-y-auto py-4 space-y-4">
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="programmeAssignmentRange">
@@ -195,15 +176,8 @@ export function DeadlinesDialog({
                 <DateRangePicker
                   id="programmeAssignmentRange"
                   value={programmeAssignment}
-                  onChange={(value) => {
-                    if (festivalHasStarted) return;
-                    setProgrammeAssignment(value);
-                  }}
+                  onChange={(value) => setProgrammeAssignment(value)}
                   placeholder="Pick open and close dates"
-                  from={durationStart}
-                  to={festivalStartDate ?? undefined}
-                  disabled={festivalHasStarted}
-                  tz={festival.timezone ?? undefined}
                 />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -217,7 +191,6 @@ export function DeadlinesDialog({
                   description="Team Leaders can assign programmes."
                   checked={assignmentCanAdd}
                   onCheckedChange={setAssignmentCanAdd}
-                  disabled={festivalHasStarted}
                 />
                 <PermissionToggle
                   id="assignmentCanDelete"
@@ -225,12 +198,10 @@ export function DeadlinesDialog({
                   description="Team Leaders can remove assignments."
                   checked={assignmentCanDelete}
                   onCheckedChange={setAssignmentCanDelete}
-                  disabled={festivalHasStarted}
                 />
               </div>
             </div>
-          )}
-          {isParticipantDeadlineFeatureEnabled && (
+
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="participantCreationRange">
@@ -240,15 +211,8 @@ export function DeadlinesDialog({
                 <DateRangePicker
                   id="participantCreationRange"
                   value={participantCreation}
-                  onChange={(value) => {
-                    if (festivalHasStarted) return;
-                    setParticipantCreation(value);
-                  }}
+                  onChange={(value) => setParticipantCreation(value)}
                   placeholder="Pick open and close dates"
-                  from={durationStart}
-                  to={festivalStartDate ?? undefined}
-                  disabled={festivalHasStarted}
-                  tz={festival.timezone ?? undefined}
                 />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -262,7 +226,6 @@ export function DeadlinesDialog({
                   description="Team Leaders can add participants."
                   checked={participantCanAdd}
                   onCheckedChange={setParticipantCanAdd}
-                  disabled={festivalHasStarted}
                 />
                 <PermissionToggle
                   id="participantCanEdit"
@@ -270,22 +233,21 @@ export function DeadlinesDialog({
                   description="Team Leaders can edit their participants."
                   checked={participantCanEdit}
                   onCheckedChange={setParticipantCanEdit}
-                  disabled={festivalHasStarted}
                 />
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        <DrawerFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </DrawerFooter>
+          <DrawerFooter className="shrink-0 border-t">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save changes
+            </Button>
+          </DrawerFooter>
+        </div>
       </DrawerContent>
     </Drawer>
   );
@@ -297,14 +259,12 @@ function PermissionToggle({
   description,
   checked,
   onCheckedChange,
-  disabled,
 }: {
   id: string;
   label: string;
   description: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
-  disabled?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
@@ -318,7 +278,6 @@ function PermissionToggle({
         id={id}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        disabled={disabled}
       />
     </div>
   );
