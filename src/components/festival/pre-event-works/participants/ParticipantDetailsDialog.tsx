@@ -8,7 +8,6 @@ import { useState, useMemo } from "react";
 import { useAssignments } from "@/api/client/assignments";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamParticipantsDialog } from "@/components/festival/pre-event-works/assignments/TeamParticipantsDialog";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +45,6 @@ export function ParticipantDetailsDialog({
   const canViewTeamLeaders = useFeature("members");
   const festivalContext = useFestival();
   const isBasicTier = festivalContext?.tier === "BASIC";
-  const displayTz = useDisplayTimezone();
   const pathname = usePathname();
 
   const participantAssignments = assignments.filter(
@@ -242,7 +240,7 @@ export function ParticipantDetailsDialog({
                     </p>
                     <p className="text-sm font-medium">
                       {formatDate(participant.dateOfBirth, {
-                        tz: displayTz,
+                        
                         style: "long",
                       })}
                     </p>
@@ -346,8 +344,8 @@ export function ParticipantDetailsDialog({
               )}
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2 whitespace-nowrap">
                     <h4 className="text-sm font-semibold tracking-tight">
                       Assigned Programmes
                     </h4>
@@ -355,7 +353,7 @@ export function ParticipantDetailsDialog({
                       {filteredParticipantAssignments.length}
                     </Badge>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {assignmentCategories.length > 0 && (
                       <select
                         value={filterCategory}
@@ -470,7 +468,7 @@ export function ParticipantDetailsDialog({
                   <div>
                     Added{" "}
                     {formatDateTime(participant.createdAt, {
-                      tz: displayTz,
+                      
                       dateStyle: "long",
                       timeStyle: "short",
                     })}
@@ -480,7 +478,7 @@ export function ParticipantDetailsDialog({
                   <div>
                     Last updated{" "}
                     {formatDateTime(participant.updatedAt, {
-                      tz: displayTz,
+                      
                       dateStyle: "long",
                       timeStyle: "short",
                     })}

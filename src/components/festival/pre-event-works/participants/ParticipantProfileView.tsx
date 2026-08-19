@@ -6,7 +6,6 @@ import { useState, useMemo } from "react";
 import { QrCodeDisplay } from "@/components/common/QrCodeDisplay";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { TeamParticipantsDialog } from "@/components/festival/pre-event-works/assignments/TeamParticipantsDialog";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,7 +75,6 @@ export function ParticipantProfileView({
   const canViewTeamLeaders = useFeature("members");
   const festivalContext = useFestival();
   const isBasicTier = festivalContext.tier === "BASIC";
-  const displayTz = useDisplayTimezone();
   const [teamDialog, setTeamDialog] = useState<{
     open: boolean;
     programmeName: string;
@@ -241,7 +239,7 @@ export function ParticipantProfileView({
                   </span>
                   <div className="text-sm">
                     {formatDate(participant.dateOfBirth, {
-                      tz: displayTz,
+                      
                       style: "long",
                     })}
                   </div>
@@ -297,7 +295,7 @@ export function ParticipantProfileView({
                 <span>
                   Created{" "}
                   {formatDate(participant.createdAt, {
-                    tz: displayTz,
+                    
                     style: "long",
                   })}
                 </span>
@@ -306,7 +304,7 @@ export function ParticipantProfileView({
                 <span>
                   Updated{" "}
                   {formatDate(participant.updatedAt, {
-                    tz: displayTz,
+                    
                     style: "long",
                   })}
                 </span>
@@ -316,14 +314,14 @@ export function ParticipantProfileView({
         </Card>
 
         <Card className="md:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-2">
+            <CardTitle className="text-base flex items-center gap-2 whitespace-nowrap">
               Assigned Programmes
               <Badge variant="secondary" className="text-xs">
                 {filteredParticipantAssignments.length}
               </Badge>
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
