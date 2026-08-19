@@ -39,6 +39,13 @@ export interface TierFeatures {
   whatsappSupport: boolean;
   smsNotifications: boolean;
   bulkNotifications: boolean;
+  /**
+   * Master toggle for the in-app notifications system (UC12).
+   * Gates the `NotificationService.dispatch` path: when false, no
+   * notification rows are inserted and no recipient resolution runs.
+   * Per-tier default: BASIC off, STANDARD/PRO on.
+   */
+  notifications: boolean;
 
   // Reporting & Analytics
   advancedAnalytics: boolean;
@@ -170,6 +177,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       whatsappSupport: true,
       smsNotifications: false,
       bulkNotifications: false,
+      notifications: false,
 
       // Reporting & Analytics
       advancedAnalytics: false,
@@ -269,6 +277,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       whatsappSupport: true,
       smsNotifications: true,
       bulkNotifications: true,
+      notifications: true,
 
       // Reporting & Analytics — advanced unlocked
       advancedAnalytics: true,
@@ -368,6 +377,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       whatsappSupport: true,
       smsNotifications: true,
       bulkNotifications: true,
+      notifications: true,
 
       // Reporting & Analytics — advanced unlocked
       advancedAnalytics: true,
