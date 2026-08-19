@@ -16,6 +16,12 @@ export interface UseLiveChannelOptions<T> {
   url: LiveChannelUrl;
   /** Optional result parser. Same contract as `useEventSource.parse`. */
   parse?: (raw: unknown) => T;
+  /**
+   * Injected `EventSource` factory. Forwarded straight through to
+   * `useEventSource` so tests can drive the connection without a real
+   * browser EventSource. Defaults to `globalThis.EventSource`.
+   */
+  eventSourceFactory?: typeof EventSource;
 }
 
 /**
@@ -29,6 +35,7 @@ export interface UseLiveChannelOptions<T> {
 export function useLiveChannel<T = unknown>({
   url,
   parse,
+  eventSourceFactory,
 }: UseLiveChannelOptions<T>): EventSourceState<T> {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(
     typeof url === "string" ? url : null,
@@ -61,6 +68,7 @@ export function useLiveChannel<T = unknown>({
   const stream = useEventSource<T>({
     url: resolvedUrl ?? "",
     parse,
+    eventSourceFactory,
   });
 
   if (resolveError) {

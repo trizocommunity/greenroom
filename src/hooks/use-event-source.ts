@@ -136,6 +136,10 @@ export function useEventSource<T = unknown>({
 
     const connect = () => {
       if (aborted) return;
+      // Empty URL means the parent (e.g. `useLiveChannel`) hasn't finished
+      // resolving an async URL yet. Stay in `connecting` and wait for the
+      // next effect run — don't try to construct an EventSource against "".
+      if (!url) return;
       store.setState((prev) => ({ ...prev, status: "connecting" }));
 
       const Factory = factoryRef.current ?? globalThis.EventSource;
