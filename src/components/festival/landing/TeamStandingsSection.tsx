@@ -3,7 +3,8 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   EmptyState,
   PublicSection,
@@ -19,10 +20,15 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn } from "@/core/utils/cn";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 import type { TeamStanding } from "./ResultsList";
 
 interface TeamStandingsSectionProps {
   standings: TeamStanding[];
+  /** Festival ID — only required when the page wants live SSE updates.
+   *  When omitted (e.g. the `bare` view on `/results`) the section skips
+   *  the channel subscription entirely. */
+  festivalId?: string;
   /** Renders the inner board only, without the section chrome. */
   bare?: boolean;
   /** Festival accent — drives the progress bar fill. */
@@ -35,11 +41,36 @@ interface TeamStandingsSectionProps {
 
 export function TeamStandingsSection({
   standings,
+  festivalId,
   bare = false,
   accentColor,
   viewAllHref,
   limit,
 }: TeamStandingsSectionProps) {
+  const router = useRouter();
+
+  /* UC7 — `announceResult` publishes `{ teamStandings, lastUpdatedAt }` to
+     the standings channel. We don't re-render the board from the payload
+     directly — `router.refresh()` re-runs the parent server loader so the
+     standings object is re-read from the DB, which keeps the board
+     consistent with the rest of the page. */
+  const { data: standingsEvent } = useLiveChannel<{
+    festivalId: string;
+    teamStandings: TeamStanding[] | null;
+    lastUpdatedAt: string;
+  }>(
+    festivalId
+      ? {
+          url: `/api/v1/festivals/${festivalId}/standings/stream`,
+        }
+      : { url: "" },
+  );
+
+  useEffect(() => {
+    if (!standingsEvent) return;
+    router.refresh();
+  }, [standingsEvent, router]);
+
   const ranked = standings.map((team, index) => ({
     ...team,
     rank: team.rank || index + 1,

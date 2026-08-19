@@ -166,6 +166,7 @@ export default async function FestivalPage({
         <>
           <TeamStandingsSection
             standings={teamStandings}
+            festivalId={displayData.id}
             accentColor={accentColor}
             viewAllHref={`${linkBase}/results`}
           />
