@@ -119,8 +119,10 @@ export function FoodEntryScanner({
   /* UC9 — food-hall per-slot channel. Other scanners (or the same one
      after a `scanFoodEntryAction` race) push a delta here; refresh the
      entries table on every event so the operator sees scans happen in
-     near-real-time without manual reloads. */
-  const { data: slotEvent } = useLiveChannel<{
+     near-real-time without manual reloads. `liveStatus` is consumed by
+     the polling fallback below so we don't double-refetch while SSE is
+     healthy. */
+  const { data: slotEvent, status: liveStatus } = useLiveChannel<{
     slotId: string;
     scannedAt: string;
   }>({
@@ -131,6 +133,22 @@ export function FoodEntryScanner({
     if (!slotEvent) return;
     void fetchEntries();
   }, [slotEvent, fetchEntries]);
+
+  /* Polling fallback. No pre-Issue-48 poll loop existed for this scanner
+     — Issue 48 sub-slice B added SSE-only. The brief's rollback clause
+     ("every consumer must keep its existing poll loop as fallback")
+     still requires a polling path, so we add one at the 30s cadence
+     the brief specifies. Suppressed while SSE is open so a healthy
+     connection doesn't double-refetch. If SSE drops + reconnects
+     inside the 30s window both fire — harmless, the fetch is
+     idempotent. */
+  useEffect(() => {
+    if (liveStatus === "open") return;
+    const id = window.setInterval(() => {
+      void fetchEntries();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [fetchEntries, liveStatus]);
 
   const handleProcessScan = async (chestNumber: string) => {
     if (!slot.sessionId || !isScannable) {

@@ -50,8 +50,11 @@ export function HeroSection({
      numbers client-side (the deadlines are still computed locally by
      `useDeadlineWindow`); we just need the cadence to refresh the
      server loader so the page stays in sync. The hook has its own
-     backoff; 60s polling fallback is in the parent page. */
-  const { data: countdownEvent } = useLiveChannel<{
+     backoff. `liveStatus` is consumed by the polling fallback below
+     (no pre-Issue-48 poll loop existed — Issue 48 sub-slice B added
+     SSE-only, the brief's rollback clause still requires a polling
+     path, so we add one at the 60s cadence the brief specifies). */
+  const { data: countdownEvent, status: liveStatus } = useLiveChannel<{
     festivalId: string;
     daysToStart: number;
     daysToEnd: number;
@@ -65,6 +68,19 @@ export function HeroSection({
     if (!countdownEvent) return;
     router.refresh();
   }, [countdownEvent, router]);
+
+  /* Polling fallback. 60s cadence matches the brief (countdown only
+     needs minute resolution). Suppressed while SSE is open so a
+     healthy connection doesn't double-refresh. If SSE drops +
+     reconnects inside the 60s window both fire — harmless, the
+     refresh re-reads the same loader. */
+  useEffect(() => {
+    if (liveStatus === "open") return;
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [router, liveStatus]);
 
   const dateLabel =
     startDate && endDate

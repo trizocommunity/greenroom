@@ -107,8 +107,9 @@ export function ParticipantsClient({
   /* UC14 — chest-number assignment channel. Another admin tab regenerating
      numbers should refresh *this* tab's participants list (chest numbers
      appear inline) without a manual reload. Auto-reconnect backoff is
-     built into the hook. */
-  const { data: chestEvent } = useLiveChannel<{
+     built into the hook. `liveStatus` is consumed by the polling
+     fallback below so we don't double-refresh while SSE is healthy. */
+  const { data: chestEvent, status: liveStatus } = useLiveChannel<{
     festivalId: string;
     action: "ASSIGNED" | "REGENERATED" | "RESET";
     at: string;
@@ -120,6 +121,22 @@ export function ParticipantsClient({
     if (!chestEvent) return;
     router.refresh();
   }, [chestEvent, router]);
+
+  /* Polling fallback. No pre-Issue-48 poll loop existed for this page —
+     Issue 48 sub-slice B added SSE-only. The brief's rollback clause
+     ("every consumer must keep its existing poll loop as fallback")
+     still requires a polling path, so we add one at the 30s cadence
+     the brief specifies. Suppressed while SSE is open so a healthy
+     connection doesn't double-refresh. If SSE drops + reconnects
+     inside the 30s window both fire — harmless, the refresh re-reads
+     the same loader. */
+  useEffect(() => {
+    if (liveStatus === "open") return;
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [router, liveStatus]);
 
   const canUseQR = useFeature("qrCodes");
   const { isReadOnly } = useFestivalReadOnly();

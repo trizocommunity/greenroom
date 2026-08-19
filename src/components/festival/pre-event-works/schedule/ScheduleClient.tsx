@@ -179,8 +179,10 @@ export function ScheduleClient({
   /* UC15 — schedule-channel delta. Another admin adding/moving a slot
      pushes here; we re-pull the enriched entries (re-runs the conflict
      check on the server with the latest data) and re-render the table +
-     calendar. Hook has its own backoff; auto-reconnect is built in. */
-  const { data: scheduleEvent } = useLiveChannel<{
+     calendar. Hook has its own backoff; auto-reconnect is built in.
+     `liveStatus` is consumed by the polling fallback below so we don't
+     double-refresh while SSE is healthy. */
+  const { data: scheduleEvent, status: liveStatus } = useLiveChannel<{
     festivalId: string;
     entryId: string;
     action: "CREATED" | "UPDATED" | "DELETED";
@@ -193,6 +195,22 @@ export function ScheduleClient({
     if (!scheduleEvent) return;
     router.refresh();
   }, [scheduleEvent, router]);
+
+  /* Polling fallback. No pre-Issue-48 poll loop existed for this page —
+     Issue 48 sub-slice B added SSE-only. The brief's rollback clause
+     ("every consumer must keep its existing poll loop as fallback")
+     still requires a polling path, so we add one at the 30s cadence
+     the brief specifies. Suppressed while SSE is open so a healthy
+     connection doesn't double-refresh. If SSE drops + reconnects
+     inside the 30s window both fire — harmless, the refresh re-reads
+     the same loader. */
+  useEffect(() => {
+    if (liveStatus === "open") return;
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [router, liveStatus]);
 
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
