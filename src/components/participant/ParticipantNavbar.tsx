@@ -4,7 +4,6 @@ import { ArrowUpRight, Bell, Crown, Menu, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useNotifications } from "@/api/client";
 import { APP_CONTAINER, StatusPill } from "@/components/app/AppSection";
 import { ProgrammeStatusBadge } from "@/components/festival/ProgrammeStatusBadge";
 import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
@@ -43,9 +42,6 @@ export function ParticipantNavbar({
 }: ParticipantNavbarProps) {
   const pathname = usePathname();
   const festivalBase = useFestivalLinkBase(festival.slug);
-
-  const { data: notifications = [] } = useNotifications(participant.id);
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const linkBase = `${festivalBase}/${participantSlugParam}`;
   const isTeamLeader = participant.isTeamLeader;
@@ -142,7 +138,6 @@ export function ParticipantNavbar({
             href={`${linkBase}/notifications`}
             label="Notifications"
             icon={Bell}
-            badgeCount={unreadCount}
           />
           <IconLink
             href={participantMainHref}
@@ -211,13 +206,11 @@ function IconLink({
   label,
   icon: Icon,
   className,
-  badgeCount,
 }: {
   href: string;
   label: string;
   icon: typeof Bell;
   className?: string;
-  badgeCount?: number;
 }) {
   return (
     <Link href={href} className={className}>
@@ -228,11 +221,6 @@ function IconLink({
         aria-label={label}
       >
         <Icon className="h-4 w-4" />
-        {badgeCount !== undefined && badgeCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground ring-2 ring-background">
-            {badgeCount > 99 ? "99+" : badgeCount}
-          </span>
-        )}
       </Button>
     </Link>
   );
