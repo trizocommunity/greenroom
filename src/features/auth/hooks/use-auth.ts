@@ -21,10 +21,10 @@ function useQueryClientSafe() {
  * Login shape returned by `useCurrentUser` / `useSession`. Matches the
  * fields we display in the navbar, sidebar, and onboarding gate.
  * `globalRole`, `fullName`, `displayName`, `accountType`,
- * `institutionId`, `isActive`, and `timezone` come from the
- * `additionalFields` we registered in `better-auth/auth.ts`.
- * `twoFactorEnabled` (PR 4 of ISSUE-41) lets the security settings
- * panel show the current state without re-fetching.
+ * `institutionId`, and `isActive` come from the `additionalFields`
+ * we registered in `better-auth/auth.ts`. `twoFactorEnabled`
+ * (PR 4 of ISSUE-41) lets the security settings panel show the
+ * current state without re-fetching.
  */
 export interface CurrentUser {
   id: string;
@@ -39,7 +39,6 @@ export interface CurrentUser {
   accountType: string | null;
   institutionId: string | null;
   isActive: boolean;
-  timezone: string | null;
 }
 
 /**
@@ -79,7 +78,6 @@ export function useCurrentUser() {
           (data.user as { institutionId?: string | null }).institutionId ??
           null,
         isActive: (data.user as { isActive?: boolean }).isActive ?? true,
-        timezone: (data.user as { timezone?: string | null }).timezone ?? null,
       } satisfies CurrentUser)
     : null;
 

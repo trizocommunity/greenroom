@@ -67,33 +67,28 @@ export function msUntil(
 }
 
 /**
- * Return true if `a` and `b` fall on the same calendar day in `tz`
- * (default: UTC). Two instants on different days in that timezone →
- * false, even if they're only minutes apart at midnight.
+ * Return true if `a` and `b` fall on the same calendar day in the
+ * viewer's **browser-local** timezone. Two instants on different local
+ * days → false, even if they're only minutes apart at midnight.
  *
- *   isSameDayLocal("2026-08-15T18:30:00Z", "2026-08-16T01:00:00Z", "Asia/Kolkata")
- *   // → true   (both are 2026-08-16 in IST)
+ *   isSameDayLocal("2026-08-15T18:30:00Z", "2026-08-16T01:00:00Z")
+ *   // viewer in IST → true   (both are 2026-08-16 in IST)
+ *   // viewer in UTC → false  (different UTC days)
  */
 export function isSameDayLocal(
   a: string | Date,
   b: string | Date,
-  tz: string = "UTC",
 ): boolean {
   const aDate = parseInstant(a);
   const bDate = parseInstant(b);
   if (aDate === null || bDate === null) return false;
-  const aKey = formatTz(aDate, tz);
-  const bKey = formatTz(bDate, tz);
-  return aKey === bKey;
-}
-
-function formatTz(date: Date, tz: string): string {
-  // Tiny inline formatter to avoid circular import with wall-clock.ts
+  // en-CA formats as YYYY-MM-DD using the runtime's local timezone
+  // (no timeZone option → browser default). Stable, sortable, and
+  // locale-independent enough for grouping.
   const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   });
-  return fmt.format(date);
+  return fmt.format(aDate) === fmt.format(bDate);
 }

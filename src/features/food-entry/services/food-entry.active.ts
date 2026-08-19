@@ -1,6 +1,3 @@
-import { formatInTimeZone } from "date-fns-tz";
-import { getBrowserTimezone } from "@/core/datetime/user-tz";
-
 export interface FoodSlot {
   id: string;
   windowStartMin: number;
@@ -18,11 +15,9 @@ export type FoodSlotStatus = "ACTIVE" | "PAST";
 
 export function getFoodSlotStatus(
   now: Date,
-  festivalTimeZone: string | undefined,
   slot: Pick<FoodSlot, "windowStartMin" | "windowEndMin">,
 ): FoodSlotStatus {
-  const tz = festivalTimeZone || getBrowserTimezone();
-  const localMinutes = nowInFestivalTZMinutes(now, tz);
+  const localMinutes = nowInBrowserMinutes(now);
 
   if (localMinutes >= slot.windowStartMin && localMinutes < slot.windowEndMin) {
     return "ACTIVE";
@@ -30,24 +25,21 @@ export function getFoodSlotStatus(
   return "PAST";
 }
 
-export function nowInFestivalTZMinutes(now: Date, timeZone: string): number {
-  // Format the time as HH:mm in the given timezone
-  const timeString = formatInTimeZone(now, timeZone, "HH:mm");
-  const [hours, minutes] = timeString.split(":").map(Number);
-  return hours * 60 + minutes;
+export function nowInBrowserMinutes(now: Date): number {
+  // Browser-local wall-clock minutes from midnight.
+  return now.getHours() * 60 + now.getMinutes();
 }
 
 /**
- * Determines which food session is currently active based on festival timezone and slot windows.
+ * Determines which food session is currently active based on browser-local
+ * time and slot windows. Times are interpreted in the browser's local clock.
  */
 export function determineActiveSession(
   now: Date,
-  festivalTimeZone: string | undefined,
   slots: FoodSlot[],
   sessionRows: FoodSessionRow[], // these should only be today's sessions
 ): FoodSessionRow | null {
-  const tz = festivalTimeZone || getBrowserTimezone();
-  const localMinutes = nowInFestivalTZMinutes(now, tz);
+  const localMinutes = nowInBrowserMinutes(now);
 
   for (const slot of slots) {
     if (

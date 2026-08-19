@@ -95,40 +95,33 @@ describe("msUntil", () => {
 });
 
 describe("isSameDayLocal", () => {
-  it("returns true for same instant same tz", () => {
+  it("returns true for two instants on the same local day", () => {
     expect(
       isSameDayLocal(
         "2026-08-15T09:00:00.000Z",
         "2026-08-15T20:00:00.000Z",
-        "UTC",
       ),
     ).toBe(true);
   });
 
-  it("returns true across midnight when same local day in tz", () => {
-    expect(
-      isSameDayLocal(
-        "2026-08-15T18:30:00.000Z",
-        "2026-08-16T01:00:00.000Z",
-        "Asia/Kolkata",
-      ),
-    ).toBe(true);
+  it("returns true across midnight when same local day", () => {
+    const localMidnight = new Date(2026, 7, 15, 0, 0, 0);
+    const lateLocal = new Date(localMidnight.getTime() + 23 * 3600 * 1000);
+    expect(isSameDayLocal(localMidnight.toISOString(), lateLocal.toISOString())).toBe(
+      true,
+    );
   });
 
-  it("returns false when different local days in tz", () => {
-    expect(
-      isSameDayLocal(
-        "2026-08-15T09:00:00.000Z",
-        "2026-08-15T18:30:00.000Z",
-        "Asia/Kolkata",
-      ),
-    ).toBe(false);
+  it("returns false when on different local days", () => {
+    const localMidnight = new Date(2026, 7, 15, 0, 0, 0);
+    const nextLocalMidnight = new Date(localMidnight.getTime() + 24 * 3600 * 1000);
+    expect(isSameDayLocal(localMidnight.toISOString(), nextLocalMidnight.toISOString())).toBe(
+      false,
+    );
   });
 
   it("returns false for invalid input", () => {
-    expect(isSameDayLocal("nope", "2026-08-15T09:00:00.000Z", "UTC")).toBe(
-      false,
-    );
-    expect(isSameDayLocal(null as unknown as string, "x", "UTC")).toBe(false);
+    expect(isSameDayLocal("nope", "2026-08-15T09:00:00.000Z")).toBe(false);
+    expect(isSameDayLocal(null as unknown as string, "x")).toBe(false);
   });
 });

@@ -53,7 +53,6 @@ interface FoodEntryDashboardProps {
     slots: FoodSlot[];
     todaySessionsBySlotId: Record<string, TodaySession>;
     todayString: string;
-    timezone: string;
     filters: {
       groups: { id: string; name: string }[];
       categories: { id: string; name: string }[];
@@ -101,7 +100,7 @@ export function FoodEntryDashboard({
         sessionId: todaySession?.sessionId ?? null,
         sessionStatus: todaySession?.status ?? "OPEN",
         scannedCount: todaySession?.scannedCount ?? 0,
-        status: getFoodSlotStatus(now, initialData.timezone, slot),
+        status: getFoodSlotStatus(now, slot),
       };
     })
     .sort((a, b) => {
@@ -225,7 +224,6 @@ export function FoodEntryDashboard({
                 slot={selectedSlot}
                 activeSlotId={activeSlotId}
                 filters={initialData.filters}
-                timezone={initialData.timezone}
               />
             </div>
           )}
@@ -238,16 +236,19 @@ export function FoodEntryDashboard({
             <DrawerHeader className="shrink-0 text-left items-start !text-left">
               <DrawerTitle>Food Sessions Configuration</DrawerTitle>
               <DrawerDescription>
-                Define the daily food sessions and their active time windows.
+                Configure the time windows for each food slot. Active window is
+                determined by the browser&apos;s current time.
               </DrawerDescription>
             </DrawerHeader>
-            <div className="flex-1 overflow-y-auto min-h-0">
-              <FoodEntryConfig
-                festivalId={festivalId}
-                initialSlots={initialData.slots}
-                onSaved={() => setConfigOpen(false)}
-              />
-            </div>
+            <FoodEntryConfig
+              festivalId={festivalId}
+              initialSlots={initialData.slots}
+              onSaved={() => {
+                setConfigOpen(false);
+                window.location.reload();
+              }}
+              onCancel={() => setConfigOpen(false)}
+            />
           </div>
         </DrawerContent>
       </Drawer>

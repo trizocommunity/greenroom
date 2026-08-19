@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-function LiveClock({ timezone }: { timezone?: string | null }) {
+function LiveClock() {
   const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -20,15 +20,11 @@ function LiveClock({ timezone }: { timezone?: string | null }) {
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
-          timeZone: timezone || undefined,
         })}
       </div>
       <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
         {time
-          .toLocaleTimeString("en-US", {
-            timeZoneName: "short",
-            timeZone: timezone || undefined,
-          })
+          .toLocaleTimeString("en-US", { timeZoneName: "short" })
           .split(" ")
           .slice(2)
           .join(" ")}
@@ -37,13 +33,7 @@ function LiveClock({ timezone }: { timezone?: string | null }) {
   );
 }
 
-export function DashboardGreeting({
-  name,
-  timezone,
-}: {
-  name?: string | null;
-  timezone?: string | null;
-}) {
+export function DashboardGreeting({ name }: { name?: string | null }) {
   const [greeting, setGreeting] = useState("Hello");
   const [dateStr, setDateStr] = useState("");
 
@@ -52,7 +42,6 @@ export function DashboardGreeting({
     const hourFormatter = new Intl.DateTimeFormat("en-US", {
       hour: "numeric",
       hour12: false,
-      timeZone: timezone || undefined,
     });
     const hour = parseInt(hourFormatter.format(now), 10);
 
@@ -65,10 +54,9 @@ export function DashboardGreeting({
         weekday: "long",
         month: "long",
         day: "numeric",
-        timeZone: timezone || undefined,
       }).format(now),
     );
-  }, [timezone]);
+  }, []);
 
   const displayName = name ? name.split(" ")[0] : "there";
 
@@ -82,7 +70,7 @@ export function DashboardGreeting({
           It&apos;s {dateStr}. Let&apos;s get ready for event day.
         </p>
       </div>
-      <LiveClock timezone={timezone} />
+      <LiveClock />
     </div>
   );
 }

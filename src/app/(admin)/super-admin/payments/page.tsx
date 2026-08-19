@@ -160,10 +160,7 @@ export default async function AdminPaymentsPage() {
                     </div>
 
                     <div className="text-xs text-muted-foreground border-t border-border pt-2">
-                      {formatDate(payment.createdAt, {
-                        tz: "UTC",
-                        style: "medium",
-                      })}
+                      {formatDate(payment.createdAt, { style: "medium" })}
                     </div>
                   </div>
                 ))}
@@ -255,10 +252,7 @@ export default async function AdminPaymentsPage() {
                         </TableCell>
                         <TableCell className="py-4 text-right">
                           <span className="text-xs text-muted-foreground">
-                            {formatDate(payment.createdAt, {
-                              tz: "UTC",
-                              style: "medium",
-                            })}
+                            {formatDate(payment.createdAt, { style: "medium" })}
                           </span>
                         </TableCell>
                         <TableCell className="py-4">

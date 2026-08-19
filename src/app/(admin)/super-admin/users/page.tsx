@@ -75,7 +75,7 @@ export default async function AdminUsersPage() {
               <div className="flex flex-col gap-0.5 min-w-0">
                 <span className="text-muted-foreground">Joined</span>
                 <span className="font-medium">
-                  {formatDate(user.createdAt, { tz: "UTC", style: "medium" })}
+                  {formatDate(user.createdAt, { style: "medium" })}
                 </span>
               </div>
             </div>
@@ -128,7 +128,7 @@ export default async function AdminUsersPage() {
                   )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
-                  {formatDate(user.createdAt, { tz: "UTC", style: "medium" })}
+                  {formatDate(user.createdAt, { style: "medium" })}
                 </TableCell>
                 <TableCell>
                   <Badge variant={user.isActive ? "default" : "secondary"}>

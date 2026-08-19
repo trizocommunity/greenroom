@@ -21,7 +21,6 @@ type SerializedExport = Omit<GeneratedExport, "bytes"> & { bytes: number[] };
 async function runGenerator(
   festivalId: string,
   festivalName: string,
-  festivalTz: string,
   config: ExportConfig,
   format: ExportFormat,
 ): Promise<GeneratedExport> {
@@ -29,33 +28,15 @@ async function runGenerator(
     case "TEAM_RESULT":
       return generateTeamResult(festivalId, config, format);
     case "CALL_LIST":
-      return generateCallList(
-        festivalId,
-        config,
-        format,
-        festivalName,
-        festivalTz,
-      );
+      return generateCallList(festivalId, config, format, festivalName);
     case "RESULTS":
-      return generateResults(
-        festivalId,
-        config,
-        format,
-        festivalName,
-        festivalTz,
-      );
+      return generateResults(festivalId, config, format, festivalName);
     case "JUDGE_LIST":
       return generateJudgeList(festivalId, config, format, festivalName);
     case "VALUATION_SHEET":
       return generateValuationSheet(festivalId, config, format, festivalName);
     case "SCHEDULE":
-      return generateSchedule(
-        festivalId,
-        config,
-        format,
-        festivalName,
-        festivalTz,
-      );
+      return generateSchedule(festivalId, config, format, festivalName);
     default:
       throw new Error(`Export type "${config.type}" is not implemented yet.`);
   }
@@ -66,7 +47,7 @@ async function runGenerator(
  *
  * Triggered by `export.requested` events from `createAndRunExport()`.
  * Steps:
- *   1. load-festival: fetch festival name + timezone
+ *   1. load-festival: fetch festival name
  *   2. generate: run the generator; serialise Buffer as number[] for the
  *      step boundary (Inngest JSON-encodes step outputs)
  *   3. complete: write fileData/fileName/mimeType back to the export row
@@ -90,16 +71,14 @@ export const exportJob = inngest.createFunction(
       format: ExportFormat;
     };
 
-    const { festivalName, festivalTz } = await step.run(
-      "load-festival",
+    const { festivalName } = await step.run("load-festival",
       async () => {
         const festivalRow = await db.query.festival.findFirst({
           where: eq(festivalTable.id, festivalId),
-          columns: { name: true, timezone: true },
+          columns: { name: true },
         });
         return {
           festivalName: festivalRow?.name ?? "",
-          festivalTz: festivalRow?.timezone ?? "UTC",
         };
       },
     );
@@ -111,7 +90,6 @@ export const exportJob = inngest.createFunction(
         const result = await runGenerator(
           festivalId,
           festivalName,
-          festivalTz,
           config,
           format,
         );

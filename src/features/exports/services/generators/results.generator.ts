@@ -41,17 +41,16 @@ interface ResultRow {
   remarks: string;
 }
 
-function formatDob(iso: string | null, festivalTz: string): string {
+function formatDob(iso: string | null): string {
   if (!iso) return "";
   return parseInstant(iso)
-    ? formatDate(iso, { tz: festivalTz, style: "medium" })
+    ? formatDate(iso, { style: "medium" })
     : "";
 }
 
 async function loadResultRows(
   festivalId: string,
   config: ResultsConfig,
-  festivalTz: string,
 ): Promise<{ rows: ResultRow[]; codeByProgramme: Map<string, string> }> {
   const conditions = [eq(resultTable.festivalId, festivalId)];
   if (config.onlyPublished) conditions.push(eq(resultTable.isPublished, true));
@@ -111,7 +110,7 @@ async function loadResultRows(
     grade: r.grade,
     points: r.points ?? 0,
     phone: r.phone ?? "",
-    dob: formatDob(r.dob, festivalTz),
+    dob: formatDob(r.dob),
     remarks: r.remarks ?? "",
   }));
 
@@ -155,12 +154,10 @@ export async function generateResults(
   config: ResultsConfig,
   format: ExportFormat,
   festivalName: string,
-  festivalTz: string = "UTC",
 ): Promise<GeneratedExport> {
   const { rows, codeByProgramme } = await loadResultRows(
     festivalId,
     config,
-    festivalTz,
   );
   const teamWise = config.listType === "TEAM_WISE";
 
@@ -232,7 +229,6 @@ export async function generateResults(
       title: teamWise ? "Team-wise Results" : "Results",
       sections,
       pageLayout: config.pageLayout,
-      timezone: festivalTz,
     }),
     fileName: "results.pdf",
     mimeType: PDF_MIME,

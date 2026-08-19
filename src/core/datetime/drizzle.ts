@@ -9,11 +9,12 @@ import {
  * project. Use this everywhere instead of repeating the options object
  * at each call site.
  *
- *   - `withTimezone: true` → Postgres `timestamptz(3)`. Storage is
- *     always UTC; display is whatever the caller passes via `tz`.
- *   - `precision: 3`       → millisecond accuracy, matching the
+ *   - `withTimezone: true` — Postgres `timestamptz(3)`. Storage is
+ *     always UTC; display is always the viewer's browser-local time
+ *     (see `format.ts`, no `tz` parameter).
+ *   - `precision: 3`       — millisecond accuracy, matching the
  *     existing convention (and the prior `timestamp(3)` columns).
- *   - `mode: "string"`     → keep the JS-level type as ISO string.
+ *   - `mode: "string"`     — keep the JS-level type as ISO string.
  *     Pair with `parseInstant` (see `parse.ts`) for safe parsing.
  */
 export const tzTimestampConfig: PgTimestampConfig<"string"> = {

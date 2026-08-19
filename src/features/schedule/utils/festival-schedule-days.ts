@@ -1,20 +1,17 @@
 import { eachDayOfInterval } from "date-fns";
-import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
-import { DEFAULT_TZ } from "@/core/datetime/constants";
 import { parseInstant } from "@/core/datetime/parse";
 
 const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Calendar day keys (yyyy-MM-dd) for each day in the festival range,
- * computed in the festival's timezone. Uses `fromZonedTime` to convert
- * the wall-clock boundaries to UTC, then expands the interval with
- * date-fns so DST jumps still produce one key per local day.
+ * in the viewer's browser-local timezone. Browsing the festival — admin
+ * or public — is always done in the user's local clock, so day grouping
+ * uses local days.
  */
 export function getFestivalDateKeySet(
   startISO: string | null,
   endISO: string | null,
-  tz: string = DEFAULT_TZ,
 ): Set<string> | null {
   if (!startISO || !endISO) return null;
   const startParsed = new Date(startISO);
@@ -25,26 +22,51 @@ export function getFestivalDateKeySet(
   ) {
     return null;
   }
-  const startKey = formatInTimeZone(startParsed, tz, "yyyy-MM-dd");
-  const endKey = formatInTimeZone(endParsed, tz, "yyyy-MM-dd");
-  if (startKey > endKey) return null;
-  const startUtc = fromZonedTime(`${startKey}T00:00:00`, tz);
-  const endUtc = fromZonedTime(`${endKey}T23:59:59`, tz);
-  const days = eachDayOfInterval({
-    start: toZonedTime(startUtc, tz),
-    end: toZonedTime(endUtc, tz),
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   });
-  return new Set(days.map((d) => formatInTimeZone(d, tz, "yyyy-MM-dd")));
+  const startKey = fmt.format(startParsed);
+  const endKey = fmt.format(endParsed);
+  if (startKey > endKey) return null;
+
+  // Expand the interval using the local midnight of each boundary so
+  // every local day the festival spans gets its own key.
+  const startLocalMidnight = new Date(
+    startParsed.getFullYear(),
+    startParsed.getMonth(),
+    startParsed.getDate(),
+  );
+  const endLocalMidnight = new Date(
+    endParsed.getFullYear(),
+    endParsed.getMonth(),
+    endParsed.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+
+  const days = eachDayOfInterval({
+    start: startLocalMidnight,
+    end: endLocalMidnight,
+  });
+  return new Set(days.map((d) => fmt.format(d)));
 }
 
 export function getScheduleDateKeyUpperBound(
   endDate: string | null,
-  tz: string = DEFAULT_TZ,
 ): string | null {
   if (!endDate) return null;
   const parsed = parseInstant(endDate);
   if (!parsed) return null;
-  return formatInTimeZone(parsed, tz, "yyyy-MM-dd");
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return fmt.format(parsed);
 }
 
 export function isValidScheduleDayKey(key: string): boolean {
@@ -52,16 +74,15 @@ export function isValidScheduleDayKey(key: string): boolean {
 }
 
 /**
- * Compare two `Date` values on the calendar day in the festival's timezone.
- * Falls back to local-day semantics when `tz` is omitted.
+ * Compare two `Date` values on the calendar day in the viewer's
+ * browser-local timezone.
  */
-export function isSameCalendarDay(
-  startTime: Date,
-  endTime: Date | null,
-  tz: string = DEFAULT_TZ,
-): boolean {
+export function isSameCalendarDay(startTime: Date, endTime: Date | null): boolean {
   if (endTime == null) return true;
-  const aKey = formatInTimeZone(startTime, tz, "yyyy-MM-dd");
-  const bKey = formatInTimeZone(endTime, tz, "yyyy-MM-dd");
-  return aKey === bKey;
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return fmt.format(startTime) === fmt.format(endTime);
 }
