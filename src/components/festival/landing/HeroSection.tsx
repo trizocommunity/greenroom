@@ -4,10 +4,13 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import type { FestivalPublicData } from "@/components/festival/FestivalContext";
 import { PUBLIC_CONTAINER } from "@/components/festival/public/PublicSection";
 import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 
 interface HeroSectionProps {
   festival: FestivalPublicData;
@@ -26,6 +29,7 @@ export function HeroSection({
   basicMode = false,
   accentColor = "var(--primary)",
 }: HeroSectionProps) {
+  const router = useRouter();
   const startDate = festival.startDate ? new Date(festival.startDate) : null;
   const endDate = festival.endDate ? new Date(festival.endDate) : null;
   const basePath = useFestivalLinkBase(festival.slug);
@@ -40,6 +44,27 @@ export function HeroSection({
     festival.programmeAssignmentStartDate,
     festival.programmeAssignmentDeadline,
   );
+
+  /* UC16 — countdown ticker. The cron pushes `{ daysToStart, daysToEnd,
+     daysToExpire, tickedAt }` once a minute. We don't read the day
+     numbers client-side (the deadlines are still computed locally by
+     `useDeadlineWindow`); we just need the cadence to refresh the
+     server loader so the page stays in sync. The hook has its own
+     backoff; 60s polling fallback is in the parent page. */
+  const { data: countdownEvent } = useLiveChannel<{
+    festivalId: string;
+    daysToStart: number;
+    daysToEnd: number;
+    daysToExpire: number;
+    tickedAt: string;
+  }>({
+    url: `/api/v1/festivals/${festival.id}/countdown/stream`,
+  });
+
+  useEffect(() => {
+    if (!countdownEvent) return;
+    router.refresh();
+  }, [countdownEvent, router]);
 
   const dateLabel =
     startDate && endDate
