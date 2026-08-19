@@ -164,22 +164,44 @@ export function ResultsList({
     url: `/api/v1/festivals/${festivalId}/results-count/stream`,
   });
 
+  /* UC6 — `announceResult` also publishes `{ programmeId, position,
+     resultNumber, startedAt }` to the announce channel. We don't render
+     the announcement tickertape here — the panel handles that role — but
+     a fresh event means a result is now public, so refresh page 1. The
+     `data` reference is stable so we explicitly destructure the URL into
+     the dep array. */
+  const { data: announceEvent, status: announceStatus } = useLiveChannel<{
+    programmeId: string;
+    position: number;
+    resultNumber: number;
+    startedAt: string;
+  }>({
+    url: `/api/v1/festivals/${festivalId}/announce/stream`,
+  });
+
   useEffect(() => {
     if (!canRefresh) return;
     if (!resultsCountEvent) return;
     refreshFirstPage();
   }, [resultsCountEvent, canRefresh, refreshFirstPage]);
 
+  useEffect(() => {
+    if (!canRefresh) return;
+    if (!announceEvent) return;
+    refreshFirstPage();
+  }, [announceEvent, canRefresh, refreshFirstPage]);
+
   /* Polling fallback. Runs only when SSE is not `open` — when the channel
      reconnects with backoff (>1s) or has failed, the 30s poll keeps the
      page moving. Mirrors the pre-Issue-48 behaviour exactly so a broken
-     SSE handler never causes a visible regression. */
+     SSE handler never causes a visible regression. Either channel being
+     open is enough to suppress the poll. */
   useEffect(() => {
     if (!canRefresh) return;
-    if (liveStatus === "open") return;
+    if (liveStatus === "open" || announceStatus === "open") return;
     const id = window.setInterval(refreshFirstPage, REFRESH_MS);
     return () => window.clearInterval(id);
-  }, [canRefresh, liveStatus, refreshFirstPage]);
+  }, [canRefresh, liveStatus, announceStatus, refreshFirstPage]);
 
   /* Shared poster links land on ?programmeId=…, which may point at a
      programme outside the loaded page — so fetch just that one. */

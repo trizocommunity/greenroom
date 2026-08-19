@@ -1,11 +1,12 @@
 "use client";
 
+import { format } from "date-fns";
 import { Loader2, Megaphone, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { AnnouncerCallListDrawer } from "@/components/dashboard/announcement/AnnouncerCallListDrawer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { AnnouncerCallListDrawer } from "@/components/dashboard/announcement/AnnouncerCallListDrawer";
 import {
   Table,
   TableBody,
@@ -16,9 +17,12 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/core/utils/cn";
 import { announceStandings } from "@/features/announcement/actions/announcer.actions";
-import type { TeamStandingRow, ActiveReportingProgramme } from "@/features/announcement/services/announcer.service";
+import type {
+  ActiveReportingProgramme,
+  TeamStandingRow,
+} from "@/features/announcement/services/announcer.service";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 import { toast } from "@/lib/toast";
-import { format } from "date-fns";
 
 const MEDAL_ROWS = [
   "bg-amber-500/10",
@@ -45,7 +49,9 @@ function PlaceLabel({ rank }: { rank: number }) {
         <span className="text-lg">🥉</span> 3rd
       </span>
     );
-  return <span className="pl-1 text-muted-foreground font-medium">{rank}th</span>;
+  return (
+    <span className="pl-1 text-muted-foreground font-medium">{rank}th</span>
+  );
 }
 
 interface Props {
@@ -65,7 +71,28 @@ export function AnnouncerConsoleClient({
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [selectedCallItem, setSelectedCallItem] = useState<ActiveReportingProgramme | null>(null);
+  const [selectedCallItem, setSelectedCallItem] =
+    useState<ActiveReportingProgramme | null>(null);
+
+  /* UC6 — listen to the announce channel so the console updates when a
+     *different* announcer tab (or another role) advances a result. The
+     `router.refresh()` re-runs the server loader, which re-pulls the
+     queuedStandings and callList. Hook has its own auto-reconnect; the
+     silent announce is fine if SSE drops because the next announce
+     triggers another refresh anyway. */
+  const { data: announceEvent } = useLiveChannel<{
+    programmeId: string;
+    position: number;
+    resultNumber: number;
+    startedAt: string;
+  }>({
+    url: `/api/v1/festivals/${festivalId}/announce/stream`,
+  });
+
+  useEffect(() => {
+    if (!announceEvent) return;
+    router.refresh();
+  }, [announceEvent, router]);
 
   function handleAnnounce() {
     startTransition(async () => {
@@ -100,7 +127,6 @@ export function AnnouncerConsoleClient({
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-5 flex-1 items-start">
-
         {/* Left Panel — Standings */}
         <div className="flex flex-col rounded-2xl border bg-card overflow-hidden h-full">
           <div className="px-5 py-4 border-b bg-muted/30 flex items-center justify-between gap-2">
