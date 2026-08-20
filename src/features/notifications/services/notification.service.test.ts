@@ -54,6 +54,9 @@ vi.mock("@/features/plan-features/services/feature-gate", () => ({
     // doesn't accidentally read TIER_CONFIG.
     return false;
   },
+}));
+
+vi.mock("@/features/plan-features/services/tier", () => ({
   getResolvedTier: (tier: unknown) => tier ?? "BASIC",
 }));
 

@@ -9,8 +9,9 @@ import {
 import { serverNowIso } from "@/core/datetime/server";
 import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
-import { isEnabled, getResolvedTier } from "@/features/plan-features/services/feature-gate";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 type DeliveryChannel = "IN_APP" | "EMAIL";
 
