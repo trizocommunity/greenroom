@@ -400,7 +400,7 @@ SET
 | Variable | Value | Required? | Replaces |
 |---|---|---|---|
 | `BETTER_AUTH_SECRET` | `openssl rand -hex 32` (reuse current `JWT_SECRET` value in prod) | Yes (production) | `JWT_SECRET` |
-| `BETTER_AUTH_URL` | `http://localhost:3000` (dev), `https://greenroomm.vercel.app` (prod) | Yes | New |
+| `BETTER_AUTH_URL` | `http://localhost:3000` (dev), `https://greenroomfestivals.in` (prod) | Yes | New |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | Same as URL (comma-separated for multiple) | Recommended | New |
 | `GOOGLE_CLIENT_ID` | From Google Cloud Console | Yes (for Google sign-in, PR 2+) | New |
 | `GOOGLE_CLIENT_SECRET` | From Google Cloud Console | Yes (for Google sign-in, PR 2+) | New |
@@ -441,7 +441,7 @@ GOOGLE_CLIENT_SECRET=
 4. **Authorized redirect URIs**:
    ```
    http://localhost:3000/api/auth/callback/google
-   https://greenroomm.vercel.app/api/auth/callback/google
+   https://greenroomfestivals.in/api/auth/callback/google
    ```
 5. Copy `Client ID` and `Client secret` into `.env` / Vercel env vars
 6. Do **not** commit the client secret. If leaked, rotate via Console → **Reset secret**

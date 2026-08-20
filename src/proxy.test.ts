@@ -15,7 +15,7 @@ import { proxy } from "./proxy";
 const findVerified = vi.mocked(findVerifiedInstitutionByCustomDomain);
 const findBranded = vi.mocked(findBrandedRedirectTarget);
 
-const APP_HOST = "greenroomm.vercel.app";
+const APP_HOST = "greenroomfestivals.in";
 const BRANDED_HOST = "zenoraev.ahlussuffa.in";
 
 function request(host: string, path: string) {

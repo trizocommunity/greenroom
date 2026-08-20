@@ -8,6 +8,7 @@ export type ReportedEntry = {
   categoryName: string | null;
   codeLetter: string | null;
   teamNumber: number | null;
+  teamMemberNames?: string[];
 };
 
 export type ReportingDetails = {

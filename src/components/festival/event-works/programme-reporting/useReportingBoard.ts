@@ -141,34 +141,44 @@ export function useReportingBoard({
     staleTime: 30_000,
   });
 
+  const session = selected?.reportingSession ?? null;
+  const letters = session?.programmeCodeLetters ?? [];
+
+  function _getIssuedCodeForRow(row: RosterTableRow): string | null {
+    if (row.mode === "team") {
+      for (const sid of row.teamParticipantIds) {
+        const code = getCodeForParticipantFromLetters(letters, sid);
+        if (code) return code;
+      }
+      return null;
+    }
+    return row.participantId
+      ? getCodeForParticipantFromLetters(letters, row.participantId)
+      : null;
+  }
+
   const rosterTableRows = useMemo((): RosterTableRow[] => {
     const programme = selected?.programme;
     if (!programme?.id) return [];
     const rows = assignmentsWithReported;
+    
+    let resultRows: RosterTableRow[] = [];
 
     if (programme.type !== "GROUP") {
-      return rows
-        .map((a) => ({
-          key: a.id,
-          mode: "individual" as const,
-          assignmentId: a.id,
-          participantId: a.participantId,
-          nameColumn: a.participantName ?? "—",
-          groupName: a.groupName,
-          teamCell: a.teamNumber ?? "—",
-          isReported: a.isReported,
-        }))
-        .sort((a, b) =>
-          a.nameColumn.localeCompare(b.nameColumn, undefined, {
-            sensitivity: "base",
-          }),
-        );
-    }
+      resultRows = rows.map((a) => ({
+        key: a.id,
+        mode: "individual" as const,
+        assignmentId: a.id,
+        participantId: a.participantId,
+        nameColumn: a.participantName ?? "—",
+        groupName: a.groupName,
+        teamCell: a.teamNumber ?? "—",
+        isReported: a.isReported,
+      }));
+    } else {
+      const byTeam = bucketAssignmentsByTeam(rows);
 
-    const byTeam = bucketAssignmentsByTeam(rows);
-
-    const teamRows: RosterTableRow[] = Array.from(byTeam.entries()).map(
-      ([teamKey, members]) => {
+      resultRows = Array.from(byTeam.entries()).map(([teamKey, members]) => {
         const lead = members[0]!;
         const teamNumber = lead.teamNumber ?? 0;
         const teamParticipantIds = Array.from(
@@ -179,6 +189,15 @@ export function useReportingBoard({
               .filter((id): id is string => Boolean(id)),
           ]),
         );
+        
+        // Extract all non-lead participant names
+        const teamMemberNames = lead.teamMemberNames?.length
+          ? lead.teamMemberNames
+          : members
+              .slice(1)
+              .map((m) => m.participantName)
+              .filter((name): name is string => Boolean(name));
+
         return {
           key: teamKey,
           mode: "team",
@@ -186,6 +205,7 @@ export function useReportingBoard({
           groupId: lead.groupId,
           teamNumber,
           teamParticipantIds,
+          teamMemberNames,
           nameColumn:
             teamNumber > 0
               ? `${lead.groupName ?? "Group"} · Party ${teamNumber}`
@@ -197,35 +217,60 @@ export function useReportingBoard({
             (teamLeadsForProgramme as any)?.[lead.groupId ?? ""]?.[teamNumber]
               ?.participantName ??
             lead.teamLeadName ??
+            lead.participantName ??
             null,
         };
-      },
-    );
+      });
+    }
 
-    return teamRows.sort((a, b) => {
+    const reportedAtMap = new Map<string, number>();
+    if (session?.programmeReportedParticipants) {
+      for (const r of session.programmeReportedParticipants) {
+        reportedAtMap.set(r.assignmentId, new Date(r.reportedAt).getTime());
+      }
+    }
+
+    return resultRows.sort((a, b) => {
+      const codeA = _getIssuedCodeForRow(a);
+      const codeB = _getIssuedCodeForRow(b);
+
+      if (codeA && codeB) return codeA.localeCompare(codeB);
+      if (codeA) return -1;
+      if (codeB) return 1;
+
+      if (session?.checkoutCompletedAt) {
+        // In scratch section, sort by reported order
+        const timeA = reportedAtMap.get(a.assignmentId) ?? Infinity;
+        const timeB = reportedAtMap.get(b.assignmentId) ?? Infinity;
+        if (timeA !== timeB) return timeA - timeB;
+      }
+
+      // Fallback
+      if (a.mode === "individual" && b.mode === "individual") {
+        return a.nameColumn.localeCompare(b.nameColumn, undefined, {
+          sensitivity: "base",
+        });
+      }
+
       const ga = (a.groupName ?? "").localeCompare(
         b.groupName ?? "",
         undefined,
-        {
-          sensitivity: "base",
-        },
+        { sensitivity: "base" },
       );
       if (ga !== 0) return ga;
-      const aTeam =
-        typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
-      const bTeam =
-        typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
+      
+      const aTeam = typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
+      const bTeam = typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
       return aTeam - bTeam;
     });
-  }, [assignmentsWithReported, selected?.programme, teamLeadsForProgramme]);
+  }, [assignmentsWithReported, selected?.programme, teamLeadsForProgramme, letters, session]);
 
   const reportedUnitsCount = useMemo(
     () => rosterTableRows.filter((r) => r.isReported).length,
     [rosterTableRows],
   );
 
-  const session = selected?.reportingSession ?? null;
-  const letters = session?.programmeCodeLetters ?? [];
+
 
   const scratchTiles = useMemo<ScratchTile[]>(() => {
     if (letters.length === 0) return [];
@@ -273,19 +318,6 @@ export function useReportingBoard({
   const allTilesRevealed =
     scratchTiles.length > 0 && currentQueuePosition === null;
 
-  function getIssuedCodeForRow(row: RosterTableRow): string | null {
-    if (row.mode === "team") {
-      for (const sid of row.teamParticipantIds) {
-        const code = getCodeForParticipantFromLetters(letters, sid);
-        if (code) return code;
-      }
-      return null;
-    }
-    return row.participantId
-      ? getCodeForParticipantFromLetters(letters, row.participantId)
-      : null;
-  }
-
   return {
     filteredAndSortedBoard,
     assignmentCountByProgrammeId,
@@ -297,6 +329,6 @@ export function useReportingBoard({
     scratchTiles,
     currentQueuePosition,
     allTilesRevealed,
-    getIssuedCodeForRow,
+    getIssuedCodeForRow: _getIssuedCodeForRow,
   };
 }

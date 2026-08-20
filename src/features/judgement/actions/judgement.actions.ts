@@ -361,6 +361,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
         codeLetter: string | null;
         /** GROUP-only: party number used to render "Group · Party N". */
         teamNumber: number | null;
+        teamMemberNames?: string[];
       }>;
       assignedCount: number;
       absentCount: number;
@@ -368,6 +369,12 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       submittedAt: Date | null;
     }
   >();
+
+  const { getProgrammeAssignmentsAction } = await import(
+    "@/features/programmes/actions/get-assignments.action"
+  );
+  const allAssignments = await getProgrammeAssignmentsAction(festivalId);
+  const assignmentMap = new Map(allAssignments.map((a) => [a.id, a]));
 
   for (const sessionRow of latestClosedSessions) {
     if (reportingByProgrammeId.has(sessionRow.programmeId)) continue;
@@ -394,19 +401,24 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 categoryName: string | null;
                 codeLetter: string | null;
                 teamNumber: number | null;
+                teamMemberNames: string[];
               }
             >();
 
             for (const r of sessionRow.programmeReportedParticipants) {
+              const assignmentRow = r.assignmentId ? assignmentMap.get(r.assignmentId) : undefined;
               const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
               const groupName = r.group?.name ?? null;
               const key = `${groupName ?? "no-group"}::${teamNo ?? "no-team"}`;
+              
+              const teamLeadName = assignmentRow?.teamLeadName;
               const fallbackLabel = groupName
                 ? teamNo
                   ? `${groupName} - Team ${teamNo}`
                   : groupName
                 : `Team ${teamNo ?? "—"}`;
-              const label = r.participant?.name || fallbackLabel;
+              const label = teamLeadName || r.participant?.name || fallbackLabel;
+              
               const codeLetter = r.participant?.id
                 ? (codeByParticipantId.get(r.participant.id) ?? null)
                 : null;
@@ -419,12 +431,17 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                   categoryName: null,
                   codeLetter,
                   teamNumber: teamNo ?? null,
+                  teamMemberNames: assignmentRow?.teamMemberNames ?? [],
                 });
                 continue;
               }
 
               if (!existing.codeLetter && codeLetter) {
                 existing.codeLetter = codeLetter;
+              }
+              // If there are legacy multiple rows, we can still push names
+              if (r.participant?.name && r.participant.name !== existing.label && !existing.teamMemberNames.includes(r.participant.name)) {
+                existing.teamMemberNames.push(r.participant.name);
               }
             }
 
@@ -440,6 +457,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 categoryName: string | null;
                 codeLetter: string | null;
                 teamNumber: number | null;
+                teamMemberNames?: string[];
               } | null => {
                 const teamNo =
                   r.teamNumber ?? r.programmeAssignment?.teamNumber;
@@ -476,6 +494,13 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 teamNumber: number | null;
               } => Boolean(x),
             );
+
+    reportedEntries.sort((a, b) => {
+      if (a.codeLetter && b.codeLetter) return a.codeLetter.localeCompare(b.codeLetter);
+      if (a.codeLetter) return -1;
+      if (b.codeLetter) return 1;
+      return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+    });
 
     reportingByProgrammeId.set(sessionRow.programmeId, {
       stageName:

@@ -3,7 +3,12 @@ import { getAppBaseUrl } from "@/config/routes";
 /** Vercel DNS CNAME target for custom domains (Phase 1 manual attach). */
 export const VERCEL_DNS_CNAME_TARGET = "cname.vercel-dns.com";
 
-const APP_HOST_EXTRAS = ["localhost", "127.0.0.1", "greenroomm.vercel.app"];
+const APP_HOST_EXTRAS = [
+  "localhost",
+  "127.0.0.1",
+  "greenroomfestivals.in",
+  "www.greenroomfestivals.in",
+];
 
 /**
  * Hostnames that serve the Greenroom app itself (not institution custom domains).

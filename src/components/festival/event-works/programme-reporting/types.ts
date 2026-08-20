@@ -93,6 +93,7 @@ export type RosterTableRow =
       teamParticipantIds: string[];
       /** PRO only; the appointed lead for this team, when there is one. */
       teamLeadName?: string | null;
+      teamMemberNames: string[];
       nameColumn: string;
       groupName: string | null;
       teamCell: number;

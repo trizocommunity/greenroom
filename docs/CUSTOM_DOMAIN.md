@@ -1,7 +1,7 @@
 # Custom Domain (branded festival hosts)
 
 **Status:** Shipped · certificates issued **per festival host** (see §1.1)  
-**App host (prod):** `https://greenroomm.vercel.app`  
+**App host (prod):** `https://greenroomfestivals.in`  
 **Tier gate:** `TIER_CONFIG.*.features.customDomain` — **PRO only** (`src/config/pricing.ts`)  
 **Plan label:** Super Admin matrix → “Custom Domain” (`src/config/plan-features.config.ts`)  
 **Surface:** Institutional festivals · Dashboard → Settings → **Launch Website** (`?tab=festival-live`)  
@@ -28,8 +28,8 @@ https://{festivalSlug}.{customDomain}/stage-portal
 | Festival slug | `suffamehil` |
 | Apex (saved by owner) | `ahlussuffa.in` |
 | Branded public URL | `https://suffamehil.ahlussuffa.in` |
-| Path URL (always available) | `https://greenroomm.vercel.app/suffamehil` |
-| Dashboard (always app host) | `https://greenroomm.vercel.app/dashboard/suffamehil` |
+| Path URL (always available) | `https://greenroomfestivals.in/suffamehil` |
+| Dashboard (always app host) | `https://greenroomfestivals.in/dashboard/suffamehil` |
 
 Until the domain is **DNS-verified**, public URLs stay on the Greenroom path form.  
 Until **HTTPS is proven on that festival's own host**, public URLs *also* stay on the path form — Greenroom only advertises `{slug}.{domain}` once a real TLS handshake against that exact host has succeeded (`festival.domainHttpsReadyAt`).
@@ -79,7 +79,7 @@ Consequences that shape the rest of this document:
 
 ## 2. URL matrix
 
-Example: slug `suffamehil` · apex `ahlussuffa.in` · app `greenroomm.vercel.app`
+Example: slug `suffamehil` · apex `ahlussuffa.in` · app `greenroomfestivals.in`
 
 | Surface | Not verified | Verified + HTTPS ready | Notes |
 |---------|--------------|------------------------|--------|
@@ -161,7 +161,7 @@ never certify (§1.1).
 
 | Step | Where | Action |
 |------|--------|--------|
-| 1 | `https://greenroomm.vercel.app/dashboard/{slug}/settings` → **Launch Website** | Enter apex only (e.g. `ahlussuffa.in`) → **Save domain**. Not `www`, not a full URL. |
+| 1 | `https://greenroomfestivals.in/dashboard/{slug}/settings` → **Launch Website** | Enter apex only (e.g. `ahlussuffa.in`) → **Save domain**. Not `www`, not a full URL. |
 | 2 | Same screen → **DNS records** | At the domain DNS provider, add the two records shown in the UI (see below). |
 | 3 | Same screen | Click **Verify DNS**. Status becomes **Verified** when both records resolve correctly. |
 | 4 | Same screen | UI shows **Issuing a certificate for `{slug}.{apex}`** and polls every 15s, then flips to **HTTPS ready**. No ops ticket. If the deployment has no Vercel credentials the badge reads **DNS verified — awaiting HTTPS** instead and the alert asks Greenroom to attach that host — the manual path in §4. |
@@ -291,9 +291,9 @@ member (managers get view access); only save/clear/verify are owner-gated.
 
 ### 7.1 One-time project setup (prod)
 
-1. Deploy Greenroom so it serves **`https://greenroomm.vercel.app`**.
+1. Deploy Greenroom so it serves **`https://greenroomfestivals.in`**.
 2. Vercel env (minimum related to this feature):
-   - `NEXT_PUBLIC_APP_URL=https://greenroomm.vercel.app`
+   - `NEXT_PUBLIC_APP_URL=https://greenroomfestivals.in`
    - `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` — enables automated attach. All three or none; a partial set is treated as unset.
    - Leave `DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` unset. Canonical redirect follows each festival's own `domainHttpsReadyAt`, so it cannot fire before that host serves TLS. Set it to `true` only to switch the behavior off in an incident.
 3. Confirm PRO has `customDomain: true` in `src/config/pricing.ts`.
@@ -336,7 +336,7 @@ Then:
    - `https://{slug}.ahlussuffa.in` → public site
    - `https://{slug}.ahlussuffa.in/login`
    - `https://{slug}.ahlussuffa.in/stage-portal`
-   - `https://{slug}.ahlussuffa.in/dashboard/...` → redirects to `greenroomm.vercel.app/dashboard/...`
+   - `https://{slug}.ahlussuffa.in/dashboard/...` → redirects to `greenroomfestivals.in/dashboard/...`
 5. No DB edit needed — the probe notices the working certificate and stamps
    `festival.domainHttpsReadyAt` on the next status poll.
 6. Nothing to enable: once step 5 stamps `domainHttpsReadyAt`, app-host
@@ -521,7 +521,7 @@ side. There is no backfill script and no scheduled job.
 
 | Variable | Purpose |
 |----------|---------|
-| `NEXT_PUBLIC_APP_URL` | App origin for redirects, emails, dashboard bounce from custom hosts. Prod: `https://greenroomm.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | App origin for redirects, emails, dashboard bounce from custom hosts. Prod: `https://greenroomfestivals.in` |
 | `DISABLE_CUSTOM_DOMAIN_CANONICAL_REDIRECT` | Kill switch. Set `true` to stop app-host `/{slug}/…` → branded-host redirects; unset (default) lets each festival's `domainHttpsReadyAt` decide. |
 | `VERCEL_URL` | Auto-included in app-host allowlist on Vercel deployments |
 | `VERCEL_TOKEN` | Domains API token, scoped to the team. Required for automated attach. |
@@ -613,7 +613,7 @@ $r = Invoke-WebRequest http://127.0.0.1:3000/login -UseBasicParsing
 
 ## 12. Confirm develop / prod checklist
 
-### Greenroom side (`greenroomm.vercel.app`)
+### Greenroom side (`greenroomfestivals.in`)
 
 - [ ] App loads on production app host  
 - [ ] Migrations applied; PRO shows Custom subdomain in Launch Website  

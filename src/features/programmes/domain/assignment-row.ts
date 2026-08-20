@@ -10,4 +10,6 @@ export type ProgrammeReportingAssignmentRow = {
   teamLeadName?: string | null;
   /** GROUP-only: participant ids from programme_assignment_member (XOR-migrated data). */
   teamParticipantIds?: string[];
+  /** GROUP-only: participant names corresponding to teamParticipantIds */
+  teamMemberNames?: string[];
 };

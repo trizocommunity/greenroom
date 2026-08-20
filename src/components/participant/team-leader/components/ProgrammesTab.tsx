@@ -223,8 +223,8 @@ export function ProgrammesTab({
       )}
 
       <div className="flex flex-col gap-2">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div className="relative flex-1">
+        <div className=" grid grid-cols-3 sm:grid-cols-5  gap-2">
+          <div className="col-span-3 sm:col-span-1   relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search programmes..."
@@ -233,71 +233,66 @@ export function ProgrammesTab({
               className="h-10 w-full rounded-full pl-9"
             />
           </div>
-          <div className="flex flex-wrap lg:flex-row items-center gap-2">
-            <div className="w-full grid grid-cols-3 gap-2 lg:w-auto">
-              <Select
-                value={selectedProgrammeCategoryId}
-                onValueChange={setSelectedProgrammeCategoryId}
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm w-auto">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All categories</SelectItem>
-                  {programmeCategoryOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <Select
+            value={selectedProgrammeCategoryId}
+            onValueChange={setSelectedProgrammeCategoryId}
+          >
+            <SelectTrigger className="h-9 rounded-full text-sm w-full  sm:w-auto">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All categories</SelectItem>
+              {programmeCategoryOptions.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              <Select
-                value={selectedProgrammeType}
-                onValueChange={(v) =>
-                  setSelectedProgrammeType(v as "ALL" | "GROUP" | "INDIVIDUAL")
-                }
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm w-auto">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All types</SelectItem>
-                  <SelectItem value="GROUP">Group</SelectItem>
-                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                </SelectContent>
-              </Select>
+          <Select
+            value={selectedProgrammeType}
+            onValueChange={(v) =>
+              setSelectedProgrammeType(v as "ALL" | "GROUP" | "INDIVIDUAL")
+            }
+          >
+            <SelectTrigger className="h-9 rounded-full text-sm w-full sm:w-auto">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All types</SelectItem>
+              <SelectItem value="GROUP">Group</SelectItem>
+              <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+            </SelectContent>
+          </Select>
 
-              <Select
-                value={assignmentStatusFilter}
-                onValueChange={(v) =>
-                  setAssignmentStatusFilter(
-                    v as "ALL" | "COMPLETED" | "NOT_COMPLETED",
-                  )
-                }
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm w-auto">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All statuses</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="NOT_COMPLETED">Uncompleted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {canAssign && (
-              <Button
-                size="sm"
-                className="h-9 w-full lg:w-auto rounded-full xl:ml-2"
-                onClick={() => setAssignmentModalOpen(true)}
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                New assignment
-              </Button>
-            )}
-          </div>
+          <Select
+            value={assignmentStatusFilter}
+            onValueChange={(v) =>
+              setAssignmentStatusFilter(
+                v as "ALL" | "COMPLETED" | "NOT_COMPLETED",
+              )
+            }
+          >
+            <SelectTrigger className="h-9 rounded-full text-sm w-full sm:w-auto">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="NOT_COMPLETED">Uncompleted</SelectItem>
+            </SelectContent>
+          </Select>
+          {canAssign && (
+            <Button
+              className="h-9 w-full col-span-4 sm:col-span-1 sm:w-auto rounded-full "
+              size="sm"
+              onClick={() => setAssignmentModalOpen(true)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              New assignment
+            </Button>
+          )}
         </div>
 
         {eligibleProgrammes.length === 0 ? (

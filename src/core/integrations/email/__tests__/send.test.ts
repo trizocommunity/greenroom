@@ -55,7 +55,7 @@ describe("sendEmail — global toggle", () => {
   it("proceeds to Resend when toggle is on", async () => {
     mockIsEnabled.mockResolvedValue(true);
     process.env.RESEND_API_KEY = "test_resend_key";
-    process.env.EMAIL_FROM = "Greenroom <info@trizocreatives.in>";
+    process.env.EMAIL_FROM = "Greenroom <info@greenroomfestivals.in>";
 
     const { sendEmailSync } = await import("../send");
     const result = await sendEmailSync({

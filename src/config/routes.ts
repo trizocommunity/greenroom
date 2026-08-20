@@ -13,7 +13,7 @@ export function getAppBaseUrl(): string {
   }
 
   if (process.env.NODE_ENV === "production") {
-    return "https://greenroomm.vercel.app";
+    return "https://greenroomfestivals.in";
   }
   return "http://localhost:3000";
 }

@@ -25,6 +25,7 @@ import { getProgrammeRosterAction } from "@/features/programmes/actions/programm
 import { notifyCallList } from "@/features/schedule/actions/schedule.actions";
 import type { EnrichedScheduleEntry } from "@/features/schedule/actions/schedule.actions";
 import { toast } from "@/lib/toast";
+import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 
 interface ScheduleReportingDrawerProps {
   festivalId: string;
@@ -169,33 +170,61 @@ export function ScheduleReportingDrawer({
               </p>
             ) : (
               <div className="border rounded-md divide-y overflow-hidden bg-background">
-                {roster.map((r, i) => (
-                  <div
-                    key={r.id || i}
-                    className="p-3 text-sm flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {isGroup
-                          ? r.teamLeadName
-                            ? `${r.teamLeadName} & Party`
-                            : `${r.groupName || "Unknown Team"} & Party`
-                          : r.participantName || "Unnamed Participant"}
-                      </p>
-                      {isGroup && r.teamNumber && (
-                        <p className="text-xs text-muted-foreground">
-                          Team {r.teamNumber}
-                        </p>
-                      )}
-                    </div>
-                    {!isGroup && r.chestNumber && (
-                      <div className="flex items-center text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                        <Hash className="w-3 h-3 mr-1" />
-                        {r.chestNumber}
+                {(() => {
+                  if (!isGroup) {
+                    return roster.map((r, i) => (
+                      <div
+                        key={r.id || i}
+                        className="p-3 text-sm flex items-center justify-between gap-3"
+                      >
+                        <ParticipantNameBlock
+                          className="flex-1"
+                          primaryName={r.participantName || "Unnamed Participant"}
+                          isGroup={false}
+                        />
+                        {r.chestNumber && (
+                          <div className="shrink-0 flex items-center text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                            <Hash className="w-3 h-3 mr-1" />
+                            {r.chestNumber}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                    ));
+                  }
+
+                  const byTeam = new Map<string, any[]>();
+                  for (const r of roster) {
+                    const key = `${r.groupId ?? "no-group"}::${r.teamNumber ?? "no-team"}`;
+                    if (!byTeam.has(key)) byTeam.set(key, []);
+                    byTeam.get(key)!.push(r);
+                  }
+
+                  return Array.from(byTeam.values()).map((members, i) => {
+                    const lead = members[0];
+                    const teamMemberNames = lead.teamMemberNames?.length > 0 
+                      ? lead.teamMemberNames 
+                      : members.slice(1).map((m: any) => m.participantName).filter(Boolean);
+                    
+                    return (
+                      <div
+                        key={lead.id || i}
+                        className="p-3 text-sm flex items-center justify-between gap-3"
+                      >
+                        <ParticipantNameBlock
+                          className="flex-1"
+                          primaryName={lead.teamLeadName
+                            ? `${lead.teamLeadName} & Party`
+                            : lead.participantName
+                              ? `${lead.participantName} & Party`
+                              : `${lead.groupName || "Unknown Team"} & Party`}
+                          isGroup={true}
+                          subtitle={lead.teamNumber ? `Team ${lead.teamNumber}` : undefined}
+                          teamMemberNames={teamMemberNames}
+                        />
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>

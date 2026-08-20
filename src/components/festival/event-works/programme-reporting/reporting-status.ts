@@ -199,6 +199,7 @@ export type ProgrammeHistoryDetail = {
     spunAt: string | null;
     code: string;
     membersCount?: number | null;
+    teamMemberNames?: string[];
   }>;
 };
 
@@ -282,7 +283,7 @@ export function buildProgrammeHistoryDetails(
       ]),
     );
 
-    const participantTimeline =
+    const rawParticipantTimeline =
       programmeType === "GROUP"
         ? Array.from(bucketAssignmentsByTeam(programmeAssignments)).map(
             ([teamKey, members]) => {
@@ -309,7 +310,9 @@ export function buildProgrammeHistoryDetails(
                 key: teamKey,
                 label: lead?.teamLeadName
                   ? `${lead.teamLeadName} & ${teamLabel}`
-                  : teamLabel,
+                  : lead?.participantName
+                    ? `${lead.participantName} & ${teamLabel}`
+                    : teamLabel,
                 chestOrTeam: teamLabel,
                 group: lead?.groupName ?? "—",
                 reportedAt: firstReported?.reportedAt ?? null,
@@ -317,6 +320,12 @@ export function buildProgrammeHistoryDetails(
                 code,
                 membersCount:
                   lead?.teamParticipantIds?.length || members.length,
+                teamMemberNames: lead?.teamMemberNames?.length
+                  ? lead.teamMemberNames
+                  : members
+                      .slice(1)
+                      .map((m) => m.participantName)
+                      .filter(Boolean) as string[],
               };
             },
           )
@@ -341,6 +350,20 @@ export function buildProgrammeHistoryDetails(
               membersCount: null,
             };
           });
+
+    const participantTimeline = rawParticipantTimeline.sort((a, b) => {
+      const codeA = a.code !== "—" ? a.code : null;
+      const codeB = b.code !== "—" ? b.code : null;
+
+      if (codeA && codeB) return codeA.localeCompare(codeB);
+      if (codeA) return -1;
+      if (codeB) return 1;
+
+      // Fallback to reported time
+      const timeA = a.reportedAt ? new Date(a.reportedAt).getTime() : Infinity;
+      const timeB = b.reportedAt ? new Date(b.reportedAt).getTime() : Infinity;
+      return timeA - timeB;
+    });
 
     details.set(item.id, {
       programmeName: item.programme?.name ?? "Unknown programme",

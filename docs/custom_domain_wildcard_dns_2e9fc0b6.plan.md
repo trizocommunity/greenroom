@@ -75,7 +75,7 @@ Example: slug `suffamehil` · apex `ahlussuffa.in`
 
 | Surface               | Before                                       | After (verified)                                                      | After (not verified) |
 | --------------------- | -------------------------------------------- | --------------------------------------------------------------------- | -------------------- |
-| Dashboard             | `greenroomm.vercel.app/dashboard/suffamehil` | Still Greenroom; custom-host `/dashboard/*` **redirects** to app base | same                 |
+| Dashboard             | `greenroomfestivals.in/dashboard/suffamehil` | Still Greenroom; custom-host `/dashboard/*` **redirects** to app base | same                 |
 | Public site           | `…/suffamehil`                               | `suffamehil.ahlussuffa.in`                                            | `…/suffamehil`       |
 | Stage portal          | `…/suffamehil/stage-portal`                  | `suffamehil.ahlussuffa.in/stage-portal`                               | path on Greenroom    |
 | Participant login     | `…/suffamehil/login`                         | `suffamehil.ahlussuffa.in/login`                                      | path on Greenroom    |
@@ -134,7 +134,7 @@ function parseCustomFestivalHost(hostHeader: string, appHosts: Set<string>) {
 
 ### Behavior
 
-1. **App hosts** (`greenroomm.vercel.app`, localhost): no festival rewrite; keep CSRF for `/api`.
+1. **App hosts** (`greenroomfestivals.in`, localhost): no festival rewrite; keep CSRF for `/api`.
 2. **Custom host:**
    - `/api/*`, `/_next/*`, static → no rewrite (same origin for cookies).
    - **`/dashboard/*` (and other organizer-only paths if needed):**  
