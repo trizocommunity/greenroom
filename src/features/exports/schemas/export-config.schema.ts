@@ -123,6 +123,15 @@ export const certificateConfig = z.object({
   programmeIds: idList,
 });
 
+export const scheduleConfig = z.object({
+  type: z.literal("SCHEDULE"),
+  days: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).default([]),
+  includeStage: z.boolean().default(true),
+  includeDescription: z.boolean().default(true),
+  includeSpeakers: z.boolean().default(false),
+  includeEntryType: z.boolean().default(false),
+});
+
 export const exportConfigSchema = z.discriminatedUnion("type", [
   callListConfig,
   resultsConfig,
@@ -131,6 +140,7 @@ export const exportConfigSchema = z.discriminatedUnion("type", [
   valuationSheetConfig,
   badgeConfig,
   certificateConfig,
+  scheduleConfig,
 ]);
 
 export type ExportConfig = z.infer<typeof exportConfigSchema>;
@@ -141,6 +151,7 @@ export type JudgeListConfig = z.infer<typeof judgeListConfig>;
 export type ValuationSheetConfig = z.infer<typeof valuationSheetConfig>;
 export type BadgeConfig = z.infer<typeof badgeConfig>;
 export type CertificateConfig = z.infer<typeof certificateConfig>;
+export type ScheduleConfig = z.infer<typeof scheduleConfig>;
 
 export type PageLayout = z.infer<typeof pageLayout>;
 export type GenderFilter = z.infer<typeof genderFilter>;

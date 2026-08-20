@@ -8,7 +8,8 @@ export type ExportType =
   | "JUDGE_LIST"
   | "VALUATION_SHEET"
   | "BADGE"
-  | "CERTIFICATE";
+  | "CERTIFICATE"
+  | "SCHEDULE";
 
 export type ExportFormat = "PDF" | "CSV";
 export type ExportStatus = "PROCESSING" | "COMPLETED" | "FAILED";

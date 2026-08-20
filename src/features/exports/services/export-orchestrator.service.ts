@@ -37,7 +37,6 @@ export interface CreateExportRequest {
 async function runGenerator(
   festivalId: string,
   festivalName: string,
-  festivalTz: string,
   config: ExportConfig,
   format: ExportFormat,
 ): Promise<GeneratedExport> {
@@ -45,33 +44,15 @@ async function runGenerator(
     case "TEAM_RESULT":
       return generateTeamResult(festivalId, config, format);
     case "CALL_LIST":
-      return generateCallList(
-        festivalId,
-        config,
-        format,
-        festivalName,
-        festivalTz,
-      );
+      return generateCallList(festivalId, config, format, festivalName);
     case "RESULTS":
-      return generateResults(
-        festivalId,
-        config,
-        format,
-        festivalName,
-        festivalTz,
-      );
+      return generateResults(festivalId, config, format, festivalName);
     case "JUDGE_LIST":
       return generateJudgeList(festivalId, config, format, festivalName);
     case "VALUATION_SHEET":
       return generateValuationSheet(festivalId, config, format, festivalName);
     case "SCHEDULE":
-      return generateSchedule(
-        festivalId,
-        config,
-        format,
-        festivalName,
-        festivalTz,
-      );
+      return generateSchedule(festivalId, config, format, festivalName);
     default:
       throw new Error(`Export type "${config.type}" is not implemented yet.`);
   }
