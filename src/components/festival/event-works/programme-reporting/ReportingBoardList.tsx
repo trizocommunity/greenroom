@@ -110,7 +110,7 @@ export function ReportingBoardList({
                     {item.programme.name}
                   </p>
                   {(() => {
-                    if (item.reportingSession?.status !== "CLOSED") return null;
+                    if (item.reportingSession?.status !== "IN_PROGRESS") return null;
 
                     const windowEndsAt = item.reportingSession?.windowEndsAt
                       ? typeof item.reportingSession.windowEndsAt === "string"
@@ -148,11 +148,12 @@ export function ReportingBoardList({
                       const scheduled = item.startTime
                         ? parseInstant(item.startTime)
                         : null;
-                      const started = item.reportingSession?.endedAt
-                        ? typeof item.reportingSession.endedAt === "string"
-                          ? parseInstant(item.reportingSession.endedAt)
-                          : item.reportingSession.endedAt
-                        : item.reportingSession?.startedAt;
+                      const startedRaw = item.reportingSession?.startedAt;
+                      const started = startedRaw
+                        ? typeof startedRaw === "string"
+                          ? parseInstant(startedRaw)
+                          : startedRaw
+                        : null;
 
                       const schStr = scheduled
                         ? format(scheduled, "h:mm a")
