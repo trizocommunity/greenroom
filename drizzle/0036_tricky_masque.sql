@@ -1,0 +1,1 @@
+ALTER TYPE "public"."ExportType" ADD VALUE 'SCHEDULE';
