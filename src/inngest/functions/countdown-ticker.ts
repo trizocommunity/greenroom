@@ -8,24 +8,24 @@ import { keys } from "@/core/redis/keys";
 import { inngest } from "@/inngest/client";
 
 /**
- * Live festival countdown ticker (UC16). The per-minute cron walks every
+ * Live festival countdown ticker (UC16). The daily cron walks every
  * festival whose public surface is enabled and publishes a snapshot:
  * `{ daysToStart, daysToEnd, daysToExpire, tickedAt }` to the channel
  * `greenroom:festival:{festivalId}:countdown`. The SSE route at
  * `/api/v1/festivals/[festivalId]/countdown/stream` forwards each tick
  * to subscribed clients.
  *
- * Cadence: per-minute. The Issue 46 spec calls for 1s in the final hour
- * and 60s otherwise, but the per-minute cron is the implementation chosen
- * in ISSUE-47's open questions — a 1s cron on Redis Pub/Sub is wasteful,
- * and the client can interpolate the live timer from the snapshot plus
- * a fade-in `setInterval` once the channel signals the final hour.
+ * Cadence: daily at 00:00 UTC (`0 0 * * *`). The Issue 46 spec called for
+ * 1s in the final hour and 60s otherwise, but the public landing only
+ * surfaces standings on publish and the day-count numbers do not need
+ * sub-day resolution, so the function runs once per day. Inngest also
+ * lets you pause this from the dashboard without code changes.
  */
 export const countdownTicker = inngest.createFunction(
   {
     id: "countdown-ticker",
     name: "Festival countdown ticker (per-minute)",
-    triggers: [{ cron: "* * * * *" }],
+    triggers: [{ cron: "0 0 * * *" }],
   },
   async ({ step }) => {
     const festivals = await step.run("load-public-festivals", async () =>
