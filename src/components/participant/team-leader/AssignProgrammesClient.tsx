@@ -17,12 +17,15 @@ import { useAssignmentData } from "./hooks/useAssignmentData";
 import { ProgrammesTab } from "./components/ProgrammesTab";
 import { AssignProgrammeDrawer } from "./components/AssignProgrammeDrawer";
 
-import type { ProgrammeForAssignment, MyParticipantForAssignment } from "./types";
+import type {
+  ProgrammeForAssignment,
+  MyParticipantForAssignment,
+} from "./types";
 
 export function AssignProgrammesClient({
   festivalId,
   leaderGroupId,
-  leaderCategoryId,
+  leaderCategoryId: _leaderCategoryId,
   isReadOnly,
   windowStart,
   deadline,
@@ -62,7 +65,7 @@ export function AssignProgrammesClient({
     start: windowStartDate,
     end: windowEndDate,
   } = useDeadlineWindow(windowStart ?? null, deadline ?? null);
-  
+
   const runtimeIsReadOnly = isReadOnly || isLocked;
   const tlHasAccess = !runtimeIsReadOnly;
   const canAssign = tlHasAccess && canAdd;
@@ -76,7 +79,9 @@ export function AssignProgrammesClient({
 
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
-  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string | null>(null);
+  const [selectedProgrammeId, setSelectedProgrammeId] = useState<string | null>(
+    null,
+  );
 
   // Poll for assignments
   useEffect(() => {
@@ -106,16 +111,14 @@ export function AssignProgrammesClient({
     return format(d, "PPpp");
   }, [windowStart]);
 
-  const {
-    groupCapacityByProgrammeId,
-  } = useAssignmentData(
+  const { groupCapacityByProgrammeId } = useAssignmentData(
     assignments,
     programmes,
     leaderGroupId,
     groupCount,
     "ALL",
     "ALL",
-    ""
+    "",
   );
 
   const {
@@ -169,7 +172,7 @@ export function AssignProgrammesClient({
         requiresTeamLead={requiresTeamLead}
       />
 
-      <ProgrammesTab 
+      <ProgrammesTab
         isUnconfigured={isUnconfigured}
         runtimeIsReadOnly={runtimeIsReadOnly}
         isUpcoming={isUpcoming}
@@ -182,7 +185,6 @@ export function AssignProgrammesClient({
         managerName={managerName}
         managerEmail={managerEmail}
         managerPhone={managerPhone}
-        
         programmeSearch={programmeSearch}
         setProgrammeSearch={setProgrammeSearch}
         selectedProgrammeCategoryId={selectedProgrammeCategoryId}
@@ -192,19 +194,16 @@ export function AssignProgrammesClient({
         setSelectedProgrammeType={setSelectedProgrammeType}
         assignmentStatusFilter={assignmentStatusFilter}
         setAssignmentStatusFilter={setAssignmentStatusFilter}
-        
         setAssignmentModalOpen={setAssignmentModalOpen}
-        
         eligibleProgrammes={eligibleProgrammes}
         assignPageIndex={assignPageIndex}
         setAssignPageIndex={setAssignPageIndex}
         pageSize={15}
-        
         groupCapacityByProgrammeId={groupCapacityByProgrammeId}
         openAssignDrawer={openAssignDrawer}
       />
 
-      <AssignProgrammeDrawer 
+      <AssignProgrammeDrawer
         festivalId={festivalId}
         leaderGroupId={leaderGroupId}
         open={assignDrawerOpen}

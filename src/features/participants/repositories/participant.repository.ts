@@ -149,7 +149,10 @@ export async function findParticipantsByFestivalPaginated(
       : undefined,
   );
 
-  let sortColumn;
+  let sortColumn:
+    | typeof participants.name
+    | typeof participants.chestNumber
+    | typeof participants.createdAt;
   if (sort === "NAME" || sort === "name") sortColumn = participants.name;
   else if (sort === "NUMERIC" || sort === "numeric" || sort === "chestNumber")
     sortColumn = participants.chestNumber;

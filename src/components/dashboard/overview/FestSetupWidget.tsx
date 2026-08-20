@@ -84,7 +84,13 @@ export function FestSetupWidget({
         setIsExpanded(false);
       }
     }
-  }, [festivalSlug, setupStatus, isProTier, showVerifySubdomainStep, subdomainVerified]);
+  }, [
+    festivalSlug,
+    setupStatus,
+    isProTier,
+    showVerifySubdomainStep,
+    subdomainVerified,
+  ]);
 
   const handleScoringClick = () => {
     localStorage.setItem(`visited_scoring_${festivalSlug}`, "true");
@@ -236,7 +242,7 @@ export function FestSetupWidget({
       {isExpanded && (
         <CardContent className="p-3 bg-card">
           <ul className="divide-y divide-border">
-            {steps.map((step, idx) => {
+            {steps.map((step, _idx) => {
               const Icon = step.icon;
               const content = (
                 <div className="flex items-center p-3 hover:bg-muted/50 transition-colors w-full text-left">

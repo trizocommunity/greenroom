@@ -1,4 +1,3 @@
-import { fromZonedTime } from "date-fns-tz";
 import {
   and,
   asc,
@@ -26,14 +25,6 @@ export async function getFoodSlots(festivalId: string) {
     where: eq(foodHallSlot.festivalId, festivalId),
     orderBy: [asc(foodHallSlot.slotOrder)],
   });
-}
-
-export async function getFestivalTimezone(festivalId: string) {
-  const f = await db.query.festival.findFirst({
-    where: eq(festival.id, festivalId),
-    columns: { timezone: true },
-  });
-  return f?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 export async function getGroupsAndCategoriesForFestival(festivalId: string) {
@@ -120,12 +111,12 @@ export async function getEntriesBySlotAndDate(
   festivalId: string,
   slotId: string,
   date: string,
-  timezone: string,
   groupId?: string,
   categoryId?: string,
 ) {
-  const dayStart = fromZonedTime(`${date}T00:00:00`, timezone);
-  const dayEnd = fromZonedTime(`${date}T23:59:59.999`, timezone);
+  const [y, m, d] = date.split("-").map(Number);
+  const dayStart = new Date(y, m - 1, d, 0, 0, 0, 0);
+  const dayEnd = new Date(y, m - 1, d, 23, 59, 59, 999);
 
   const conditions = [
     eq(foodHallSession.festivalId, festivalId),

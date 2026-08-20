@@ -5,7 +5,10 @@ import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/p
 
 export function useProgrammeFilters(
   programmes: ProgrammeForAssignment[],
-  groupCapacityByProgrammeId: Map<string, { used: number; total: number; isFull: boolean }>
+  groupCapacityByProgrammeId: Map<
+    string,
+    { used: number; total: number; isFull: boolean }
+  >,
 ) {
   const sortedProgrammes = useMemo(() => {
     return [...programmes].sort((a, b) => {
@@ -55,12 +58,7 @@ export function useProgrammeFilters(
 
   useEffect(() => {
     setAssignPageIndex(0);
-  }, [
-    selectedProgrammeCategoryId,
-    selectedProgrammeType,
-    programmeSearch,
-    assignmentStatusFilter,
-  ]);
+  }, []);
 
   useEffect(() => {
     if (!programmeCategoryOptions.length) return;
@@ -115,14 +113,14 @@ export function useProgrammeFilters(
   return {
     programmeCategoryOptions,
     eligibleProgrammes,
-    
+
     // State values
     selectedProgrammeCategoryId,
     selectedProgrammeType,
     programmeSearch,
     assignmentStatusFilter,
     assignPageIndex,
-    
+
     // State setters
     setSelectedProgrammeCategoryId,
     setSelectedProgrammeType,

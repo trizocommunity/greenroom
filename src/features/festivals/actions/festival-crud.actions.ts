@@ -120,8 +120,6 @@ export async function createFestival(input: CreateFestivalInput) {
           institutionType: (data.institutionType as any) || "OTHER",
           institutionName: data.institutionName,
           location: data.location,
-          timezone:
-            data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
           startDate: parseInstant(data.startDate)?.toISOString(),
           endDate: parseInstant(data.endDate)?.toISOString(),
           ownerId: session.userId,
@@ -627,7 +625,6 @@ export async function relaunchFestival(input: {
           expiresAt,
           publicSiteEnabled: false,
           scoringSystem: "SCORE_BASED",
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           createdAt: now,
           updatedAt: now,
         })

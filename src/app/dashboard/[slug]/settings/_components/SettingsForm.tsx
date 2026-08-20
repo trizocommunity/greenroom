@@ -228,7 +228,6 @@ export function SettingsForm({ festival, activeTab }: SettingsFormProps) {
           <div>
             <DeadlinesDialog
               festival={festival}
-              onSuccess={handleSuccess}
               isFeatureEnabled={isProgrammeDeadlineEnabled}
               isParticipantDeadlineFeatureEnabled={isParticipantDeadlineEnabled}
             />

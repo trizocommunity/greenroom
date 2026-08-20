@@ -76,7 +76,9 @@ export const db = new Proxy({} as Db, {
   get(_target, prop, receiver) {
     const real = getDb() as unknown as Record<PropertyKey, unknown>;
     const value = Reflect.get(real, prop, receiver);
-    return typeof value === "function" ? (value as Function).bind(real) : value;
+    return typeof value === "function"
+      ? (value as (...args: never[]) => unknown).bind(real)
+      : value;
   },
 }) as Db;
 
@@ -88,6 +90,8 @@ export const pool = new Proxy({} as Pool, {
   get(_target, prop, receiver) {
     const real = getPool() as unknown as Record<PropertyKey, unknown>;
     const value = Reflect.get(real, prop, receiver);
-    return typeof value === "function" ? (value as Function).bind(real) : value;
+    return typeof value === "function"
+      ? (value as (...args: never[]) => unknown).bind(real)
+      : value;
   },
 }) as Pool;

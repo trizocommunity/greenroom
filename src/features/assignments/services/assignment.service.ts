@@ -598,7 +598,7 @@ export const AssignmentService = {
     const existing = await db.query.programmeAssignment.findFirst({
       where: and(
         eq(programmeAssignment.id, assignmentId),
-        eq(programmeAssignment.festivalId, festivalId)
+        eq(programmeAssignment.festivalId, festivalId),
       ),
       with: { programme: { columns: { type: true, status: true } } },
     });
@@ -624,8 +624,8 @@ export const AssignmentService = {
       .where(
         and(
           eq(programmeAssignmentMember.assignmentId, assignmentId),
-          sql`${programmeAssignmentMember.participantId} != ${participantId}`
-        )
+          sql`${programmeAssignmentMember.participantId} != ${participantId}`,
+        ),
       );
 
     if (remainingCount === 0) {
@@ -635,7 +635,7 @@ export const AssignmentService = {
       );
     }
 
-    let deletedRow;
+    let deletedRow: typeof programmeAssignmentMember.$inferSelect | undefined;
     if (lead && lead.participantId === participantId) {
       if (!options?.replacementLeadParticipantId) {
         throw new AppError(
@@ -649,7 +649,7 @@ export const AssignmentService = {
           "LEAD_MUST_BE_REPLACED",
         );
       }
-      
+
       deletedRow = await db.transaction(async (tx) => {
         await ProgrammeTeamLeadService.replaceTeamLead(
           {
@@ -666,8 +666,8 @@ export const AssignmentService = {
           .where(
             and(
               eq(programmeAssignmentMember.assignmentId, assignmentId),
-              eq(programmeAssignmentMember.participantId, participantId)
-            )
+              eq(programmeAssignmentMember.participantId, participantId),
+            ),
           )
           .returning();
         return deleted;
@@ -678,8 +678,8 @@ export const AssignmentService = {
         .where(
           and(
             eq(programmeAssignmentMember.assignmentId, assignmentId),
-            eq(programmeAssignmentMember.participantId, participantId)
-          )
+            eq(programmeAssignmentMember.participantId, participantId),
+          ),
         )
         .returning();
       deletedRow = deleted;

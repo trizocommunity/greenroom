@@ -69,7 +69,9 @@ describe("snapshot caching — used by useErrors / useGlobalErrors", () => {
     errorStore.push({ scope: "scope-a", message: "x" });
     const get = makeCachedFilter((e) => e.scope === "scope-a");
     const refs = Array.from({ length: 50 }, () => get());
-    refs.forEach((r) => expect(r).toBe(refs[0]));
+    refs.forEach((r) => {
+      expect(r).toBe(refs[0]);
+    });
   });
 
   it("invalidates cache on push, then stabilizes again", () => {

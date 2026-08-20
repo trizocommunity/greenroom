@@ -11,7 +11,6 @@ import {
   Tag,
   XCircle,
 } from "lucide-react";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -32,7 +31,6 @@ export function PaymentDetailsModal({
   onClose,
   payment,
 }: PaymentDetailsModalProps) {
-  const displayTz = useDisplayTimezone();
   if (!payment) return null;
   const createdAt = payment.createdAt ? parseInstant(payment.createdAt) : null;
 
@@ -91,7 +89,6 @@ export function PaymentDetailsModal({
                 <p className="font-medium text-sm text-heading">
                   {createdAt
                     ? formatDateTime(createdAt, {
-                        tz: displayTz,
                         dateStyle: "long",
                         timeStyle: "short",
                       })

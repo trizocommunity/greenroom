@@ -4,7 +4,6 @@ import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { CustomDomainProvider } from "@/components/providers/custom-domain-provider";
-import { UserTimezoneProviderClient } from "@/components/providers/user-timezone-provider-client";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
 import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
@@ -70,16 +69,14 @@ export default async function FestivalLayout({
   };
 
   return (
-    <UserTimezoneProviderClient festivalTimezone={festival.timezone ?? null}>
-      <CustomDomainProvider customDomain={customDomain}>
-        <FestivalProvider festival={festivalData as any}>
-          <div className="min-h-screen flex flex-col">
-            <FestivalNavbar festival={festivalData as any} />
-            <main className="flex-1 pt-16">{children}</main>
-            <FestivalFooter festival={festivalData as any} />
-          </div>
-        </FestivalProvider>
-      </CustomDomainProvider>
-    </UserTimezoneProviderClient>
+    <CustomDomainProvider customDomain={customDomain}>
+      <FestivalProvider festival={festivalData as any}>
+        <div className="min-h-screen flex flex-col">
+          <FestivalNavbar festival={festivalData as any} />
+          <main className="flex-1 pt-16">{children}</main>
+          <FestivalFooter festival={festivalData as any} />
+        </div>
+      </FestivalProvider>
+    </CustomDomainProvider>
   );
 }

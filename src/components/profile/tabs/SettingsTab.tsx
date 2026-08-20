@@ -10,7 +10,6 @@ import {
   DataRow,
 } from "@/components/app/AppSection";
 import { TwoFactorSetup } from "@/components/auth/TwoFactorSetup";
-import { TimezoneField } from "@/components/profile/TimezoneField";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -20,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { labelForTimezone } from "@/core/datetime";
 import { UpdateInstitutionDialog } from "../UpdateInstitutionDialog";
 import { UpdateProfileDialog } from "../UpdateProfileDialog";
 import { UpgradeToInstitutionalDialog } from "../UpgradeToInstitutionalDialog";
@@ -81,7 +79,7 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
       <AppPageHeader
         eyebrow="Settings"
         title="Account"
-        description="Your details, how Greenroom looks, and the timezone every date is shown in."
+        description="Your details and how Greenroom looks for you."
       />
 
       <section>
@@ -152,19 +150,6 @@ export function SettingsTab({ userId: _userId }: SettingsTabProps) {
             <p className="text-xs text-muted-foreground">
               System follows your device&apos;s appearance.
             </p>
-          </div>
-
-          <div className="space-y-1.5 border-t border-border pt-6">
-            <Label>Timezone</Label>
-            <p className="text-xs text-muted-foreground">
-              Every date and time in Greenroom is shown in this zone. Currently:{" "}
-              <span className="font-medium text-foreground">
-                {user.timezone
-                  ? labelForTimezone(user.timezone)
-                  : "Not set — using browser default"}
-              </span>
-            </p>
-            <TimezoneField initialTimezone={user.timezone} />
           </div>
         </div>
       </section>

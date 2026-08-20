@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { LargeTimerDrawer } from "./LargeTimerDrawer";
 import { ReportingAutoOpen } from "./ReportingAutoOpen";
 import { ReportingFilterSheet } from "./ReportingFilterSheet";
@@ -44,7 +43,6 @@ export function ProgrammeReportingClient({
   /** Hides the in-page stage filter — used when the banner selector already covers it. */
   hideStageFilter?: boolean;
 }) {
-  const displayTz = useDisplayTimezone();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -63,7 +61,6 @@ export function ProgrammeReportingClient({
     selected: session.selected,
     optimisticReportedBySession: session.optimisticReportedBySession,
     mounted,
-    displayTz,
     filterArgs: {
       filterStatus: filters.filterStatus,
       filterCategoryId: filters.filterCategoryId,
@@ -72,7 +69,6 @@ export function ProgrammeReportingClient({
       filterScheduleState: filters.filterScheduleState,
       filterDate: filters.filterDate,
       searchQuery: filters.searchQuery,
-      displayTz,
       mounted,
     },
   });
@@ -185,7 +181,6 @@ export function ProgrammeReportingClient({
 
       <ReportingHistoryDrawer
         historyDetail={historyDetail}
-        displayTz={displayTz}
         onClose={() => session.setHistoryDetailOpenId(null)}
       />
 

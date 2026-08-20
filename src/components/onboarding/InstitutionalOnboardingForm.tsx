@@ -5,7 +5,6 @@ import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +28,6 @@ const institutionalOnboardingSchema = z.object({
   affiliation: z.string().optional(),
   city: z.string().optional(),
   sizeRange: z.string().optional(),
-  timezone: z.string(),
 });
 
 type FormData = z.infer<typeof institutionalOnboardingSchema>;
@@ -69,7 +67,6 @@ export function InstitutionalOnboardingForm() {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(institutionalOnboardingSchema),
@@ -77,11 +74,8 @@ export function InstitutionalOnboardingForm() {
       userRole: "",
       institutionType: "",
       sizeRange: "",
-      timezone: "",
     },
   });
-
-  const timezone = watch("timezone");
 
   const onSubmit = (data: FormData) => {
     mutate({
@@ -108,7 +102,7 @@ export function InstitutionalOnboardingForm() {
           <Input
             {...register("fullName")}
             id="fullName"
-            placeholder="John Doe"
+            placeholder="Jane Doe"
             inputSize="m"
             disabled={isPending}
             className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full"
@@ -130,7 +124,7 @@ export function InstitutionalOnboardingForm() {
           <Input
             {...register("displayName")}
             id="displayName"
-            placeholder="johnd"
+            placeholder="janed"
             inputSize="m"
             disabled={isPending}
             className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full"
@@ -138,74 +132,6 @@ export function InstitutionalOnboardingForm() {
           {errors.displayName && (
             <p className="text-[11px] text-destructive font-medium mt-1">
               {errors.displayName.message}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1 sm:space-y-1.5">
-          <Label
-            htmlFor="userRole"
-            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
-          >
-            Your Role
-          </Label>
-          <Select
-            onValueChange={(value) => setValue("userRole", value)}
-            disabled={isPending}
-          >
-            <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-border/60">
-              {USER_ROLES.map((role) => (
-                <SelectItem
-                  key={role.value}
-                  value={role.value}
-                  className="text-xs sm:text-sm"
-                >
-                  {role.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.userRole && (
-            <p className="text-[11px] text-destructive font-medium mt-1">
-              {errors.userRole.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-1 sm:space-y-1.5">
-          <Label
-            htmlFor="institutionType"
-            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
-          >
-            Institution Type
-          </Label>
-          <Select
-            onValueChange={(value) => setValue("institutionType", value)}
-            disabled={isPending}
-          >
-            <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-border/60">
-              {INSTITUTION_TYPES.map((type) => (
-                <SelectItem
-                  key={type.value}
-                  value={type.value}
-                  className="text-xs sm:text-sm"
-                >
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.institutionType && (
-            <p className="text-[11px] text-destructive font-medium mt-1">
-              {errors.institutionType.message}
             </p>
           )}
         </div>
@@ -221,7 +147,7 @@ export function InstitutionalOnboardingForm() {
         <Input
           {...register("institutionName")}
           id="institutionName"
-          placeholder="Islamic College of Excellence"
+          placeholder="Greenfield Academy"
           inputSize="m"
           disabled={isPending}
           className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full"
@@ -233,21 +159,90 @@ export function InstitutionalOnboardingForm() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="institutionType"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            Institution Type
+          </Label>
+          <Select
+            onValueChange={(value) => setValue("institutionType", value)}
+            disabled={isPending}
+          >
+            <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-border/60">
+              {INSTITUTION_TYPES.map((t) => (
+                <SelectItem
+                  key={t.value}
+                  value={t.value}
+                  className="text-xs sm:text-sm"
+                >
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.institutionType && (
+            <p className="text-[11px] text-destructive font-medium mt-1">
+              {errors.institutionType.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1 sm:space-y-1.5">
+          <Label
+            htmlFor="userRole"
+            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
+          >
+            Your Role
+          </Label>
+          <Select
+            onValueChange={(value) => setValue("userRole", value)}
+            disabled={isPending}
+          >
+            <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full">
+              <SelectValue placeholder="Select your role" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-border/60">
+              {USER_ROLES.map((r) => (
+                <SelectItem
+                  key={r.value}
+                  value={r.value}
+                  className="text-xs sm:text-sm"
+                >
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.userRole && (
+            <p className="text-[11px] text-destructive font-medium mt-1">
+              {errors.userRole.message}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1 sm:space-y-1.5">
           <Label
             htmlFor="affiliation"
             className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
           >
-            Affiliation
+            Affiliation{" "}
+            <span className="text-muted-foreground/60">(optional)</span>
           </Label>
           <Input
             {...register("affiliation")}
             id="affiliation"
-            placeholder="Optional"
+            placeholder="CBSE"
             inputSize="m"
             disabled={isPending}
-            className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3 text-xs sm:text-sm w-full"
+            className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full"
           />
         </div>
 
@@ -256,7 +251,7 @@ export function InstitutionalOnboardingForm() {
             htmlFor="city"
             className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
           >
-            City
+            City <span className="text-muted-foreground/60">(optional)</span>
           </Label>
           <Input
             {...register("city")}
@@ -264,57 +259,38 @@ export function InstitutionalOnboardingForm() {
             placeholder="Mumbai"
             inputSize="m"
             disabled={isPending}
-            className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3 text-xs sm:text-sm w-full"
+            className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full"
           />
-        </div>
-
-        <div className="space-y-1 sm:space-y-1.5">
-          <Label
-            htmlFor="sizeRange"
-            className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
-          >
-            Size Range
-          </Label>
-          <Select
-            onValueChange={(value) => setValue("sizeRange", value)}
-            disabled={isPending}
-          >
-            <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3 text-xs sm:text-sm w-full">
-              <SelectValue placeholder="Participants" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-border/60">
-              {SIZE_RANGES.map((size) => (
-                <SelectItem
-                  key={size.value}
-                  value={size.value}
-                  className="text-xs sm:text-sm"
-                >
-                  {size.label} participants
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
       <div className="space-y-1 sm:space-y-1.5">
         <Label
-          htmlFor="timezone"
+          htmlFor="sizeRange"
           className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
         >
-          Timezone
+          Size Range{" "}
+          <span className="text-muted-foreground/60">(optional)</span>
         </Label>
-        <TimezoneSelect
-          id="timezone"
-          value={timezone}
-          onChange={(tz) => setValue("timezone", tz, { shouldValidate: true })}
+        <Select
+          onValueChange={(value) => setValue("sizeRange", value)}
           disabled={isPending}
-        />
-        {errors.timezone && (
-          <p className="text-[11px] text-destructive font-medium mt-1">
-            {errors.timezone.message}
-          </p>
-        )}
+        >
+          <SelectTrigger className="rounded-lg sm:rounded-xl border-border/60 bg-secondary/20 dark:bg-secondary/30 text-foreground h-10 sm:h-11 px-3.5 text-xs sm:text-sm w-full">
+            <SelectValue placeholder="Select size range" />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl border-border/60">
+            {SIZE_RANGES.map((s) => (
+              <SelectItem
+                key={s.value}
+                value={s.value}
+                className="text-xs sm:text-sm"
+              >
+                {s.label} participants
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Button

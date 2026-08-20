@@ -51,7 +51,7 @@ export function PublicMediaView({
   hasMore: initialHasMore,
   pageSize,
   festivalSlug,
-  accentColor = "var(--primary)",
+  accentColor: _accentColor = "var(--primary)",
 }: PublicMediaViewProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 

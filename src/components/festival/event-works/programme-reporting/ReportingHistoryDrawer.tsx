@@ -17,11 +17,9 @@ import type { ProgrammeHistoryDetail } from "./reporting-status";
  */
 export function ReportingHistoryDrawer({
   historyDetail,
-  displayTz,
   onClose,
 }: {
   historyDetail: ProgrammeHistoryDetail | null;
-  displayTz: string;
   onClose: () => void;
 }) {
   return (
@@ -174,7 +172,6 @@ export function ReportingHistoryDrawer({
                                     Reported:{" "}
                                     {entry.reportedAt
                                       ? formatDateTime(entry.reportedAt, {
-                                          tz: displayTz,
                                           dateStyle: "medium",
                                           timeStyle: "short",
                                         })
@@ -184,7 +181,6 @@ export function ReportingHistoryDrawer({
                                     Spun/Issued:{" "}
                                     {entry.spunAt
                                       ? formatDateTime(entry.spunAt, {
-                                          tz: displayTz,
                                           dateStyle: "medium",
                                           timeStyle: "short",
                                         })

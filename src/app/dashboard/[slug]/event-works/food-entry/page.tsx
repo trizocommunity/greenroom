@@ -38,11 +38,7 @@ export default async function FoodEntryPage({
     redirect(`/dashboard/${slug}`);
   }
 
-  const data = await getFoodHallDashboardData(
-    context.festival.id,
-    context.festival.timezone ||
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
+  const data = await getFoodHallDashboardData(context.festival.id);
   const filters = await getGroupsAndCategoriesForFestival(context.festival.id);
 
   return (

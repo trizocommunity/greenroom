@@ -189,8 +189,10 @@ export function GeneralEntriesClient({
   function handleSaveEntry() {
     if (!entryName.trim()) return;
     const validAwards = entryAwards
-      .filter((a) => a.points.trim() !== "" && !isNaN(parseInt(a.points)))
-      .map((a) => ({ groupId: a.groupId, points: parseInt(a.points) }));
+      .filter(
+        (a) => a.points.trim() !== "" && !Number.isNaN(parseInt(a.points, 10)),
+      )
+      .map((a) => ({ groupId: a.groupId, points: parseInt(a.points, 10) }));
 
     startTransition(async () => {
       try {
@@ -728,6 +730,7 @@ export function GeneralEntriesClient({
                           )}
                         </TableCell>
                         <TableCell className="text-right">
+                          {/* biome-ignore lint/a11y/noStaticElementInteractions: row click handler on parent <TableRow>; this wrapper stops propagation so action buttons don't trigger the row view */}
                           <div
                             className="flex justify-end gap-1"
                             onClick={(e) => e.stopPropagation()}
@@ -787,6 +790,7 @@ export function GeneralEntriesClient({
                 const pointsCount = entry.awards.length;
 
                 return (
+                  // biome-ignore lint/a11y/noStaticElementInteractions: mobile-card variant of the row; keyboard equivalent is the row's activate button rendered below
                   <div
                     key={entry.id}
                     className="flex flex-col gap-3 p-4 hover:bg-muted/30 cursor-pointer transition-colors"
@@ -844,6 +848,7 @@ export function GeneralEntriesClient({
                         )}
                       </div>
 
+                      {/* biome-ignore lint/a11y/noStaticElementInteractions: mobile-card variant of the row; wrapping clickables so they don't trigger the card's open handler */}
                       <div
                         className="flex items-center gap-1"
                         onClick={(e) => e.stopPropagation()}

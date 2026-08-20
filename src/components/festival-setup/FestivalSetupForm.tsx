@@ -186,7 +186,6 @@ export function FestivalSetupForm({
           name: data.festivalName,
           slug,
           location: data.location || undefined,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           startDate:
             data.startDate instanceof Date
               ? data.startDate.toISOString()

@@ -17,6 +17,7 @@ const {
 function chainReturning(result: unknown) {
   const chain: any = {};
   const resolve = async () => result;
+  // biome-ignore lint/suspicious/noThenProperty: mock thenable chain used to simulate drizzle query builders
   chain.then = (r: (v: unknown) => void) => resolve().then(r);
   chain.catch = (r: (e: unknown) => void) => resolve().catch(r);
   chain.where = () => chain;
@@ -57,7 +58,7 @@ beforeEach(() => {
   txMock.participantFindMany = vi.fn(async () => []);
   txMock.assignmentFindFirst = vi.fn(async () => undefined);
   txMock.memberFindMany = vi.fn(async () => []);
-  txMock.assignmentInsert = vi.fn((table: any) => {
+  txMock.assignmentInsert = vi.fn((_table: any) => {
     const chain = chainReturning(undefined);
     chain.values = (values: unknown) => {
       const id = `asn-${txMock.assignmentInsertCalls.length + 1}`;
@@ -69,7 +70,7 @@ beforeEach(() => {
     };
     return chain;
   });
-  txMock.memberInsert = vi.fn((table: any) => {
+  txMock.memberInsert = vi.fn((_table: any) => {
     const chain = chainReturning(undefined);
     chain.values = (values: unknown) => {
       txMock.memberInsertCalls.push({ values });

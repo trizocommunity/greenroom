@@ -218,6 +218,7 @@ export function AnnouncerConsoleClient({
           {queuedStandings.length > 0 && (
             <div className="px-5 py-4 border-t bg-muted/10">
               <button
+                type="button"
                 onClick={handleAnnounce}
                 disabled={isPending}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white text-sm font-medium py-2.5 transition-colors"
@@ -259,6 +260,7 @@ export function AnnouncerConsoleClient({
             <div className="flex-1 overflow-auto divide-y divide-border">
               {callList.map((item) => (
                 <button
+                  type="button"
                   key={item.id}
                   className="w-full text-left px-5 py-4 hover:bg-muted/30 transition-colors flex items-start gap-3 group"
                   onClick={() => setSelectedCallItem(item)}

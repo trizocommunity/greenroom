@@ -1,6 +1,6 @@
-import { formatInTimeZone } from "date-fns-tz";
-import { formatDateTime, parseInstant } from "@/core/datetime";
+import { format } from "date-fns";
 import type { CompactHistoryItem } from "@/components/dashboard/event-works/CompactHistoryList";
+import { formatDateTime, parseInstant } from "@/core/datetime";
 import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
 import { teamKey } from "@/features/programmes/domain/team-key";
 import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
@@ -51,22 +51,10 @@ export function getUiReportingStatus(
   return (status ?? "NOT_STARTED") as ReportingUiStatus;
 }
 
-export function formatHistoryTime(
-  value: Date | string | null,
-  tz: string,
-): string {
+export function formatHistoryTime(value: Date | string | null): string {
   const date = parseInstant(value);
   if (!date) return "—";
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: tz,
-    }).format(date);
-  } catch {
-    return "—";
-  }
+  return format(date, "h:mm a");
 }
 
 function partialTeamKey(
@@ -125,7 +113,6 @@ function getHistoryTimestamp(item: ReportingBoardItem): number {
  */
 export function buildProgrammeHistory(
   board: ReportingBoardItem[],
-  displayTz: string,
   mounted: boolean,
 ): CompactHistoryItem[] {
   return board
@@ -185,7 +172,7 @@ export function buildProgrammeHistory(
         title: item.programme?.name ?? "Unknown programme",
         badge: reportingSessionStatusLabel(status),
         tinyBadge,
-        metaPrimary: `${item.stage?.name ?? "No stage"} • ${formatHistoryTime(item.startTime, displayTz)}`,
+        metaPrimary: `${item.stage?.name ?? "No stage"} • ${formatHistoryTime(item.startTime)}`,
         metaSecondary: `${item.programme?.category?.name ?? "No category"} • ${item.programme?.type ?? "—"}`,
         detailSummary: `${reportedCount} ${reportedLabel} • ${codeLetters.length} ${codeLabel}`,
       };
@@ -222,7 +209,6 @@ export type ProgrammeHistoryDetail = {
 export function buildProgrammeHistoryDetails(
   board: ReportingBoardItem[],
   assignments: ProgrammeReportingAssignmentRow[],
-  displayTz: string,
   mounted: boolean,
 ): Map<string, ProgrammeHistoryDetail> {
   const details = new Map<string, ProgrammeHistoryDetail>();
@@ -366,7 +352,6 @@ export function buildProgrammeHistoryDetails(
         {
           title: "Scheduled slot",
           at: formatDateTime(item.startTime, {
-            tz: displayTz,
             dateStyle: "medium",
             timeStyle: "short",
           }),
@@ -377,12 +362,10 @@ export function buildProgrammeHistoryDetails(
           at:
             item.reportingSession?.windowEndsAt != null
               ? formatDateTime(item.reportingSession.windowEndsAt, {
-                  tz: displayTz,
                   dateStyle: "medium",
                   timeStyle: "short",
                 })
               : formatDateTime(item.startTime, {
-                  tz: displayTz,
                   dateStyle: "medium",
                   timeStyle: "short",
                 }),
@@ -391,7 +374,6 @@ export function buildProgrammeHistoryDetails(
         {
           title: "Summary snapshot",
           at: formatDateTime(item.startTime, {
-            tz: displayTz,
             dateStyle: "medium",
             timeStyle: "short",
           }),
@@ -399,7 +381,6 @@ export function buildProgrammeHistoryDetails(
         },
       ],
       startTimeLabel: formatDateTime(item.startTime, {
-        tz: displayTz,
         dateStyle: "medium",
         timeStyle: "short",
       }),

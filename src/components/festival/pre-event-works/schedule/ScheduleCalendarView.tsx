@@ -393,7 +393,7 @@ export function ScheduleCalendarView({
   onEntryClick,
   searchQuery,
   groupBy,
-  sortedDays,
+  sortedDays: _sortedDays,
   timelineStart,
   timelineEnd,
 }: ScheduleCalendarViewProps) {
@@ -417,7 +417,7 @@ export function ScheduleCalendarView({
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-  }, [activeDayKey, groupBy]);
+  }, []);
 
   // ── Group by Date: rows = stages, filtered to active day ──
   if (groupBy === "date") {

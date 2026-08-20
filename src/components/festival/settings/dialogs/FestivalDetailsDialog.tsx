@@ -5,7 +5,6 @@ import { Loader2, Pencil } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUpdateFestival } from "@/api/client/festivals";
-import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-picker";
 import {
@@ -38,7 +37,6 @@ interface FestivalDetailsDialogProps {
     startDate?: Date | string | null;
     endDate?: Date | string | null;
     slug: string;
-    timezone?: string;
     createdAt?: Date | string | null;
   };
   onSuccess?: () => void;
@@ -58,7 +56,6 @@ export function FestivalDetailsDialog({
   const [tagline, setTagline] = useState(festival.tagline || "");
   const [location, setLocation] = useState(festival.location || "");
   const [slug, setSlug] = useState(festival.slug || "");
-  const [timezone, setTimezone] = useState(festival.timezone || "");
   const [serverSlugError, setServerSlugError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
@@ -138,7 +135,6 @@ export function FestivalDetailsDialog({
         startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
         endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
         slug: slugChanged ? nextSlug : undefined,
-        timezone: timezone || "",
       });
       setOpen(false);
       onSuccess?.();
@@ -275,16 +271,6 @@ export function FestivalDetailsDialog({
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="City, Country"
               />
-            </div>
-
-            <div className="space-y-2 flex flex-col pt-1">
-              <Label htmlFor="timezone" className="mb-1">
-                Timezone
-              </Label>
-              <TimezoneSelect value={timezone} onChange={setTimezone} />
-              <p className="text-xs text-muted-foreground">
-                All festival deadlines and schedules will use this timezone.
-              </p>
             </div>
           </div>
 

@@ -21,7 +21,6 @@ import {
 } from "@/api/client/news";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -84,7 +83,6 @@ export function NewsClient({
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
-  const displayTz = useDisplayTimezone();
   const [posts, setPosts] = useState<NewsPost[]>(initialPosts);
   const {
     data: newsData,
@@ -396,7 +394,6 @@ export function NewsClient({
                 <p className="text-xs text-muted-foreground mt-1">
                   {post.publishedAt
                     ? formatDate(parseInstant(post.publishedAt), {
-                        tz: displayTz,
                         style: "medium",
                       })
                     : "Draft"}
@@ -465,7 +462,7 @@ export function NewsClient({
             <DialogTitle>{viewDetailsPost?.title}</DialogTitle>
             <DialogDescription>
               {viewDetailsPost?.publishedAt
-                ? `Published ${formatDate(parseInstant(viewDetailsPost.publishedAt), { tz: displayTz, style: "medium" })}`
+                ? `Published ${formatDate(parseInstant(viewDetailsPost.publishedAt), { style: "medium" })}`
                 : "Draft"}
             </DialogDescription>
           </DialogHeader>

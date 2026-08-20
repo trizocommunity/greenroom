@@ -2,24 +2,24 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
+import type { CompactHistoryItem } from "@/components/dashboard/event-works/CompactHistoryList";
 import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
+import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
 import { getCodeForParticipantFromLetters } from "@/features/programmes/services/programme-reporting-code";
+import type { ProgrammeHistoryDetail } from "./reporting-status";
 import {
   bucketAssignmentsByTeam,
   buildProgrammeHistory,
   buildProgrammeHistoryDetails,
   sortReportingBoard,
 } from "./reporting-status";
-import { matchesReportingFilters } from "./useReportingFilters";
-import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
 import type {
   AssignmentWithReported,
   ReportingBoardItem,
   RosterTableRow,
   ScratchTile,
 } from "./types";
-import type { ProgrammeHistoryDetail } from "./reporting-status";
-import type { CompactHistoryItem } from "@/components/dashboard/event-works/CompactHistoryList";
+import { matchesReportingFilters } from "./useReportingFilters";
 
 export interface UseReportingBoardArgs {
   festivalId: string;
@@ -28,7 +28,6 @@ export interface UseReportingBoardArgs {
   selected: ReportingBoardItem | null;
   optimisticReportedBySession: Record<string, Set<string>>;
   mounted: boolean;
-  displayTz: string;
   filterArgs: Parameters<typeof matchesReportingFilters>[1];
 }
 
@@ -45,7 +44,6 @@ export function useReportingBoard({
   selected,
   optimisticReportedBySession,
   mounted,
-  displayTz,
   filterArgs,
 }: UseReportingBoardArgs) {
   // Resync optimistic reported map whenever the server-side list changes.
@@ -81,15 +79,15 @@ export function useReportingBoard({
   }, [assignments]);
 
   const reportingHistoryItems: CompactHistoryItem[] = useMemo(
-    () => buildProgrammeHistory(board, displayTz, mounted),
-    [board, displayTz, mounted],
+    () => buildProgrammeHistory(board, mounted),
+    [board, mounted],
   );
 
   const reportingHistoryDetailsById = useMemo<
     Map<string, ProgrammeHistoryDetail>
   >(
-    () => buildProgrammeHistoryDetails(board, assignments, displayTz, mounted),
-    [board, assignments, displayTz, mounted],
+    () => buildProgrammeHistoryDetails(board, assignments, mounted),
+    [board, assignments, mounted],
   );
 
   const assignmentsWithReported = useMemo((): AssignmentWithReported[] => {

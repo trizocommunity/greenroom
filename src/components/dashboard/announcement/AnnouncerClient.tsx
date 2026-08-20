@@ -225,6 +225,7 @@ export function AnnouncerClient({
                         (queuePageIndex + 1) * pageSize,
                       )
                       .map((p) => (
+                        // biome-ignore lint/a11y/noStaticElementInteractions: programme card with embedded preview; selecting launches the announcer surface
                         <div
                           key={p.id}
                           onClick={() => setActiveProgramme(p)}

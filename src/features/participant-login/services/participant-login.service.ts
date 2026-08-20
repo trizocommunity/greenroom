@@ -75,17 +75,11 @@ export const ParticipantLoginService = {
       if (!participantData.dateOfBirth) {
         throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);
       }
-      const festivalTz = festival.timezone ?? "UTC";
 
       const storedDayKey = dateKeyLocal(
-        wallClockToInstant(
-          dateKeyLocal(participantData.dateOfBirth, festivalTz),
-          "00:00",
-          festivalTz,
-        ),
-        festivalTz,
+        wallClockToInstant(dateKeyLocal(participantData.dateOfBirth), "00:00"),
       );
-      const submittedDayKey = dateKeyLocal(input.identifierValue, festivalTz);
+      const submittedDayKey = dateKeyLocal(input.identifierValue);
 
       if (!storedDayKey || !submittedDayKey) {
         throw new AppError(ERROR_MESSAGES.PARTICIPANT_NOT_FOUND);

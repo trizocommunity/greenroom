@@ -162,14 +162,14 @@ export function MyParticipantsClient({
       filtered = filtered.filter(
         (s) =>
           s.name.toLowerCase().includes(q) ||
-          (s.chestNumber && s.chestNumber.toLowerCase().includes(q)),
+          s.chestNumber?.toLowerCase().includes(q),
       );
     }
     return filtered;
   }, [participants, selectedCategoryId, participantSearch]);
 
   // Reset pagination when filter changes
-  useMemo(() => setPageIndex(0), [selectedCategoryId, participantSearch]);
+  useMemo(() => setPageIndex(0), []);
 
   return (
     <div className="space-y-8">

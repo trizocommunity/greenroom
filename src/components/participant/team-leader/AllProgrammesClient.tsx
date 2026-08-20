@@ -86,7 +86,7 @@ export function AllProgrammesClient({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [selectedCategoryId]);
+  }, []);
 
   const visibleItems = useMemo(() => {
     return items.filter(

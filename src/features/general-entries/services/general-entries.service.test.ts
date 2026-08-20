@@ -16,7 +16,7 @@ const mockDbDelete = vi.fn();
 
 vi.mock("@/core/database/client", () => ({
   db: {
-    select: (...args: any[]) => ({
+    select: (..._args: any[]) => ({
       from: () => ({
         where: (...args: any[]) => {
           const p = Promise.resolve(mockDbSelect(...args));
@@ -25,28 +25,28 @@ vi.mock("@/core/database/client", () => ({
         },
       }),
     }),
-    insert: (...args: any[]) => ({
+    insert: (..._args: any[]) => ({
       values: (...args: any[]) => mockDbInsert(...args),
     }),
-    update: (...args: any[]) => ({
+    update: (..._args: any[]) => ({
       set: () => ({
         where: (...args: any[]) => mockDbUpdate(...args),
       }),
     }),
-    delete: (...args: any[]) => ({
+    delete: (..._args: any[]) => ({
       where: (...args: any[]) => mockDbDelete(...args),
     }),
     transaction: async (cb: any) => {
       await cb({
-        insert: (...args: any[]) => ({
+        insert: (..._args: any[]) => ({
           values: (...args: any[]) => mockDbInsert(...args),
         }),
-        update: (...args: any[]) => ({
+        update: (..._args: any[]) => ({
           set: () => ({
             where: (...args: any[]) => mockDbUpdate(...args),
           }),
         }),
-        delete: (...args: any[]) => ({
+        delete: (..._args: any[]) => ({
           where: (...args: any[]) => mockDbDelete(...args),
         }),
       });

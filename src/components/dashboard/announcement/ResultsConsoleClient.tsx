@@ -357,7 +357,7 @@ function MobileProgrammeCard({
 
 export function ResultsConsoleClient({
   festivalId,
-  festivalSlug,
+  festivalSlug: _festivalSlug,
   programmes,
   liveStandings,
   standingsContext,
@@ -418,7 +418,7 @@ export function ResultsConsoleClient({
         return d;
       });
     }
-  }, [basePublishedResultsCount, pendingDelta]);
+  }, [basePublishedResultsCount]);
 
   const lastAutoWrittenRef = useRef<string | null>(null);
 
@@ -458,11 +458,11 @@ export function ResultsConsoleClient({
 
   useEffect(() => {
     setResultsPageIndex(0);
-  }, [searchQuery]);
+  }, []);
 
   useEffect(() => {
     setStandingsPageIndex(0);
-  }, [standingsScope, upToResultNumber]);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -485,7 +485,7 @@ export function ResultsConsoleClient({
     const res = await fetchStandingsAction(
       festivalId,
       standingsScope,
-      isNaN(resultNum!) ? undefined : resultNum,
+      Number.isNaN(resultNum!) ? undefined : resultNum,
     );
     if (res.success && res.data) {
       setDynamicStandings(res.data);
@@ -607,7 +607,7 @@ export function ResultsConsoleClient({
     }
 
     const parsedNum = upToResultNumber ? parseInt(upToResultNumber, 10) : NaN;
-    if (!upToResultNumber || isNaN(parsedNum) || parsedNum <= 0) {
+    if (!upToResultNumber || Number.isNaN(parsedNum) || parsedNum <= 0) {
       toast.error(
         "Enter an After # greater than 0 before sending to the announcer.",
       );
@@ -662,6 +662,7 @@ export function ResultsConsoleClient({
                 <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                 <span>Published</span>
                 <span className="rounded-full bg-green-500/20 px-1.5 text-xs font-bold">
+                  {/* biome-ignore lint/complexity/useLiteralKeys: statusCounts is a Record<string, number> */}
                   {statusCounts["PUBLISHED"] ?? 0}
                 </span>
               </div>
@@ -669,6 +670,7 @@ export function ResultsConsoleClient({
                 <span className="h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
                 <span>Announced</span>
                 <span className="rounded-full bg-sky-500/20 px-1.5 text-xs font-bold">
+                  {/* biome-ignore lint/complexity/useLiteralKeys: statusCounts is a Record<string, number> */}
                   {statusCounts["ANNOUNCED"] ?? 0}
                 </span>
               </div>

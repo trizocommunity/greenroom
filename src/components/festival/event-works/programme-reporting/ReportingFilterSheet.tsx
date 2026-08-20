@@ -144,10 +144,14 @@ export function ReportingFilterSheet({
 
           {filters.filterScheduleState !== "UNSCHEDULED" && (
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="reporting-filter-date"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Date
               </label>
               <DatePicker
+                id="reporting-filter-date"
                 date={filters.filterDate}
                 onChange={filters.setFilterDate}
                 placeholder="All Dates"

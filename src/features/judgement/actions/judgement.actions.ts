@@ -1424,19 +1424,17 @@ export async function getStagePortalBoardAction(day?: string) {
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, stagePortalSession.festivalId),
-    columns: { startDate: true, endDate: true, timezone: true },
+    columns: { startDate: true, endDate: true },
   });
-  const festivalTz = festival?.timezone ?? "UTC";
 
   const dayKeySet = isOffStage
     ? null
     : (getFestivalDateKeySet(
         festival?.startDate ?? null,
         festival?.endDate ?? null,
-        festivalTz,
       ) ?? null);
   const days = dayKeySet ? Array.from(dayKeySet).sort() : [];
-  const today = dateKeyLocal(serverNow(), festivalTz);
+  const today = dateKeyLocal(serverNow());
   let selectedDay =
     day && days.includes(day)
       ? day
@@ -1527,11 +1525,7 @@ export async function getStagePortalBoardAction(day?: string) {
     programmes = stageEntries
       .filter((e) => {
         const start = parseInstant(e.startTime);
-        return (
-          e.programme &&
-          start &&
-          dateKeyLocal(start, festivalTz) === selectedDay
-        );
+        return e.programme && start && dateKeyLocal(start) === selectedDay;
       })
       .map((e) => {
         const p = e.programme!;

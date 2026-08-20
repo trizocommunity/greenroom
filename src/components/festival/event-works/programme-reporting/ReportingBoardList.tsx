@@ -1,7 +1,6 @@
 "use client";
 
-import { formatInTimeZone } from "date-fns-tz";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
@@ -68,7 +67,6 @@ export function ReportingBoardList({
   onSelect,
   getUiReportingStatus,
 }: ReportingBoardListProps) {
-  const displayTz = useDisplayTimezone();
   const statusTone = (status: string) => {
     if (status === "IN_PROGRESS")
       return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
@@ -157,7 +155,7 @@ export function ReportingBoardList({
                         : item.reportingSession?.startedAt;
 
                       const schStr = scheduled
-                        ? formatInTimeZone(scheduled, displayTz, "h:mm a")
+                        ? format(scheduled, "h:mm a")
                         : "—";
 
                       if (started) {
@@ -167,7 +165,7 @@ export function ReportingBoardList({
                               {schStr}
                             </span>
                             <span className="text-foreground font-medium">
-                              {formatInTimeZone(started, displayTz, "h:mm a")}
+                              {format(started, "h:mm a")}
                             </span>
                           </>
                         );

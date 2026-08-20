@@ -1,8 +1,7 @@
 "use client";
 
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { useMemo, useState } from "react";
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import { parseInstant } from "@/core/datetime";
 import { getUiReportingStatus } from "./reporting-status";
 import type { ReportingBoardItem } from "./types";
@@ -65,8 +64,6 @@ export function useReportingFilters({
   festivalStages,
   initialStageId,
 }: UseReportingFiltersArgs): ReportingFiltersState {
-  const displayTz = useDisplayTimezone();
-
   const [filterCategoryId, setFilterCategoryId] = useState<string>("ALL");
   const [filterStageId, setFilterStageId] = useState<string>(
     initialStageId ?? "ALL",
@@ -107,8 +104,8 @@ export function useReportingFilters({
       if (item.startTime) {
         const d = parseInstant(item.startTime);
         if (d) {
-          const key = formatInTimeZone(d, displayTz, "yyyy-MM-dd");
-          const label = formatInTimeZone(d, displayTz, "EEE, MMM d, yyyy");
+          const key = format(d, "yyyy-MM-dd");
+          const label = format(d, "EEE, MMM d, yyyy");
           datesMap.set(key, label);
         }
       }
@@ -116,7 +113,7 @@ export function useReportingFilters({
     return Array.from(datesMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([key, label]) => ({ key, label }));
-  }, [board, displayTz]);
+  }, [board]);
 
   const activeFilterCount =
     (filterCategoryId !== "ALL" ? 1 : 0) +
@@ -209,7 +206,6 @@ export function matchesReportingFilters(
     filterScheduleState: ScheduleStateFilter;
     filterDate: Date | undefined;
     searchQuery: string;
-    displayTz: string;
     mounted: boolean;
   },
 ): boolean {
@@ -245,12 +241,8 @@ export function matchesReportingFilters(
     if (!item.startTime) return false;
     const d = parseInstant(item.startTime);
     if (!d) return false;
-    const key = formatInTimeZone(d, filters.displayTz, "yyyy-MM-dd");
-    const targetDate = formatInTimeZone(
-      filters.filterDate,
-      filters.displayTz,
-      "yyyy-MM-dd",
-    );
+    const key = format(d, "yyyy-MM-dd");
+    const targetDate = format(filters.filterDate, "yyyy-MM-dd");
     if (key !== targetDate) return false;
   }
   const query = filters.searchQuery.trim().toLowerCase();

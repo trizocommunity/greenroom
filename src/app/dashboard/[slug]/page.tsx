@@ -10,7 +10,10 @@ import { VolunteerOverview } from "@/components/dashboard/overview/VolunteerOver
 import { getSession } from "@/core/auth/session";
 import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { getActiveReportingSessions, getCallListProgrammes } from "@/features/announcement/services/announcer.service";
+import {
+  getActiveReportingSessions,
+  getCallListProgrammes,
+} from "@/features/announcement/services/announcer.service";
 import type { TeamStandingRow } from "@/features/announcement/services/announcer.service";
 import {
   ALL_FESTIVAL_ROLES,
@@ -52,8 +55,11 @@ export default async function FestivalDashboardPage({
     effectiveRole === "ANNOUNCER"
       ? {
           queuedStandings:
-            ((festival as any).queuedTeamStandings as TeamStandingRow[] | null) ?? [],
-          afterCount: (festival as any).standingsPublishedAtResultNumber ?? null,
+            ((festival as any).queuedTeamStandings as
+              | TeamStandingRow[]
+              | null) ?? [],
+          afterCount:
+            (festival as any).standingsPublishedAtResultNumber ?? null,
           callList: await getCallListProgrammes(festival.id),
         }
       : null;
@@ -61,7 +67,7 @@ export default async function FestivalDashboardPage({
   return (
     <div className="flex flex-col gap-5 pt-4 sm:pt-6 pb-12">
       {effectiveRole !== "ANNOUNCER" && (
-        <DashboardGreeting name={greetingName} timezone={festival.timezone} />
+        <DashboardGreeting name={greetingName} />
       )}
 
       {activeReportingSessions.length > 0 && (

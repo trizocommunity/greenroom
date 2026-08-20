@@ -65,7 +65,6 @@ export default async function OverviewWidgets({
   const overviewData = await getDashboardOverviewData(festival.id);
   const tier = getResolvedTier(festival.tier);
   const slug = festival.slug;
-  const festivalTz = festival.timezone ?? "UTC";
 
   const institution = festival.institutionId
     ? await findInstitutionById(festival.institutionId)

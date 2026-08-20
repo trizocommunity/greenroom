@@ -26,7 +26,7 @@ interface LargeTimerDrawerProps {
 }
 
 export function LargeTimerDrawer({
-  festivalId,
+  festivalId: _festivalId,
   item,
   assignments,
   isOpen,

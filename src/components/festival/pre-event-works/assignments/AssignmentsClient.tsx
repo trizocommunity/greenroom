@@ -23,7 +23,6 @@ import {
   ProgrammeStatusBadge,
   STATUS_LABELS,
 } from "@/components/festival/ProgrammeStatusBadge";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -296,13 +295,12 @@ export function AssignmentsClient({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [filterGroup, filterCategory, filterType, filterCompletion, searchQuery]);
+  }, []);
 
   // The assignment deadline gates Team Leaders only — organisers can always
   // assign from the dashboard, so only the festival lifecycle locks this view.
   const { isReadOnly: isFestivalReadOnly } = useFestivalReadOnly();
   const isReadOnlyMode = isFestivalReadOnly;
-  const displayTz = useDisplayTimezone();
 
   useEffect(() => {
     if (isReadOnlyMode) setAssignmentModalOpen(false);
@@ -360,7 +358,6 @@ export function AssignmentsClient({
     teamMap.forEach((val) => {
       const assignedAt = val.assignments[0]?.assignedAt
         ? formatDate(val.assignments[0].assignedAt, {
-            tz: displayTz,
             style: "long",
           })
         : null;
@@ -378,7 +375,7 @@ export function AssignmentsClient({
     });
 
     return rows;
-  }, [assignments, displayTz]);
+  }, [assignments]);
 
   const programmeCards = useMemo<ProgrammeCardRow[]>(() => {
     const map = new Map<
@@ -453,7 +450,7 @@ export function AssignmentsClient({
     // Compute progress per card
     const cards = Array.from(map.values()).map((c) => {
       c.assignedAt = c.latestAssignedAtDate
-        ? formatDate(c.latestAssignedAtDate, { tz: displayTz, style: "long" })
+        ? formatDate(c.latestAssignedAtDate, { style: "long" })
         : null;
 
       // Find the source programme object to get maxParticipantsPerGroup/maxTeamsPerGroup
@@ -572,7 +569,7 @@ export function AssignmentsClient({
     });
 
     return cards;
-  }, [tableRows, participants, programmes, categories, groups, displayTz]);
+  }, [tableRows, participants, programmes, categories, groups]);
 
   const finalCards = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();

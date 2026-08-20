@@ -6,7 +6,6 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { TimezoneSelect } from "@/components/onboarding/TimezoneSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +22,6 @@ const personalOnboardingSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
   userRole: z.string().min(1, "Please select a role"),
-  timezone: z.string(),
 });
 
 type FormData = z.infer<typeof personalOnboardingSchema>;
@@ -43,17 +41,13 @@ export function PersonalOnboardingForm() {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(personalOnboardingSchema),
     defaultValues: {
       userRole: "",
-      timezone: "",
     },
   });
-
-  const timezone = watch("timezone");
 
   const onSubmit = (data: FormData) => {
     mutate(data);
@@ -137,26 +131,6 @@ export function PersonalOnboardingForm() {
         {errors.userRole && (
           <p className="text-[11px] text-destructive font-medium mt-1">
             {errors.userRole.message}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-1 sm:space-y-1.5">
-        <Label
-          htmlFor="timezone"
-          className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase block"
-        >
-          Timezone
-        </Label>
-        <TimezoneSelect
-          id="timezone"
-          value={timezone}
-          onChange={(tz) => setValue("timezone", tz, { shouldValidate: true })}
-          disabled={isPending}
-        />
-        {errors.timezone && (
-          <p className="text-[11px] text-destructive font-medium mt-1">
-            {errors.timezone.message}
           </p>
         )}
       </div>

@@ -142,7 +142,7 @@ type ParticipantRow = {
 export function LeaderboardClient({
   festival,
   results,
-  publishedStandings = [],
+  publishedStandings: _publishedStandings = [],
   categories = [],
   groups = [],
   defaultParticipantFilterCategory,
@@ -165,7 +165,7 @@ export function LeaderboardClient({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [searchQuery, participantFilterCategory, participantFilterGroup]);
+  }, []);
 
   const festivalContext = useFestival();
   const tier = getResolvedTier(tierProp ?? festivalContext.tier);
@@ -455,6 +455,7 @@ export function LeaderboardClient({
             participantStandings
               .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
               .map((row) => (
+                // biome-ignore lint/a11y/noStaticElementInteractions: leaderboard row that opens a participant detail dialog on click
                 <div
                   key={row.participantId}
                   onClick={() => setSelectedParticipant(row)}

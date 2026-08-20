@@ -589,7 +589,7 @@ export const ProgrammeReportingService = {
     return { participantCodes };
   },
 
-  async complete(reportingSessionId: string, actorName: string) {
+  async complete(reportingSessionId: string, _actorName: string) {
     const session = await db.query.programmeReportingSession.findFirst({
       where: eq(prsTable.id, reportingSessionId),
       columns: { status: true },

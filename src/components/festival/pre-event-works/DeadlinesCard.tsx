@@ -1,9 +1,8 @@
 "use client";
 
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import { CalendarClock } from "lucide-react";
 import { DeadlineCountdown } from "@/components/festival/pre-event-works/DeadlineCountdown";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/core/utils/cn";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
@@ -26,7 +25,6 @@ export function DeadlinesCard({
   start?: string | Date | null;
   end?: string | Date | null;
 }) {
-  const displayTz = useDisplayTimezone();
   const {
     state,
     start: startDate,
@@ -35,8 +33,7 @@ export function DeadlinesCard({
 
   if (!startDate && !endDate) return null;
 
-  const format = (date: Date) =>
-    formatInTimeZone(date, displayTz, "MMM d, h:mm a");
+  const formatBound = (date: Date) => format(date, "MMM d, h:mm a");
 
   const tone =
     state === "CLOSED"
@@ -65,7 +62,7 @@ export function DeadlinesCard({
                 className="font-semibold text-foreground"
               />
               <span className="hidden truncate sm:inline">
-                · closes {format(endDate)}
+                · closes {formatBound(endDate)}
               </span>
             </>
           ) : (
@@ -75,9 +72,9 @@ export function DeadlinesCard({
       ) : (
         <span className="min-w-0 truncate">
           {state === "UPCOMING"
-            ? `Opens ${startDate ? format(startDate) : "—"}`
+            ? `Opens ${startDate ? formatBound(startDate) : "—"}`
             : endDate
-              ? `Closed ${format(endDate)}`
+              ? `Closed ${formatBound(endDate)}`
               : "Closed"}
         </span>
       )}

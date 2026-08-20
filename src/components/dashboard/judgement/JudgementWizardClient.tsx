@@ -12,7 +12,6 @@ import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
 import { Separator } from "@/components/ui/separator";
 import { formatDateTime } from "@/core/datetime";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { toast } from "@/lib/toast";
 import { getJudgementDashboardDataAction } from "@/features/judgement/actions/judgement.actions";
 
@@ -54,15 +53,13 @@ export function JudgementWizardClient({
   hideStageFilter?: boolean;
 }) {
   const searchParams = useSearchParams();
-  const displayTz = useDisplayTimezone();
   const formatCardDateTime = useCallback(
     (value: string | Date) =>
       formatDateTime(value, {
-        tz: displayTz,
         dateStyle: "medium",
         timeStyle: "short",
       }),
-    [displayTz],
+    [],
   );
 
   // ---------------------------------------------------------------- state --

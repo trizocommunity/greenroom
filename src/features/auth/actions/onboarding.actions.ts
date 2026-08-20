@@ -9,7 +9,6 @@ import {
   type institutionType,
   user as userTable,
 } from "@/core/database/schema";
-import { isValidTimezone, zodTimezoneLoose } from "@/core/datetime";
 import {
   AppError,
   ERROR_MESSAGES,
@@ -24,7 +23,6 @@ const personalOnboardingSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
   userRole: z.string().min(1, "Please select a role"),
-  timezone: zodTimezoneLoose.optional(),
 });
 
 const institutionalOnboardingSchema = z.object({
@@ -38,7 +36,6 @@ const institutionalOnboardingSchema = z.object({
   affiliation: z.string().optional(),
   city: z.string().optional(),
   sizeRange: z.string().optional(),
-  timezone: zodTimezoneLoose.optional(),
 });
 
 export async function completePersonalOnboardingAction(
@@ -52,10 +49,6 @@ export async function completePersonalOnboardingAction(
     }
 
     const parsed = personalOnboardingSchema.parse(data);
-    const timezone =
-      parsed.timezone && isValidTimezone(parsed.timezone)
-        ? parsed.timezone
-        : null;
 
     await db
       .update(userTable)
@@ -63,7 +56,6 @@ export async function completePersonalOnboardingAction(
         fullName: parsed.fullName,
         displayName: parsed.displayName,
         accountType: "PERSONAL",
-        timezone,
       })
       .where(eq(userTable.id, session.userId));
 
@@ -87,10 +79,6 @@ export async function completeInstitutionalOnboardingAction(
     }
 
     const parsed = institutionalOnboardingSchema.parse(data);
-    const timezone =
-      parsed.timezone && isValidTimezone(parsed.timezone)
-        ? parsed.timezone
-        : null;
 
     const institution = await createInstitution({
       name: parsed.institutionName,
@@ -108,7 +96,6 @@ export async function completeInstitutionalOnboardingAction(
         displayName: parsed.displayName,
         accountType: "INSTITUTIONAL",
         institutionId: institution.id,
-        timezone,
       })
       .where(eq(userTable.id, session.userId));
 

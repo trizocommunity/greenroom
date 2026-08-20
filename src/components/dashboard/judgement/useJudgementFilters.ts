@@ -1,9 +1,8 @@
 "use client";
 
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import { useCallback, useState } from "react";
 import { parseInstant } from "@/core/datetime";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import type { Programme, ReportingDetails } from "./types";
 
 export type ScheduleStateFilter = "ALL" | "SCHEDULED" | "UNSCHEDULED";
@@ -66,8 +65,6 @@ export function useJudgementFilters({
   initialStageId?: string | null;
   hideStageFilter?: boolean;
 }): JudgementFiltersState {
-  const displayTz = useDisplayTimezone();
-
   const autoLockedStageId =
     hideStageFilter && stages.length === 1 ? stages[0]!.id : null;
   const [selectedStageId, setSelectedStageId] = useState<string>(
@@ -116,18 +113,14 @@ export function useJudgementFilters({
       if (filterDate && details?.scheduleStart) {
         const d = parseInstant(details.scheduleStart);
         if (d) {
-          const key = formatInTimeZone(d, displayTz, "yyyy-MM-dd");
-          const targetDate = formatInTimeZone(
-            filterDate,
-            displayTz,
-            "yyyy-MM-dd",
-          );
+          const key = format(d, "yyyy-MM-dd");
+          const targetDate = format(filterDate, "yyyy-MM-dd");
           if (key !== targetDate) return false;
         }
       }
       return true;
     },
-    [filterScheduleState, filterDate, displayTz],
+    [filterScheduleState, filterDate],
   );
 
   return {

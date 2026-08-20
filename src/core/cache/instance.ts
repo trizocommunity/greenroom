@@ -19,6 +19,8 @@ export const cache: Cache = new Proxy({} as Cache, {
       unknown
     >;
     const value = Reflect.get(real, prop, receiver);
-    return typeof value === "function" ? (value as Function).bind(real) : value;
+    return typeof value === "function"
+      ? (value as (...args: never[]) => unknown).bind(real)
+      : value;
   },
 });

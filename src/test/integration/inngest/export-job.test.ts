@@ -40,9 +40,12 @@ vi.mock("@/features/exports/services/generators/schedule.generator", () => ({
 vi.mock("@/features/exports/services/generators/team-result.generator", () => ({
   generateTeamResult: vi.fn(),
 }));
-vi.mock("@/features/exports/services/generators/valuation-sheet.generator", () => ({
-  generateValuationSheet: vi.fn(),
-}));
+vi.mock(
+  "@/features/exports/services/generators/valuation-sheet.generator",
+  () => ({
+    generateValuationSheet: vi.fn(),
+  }),
+);
 
 import { generateCallList } from "@/features/exports/services/generators/call-list.generator";
 import { exportJob } from "@/inngest/functions/export-job";
@@ -57,7 +60,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockFestivalFindFirst.mockResolvedValue({
     name: "Fest-1",
-    timezone: "UTC",
   });
   (generateCallList as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
     bytes: Buffer.from("pdf-bytes"),

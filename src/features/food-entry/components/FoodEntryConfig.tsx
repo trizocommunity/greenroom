@@ -23,6 +23,7 @@ interface FoodEntryConfigProps {
   festivalId: string;
   initialSlots: any[];
   onSaved?: () => void;
+  onCancel?: () => void;
 }
 
 export function FoodEntryConfig({

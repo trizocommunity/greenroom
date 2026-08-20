@@ -1,7 +1,8 @@
 import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";
-import { MS, msUntil, serverNowIso } from "@/core/datetime";
+import { MS, msUntil } from "@/core/datetime";
+import { serverNowIso } from "@/core/datetime/server";
 import { publish } from "@/core/pubsub/redis-pubsub";
 import { keys } from "@/core/redis/keys";
 import { inngest } from "@/inngest/client";

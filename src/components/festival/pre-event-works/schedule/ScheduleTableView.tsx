@@ -132,7 +132,7 @@ export function isEntryCompleted(entry: EnrichedScheduleEntry): boolean {
 }
 
 export function ScheduleTableView({
-  festivalId,
+  festivalId: _festivalId,
   entries,
   stages = [],
   hideStageFilter = false,
