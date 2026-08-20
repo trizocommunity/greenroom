@@ -25,14 +25,14 @@ import {
 
 export const GET = async (
   _req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ festivalId: string }> },
 ) => {
   const session = await getSession();
   if (!session?.userId) return unauthorized();
 
-  const { id } = await params;
+  const { festivalId } = await params;
 
-  const festival = await findFestivalById(id);
+  const festival = await findFestivalById(festivalId);
   if (!festival) {
     return notFound("FESTIVAL_NOT_FOUND", "Festival not found");
   }
@@ -46,12 +46,12 @@ export const GET = async (
 
 export const PUT = async (
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ festivalId: string }> },
 ) => {
   const session = await getSession();
   if (!session?.userId) return unauthorized();
 
-  const { id } = await params;
+  const { festivalId } = await params;
 
   const body = await req.json();
   const payload = (body.data ?? body) as Record<string, unknown>;
@@ -62,7 +62,7 @@ export const PUT = async (
     return badRequest("INVALID_INPUT", parsed.error.message);
   }
 
-  const existing = await findFestivalById(id);
+  const existing = await findFestivalById(festivalId);
   if (!existing) {
     return notFound("FESTIVAL_NOT_FOUND", "Festival not found");
   }
@@ -72,7 +72,7 @@ export const PUT = async (
   }
 
   if (parsed.data.slug && parsed.data.slug !== existing.slug) {
-    const isTaken = await isSlugTaken(parsed.data.slug, id);
+    const isTaken = await isSlugTaken(parsed.data.slug, festivalId);
     if (isTaken) {
       return conflict(
         "FESTIVAL_SLUG_TAKEN",
@@ -82,14 +82,14 @@ export const PUT = async (
   }
 
   try {
-    const updated = await updateFestival(id, {
+    const updated = await updateFestival(festivalId, {
       ...parsed.data,
       updatedAt: serverNowIso(),
     });
 
     // The branded host is built from the slug, so a rename has to move it.
     if (parsed.data.slug && parsed.data.slug !== existing.slug) {
-      await handleFestivalSlugChange(id, existing.slug);
+      await handleFestivalSlugChange(festivalId, existing.slug);
     }
 
     return ok(updated);
@@ -107,14 +107,14 @@ export const PUT = async (
 
 export const DELETE = async (
   _req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ festivalId: string }> },
 ) => {
   const session = await getSession();
   if (!session?.userId) return unauthorized();
 
-  const { id } = await params;
+  const { festivalId } = await params;
 
-  const existing = await findFestivalById(id);
+  const existing = await findFestivalById(festivalId);
   if (!existing) {
     return notFound("FESTIVAL_NOT_FOUND", "Festival not found");
   }
@@ -125,8 +125,8 @@ export const DELETE = async (
 
   // Detach first: reconcile reads the festival row to build its host, so it must
   // run while the row still exists. Best-effort — it never blocks the delete.
-  await reconcileFestivalDomain(id, false);
+  await reconcileFestivalDomain(festivalId, false);
 
-  await deleteFestivalRecord(id);
-  return ok({ id });
+  await deleteFestivalRecord(festivalId);
+  return ok({ id: festivalId });
 };

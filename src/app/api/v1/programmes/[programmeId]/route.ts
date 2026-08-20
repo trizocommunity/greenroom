@@ -8,19 +8,19 @@ import { ProgrammeService } from "@/features/programmes/services/programme.servi
 
 export const GET = async (
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ programmeId: string }> },
 ) => {
   const session = await getSession();
   if (!session?.userId) return unauthorized();
 
-  const { id } = await params;
+  const { programmeId } = await params;
   const url = new URL(req.url);
   const festivalId = url.searchParams.get("festivalId");
   if (!festivalId) return badRequest("MISSING_PARAM", "festivalId is required");
 
   await assertFestivalAccess(session, festivalId);
 
-  const result = await ProgrammeService.getDetails(id, festivalId);
+  const result = await ProgrammeService.getDetails(programmeId, festivalId);
   try {
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
@@ -30,12 +30,12 @@ export const GET = async (
 
 export const PUT = async (
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ programmeId: string }> },
 ) => {
   const session = await getSession();
   if (!session?.userId) return unauthorized();
 
-  const { id } = await params;
+  const { programmeId } = await params;
   const url = new URL(req.url);
   const festivalId = url.searchParams.get("festivalId");
   if (!festivalId) return badRequest("MISSING_PARAM", "festivalId is required");
@@ -49,7 +49,7 @@ export const PUT = async (
   await assertFestivalAccess(session, festivalId);
 
   try {
-    const result = await ProgrammeService.update(id, festivalId, parsed.data);
+    const result = await ProgrammeService.update(programmeId, festivalId, parsed.data);
     try {
       const { revalidatePath } = await import("next/cache");
       revalidatePath("/", "layout");
@@ -66,12 +66,12 @@ export const PUT = async (
 
 export const DELETE = async (
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ programmeId: string }> },
 ) => {
   const session = await getSession();
   if (!session?.userId) return unauthorized();
 
-  const { id: programmeId } = await params;
+  const { programmeId } = await params;
   const url = new URL(req.url);
   const festivalId = url.searchParams.get("festivalId");
   if (!festivalId) return badRequest("MISSING_PARAM", "festivalId is required");
