@@ -45,12 +45,24 @@ export const initiatePaymentInput = z.object({
   tier: z.enum(["BASIC", "STANDARD", "PRO"]),
 });
 
-export const initiatePaymentResponse = z.object({
+export const initiatePaymentSuccess = z.object({
   paymentId: z.string(),
   orderId: z.string(),
   amount: z.number(),
   currency: z.string(),
 });
+
+export const pendingOrderExists = z.object({
+  outcome: z.literal("pendingExists"),
+  paymentId: z.string(),
+  orderId: z.string(),
+  tier: z.enum(["BASIC", "STANDARD", "PRO"]),
+});
+
+export const initiatePaymentResponse = z.union([
+  initiatePaymentSuccess,
+  pendingOrderExists,
+]);
 
 export const verifyPaymentResponse = z.object({ success: z.literal(true) });
 
@@ -59,4 +71,6 @@ export type UserStatus = z.infer<typeof userStatusSchema>;
 export type PaymentHistoryItem = z.infer<typeof paymentHistoryItemSchema>;
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentInput>;
 export type InitiatePaymentResponse = z.infer<typeof initiatePaymentResponse>;
+export type InitiatePaymentSuccess = z.infer<typeof initiatePaymentSuccess>;
+export type PendingOrderExists = z.infer<typeof pendingOrderExists>;
 export type VerifyPaymentResponse = z.infer<typeof verifyPaymentResponse>;

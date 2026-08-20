@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { queryKeys } from "@/api/client/_query-keys";
@@ -11,7 +12,7 @@ import {
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
 import { Separator } from "@/components/ui/separator";
-import { formatDateTime } from "@/core/datetime";
+import { formatDate, formatDateTime, parseInstant } from "@/core/datetime";
 import { toast } from "@/lib/toast";
 import { getJudgementDashboardDataAction } from "@/features/judgement/actions/judgement.actions";
 
@@ -62,12 +63,7 @@ export function JudgementWizardClient({
     [],
   );
 
-  // ---------------------------------------------------------------- state --
-  const filters = useJudgementFilters({
-    stages,
-    initialStageId,
-    hideStageFilter,
-  });
+  // ----------------------------------------------------------- data fetch --
   const [participantsView, setParticipantsView] =
     useState<ParticipantsViewState | null>(null);
   const [combinedDrawerDetail, setCombinedDrawerDetail] =
@@ -91,7 +87,13 @@ export function JudgementWizardClient({
     setCompletedPageIndex(0);
   };
 
-  // ----------------------------------------------------------- data fetch --
+  // ---------------------------------------------------------------- state --
+  const filters = useJudgementFilters({
+    stages,
+    initialStageId,
+    hideStageFilter,
+  });
+
   const dashboardQuery = useQuery<JudgementDashboardQueryData>({
     queryKey: queryKeys.judgement.dashboard(festivalId),
     queryFn: () =>
@@ -156,6 +158,29 @@ export function JudgementWizardClient({
     });
     return Array.from(cats).sort();
   }, [rejudgeProgrammes]);
+
+  /**
+   * Days that actually have scheduled programmes — feeds the date combobox.
+   * Computed from the live React Query data so newly-arranged programmes
+   * show up in the filter list without a full page refresh.
+   */
+  const scheduledDates = useMemo(() => {
+    const datesMap = new Map<string, string>();
+    const collect = (p: Programme) => {
+      const start = p.reportingDetails?.scheduleStart;
+      if (!start) return;
+      const d = parseInstant(start);
+      if (!d) return;
+      const key = format(d, "yyyy-MM-dd");
+      if (datesMap.has(key)) return;
+      datesMap.set(key, formatDate(d, { style: "long" }));
+    };
+    judgeProgrammes.forEach(collect);
+    rejudgeProgrammes.forEach(collect);
+    return Array.from(datesMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([key, label]) => ({ key, label }));
+  }, [judgeProgrammes, rejudgeProgrammes]);
 
   // ----------------------------------------------------- derived lists ----
   const filteredJudgeProgrammes = useMemo(
@@ -333,6 +358,7 @@ export function JudgementWizardClient({
           filters.setFilterDate(v);
           resetAllPages();
         }}
+        scheduledDates={scheduledDates}
         activeFilterCount={filters.activeFilterCount}
         onOpenFilterSheet={() => filters.setIsFilterOpen(true)}
       />

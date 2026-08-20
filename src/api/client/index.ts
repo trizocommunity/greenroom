@@ -70,6 +70,7 @@ export {
   useValidateParticipants,
 } from "./participants";
 export {
+  PendingOrderExistsError,
   useFestivalPayment,
   useInitiatePayment,
   usePaymentHistory,

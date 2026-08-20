@@ -5,21 +5,19 @@ import {
   ArrowRightLeft,
   Bell,
   BellOff,
-  CalendarDays,
   Clock,
   Flag,
   MapPin,
-  Megaphone,
-  Pencil,
   Tag,
   Users,
-  Loader2,
+  Search,
+  X,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Input } from "@/components/ui/input";
+import { DateFilterCombobox } from "@/components/ui/date-filter-combobox";
 import {
   Select,
   SelectContent,
@@ -53,6 +51,7 @@ interface ScheduleTableViewProps {
   onStartReporting: (entry: EnrichedScheduleEntry) => void;
   isReadOnly: boolean;
   searchQuery: string;
+  onSearchQueryChange?: (val: string) => void;
 }
 
 function safeFormat(d: Date, pattern: string, fallback = "—"): string {
@@ -144,11 +143,12 @@ export function ScheduleTableView({
   onStartReporting,
   isReadOnly,
   searchQuery,
+  onSearchQueryChange,
 }: ScheduleTableViewProps) {
   const [isPending, startTransition] = useTransition();
   const [loadingEntryId, setLoadingEntryId] = useState<string | null>(null);
 
-  const [filterDay, setFilterDay] = useState<Date | undefined>(new Date());
+  const [filterDay, setFilterDay] = useState<Date[]>([new Date()]);
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [filterStage, setFilterStage] = useState<string>(
     initialStageId ?? "ALL",
@@ -218,11 +218,11 @@ export function ScheduleTableView({
         );
       });
     }
-    if (filterDay) {
-      const dayStr = format(filterDay, "yyyy-MM-dd");
+    if (filterDay.length > 0) {
+      const keys = new Set(filterDay.map((d) => format(d, "yyyy-MM-dd")));
       result = result.filter((e) => {
         const d = parseStoredScheduleInstant(e.startTime);
-        return format(d, "yyyy-MM-dd") === dayStr;
+        return keys.has(format(d, "yyyy-MM-dd"));
       });
     }
     if (filterCategory !== "ALL") {
@@ -285,70 +285,78 @@ export function ScheduleTableView({
   };
 
   const hasActiveFilters =
-    (filterDay ? format(filterDay, "yyyy-MM-dd") : "ALL") !==
+    (filterDay.length === 1 ? format(filterDay[0]!, "yyyy-MM-dd") : "ALL") !==
       format(new Date(), "yyyy-MM-dd") ||
     filterCategory !== "ALL" ||
     (filterStage !== "ALL" && filterStage !== initialStageId);
 
   const filterBar = (
-    <div className="flex flex-wrap items-center gap-2 pb-1">
-      {days.length > 1 && (
-        <div className="w-[150px]">
-          <DatePicker
-            date={filterDay}
-            onChange={setFilterDay}
-            placeholder="All days"
-            className="h-8 text-xs"
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 items-center  justify-between md:flex-row gap-3 py-4 md:pt-10 mb-4">
+      {onSearchQueryChange && (
+        <div className="relative col-span-2 lg:col-span-3 w-full sm:w-[350px] shrink-0">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search schedule..."
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange(e.target.value)}
+            className="pl-9 h-9 w-full bg-background"
           />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => onSearchQueryChange("")}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       )}
 
-      {categories.length > 0 && (
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="h-8 w-auto min-w-[130px] text-xs">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All categories</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      <div className="grid grid-cols-2 col-span-2 items-center gap-8 lg:gap-4">
+        {days.length > 1 && (
+          <DateFilterCombobox
+            value={filterDay}
+            onChange={setFilterDay}
+            availableDates={days}
+            placeholder="All days"
+            className="h-9 text-xs"
+          />
+        )}
 
-      {!hideStageFilter && stageList.length > 1 && (
-        <Select value={filterStage} onValueChange={setFilterStage}>
-          <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs">
-            <SelectValue placeholder="All stages" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All stages</SelectItem>
-            {stageList.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+        {categories.length > 0 && (
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="h-9 w-auto text-xs">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
-      {hasActiveFilters && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => {
-            setFilterDay(new Date());
-            setFilterCategory("ALL");
-            setFilterStage(initialStageId ?? "ALL");
-          }}
-        >
-          Reset filters
-        </Button>
-      )}
+        {!hideStageFilter && stageList.length > 1 && (
+          <Select value={filterStage} onValueChange={setFilterStage}>
+            <SelectTrigger className="h-9 w-auto min-w-[120px] text-xs">
+              <SelectValue placeholder="All stages" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All stages</SelectItem>
+              {stageList.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
     </div>
   );
 
@@ -369,7 +377,7 @@ export function ScheduleTableView({
     <div className="space-y-3">
       {filterBar}
       {/* ── Desktop / Tablet table ── */}
-      <div className="hidden md:block rounded-lg border bg-card overflow-hidden">
+      <div className="hidden lg:block rounded-lg border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -481,7 +489,7 @@ export function ScheduleTableView({
                           </div>
                         )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="font-medium text-sm">
                         {typeInfo.grade}
                       </div>
@@ -489,7 +497,7 @@ export function ScheduleTableView({
                         {typeInfo.detail}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm">{countLine}</div>
                       {durationLine && (
                         <div className="text-xs text-muted-foreground">
@@ -497,10 +505,10 @@ export function ScheduleTableView({
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span
                         className={cn(
-                          "inline-block rounded-full px-2 py-0.5 text-xs font-medium",
+                          "inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
                           entry.stage
                             ? "bg-primary/10 text-primary"
                             : "text-muted-foreground",
@@ -604,21 +612,6 @@ export function ScheduleTableView({
                               </TooltipProvider>
                             </>
                           )}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => onEdit(entry)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
                         </div>
                       </td>
                     )}
@@ -631,7 +624,7 @@ export function ScheduleTableView({
       </div>
 
       {/* ── Mobile card view ── */}
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {filtered.map((entry) => {
           const typeInfo = getTypeLabel(entry);
           const participantsLabel = getParticipantsLabel(entry);
@@ -656,8 +649,8 @@ export function ScheduleTableView({
                   "border-border bg-card hover:border-primary/50",
               )}
               onClick={() => {
-                if (entry.type === "PROGRAMME" && !isReadOnly) {
-                  onStartReporting(entry);
+                if (!isReadOnly) {
+                  onEdit(entry);
                 }
               }}
             >
@@ -756,17 +749,6 @@ export function ScheduleTableView({
                         </Button>
                       </>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(entry);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
                   </div>
                 )}
               </div>

@@ -23,8 +23,14 @@ export interface ReportingFiltersState {
   setSearchQuery: (v: string) => void;
   filterScheduleState: ScheduleStateFilter;
   setFilterScheduleState: (v: ScheduleStateFilter) => void;
-  filterDate: Date | undefined;
-  setFilterDate: (v: Date | undefined) => void;
+  /**
+   * Selected dates for the date filter. Empty array means "All Dates" (no
+   * filter); non-empty matches programmes whose schedule day is any of the
+   * selected dates (OR semantics). Defaults to `[new Date()]` to preserve
+   * the prior "today by default" behaviour.
+   */
+  filterDate: Date[];
+  setFilterDate: (v: Date[]) => void;
 
   // drawer state
   filterCategoryId: string;
@@ -72,7 +78,7 @@ export function useReportingFilters({
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterScheduleState, setFilterScheduleState] =
     useState<ScheduleStateFilter>("SCHEDULED");
-  const [filterDate, setFilterDate] = useState<Date | undefined>(new Date());
+  const [filterDate, setFilterDate] = useState<Date[]>([new Date()]);
   const [showEnded, setShowEnded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,7 +127,7 @@ export function useReportingFilters({
     (filterType !== "ALL" ? 1 : 0) +
     (filterStatus !== "ALL" ? 1 : 0) +
     (showEnded ? 1 : 0) +
-    (filterDate !== undefined ? 1 : 0);
+    (filterDate.length > 0 ? 1 : 0);
 
   const resetAllFilters = () => {
     setFilterCategoryId("ALL");
@@ -129,7 +135,7 @@ export function useReportingFilters({
     setFilterType("ALL");
     setFilterStatus("ALL");
     setFilterScheduleState("ALL");
-    setFilterDate(undefined);
+    setFilterDate([]);
     setShowEnded(false);
     setPageIndex(0);
   };
@@ -144,7 +150,7 @@ export function useReportingFilters({
     setFilterScheduleState(v);
     setPageIndex(0);
   };
-  const setFilterDateReset = (v: Date | undefined) => {
+  const setFilterDateReset = (v: Date[]) => {
     setFilterDate(v);
     setPageIndex(0);
   };
@@ -204,7 +210,7 @@ export function matchesReportingFilters(
     filterStageId: string;
     filterType: string;
     filterScheduleState: ScheduleStateFilter;
-    filterDate: Date | undefined;
+    filterDate: Date[];
     searchQuery: string;
     mounted: boolean;
   },
@@ -237,13 +243,16 @@ export function matchesReportingFilters(
   if (filters.filterScheduleState === "UNSCHEDULED" && item.scheduleEntry)
     return false;
 
-  if (filters.filterDate && filters.filterScheduleState !== "UNSCHEDULED") {
+  if (
+    filters.filterDate.length > 0 &&
+    filters.filterScheduleState !== "UNSCHEDULED"
+  ) {
     if (!item.startTime) return false;
     const d = parseInstant(item.startTime);
     if (!d) return false;
     const key = format(d, "yyyy-MM-dd");
-    const targetDate = format(filters.filterDate, "yyyy-MM-dd");
-    if (key !== targetDate) return false;
+    const keys = new Set(filters.filterDate.map((dt) => format(dt, "yyyy-MM-dd")));
+    if (!keys.has(key)) return false;
   }
   const query = filters.searchQuery.trim().toLowerCase();
   if (query) {

@@ -3,7 +3,7 @@
 import { Calendar, Search, SlidersHorizontal, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateFilterCombobox } from "@/components/ui/date-filter-combobox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -29,7 +29,7 @@ export function ReportingHeader({
 }) {
   return (
     <div className="grid grid-cols-4 sm:grid-cols-8 items-center gap-2 pb-5">
-      <div className="col-span-4 md:col-span-2 lg:col-span-3 xl:col-span-5 relative flex-1">
+      <div className="col-span-4 md:col-span-2 lg:col-span-3 xl:col-span-4 relative flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={filters.searchQuery}
@@ -70,10 +70,11 @@ export function ReportingHeader({
         </Select>
       </div>
 
-      <div className="col-span-2 md:col-span-2 xl:col-span-1 shrink-0">
-        <DatePicker
-          date={filters.filterDate}
+      <div className="col-span-2 md:col-span-2 xl:col-span-2 shrink-0">
+        <DateFilterCombobox
+          value={filters.filterDate}
           onChange={filters.setFilterDate}
+          availableDates={filters.scheduledDates}
           placeholder="All Dates"
           className="h-10 text-xs sm:text-sm"
         />

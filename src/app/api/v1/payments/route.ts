@@ -2,12 +2,13 @@ import "server-only";
 
 import { desc } from "drizzle-orm";
 import { initiatePaymentInput } from "@/api/contracts/payments";
-import { badRequest, createProtectedHandler, ok } from "@/api/lib";
+import { badRequest, conflict, createProtectedHandler, ok } from "@/api/lib";
 import { db } from "@/core/database/client";
 import { payment } from "@/core/database/schema";
 import {
   getUserStatusDomain,
   initiatePaymentDomain,
+  PendingOrderExistsError,
 } from "@/features/payments/services/payments-domain.service";
 
 const handler = createProtectedHandler({
@@ -42,13 +43,25 @@ const handler = createProtectedHandler({
       return badRequest("INVALID_INPUT", parsed.error.message);
     }
 
-    const result = await initiatePaymentDomain({
-      userId: user!.userId,
-      purpose: "FESTIVAL_CREATION",
-      tier: parsed.data.tier,
-    });
+    try {
+      const result = await initiatePaymentDomain({
+        userId: user!.userId,
+        purpose: "FESTIVAL_CREATION",
+        tier: parsed.data.tier,
+      });
 
-    return ok(result);
+      return ok(result);
+    } catch (err) {
+      if (err instanceof PendingOrderExistsError) {
+        return conflict("PENDING_ORDER_EXISTS", err.message, {
+          outcome: "pendingExists",
+          paymentId: err.paymentId,
+          orderId: err.orderId ?? "",
+          tier: err.tier,
+        });
+      }
+      throw err;
+    }
   },
 });
 

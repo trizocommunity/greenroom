@@ -44,6 +44,7 @@ export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   whatsappSupport: "WhatsApp Support",
   smsNotifications: "SMS Notifications",
   bulkNotifications: "Bulk Notifications",
+  notifications: "Notifications",
   advancedAnalytics: "Advanced Analytics",
   customReports: "Custom Reports",
   templates: "Templates",

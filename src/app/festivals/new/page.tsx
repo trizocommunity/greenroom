@@ -4,7 +4,7 @@ import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { useInitiatePayment, useVerifyPayment } from "@/api/client";
+import { PendingOrderExistsError, useInitiatePayment, useVerifyPayment } from "@/api/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,19 +67,44 @@ function NewFestivalContent() {
       const loaded = await loadRazorpay();
       if (!loaded) throw new Error("Failed to load Razorpay SDK");
 
-      const orderRes = await initiateMutation.mutateAsync({
-        tier: confirmationTier,
-      });
+      let paymentId: string;
+      let orderId: string;
+      let amount: number;
+      let currency: string;
+
+      try {
+        const orderRes = await initiateMutation.mutateAsync({
+          tier: confirmationTier,
+        });
+        paymentId = orderRes.paymentId;
+        orderId = orderRes.orderId;
+        amount = orderRes.amount;
+        currency = orderRes.currency;
+      } catch (err) {
+        // Resume the user's existing pending order for a different tier.
+        if (err instanceof PendingOrderExistsError) {
+          const resumeRes = await initiateMutation.mutateAsync({
+            tier: err.details.tier,
+          });
+          paymentId = resumeRes.paymentId;
+          orderId = resumeRes.orderId;
+          amount = resumeRes.amount;
+          currency = resumeRes.currency;
+        } else {
+          throw err;
+        }
+      }
+
       const razorpayKeyId = (window as any).rzp_key_id as string | undefined;
 
       await new Promise<void>((resolve, reject) => {
         const options = {
           key: razorpayKeyId,
-          amount: orderRes.amount,
-          currency: orderRes.currency,
+          amount,
+          currency,
           name: "Greenroom",
           description: `${confirmationTier} Festival`,
-          order_id: orderRes.orderId,
+          order_id: orderId,
           modal: { ondismiss: () => reject(new Error("Payment cancelled")) },
           handler: async (response: {
             razorpay_payment_id: string;
@@ -87,7 +112,7 @@ function NewFestivalContent() {
           }) => {
             try {
               await verifyMutation.mutateAsync({
-                razorpayOrderId: orderRes.orderId,
+                razorpayOrderId: orderId,
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
               });
@@ -103,7 +128,7 @@ function NewFestivalContent() {
       });
 
       const setupUrl = new URL("/festival-setup", window.location.origin);
-      setupUrl.searchParams.set("paymentId", orderRes.paymentId);
+      setupUrl.searchParams.set("paymentId", paymentId);
       if (fromExpiredSlug) {
         setupUrl.searchParams.set("from", fromExpiredSlug);
       }
@@ -209,7 +234,7 @@ function NewFestivalContent() {
         open={!!confirmationTier}
         onOpenChange={(open) => !open && setConfirmationTier(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="left-[50%] top-[50%] -translate-x-1/2 -translate-y-1/2 max-h-[90vh] w-[calc(100%-2rem)] max-w-lg rounded-xl border border-border/80 bg-background shadow-2xl data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Payment</AlertDialogTitle>
             <AlertDialogDescription>

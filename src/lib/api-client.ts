@@ -28,6 +28,7 @@ export interface ApiResponse<T> {
   error: {
     message: string;
     code?: string;
+    details?: Record<string, unknown>;
   };
 }
 

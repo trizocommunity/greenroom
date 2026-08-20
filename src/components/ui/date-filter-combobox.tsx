@@ -10,6 +10,7 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
+  CommandInput,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -166,10 +167,7 @@ export function DateFilterCombobox({
   }, [isAllDates, value, todayKey, yesterdayKey, tomorrowKey, placeholder]);
 
   // ── Search token builders ──
-  const tokensForQuickDay = (
-    rel: QuickRel,
-    key: string,
-  ): string =>
+  const tokensForQuickDay = (rel: QuickRel, key: string): string =>
     [rel.toLowerCase(), relativeDayLabel(rel), key, formattedLongLabel(key)]
       .filter(Boolean)
       .join(" ");
@@ -201,7 +199,7 @@ export function DateFilterCombobox({
             }
           }}
           className={cn(
-            "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+            "flex h-9 w-full min-w-[180px] items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
             !hasValue && "text-muted-foreground",
             className,
           )}
@@ -231,10 +229,11 @@ export function DateFilterCombobox({
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0"
         align="start"
       >
         <Command>
+          <CommandInput placeholder="Search date..." />
           <CommandList className="max-h-72">
             <CommandEmpty>No date found.</CommandEmpty>
 

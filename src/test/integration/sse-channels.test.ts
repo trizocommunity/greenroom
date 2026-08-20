@@ -66,7 +66,7 @@ interface ChannelCase {
   /** Human-readable name for the test case. */
   name: string;
   /** SSE handler factory that returns the route handler. */
-  handler: () => (req: Request) => Promise<Response>;
+  handler: () => (req: Request, ctx?: any) => Promise<Response>;
   /** Channel key the test will `publish()` to. */
   channelKey: string;
   /** Payload that gets pushed; the test asserts the client receives it. */
@@ -75,7 +75,7 @@ interface ChannelCase {
 
 /** Spin up an ephemeral `node:http` server that runs the SSE handler. */
 async function startServerWithHandler(
-  handler: (req: Request) => Promise<Response>,
+  handler: (req: Request, ctx?: any) => Promise<Response>,
 ): Promise<{ url: string; close: () => Promise<void> }> {
   return new Promise((resolve) => {
     const server = createServer(async (req, res) => {

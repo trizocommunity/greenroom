@@ -141,6 +141,7 @@ function getFeatureLabel(feature: BooleanFeaturePath): string {
     whatsappSupport: "WhatsApp Support",
     smsNotifications: "SMS Notifications",
     bulkNotifications: "Bulk Notifications",
+    notifications: "Notifications",
 
     // Analytics
     advancedAnalytics: "Advanced Analytics",
