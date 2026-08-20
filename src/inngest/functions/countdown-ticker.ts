@@ -24,7 +24,7 @@ import { inngest } from "@/inngest/client";
 export const countdownTicker = inngest.createFunction(
   {
     id: "countdown-ticker",
-    name: "Festival countdown ticker (per-minute)",
+    name: "Festival countdown ticker (daily 00:00 UTC)",
     triggers: [{ cron: "0 0 * * *" }],
   },
   async ({ step }) => {
