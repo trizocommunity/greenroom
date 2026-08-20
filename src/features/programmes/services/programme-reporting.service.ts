@@ -26,6 +26,7 @@ import {
 import { shuffleInPlace } from "./code-letter-adapter.service";
 import { ReportingEventAdapter } from "./reporting-event-adapter.service";
 import { groupIntoUnits, planScratchCodes } from "./scratch-code-plan";
+import { calculateProgrammeDuration } from "@/features/schedule/utils/programme-duration";
 
 async function getOrCreateSessionByProgramme(
   programmeId: string,
@@ -572,7 +573,44 @@ export const ProgrammeReportingService = {
     const endMs = dbSession?.scheduleEntry?.endTime
       ? (parseInstant(dbSession.scheduleEntry.endTime)?.getTime() ?? null)
       : null;
-    const windowEndsAt = computeWindowEndsAt(startMs, endMs, Date.now());
+    let windowEndsAt = computeWindowEndsAt(startMs, endMs, Date.now());
+
+    // Fallback for unscheduled programmes: use the programme's own duration
+    // settings so they still get a countdown timer after close.
+    if (windowEndsAt === null) {
+      const programme = await db.query.programme.findFirst({
+        where: eq(programmeTable.id, session.programmeId),
+        columns: {
+          type: true,
+          durationMode: true,
+          timePerUnitMinutes: true,
+          parallelDurationMinutes: true,
+        },
+      });
+      if (programme) {
+        const unitCount = session.reportedParticipants.length > 0
+          ? (session.programmeType === "GROUP"
+              ? new Set(
+                  session.reportedParticipants.map((p) =>
+                    teamKey.partial({ groupId: p.groupId, teamNumber: p.teamNumber }),
+                  ),
+                ).size
+              : session.reportedParticipants.length)
+          : session.assignments.length;
+
+        const { totalMinutes } = calculateProgrammeDuration({
+          type: programme.type,
+          durationMode: programme.durationMode,
+          timePerUnitMinutes: programme.timePerUnitMinutes,
+          parallelDurationMinutes: programme.parallelDurationMinutes,
+          unitCount: Math.max(unitCount, 1),
+        });
+
+        if (totalMinutes > 0) {
+          windowEndsAt = new Date(Date.now() + totalMinutes * 60_000).toISOString();
+        }
+      }
+    }
 
     session.close(actorName, effectiveEndedAt, windowEndsAt);
     const events = await ReportingSessionRepository.save(session);

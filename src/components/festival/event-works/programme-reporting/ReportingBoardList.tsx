@@ -110,7 +110,7 @@ export function ReportingBoardList({
                     {item.programme.name}
                   </p>
                   {(() => {
-                    if (item.reportingSession?.status !== "IN_PROGRESS") return null;
+                    if (item.reportingSession?.status !== "CLOSED") return null;
 
                     const windowEndsAt = item.reportingSession?.windowEndsAt
                       ? typeof item.reportingSession.windowEndsAt === "string"

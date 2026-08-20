@@ -423,7 +423,7 @@ export function sortReportingBoard(
   mounted: boolean,
 ): ReportingBoardItem[] {
   const isTimerActive = (item: ReportingBoardItem) => {
-    if (item.reportingSession?.status !== "IN_PROGRESS") return false;
+    if (item.reportingSession?.status !== "CLOSED") return false;
     const windowEndsAt = item.reportingSession?.windowEndsAt
       ? parseInstant(item.reportingSession.windowEndsAt)
       : null;
@@ -432,7 +432,7 @@ export function sortReportingBoard(
   };
 
   const getRank = (item: ReportingBoardItem, status: string) => {
-    if (status === "IN_PROGRESS" && isTimerActive(item)) return 0;
+    if (status === "CLOSED" && isTimerActive(item)) return 0;
     if (status === "IN_PROGRESS") return 1;
     if (status === "NOT_STARTED") return 2;
     return 3;
