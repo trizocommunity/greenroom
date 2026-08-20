@@ -110,7 +110,13 @@ export function ProgrammeReportingClient({
 
   const onSelect = (id: string) => {
     const item = derived.filteredAndSortedBoard.find((b) => b.id === id);
-    if (item?.reportingSession?.status === "CLOSED") {
+    const uiStatus = getUiReportingStatus(
+      item?.reportingSession?.status,
+      item?.reportingSession?.windowEndsAt ?? null,
+      mounted,
+    );
+
+    if (["CLOSED", "RESET", "TIMED_OUT"].includes(uiStatus)) {
       session.setTimerDrawerEntryId(id);
       return;
     }
@@ -124,6 +130,10 @@ export function ProgrammeReportingClient({
     ? (derived.filteredAndSortedBoard.find(
         (b) => b.id === session.timerDrawerEntryId,
       ) ?? null)
+    : null;
+
+  const timerHistoryDetail = session.timerDrawerEntryId
+    ? (derived.reportingHistoryDetailsById.get(session.timerDrawerEntryId) ?? null)
     : null;
 
   const historyDetail = session.historyDetailOpenId
@@ -196,6 +206,7 @@ export function ProgrammeReportingClient({
         festivalId={festivalId}
         item={timerItem}
         assignments={assignments}
+        historyDetail={timerHistoryDetail}
         isOpen={!!session.timerDrawerEntryId}
         onOpenChange={(open) => {
           if (!open) session.setTimerDrawerEntryId(null);
