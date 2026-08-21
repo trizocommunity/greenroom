@@ -13,11 +13,14 @@ vi.mock("server-only", () => ({}));
 const mockSetEnabled = vi.fn();
 const mockRedisPublish = vi.fn();
 
-vi.mock("@/features/email-preferences/services/email-preferences.service", () => ({
-  EmailPreferencesService: {
-    setEnabled: (...args: unknown[]) => mockSetEnabled(...args),
-  },
-}));
+vi.mock(
+  "@/features/email-preferences/services/email-preferences.service",
+  () => ({
+    EmailPreferencesService: {
+      setEnabled: (...args: unknown[]) => mockSetEnabled(...args),
+    },
+  }),
+);
 
 vi.mock("@/core/redis/client", () => ({
   getRedis: () => ({

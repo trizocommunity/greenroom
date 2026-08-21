@@ -76,14 +76,14 @@ export async function renderPosterToBuffer(
     .map(([k, v]) => `${humanizeKey(k)}: ${v}`);
 
   const svg = renderSvg(headerText, bodyLines, width, height, bg, fg);
-  const result = await sharp(Buffer.from(svg))
-    .png()
-    .toBuffer();
+  const result = await sharp(Buffer.from(svg)).png().toBuffer();
 
   return result;
 }
 
-function inferTemplateType(data: Record<string, string>): keyof typeof TEMPLATE_BG {
+function inferTemplateType(
+  data: Record<string, string>,
+): keyof typeof TEMPLATE_BG {
   if (data.chestNumber || data.qrCode) return "CANDIDATE_CARD";
   if (data.certificateTitle) return "CERTIFICATE";
   if (data.teamRank || data.team1Rank) return "TEAM_POINTS";

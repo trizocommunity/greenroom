@@ -49,7 +49,11 @@ export const PUT = async (
   await assertFestivalAccess(session, festivalId);
 
   try {
-    const result = await ProgrammeService.update(programmeId, festivalId, parsed.data);
+    const result = await ProgrammeService.update(
+      programmeId,
+      festivalId,
+      parsed.data,
+    );
     try {
       const { revalidatePath } = await import("next/cache");
       revalidatePath("/", "layout");

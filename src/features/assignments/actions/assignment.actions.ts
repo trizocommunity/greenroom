@@ -16,10 +16,10 @@ import {
 } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
-import { CategoryLimitService } from "@/features/category-limits/services/category-limit.service";
 import type { BulkAssignmentInput } from "@/features/assignments/services/assignment.service";
 import { AssignmentService } from "@/features/assignments/services/assignment.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
+import { CategoryLimitService } from "@/features/category-limits/services/category-limit.service";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import {
   isTeamLeaderActionWindowOpen,
@@ -200,7 +200,8 @@ export async function getAssignmentsAction(festivalId: string) {
 
   const withWarnings = all.map((a: any) => {
     const pid = a.participant?.id ?? a.participantId;
-    const warning = pid && limitWarnings ? (limitWarnings.get(pid) ?? null) : null;
+    const warning =
+      pid && limitWarnings ? (limitWarnings.get(pid) ?? null) : null;
     return { ...a, limitWarning: warning };
   });
 
@@ -523,7 +524,6 @@ export async function removeTeamMemberAction(
   revalidatePath("/", "layout");
   return deleted;
 }
-
 
 export async function deleteTeamAssignmentAction(
   festivalId: string,

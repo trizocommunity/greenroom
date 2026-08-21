@@ -270,7 +270,7 @@ export async function getProgrammeRosterAction(
 ) {
   const session = await getSession();
   await assertFestivalAccess(session, festivalId);
-  
+
   const { getProgrammeAssignmentsAction } = await import(
     "@/features/programmes/actions/get-assignments.action"
   );

@@ -161,7 +161,6 @@ export function ScheduleClient({
   const [reportingEntry, setReportingEntry] =
     useState<EnrichedScheduleEntry | null>(null);
 
-
   /* UC15 — schedule-channel delta. Another admin adding/moving a slot
      pushes here; we re-pull the enriched entries (re-runs the conflict
      check on the server with the latest data) and re-render the table +
@@ -405,7 +404,6 @@ export function ScheduleClient({
             )}
           </div>
         </div>
-
       </div>
 
       {/* Empty state */}
@@ -455,7 +453,6 @@ export function ScheduleClient({
           onSearchQueryChange={setSearchQuery}
         />
       )}
-
 
       {/* Add Entry Drawer */}
       <AddEntryDialog

@@ -1,8 +1,8 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
+import { Button } from "@/components/ui/button";
 
 /**
  * Page header — title plus the "How judgement works" + "Stage portal"

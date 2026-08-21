@@ -14,20 +14,20 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
-  category as categoryTable,
   categoryProgrammeLimit,
+  category as categoryTable,
   participant as participantTable,
 } from "@/core/database/schema";
 import { AppError } from "@/core/errors/errors";
 import {
   batchGetParticipantAssignmentCounts,
+  type CategoryLimit,
   deleteCategoryLimit,
   findAllLimitsByFestival,
   findLimitByCategoryId,
   getParticipantAssignmentCounts,
-  upsertCategoryLimit,
-  type CategoryLimit,
   type UpsertLimitInput,
+  upsertCategoryLimit,
 } from "@/features/category-limits/repositories/category-limit.repository";
 
 export type { CategoryLimit, UpsertLimitInput };

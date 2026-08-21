@@ -1,8 +1,8 @@
 "use client";
 
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { getUiReportingStatus } from "./reporting-status";
 import { ReportingBoardList } from "./ReportingBoardList";
+import { getUiReportingStatus } from "./reporting-status";
 import type { ReportingBoardItem } from "./types";
 
 /**

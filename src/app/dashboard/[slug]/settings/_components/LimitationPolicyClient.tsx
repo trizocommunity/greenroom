@@ -1,17 +1,18 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
+  Edit,
   Info,
   Loader2,
-  ShieldAlert,
-  Edit,
-  Trash2,
   Settings2,
+  ShieldAlert,
+  Trash2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/participants/ParticipantDetailsDialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,17 +31,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetFooter,
 } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -50,19 +58,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  getAllViolatorsAction,
   getCategoryLimitsWithViolationsAction,
   removeCategoryLimitAction,
   upsertCategoryLimitAction,
-  getAllViolatorsAction,
 } from "@/features/category-limits/actions/category-limit.actions";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/participants/ParticipantDetailsDialog";
 
 interface LimitationPolicyClientProps {
   festivalId: string;
@@ -485,14 +485,13 @@ export function LimitationPolicyClient({
                                 {v.category.name}
                               </Badge>
                             </div>
-                            
+
                             <div className="flex items-center gap-1.5 mb-2 min-w-0">
                               <span
                                 className="w-1.5 h-1.5 rounded-full shrink-0"
                                 style={{
                                   backgroundColor:
-                                    v.participant.group?.color ||
-                                    "#2563eb",
+                                    v.participant.group?.color || "#2563eb",
                                 }}
                               />
                               <span className="text-[10px] text-muted-foreground truncate">
@@ -502,27 +501,61 @@ export function LimitationPolicyClient({
 
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-2 border-t border-border/50 text-[10px]">
                               <div className="flex items-center gap-0.5">
-                                <span className="text-muted-foreground">Stg:</span>
-                                <span className={v.status.isOverStage ? "text-destructive font-bold" : ""}>
+                                <span className="text-muted-foreground">
+                                  Stg:
+                                </span>
+                                <span
+                                  className={
+                                    v.status.isOverStage
+                                      ? "text-destructive font-bold"
+                                      : ""
+                                  }
+                                >
                                   {v.status.stageCount}
                                 </span>
-                                <span className="text-muted-foreground">/{v.status.maxStage ?? "∞"}</span>
+                                <span className="text-muted-foreground">
+                                  /{v.status.maxStage ?? "∞"}
+                                </span>
                               </div>
-                              <span className="text-muted-foreground/30">•</span>
+                              <span className="text-muted-foreground/30">
+                                •
+                              </span>
                               <div className="flex items-center gap-0.5">
-                                <span className="text-muted-foreground">Non:</span>
-                                <span className={v.status.isOverNonStage ? "text-destructive font-bold" : ""}>
+                                <span className="text-muted-foreground">
+                                  Non:
+                                </span>
+                                <span
+                                  className={
+                                    v.status.isOverNonStage
+                                      ? "text-destructive font-bold"
+                                      : ""
+                                  }
+                                >
                                   {v.status.nonStageCount}
                                 </span>
-                                <span className="text-muted-foreground">/{v.status.maxNonStage ?? "∞"}</span>
+                                <span className="text-muted-foreground">
+                                  /{v.status.maxNonStage ?? "∞"}
+                                </span>
                               </div>
-                              <span className="text-muted-foreground/30">•</span>
+                              <span className="text-muted-foreground/30">
+                                •
+                              </span>
                               <div className="flex items-center gap-0.5">
-                                <span className="text-muted-foreground">Tot:</span>
-                                <span className={v.status.isOverAll ? "text-destructive font-bold" : ""}>
+                                <span className="text-muted-foreground">
+                                  Tot:
+                                </span>
+                                <span
+                                  className={
+                                    v.status.isOverAll
+                                      ? "text-destructive font-bold"
+                                      : ""
+                                  }
+                                >
                                   {v.status.allCount}
                                 </span>
-                                <span className="text-muted-foreground">/{v.status.maxAll ?? "∞"}</span>
+                                <span className="text-muted-foreground">
+                                  /{v.status.maxAll ?? "∞"}
+                                </span>
                               </div>
                             </div>
                           </div>

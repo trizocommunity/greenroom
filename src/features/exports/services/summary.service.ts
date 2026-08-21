@@ -108,7 +108,8 @@ export function buildExportSummary(config: ExportConfig): ExportSummary {
     case "SCHEDULE": {
       summary = "Schedule";
       const selected = config.days.length;
-      if (selected > 0) badges.push(`${selected} day${selected === 1 ? "" : "s"}`);
+      if (selected > 0)
+        badges.push(`${selected} day${selected === 1 ? "" : "s"}`);
       if (config.includeStage) badges.push("Stage");
       if (config.includeDescription) badges.push("Description");
       if (config.includeSpeakers) badges.push("Speakers");

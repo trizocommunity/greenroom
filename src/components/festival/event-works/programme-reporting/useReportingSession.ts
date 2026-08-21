@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getUiReportingStatus } from "./reporting-status";
-import type { ReportingBoardItem, RosterTableRow } from "./types";
 import type { ScanEntry } from "./ScanResponseFooter";
+import type { ReportingBoardItem, RosterTableRow } from "./types";
 
 export type WizardStep = "checkout" | "scratch";
 

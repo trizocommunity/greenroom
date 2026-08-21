@@ -81,9 +81,11 @@ export function useInitiatePayment() {
           (body as { error?: { code?: string; details?: unknown } }).error
             ?.code === "PENDING_ORDER_EXISTS"
         ) {
-          const details = (body as {
-            error?: { details?: PendingOrderExists };
-          }).error?.details;
+          const details = (
+            body as {
+              error?: { details?: PendingOrderExists };
+            }
+          ).error?.details;
           if (details && isPendingOrderExists(details)) {
             throw new PendingOrderExistsError(details);
           }

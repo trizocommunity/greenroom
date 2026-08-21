@@ -1,16 +1,17 @@
 "use client";
 
 import {
-  Loader2,
-  Megaphone,
-  MapPin,
-  Users,
-  User,
-  PlayCircle,
   Hash,
+  Loader2,
+  MapPin,
+  Megaphone,
+  PlayCircle,
+  User,
+  Users,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -20,12 +21,11 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { startProgrammeReportingAction } from "@/features/programmes/actions/programme-reporting.actions";
 import { getProgrammeRosterAction } from "@/features/programmes/actions/programme.actions";
-import { notifyCallList } from "@/features/schedule/actions/schedule.actions";
+import { startProgrammeReportingAction } from "@/features/programmes/actions/programme-reporting.actions";
 import type { EnrichedScheduleEntry } from "@/features/schedule/actions/schedule.actions";
+import { notifyCallList } from "@/features/schedule/actions/schedule.actions";
 import { toast } from "@/lib/toast";
-import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 
 interface ScheduleReportingDrawerProps {
   festivalId: string;
@@ -179,7 +179,9 @@ export function ScheduleReportingDrawer({
                       >
                         <ParticipantNameBlock
                           className="flex-1"
-                          primaryName={r.participantName || "Unnamed Participant"}
+                          primaryName={
+                            r.participantName || "Unnamed Participant"
+                          }
                           isGroup={false}
                         />
                         {r.chestNumber && (
@@ -201,10 +203,14 @@ export function ScheduleReportingDrawer({
 
                   return Array.from(byTeam.values()).map((members, i) => {
                     const lead = members[0];
-                    const teamMemberNames = lead.teamMemberNames?.length > 0 
-                      ? lead.teamMemberNames 
-                      : members.slice(1).map((m: any) => m.participantName).filter(Boolean);
-                    
+                    const teamMemberNames =
+                      lead.teamMemberNames?.length > 0
+                        ? lead.teamMemberNames
+                        : members
+                            .slice(1)
+                            .map((m: any) => m.participantName)
+                            .filter(Boolean);
+
                     return (
                       <div
                         key={lead.id || i}
@@ -212,13 +218,19 @@ export function ScheduleReportingDrawer({
                       >
                         <ParticipantNameBlock
                           className="flex-1"
-                          primaryName={lead.teamLeadName
-                            ? `${lead.teamLeadName} & Party`
-                            : lead.participantName
-                              ? `${lead.participantName} & Party`
-                              : `${lead.groupName || "Unknown Team"} & Party`}
+                          primaryName={
+                            lead.teamLeadName
+                              ? `${lead.teamLeadName} & Party`
+                              : lead.participantName
+                                ? `${lead.participantName} & Party`
+                                : `${lead.groupName || "Unknown Team"} & Party`
+                          }
                           isGroup={true}
-                          subtitle={lead.teamNumber ? `Team ${lead.teamNumber}` : undefined}
+                          subtitle={
+                            lead.teamNumber
+                              ? `Team ${lead.teamNumber}`
+                              : undefined
+                          }
                           teamMemberNames={teamMemberNames}
                         />
                       </div>

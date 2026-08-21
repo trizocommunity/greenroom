@@ -25,14 +25,22 @@ async function assertProTierAccess(festivalId: string, session: any) {
 export async function upsertCategoryLimitAction(
   festivalId: string,
   categoryId: string,
-  input: { maxStage: number | null; maxNonStage: number | null; maxAll: number | null },
+  input: {
+    maxStage: number | null;
+    maxNonStage: number | null;
+    maxAll: number | null;
+  },
 ) {
   const session = await getSession();
   if (!session?.userId) throw new AppError("Unauthorized", "UNAUTHORIZED");
 
   await assertProTierAccess(festivalId, session);
 
-  const result = await CategoryLimitService.upsert(categoryId, festivalId, input);
+  const result = await CategoryLimitService.upsert(
+    categoryId,
+    festivalId,
+    input,
+  );
   revalidatePath("/", "layout");
   return result;
 }
@@ -52,7 +60,9 @@ export async function removeCategoryLimitAction(
 }
 
 /** Get all categories with their limits + violation counts. PRO only. */
-export async function getCategoryLimitsWithViolationsAction(festivalId: string) {
+export async function getCategoryLimitsWithViolationsAction(
+  festivalId: string,
+) {
   const session = await getSession();
   if (!session?.userId) throw new AppError("Unauthorized", "UNAUTHORIZED");
 

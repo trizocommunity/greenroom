@@ -1,19 +1,19 @@
 "use server";
 
-import { and, asc, count, eq, isNotNull, sql, or } from "drizzle-orm";
+import { and, asc, count, eq, isNotNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
-  programme as programmeTable,
-  result as resultTable,
+  group as groupTable,
+  participant as participantTable,
   programmeAssignment,
   programmeAssignmentMember,
-  participant as participantTable,
-  group as groupTable,
+  programme as programmeTable,
   programmeTeamLead,
+  result as resultTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { handleActionError } from "@/core/errors/errors";
@@ -42,7 +42,7 @@ function revalidateAnnouncerPaths(slug: string) {
 
 export async function getCallListAssignmentsAction(
   festivalId: string,
-  programmeId: string
+  programmeId: string,
 ) {
   try {
     await assertAnnouncerAccess(festivalId);
@@ -57,11 +57,26 @@ export async function getCallListAssignmentsAction(
       })
       .from(programmeAssignment)
       .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
-      .leftJoin(programmeAssignmentMember, eq(programmeAssignment.id, programmeAssignmentMember.assignmentId))
-      .leftJoin(participantTable, or(eq(programmeAssignment.participantId, participantTable.id), eq(programmeAssignmentMember.participantId, participantTable.id)))
-      .leftJoin(programmeTeamLead, and(eq(programmeTeamLead.programmeId, programmeId), eq(programmeTeamLead.participantId, participantTable.id)))
+      .leftJoin(
+        programmeAssignmentMember,
+        eq(programmeAssignment.id, programmeAssignmentMember.assignmentId),
+      )
+      .leftJoin(
+        participantTable,
+        or(
+          eq(programmeAssignment.participantId, participantTable.id),
+          eq(programmeAssignmentMember.participantId, participantTable.id),
+        ),
+      )
+      .leftJoin(
+        programmeTeamLead,
+        and(
+          eq(programmeTeamLead.programmeId, programmeId),
+          eq(programmeTeamLead.participantId, participantTable.id),
+        ),
+      )
       .where(eq(programmeAssignment.programmeId, programmeId));
-    
+
     return { success: true, data: assignments };
   } catch (error) {
     return handleActionError(error);

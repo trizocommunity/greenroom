@@ -17,13 +17,15 @@ vi.mock("@/features/exports/repositories/export.repository", () => ({
   deleteExpiredExports: () => mockDeleteExpiredExports(),
 }));
 
-vi.mock("@/features/festivals/services/festival-expiry-notifier.service", () => ({
-  FestivalExpiryNotifier: {
-    runNotificationsCycle: () => mockRunNotificationsCycle(),
-    runFestivalExpiringSoonEmails: () =>
-      mockRunFestivalExpiringSoonEmails(),
-  },
-}));
+vi.mock(
+  "@/features/festivals/services/festival-expiry-notifier.service",
+  () => ({
+    FestivalExpiryNotifier: {
+      runNotificationsCycle: () => mockRunNotificationsCycle(),
+      runFestivalExpiringSoonEmails: () => mockRunFestivalExpiringSoonEmails(),
+    },
+  }),
+);
 
 import { cronDaily } from "@/inngest/functions/cron-daily";
 

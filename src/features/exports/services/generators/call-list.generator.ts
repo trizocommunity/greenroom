@@ -41,9 +41,7 @@ interface CallRow {
 
 function formatDob(iso: string | null): string {
   if (!iso) return "";
-  return parseInstant(iso)
-    ? formatDate(iso, { style: "medium" })
-    : "";
+  return parseInstant(iso) ? formatDate(iso, { style: "medium" }) : "";
 }
 
 async function loadCallRows(
@@ -226,9 +224,13 @@ export async function generateCallList(
     if (config.sortBy === "TEAM") {
       const cmp = (a.teamName || "").localeCompare(b.teamName || "");
       if (cmp !== 0) return cmp;
-      return (a.chestNumber || "").localeCompare(b.chestNumber || "", undefined, {
-        numeric: true,
-      });
+      return (a.chestNumber || "").localeCompare(
+        b.chestNumber || "",
+        undefined,
+        {
+          numeric: true,
+        },
+      );
     }
     // Default: CHEST_NUMBER
     const chestCmp = (a.chestNumber || "").localeCompare(

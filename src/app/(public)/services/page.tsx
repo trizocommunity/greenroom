@@ -4,9 +4,9 @@ import { PageHeader } from "@/components/layout/Section";
 import { ServiceList } from "@/components/services/ServiceList";
 
 export const metadata: Metadata = {
-  title: "Services | Greenroom",
+  title: "Services",
   description:
-    "Everything Greenroom does for a festival — from onboarding your participant list to publishing results and certificates.",
+    "Discover the end-to-end festival management services offered by Greenroom, from scheduling and scoring to publishing live results and automated certificates.",
 };
 
 export default function ServicesPage() {

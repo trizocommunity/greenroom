@@ -17,9 +17,9 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Separator } from "@/components/ui/separator";
+import { formatElapsedClock, toEpochMs } from "./judgement-time";
 import type { JudgedProgrammeCard } from "./types";
 import { judgementStatusLabel } from "./types";
-import { formatElapsedClock, toEpochMs } from "./judgement-time";
 
 /**
  * Drawer opened from a "Completed judgements" row. Shows score matrix, a

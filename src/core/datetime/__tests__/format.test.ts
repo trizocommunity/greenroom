@@ -40,7 +40,15 @@ function localDateShort(d: Date): string {
 }
 
 function localDateLong(d: Date): string {
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const days = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
   const months = [
     "January",
     "February",
@@ -112,7 +120,9 @@ describe("formatTime", () => {
 
 describe("formatDateTime", () => {
   it("renders date + time in the runner's local timezone", () => {
-    expect(formatDateTime(SAMPLE_INSTANT)).toBe(localDateTimeMedium(sampleDate));
+    expect(formatDateTime(SAMPLE_INSTANT)).toBe(
+      localDateTimeMedium(sampleDate),
+    );
   });
 
   it("supports long style", () => {

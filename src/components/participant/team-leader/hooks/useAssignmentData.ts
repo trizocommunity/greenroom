@@ -8,7 +8,7 @@ export function useAssignmentData(
   groupCount: number,
   assignmentsProgrammeType: string,
   assignmentsCategoryId: string,
-  assignmentsSearch: string
+  assignmentsSearch: string,
 ) {
   const groupCapacityByProgrammeId = useMemo(() => {
     const getProgrammeId = (a: any) => a?.programmeId ?? a?.programme?.id;

@@ -30,7 +30,13 @@ vi.mock("@/core/database/client", () => ({
 vi.mock("@/core/database/schema", () => ({
   programmeAssignment: { festivalId: {}, programmeId: {}, groupId: {} },
   programmeNotification: {},
-  participant: { id: {}, festivalId: {}, groupId: {}, email: {}, isTeamLeader: {} },
+  participant: {
+    id: {},
+    festivalId: {},
+    groupId: {},
+    email: {},
+    isTeamLeader: {},
+  },
 }));
 
 vi.mock("@/features/festivals/repositories/festival.repository", () => ({

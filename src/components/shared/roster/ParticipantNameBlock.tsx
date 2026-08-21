@@ -29,23 +29,26 @@ export function ParticipantNameBlock({
       <p
         className={cn(
           "flex items-center gap-1 font-medium truncate",
-          isMuted ? "text-muted-foreground" : "text-foreground"
+          isMuted ? "text-muted-foreground" : "text-foreground",
         )}
       >
         {isGroup ? <Crown className="h-3 w-3 shrink-0 text-primary" /> : null}
         <span className="truncate">{primaryName}</span>
       </p>
-      
+
       {subtitle && (
         <p className="text-[11px] sm:text-xs text-muted-foreground truncate mt-0.5 tracking-wide">
           {subtitle}
         </p>
       )}
-      
+
       {isGroup && teamMemberNames && teamMemberNames.length > 0 ? (
         <div className="mt-1 space-y-0.5">
           {teamMemberNames.map((name, i) => (
-            <p key={i} className="truncate text-[10px] sm:text-[11px] text-muted-foreground/80 pl-4">
+            <p
+              key={i}
+              className="truncate text-[10px] sm:text-[11px] text-muted-foreground/80 pl-4"
+            >
               {name}
             </p>
           ))}

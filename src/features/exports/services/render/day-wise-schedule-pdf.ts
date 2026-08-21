@@ -1,7 +1,7 @@
 import "server-only";
 
-import jsPDF from "jspdf";
 import { format } from "date-fns";
+import jsPDF from "jspdf";
 import { serverNow } from "@/core/datetime/server";
 
 export interface DayWiseScheduleRow {
@@ -170,7 +170,8 @@ export function buildDayWiseSchedulePdf(
 
       cells.forEach((text, i) => {
         const maxChars = colWidths[i]! / 1.8;
-        const clipped = text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text;
+        const clipped =
+          text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text;
         doc.text(clipped, colX[i] + 1.5, y);
       });
       y += LINE;

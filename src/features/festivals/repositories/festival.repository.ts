@@ -3,6 +3,7 @@ import { db } from "@/core/database/client";
 import { withDbRetry } from "@/core/database/db-retry";
 import {
   category as categories,
+  categoryProgrammeLimit,
   festival as festivals,
   group as groups,
   judge as judges,
@@ -13,7 +14,6 @@ import {
   result as results,
   festivalScoringPolicy as scoringPolicies,
   stage as stages,
-  categoryProgrammeLimit,
 } from "@/core/database/schema";
 import { isAfter, isExpired, parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
@@ -637,12 +637,7 @@ export async function findUserValidFestival(userId: string) {
     })
     .from(members)
     .innerJoin(festivals, eq(festivals.id, members.festivalId))
-    .where(
-      and(
-        eq(members.userId, userId),
-        eq(members.isActive, true),
-      ),
-    )
+    .where(and(eq(members.userId, userId), eq(members.isActive, true)))
     .orderBy(desc(members.createdAt));
 
   for (const m of memberships) {

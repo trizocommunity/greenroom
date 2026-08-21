@@ -4,8 +4,8 @@ import { AlertCircle } from "lucide-react";
 import { useMemo } from "react";
 
 import {
-  ScheduleDaysMultiSelect,
   buildScheduleDayOptions,
+  ScheduleDaysMultiSelect,
 } from "@/app/dashboard/[slug]/exports/_components/filters/ScheduleDaysMultiSelect";
 import { Label } from "@/components/ui/label";
 import type { ScheduleConfig } from "@/features/exports/schemas/export-config.schema";
@@ -42,16 +42,15 @@ export function ScheduleFilters({
     [scheduledDayKeys],
   );
   const hasInvalidSelection =
-    selectedDays.length > 0 &&
-    !selectedDays.some((d) => scheduledSet.has(d));
+    selectedDays.length > 0 && !selectedDays.some((d) => scheduledSet.has(d));
 
   return (
     <div className="space-y-5 rounded-lg border p-4">
       <div className="space-y-2">
         <Label>Days to include</Label>
         <p className="text-xs text-muted-foreground">
-          Pick one or more festival days. Leave empty to include every day
-          that has scheduled sessions.
+          Pick one or more festival days. Leave empty to include every day that
+          has scheduled sessions.
         </p>
         {dayOptions.length === 0 ? (
           <p className="text-xs text-muted-foreground rounded-md border border-dashed p-3">

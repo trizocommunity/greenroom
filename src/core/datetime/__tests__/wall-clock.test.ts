@@ -77,7 +77,9 @@ describe("dateKeyLocal", () => {
     // east of UTC, the UTC date is already Aug 16. dateKeyLocal should
     // still say "2026-08-15" because we ask for the *local* day.
     const localMidnight = new Date(2026, 7, 15, 0, 0, 0);
-    const lateLocalEvening = new Date(localMidnight.getTime() + 23 * 3600 * 1000);
+    const lateLocalEvening = new Date(
+      localMidnight.getTime() + 23 * 3600 * 1000,
+    );
     expect(dateKeyLocal(lateLocalEvening.toISOString())).toBe("2026-08-15");
   });
 

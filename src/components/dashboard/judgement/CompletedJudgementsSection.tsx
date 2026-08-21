@@ -3,11 +3,11 @@
 import { Badge } from "@/components/ui/badge";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { cn } from "@/core/utils/cn";
+import { CompletedJudgementItem } from "./CompletedJudgementItem";
+import { CalendarSearch, CompactSelect } from "./SectionFilterRow";
 import type { JudgedProgrammeCard } from "./types";
 import { PAGE_SIZE } from "./types";
 import type { JudgementFiltersState } from "./useJudgementFilters";
-import { CompletedJudgementItem } from "./CompletedJudgementItem";
-import { CalendarSearch, CompactSelect } from "./SectionFilterRow";
 
 type CompletedFiltersSlice = Pick<
   JudgementFiltersState,

@@ -77,7 +77,10 @@ export function isValidScheduleDayKey(key: string): boolean {
  * Compare two `Date` values on the calendar day in the viewer's
  * browser-local timezone.
  */
-export function isSameCalendarDay(startTime: Date, endTime: Date | null): boolean {
+export function isSameCalendarDay(
+  startTime: Date,
+  endTime: Date | null,
+): boolean {
   if (endTime == null) return true;
   const fmt = new Intl.DateTimeFormat("en-CA", {
     year: "numeric",

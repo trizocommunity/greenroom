@@ -161,7 +161,7 @@ export function useReportingBoard({
     const programme = selected?.programme;
     if (!programme?.id) return [];
     const rows = assignmentsWithReported;
-    
+
     let resultRows: RosterTableRow[] = [];
 
     if (programme.type !== "GROUP") {
@@ -189,7 +189,7 @@ export function useReportingBoard({
               .filter((id): id is string => Boolean(id)),
           ]),
         );
-        
+
         // Extract all non-lead participant names
         const teamMemberNames = lead.teamMemberNames?.length
           ? lead.teamMemberNames
@@ -258,19 +258,25 @@ export function useReportingBoard({
         { sensitivity: "base" },
       );
       if (ga !== 0) return ga;
-      
-      const aTeam = typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
-      const bTeam = typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
+
+      const aTeam =
+        typeof a.teamCell === "number" ? a.teamCell : Number(a.teamCell) || 0;
+      const bTeam =
+        typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
       return aTeam - bTeam;
     });
-  }, [assignmentsWithReported, selected?.programme, teamLeadsForProgramme, letters, session]);
+  }, [
+    assignmentsWithReported,
+    selected?.programme,
+    teamLeadsForProgramme,
+    letters,
+    session,
+  ]);
 
   const reportedUnitsCount = useMemo(
     () => rosterTableRows.filter((r) => r.isReported).length,
     [rosterTableRows],
   );
-
-
 
   const scratchTiles = useMemo<ScratchTile[]>(() => {
     if (letters.length === 0) return [];

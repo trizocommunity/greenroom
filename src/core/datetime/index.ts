@@ -58,13 +58,15 @@ export {
 } from "./format";
 // Parse
 export { parseInstant, parseInstantOrThrow, toDateOrNull } from "./parse";
+export type { RelativeDay } from "./relative-day";
 // Relative-day helpers
 export {
   midnightInTz,
   relativeDayKey,
   relativeDayLabel,
 } from "./relative-day";
-export type { RelativeDay } from "./relative-day";
+// Zod schemas
+export { zodCalendarDate, zodDateLike, zodIsoInstant } from "./schemas";
 // Server-side clock helpers
 export {
   fromNow,
@@ -73,8 +75,6 @@ export {
   serverNowIso,
   serverNowMs,
 } from "./server";
-// Zod schemas
-export { zodCalendarDate, zodDateLike, zodIsoInstant } from "./schemas";
 export type { WallClockParts } from "./wall-clock";
 // Wall-clock
 export {

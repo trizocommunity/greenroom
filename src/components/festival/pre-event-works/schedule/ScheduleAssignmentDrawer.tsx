@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
 import {
   Calendar,
   Clock,
@@ -15,6 +15,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useAssignments } from "@/api/client/assignments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,6 @@ import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/act
 import type { EnrichedScheduleEntry } from "@/features/schedule/actions/schedule.actions";
 import { calculateProgrammeDuration } from "@/features/schedule/utils/programme-duration";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
-import { format } from "date-fns";
 
 interface ScheduleAssignmentDrawerProps {
   festivalId: string;

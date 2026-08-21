@@ -1,25 +1,24 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { format } from "date-fns";
+import { useEffect, useMemo, useState } from "react";
+import { useDeleteTeamAssignment, useRemoveTeamMember } from "@/api/client";
 import {
   useAssignments,
   useBulkCreateAssignments,
   useDeleteAssignment,
 } from "@/api/client/assignments";
-import { useDeleteTeamAssignment, useRemoveTeamMember } from "@/api/client";
 import { AssignmentModal } from "@/components/festival/pre-event-works/assignments/AssignmentModal";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
 import { toast } from "@/lib/toast";
-import { format } from "date-fns";
-
-import { useProgrammeFilters } from "./hooks/useProgrammeFilters";
-import { useAssignmentData } from "./hooks/useAssignmentData";
-import { ProgrammesTab } from "./components/ProgrammesTab";
 import { AssignProgrammeDrawer } from "./components/AssignProgrammeDrawer";
+import { ProgrammesTab } from "./components/ProgrammesTab";
+import { useAssignmentData } from "./hooks/useAssignmentData";
+import { useProgrammeFilters } from "./hooks/useProgrammeFilters";
 
 import type {
-  ProgrammeForAssignment,
   MyParticipantForAssignment,
+  ProgrammeForAssignment,
 } from "./types";
 
 export function AssignProgrammesClient({

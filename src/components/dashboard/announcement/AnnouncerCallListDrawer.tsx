@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { Crown, Loader2, Users } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +34,12 @@ type AssignmentRow = {
   isTeamLead: boolean;
 };
 
-export function AnnouncerCallListDrawer({ open, onOpenChange, item, festivalId }: Props) {
+export function AnnouncerCallListDrawer({
+  open,
+  onOpenChange,
+  item,
+  festivalId,
+}: Props) {
   const [isPending, startTransition] = useTransition();
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
 
@@ -45,7 +50,9 @@ export function AnnouncerCallListDrawer({ open, onOpenChange, item, festivalId }
         if (res.success) {
           setAssignments(res.data);
         } else {
-          toast.error((res as { error?: string }).error || "Failed to load assignments");
+          toast.error(
+            (res as { error?: string }).error || "Failed to load assignments",
+          );
         }
       });
     } else {
@@ -54,24 +61,39 @@ export function AnnouncerCallListDrawer({ open, onOpenChange, item, festivalId }
   }, [open, item, festivalId]);
 
   // Group assignments by assignment ID to handle group items properly
-  const groupedAssignments = assignments.reduce((acc, curr) => {
-    if (!acc[curr.id]) {
-      acc[curr.id] = {
-        id: curr.id,
-        teamNumber: curr.teamNumber,
-        groupName: curr.groupName,
-        members: []
-      };
-    }
-    if (curr.participantName) {
-      acc[curr.id].members.push({
-        name: curr.participantName,
-        chestNumber: curr.chestNumber,
-        isTeamLead: curr.isTeamLead
-      });
-    }
-    return acc;
-  }, {} as Record<string, { id: string, teamNumber: number | null, groupName: string | null, members: { name: string, chestNumber: string | null, isTeamLead: boolean }[] }>);
+  const groupedAssignments = assignments.reduce(
+    (acc, curr) => {
+      if (!acc[curr.id]) {
+        acc[curr.id] = {
+          id: curr.id,
+          teamNumber: curr.teamNumber,
+          groupName: curr.groupName,
+          members: [],
+        };
+      }
+      if (curr.participantName) {
+        acc[curr.id].members.push({
+          name: curr.participantName,
+          chestNumber: curr.chestNumber,
+          isTeamLead: curr.isTeamLead,
+        });
+      }
+      return acc;
+    },
+    {} as Record<
+      string,
+      {
+        id: string;
+        teamNumber: number | null;
+        groupName: string | null;
+        members: {
+          name: string;
+          chestNumber: string | null;
+          isTeamLead: boolean;
+        }[];
+      }
+    >,
+  );
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -120,26 +142,38 @@ export function AnnouncerCallListDrawer({ open, onOpenChange, item, festivalId }
           ) : (
             <div className="space-y-4">
               {Object.values(groupedAssignments).map((assignment, index) => (
-                <div key={assignment.id} className="border rounded-lg p-4 bg-muted/20">
+                <div
+                  key={assignment.id}
+                  className="border rounded-lg p-4 bg-muted/20"
+                >
                   {item?.type === "GROUP" ? (
                     <div className="mb-3 flex items-center justify-between border-b pb-2">
                       <div className="font-semibold flex items-center gap-2">
                         <Users className="h-4 w-4 text-muted-foreground" />
-                        {assignment.groupName || `Team ${assignment.teamNumber || index + 1}`}
+                        {assignment.groupName ||
+                          `Team ${assignment.teamNumber || index + 1}`}
                       </div>
                       {assignment.teamNumber && (
-                        <Badge variant="outline">Team {assignment.teamNumber}</Badge>
+                        <Badge variant="outline">
+                          Team {assignment.teamNumber}
+                        </Badge>
                       )}
                     </div>
                   ) : null}
-                  
+
                   <div className="space-y-2">
                     {assignment.members.map((member, i) => (
-                      <div key={i} className="flex items-center justify-between">
+                      <div
+                        key={i}
+                        className="flex items-center justify-between"
+                      >
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{member.name}</span>
                           {member.isTeamLead && (
-                            <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                            <Badge
+                              variant="secondary"
+                              className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                            >
                               <Crown className="h-3 w-3 mr-1" />
                               Lead
                             </Badge>

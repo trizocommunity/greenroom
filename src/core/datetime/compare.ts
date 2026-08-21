@@ -75,10 +75,7 @@ export function msUntil(
  *   // viewer in IST → true   (both are 2026-08-16 in IST)
  *   // viewer in UTC → false  (different UTC days)
  */
-export function isSameDayLocal(
-  a: string | Date,
-  b: string | Date,
-): boolean {
+export function isSameDayLocal(a: string | Date, b: string | Date): boolean {
   const aDate = parseInstant(a);
   const bDate = parseInstant(b);
   if (aDate === null || bDate === null) return false;

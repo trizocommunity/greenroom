@@ -35,7 +35,6 @@ export function ScratchGrid({
 }: ScratchGridProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-
   const current = tiles.find((t) => t.queuePosition === currentQueuePosition);
   const remaining = tiles.filter((t) => !t.revealedAt).length;
   const isDone = remaining === 0;
@@ -163,7 +162,6 @@ export function ScratchGrid({
           out the rest.
         </p>
       ) : null}
-
     </div>
   );
 }

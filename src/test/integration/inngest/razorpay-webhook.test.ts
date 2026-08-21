@@ -15,10 +15,8 @@ const mockUpdatePaymentStatus = vi.fn();
 const mockCreateAuditLog = vi.fn();
 
 vi.mock("@/features/payments/repositories/payment.repository", () => ({
-  getPaymentByOrderId: (...args: unknown[]) =>
-    mockGetPaymentByOrderId(...args),
-  updatePaymentStatus: (...args: unknown[]) =>
-    mockUpdatePaymentStatus(...args),
+  getPaymentByOrderId: (...args: unknown[]) => mockGetPaymentByOrderId(...args),
+  updatePaymentStatus: (...args: unknown[]) => mockUpdatePaymentStatus(...args),
 }));
 
 vi.mock("@/features/auth/services/audit-log.service", () => ({
@@ -48,9 +46,7 @@ beforeEach(() => {
 
 describe("razorpayWebhook", () => {
   it("marks the payment paid and writes the audit log", async () => {
-    const fn = razorpayWebhook as unknown as (
-      ctx: unknown,
-    ) => Promise<unknown>;
+    const fn = razorpayWebhook as unknown as (ctx: unknown) => Promise<unknown>;
     const result = await fn({
       event: {
         data: {
@@ -78,9 +74,7 @@ describe("razorpayWebhook", () => {
   });
 
   it("skips when the payload is missing order_id", async () => {
-    const fn = razorpayWebhook as unknown as (
-      ctx: unknown,
-    ) => Promise<unknown>;
+    const fn = razorpayWebhook as unknown as (ctx: unknown) => Promise<unknown>;
     const result = await fn({
       event: {
         data: {
@@ -98,9 +92,7 @@ describe("razorpayWebhook", () => {
   });
 
   it("is idempotent on duplicate eventId (caller-side dedupe)", async () => {
-    const fn = razorpayWebhook as unknown as (
-      ctx: unknown,
-    ) => Promise<unknown>;
+    const fn = razorpayWebhook as unknown as (ctx: unknown) => Promise<unknown>;
     const ctx = {
       event: {
         data: {

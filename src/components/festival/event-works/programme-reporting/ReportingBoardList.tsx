@@ -1,11 +1,11 @@
 "use client";
 
 import { format } from "date-fns";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import type { ReportingBoardItem } from "./types";
-import { useEffect, useState } from "react";
 
 export function ProgrammeTimer({ windowEndsAt }: { windowEndsAt: Date }) {
   const [timeLeft, setTimeLeft] = useState<number>(0);

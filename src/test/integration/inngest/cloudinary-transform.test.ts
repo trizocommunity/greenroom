@@ -30,7 +30,10 @@ beforeEach(() => {
     secure_url: "https://res.cloudinary.com/demo/x.png",
     public_id: "demo-public",
     eager: [
-      { secure_url: "https://res.cloudinary.com/demo/x_w_800.png", transformation: "w_800" },
+      {
+        secure_url: "https://res.cloudinary.com/demo/x_w_800.png",
+        transformation: "w_800",
+      },
     ],
   });
 });
@@ -82,7 +85,10 @@ describe("cloudinaryTransform", () => {
       ctx: unknown,
     ) => Promise<unknown>;
     await expect(
-      fn({ event: { data: { publicId: "x", transformations: [] } }, step: makeStep() }),
+      fn({
+        event: { data: { publicId: "x", transformations: [] } },
+        step: makeStep(),
+      }),
     ).rejects.toBeInstanceOf(NonRetriableError);
     expect(mockApplyTransformations).not.toHaveBeenCalled();
   });

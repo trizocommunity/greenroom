@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CategoryType } from "@/core/types/app-enums";
-import type { ProgrammeForAssignment } from "../types";
 import { getProgrammeStatusPriorityRank } from "@/features/programmes/services/programme-status-priority";
+import type { ProgrammeForAssignment } from "../types";
 
 export function useProgrammeFilters(
   programmes: ProgrammeForAssignment[],

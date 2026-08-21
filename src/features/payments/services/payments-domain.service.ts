@@ -13,9 +13,7 @@ import {
   getPaymentByOrderId,
   updatePaymentStatus,
 } from "@/features/payments/repositories/payment.repository";
-import {
-  RazorpayService,
-} from "@/features/payments/services/razorpay.service";
+import { RazorpayService } from "@/features/payments/services/razorpay.service";
 
 type PaymentPurpose = "FESTIVAL_CREATION";
 type PaymentStatus = "PENDING" | "PAID" | "FAILED";
@@ -41,9 +39,7 @@ export type PendingOrderExists = {
   tier: Tier;
 };
 
-export type InitiatePaymentResult =
-  | InitiatePaymentSuccess
-  | PendingOrderExists;
+export type InitiatePaymentResult = InitiatePaymentSuccess | PendingOrderExists;
 
 export class PendingOrderExistsError extends Error {
   readonly code = "PENDING_ORDER_EXISTS" as const;

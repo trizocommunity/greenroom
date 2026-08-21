@@ -201,10 +201,7 @@ export async function completeProgrammeReportingAction(
 ) {
   const stageId = await getStageIdForReportingSession(reportingSessionId);
   const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
-  await ProgrammeReportingService.complete(
-    reportingSessionId,
-    actorName,
-  );
+  await ProgrammeReportingService.complete(reportingSessionId, actorName);
   await createAuditLog({
     action: "COMPLETE_REPORTING" as any,
     targetType: "REPORTING_SESSION",

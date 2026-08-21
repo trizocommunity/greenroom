@@ -255,7 +255,9 @@ export function AddMemberDialog({
                                       : "border-border",
                                   )}
                                 >
-                                  {selected && <Check className="h-2.5 w-2.5" />}
+                                  {selected && (
+                                    <Check className="h-2.5 w-2.5" />
+                                  )}
                                 </span>
                               </div>
                               <div className="min-w-0 flex-1 mt-0.5">

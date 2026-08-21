@@ -6,10 +6,10 @@ import {
   Loader2,
   Plus,
   Search,
+  ShieldAlert,
   Trash2,
   Users,
   X,
-  ShieldAlert,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAssignments, useDeleteAssignment } from "@/api/client/assignments";

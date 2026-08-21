@@ -1,10 +1,8 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import party from "party-js";
-import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
 import { useCallback, useRef, useState, useTransition } from "react";
-import { toast } from "@/lib/toast";
 import {
   closeProgrammeReportingAction,
   completeCheckoutAction,
@@ -16,6 +14,7 @@ import {
   revealScratchCodeAction,
   startProgrammeReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
+import { toast } from "@/lib/toast";
 import type { ReportingBoardItem, RosterTableRow } from "./types";
 import type { ReportingSessionState } from "./useReportingSession";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
 import { LargeTimerDrawer } from "./LargeTimerDrawer";
 import { ReportingAutoOpen } from "./ReportingAutoOpen";
 import { ReportingFilterSheet } from "./ReportingFilterSheet";
@@ -10,14 +11,13 @@ import { ReportingPollingRefresh } from "./ReportingPollingRefresh";
 import { ReportingQueue } from "./ReportingQueue";
 import { ReportingWorkspace } from "./ReportingWorkspace";
 import { getUiReportingStatus } from "./reporting-status";
-import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
 import type { ReportingBoardItem } from "./types";
+import { useReportingActions } from "./useReportingActions";
+import { useReportingBoard } from "./useReportingBoard";
 import {
   matchesReportingFilters,
   useReportingFilters,
 } from "./useReportingFilters";
-import { useReportingActions } from "./useReportingActions";
-import { useReportingBoard } from "./useReportingBoard";
 import { useReportingSession } from "./useReportingSession";
 
 /**
@@ -133,7 +133,8 @@ export function ProgrammeReportingClient({
     : null;
 
   const timerHistoryDetail = session.timerDrawerEntryId
-    ? (derived.reportingHistoryDetailsById.get(session.timerDrawerEntryId) ?? null)
+    ? (derived.reportingHistoryDetailsById.get(session.timerDrawerEntryId) ??
+      null)
     : null;
 
   const historyDetail = session.historyDetailOpenId

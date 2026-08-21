@@ -144,9 +144,7 @@ export function ReportingFilterSheet({
 
           {filters.filterScheduleState !== "UNSCHEDULED" && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Date
-              </p>
+              <p className="text-xs font-medium text-muted-foreground">Date</p>
               <DateFilterCombobox
                 value={filters.filterDate}
                 onChange={filters.setFilterDate}

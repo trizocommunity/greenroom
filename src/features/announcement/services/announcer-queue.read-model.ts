@@ -6,9 +6,9 @@ import {
   programmeAssignment,
   programmeAssignmentMember,
   programmeCodeLetter as programmeCodeLetterTable,
+  programmeReportingSession,
   programme as programmeTable,
   result as resultTable,
-  programmeReportingSession,
   scheduleEntry,
   stage as stageTable,
 } from "@/core/database/schema";
@@ -67,12 +67,12 @@ export async function getCallListProgrammes(
     with: {
       programme: { with: { category: true } },
       stage: true,
-    }
+    },
   });
 
   const notified = schedules
-    .filter(s => s.callListNotifiedAt != null)
-    .map(s => ({
+    .filter((s) => s.callListNotifiedAt != null)
+    .map((s) => ({
       id: s.programme!.id,
       name: s.programme!.name,
       type: s.programme!.type,
@@ -81,8 +81,8 @@ export async function getCallListProgrammes(
       startedAt: s.callListNotifiedAt as string | null, // string|null type
     }));
 
-  const inProgressMap = new Map(inProgressSessions.map(s => [s.id, s]));
-  
+  const inProgressMap = new Map(inProgressSessions.map((s) => [s.id, s]));
+
   for (const n of notified) {
     if (!inProgressMap.has(n.id)) {
       inProgressMap.set(n.id, n);
@@ -108,13 +108,16 @@ export async function getActiveReportingSessions(
       startedAt: programmeReportingSession.startedAt,
     })
     .from(programmeReportingSession)
-    .innerJoin(programmeTable, eq(programmeReportingSession.programmeId, programmeTable.id))
+    .innerJoin(
+      programmeTable,
+      eq(programmeReportingSession.programmeId, programmeTable.id),
+    )
     .leftJoin(stageTable, eq(programmeReportingSession.stageId, stageTable.id))
     .where(
       and(
         eq(programmeReportingSession.festivalId, festivalId),
-        eq(programmeReportingSession.status, "IN_PROGRESS")
-      )
+        eq(programmeReportingSession.status, "IN_PROGRESS"),
+      ),
     )
     .orderBy(asc(programmeReportingSession.startedAt));
 
@@ -125,9 +128,9 @@ export async function getActiveReportingSessions(
   const programmesWithCategories = await db.query.programme.findMany({
     where: inArray(programmeTable.id, programmeIds),
     with: { category: { columns: { name: true } } },
-    columns: { id: true }
+    columns: { id: true },
   });
-  
+
   const categoryMap = new Map<string, string | null>();
   for (const p of programmesWithCategories) {
     categoryMap.set(p.id, p.category?.name ?? null);

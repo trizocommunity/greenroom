@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
-import { festival as festivalTable } from "@/core/database/schema";
-import { db } from "@/core/database/client";
-import { uploadBuffer } from "@/core/integrations/cloudinary";
 import { NonRetriableError } from "inngest";
-import { renderPosterToBuffer } from "@/features/posters/services/poster-server-renderer";
+import { db } from "@/core/database/client";
+import { festival as festivalTable } from "@/core/database/schema";
+import { uploadBuffer } from "@/core/integrations/cloudinary";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
+import { renderPosterToBuffer } from "@/features/posters/services/poster-server-renderer";
 import { inngest } from "@/inngest/client";
 
 /**
@@ -83,7 +83,10 @@ export const posterRender = inngest.createFunction(
     await step.run("store-url", () =>
       db
         .update(festivalTable)
-        .set({ resultPdfUrl: upload.secure_url, updatedAt: new Date().toISOString() })
+        .set({
+          resultPdfUrl: upload.secure_url,
+          updatedAt: new Date().toISOString(),
+        })
         .where(eq(festivalTable.id, festivalId)),
     );
 

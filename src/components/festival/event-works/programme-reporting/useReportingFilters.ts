@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { format } from "date-fns";
+import { useMemo, useState } from "react";
 import { parseInstant } from "@/core/datetime";
 import { getUiReportingStatus } from "./reporting-status";
 import type { ReportingBoardItem } from "./types";
@@ -251,7 +251,9 @@ export function matchesReportingFilters(
     const d = parseInstant(item.startTime);
     if (!d) return false;
     const key = format(d, "yyyy-MM-dd");
-    const keys = new Set(filters.filterDate.map((dt) => format(dt, "yyyy-MM-dd")));
+    const keys = new Set(
+      filters.filterDate.map((dt) => format(dt, "yyyy-MM-dd")),
+    );
     if (!keys.has(key)) return false;
   }
   const query = filters.searchQuery.trim().toLowerCase();

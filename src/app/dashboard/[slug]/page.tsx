@@ -8,13 +8,13 @@ import OverviewWidgets from "@/components/dashboard/overview/OverviewWidgets";
 import { StageManagerOverview } from "@/components/dashboard/overview/StageManagerOverview";
 import { VolunteerOverview } from "@/components/dashboard/overview/VolunteerOverview";
 import { getSession } from "@/core/auth/session";
-import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
-import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
+import type { TeamStandingRow } from "@/features/announcement/services/announcer.service";
 import {
   getActiveReportingSessions,
   getCallListProgrammes,
 } from "@/features/announcement/services/announcer.service";
-import type { TeamStandingRow } from "@/features/announcement/services/announcer.service";
+import { findFestivalBySlugOrId } from "@/features/festivals/repositories/festival.repository";
+import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
 import {
   ALL_FESTIVAL_ROLES,
   PRIVILEGED_ROLES,

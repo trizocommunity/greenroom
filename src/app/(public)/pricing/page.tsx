@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { PUBLIC_PRICING_TIERS, TIER_CONFIG } from "@/config/pricing";
 
 export const metadata = {
-  title: "Pricing | Greenroom",
+  title: "Pricing",
   description:
-    "Simple, transparent pricing for festival management. One-time payment per festival.",
+    "Simple, transparent pricing for Greenroom festival management software. One-time payment per festival with no per-participant billing.",
 };
 
 export default function PricingPage() {
