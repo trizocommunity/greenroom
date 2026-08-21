@@ -291,9 +291,9 @@ export function ScheduleTableView({
     (filterStage !== "ALL" && filterStage !== initialStageId);
 
   const filterBar = (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 items-center  justify-between md:flex-row gap-3 py-4 md:pt-10 mb-4">
+    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 py-4 md:pt-10 mb-4 w-full">
       {onSearchQueryChange && (
-        <div className="relative col-span-2 lg:col-span-3 w-full sm:w-[350px] shrink-0">
+        <div className="relative w-full lg:max-w-sm shrink-0">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
             placeholder="Search schedule..."
@@ -314,7 +314,7 @@ export function ScheduleTableView({
         </div>
       )}
 
-      <div className="grid grid-cols-2 col-span-2 items-center gap-8 lg:gap-4">
+      <div className="flex flex-row flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto lg:justify-end">
         {days.length > 1 && (
           <DateFilterCombobox
             value={filterDay}
