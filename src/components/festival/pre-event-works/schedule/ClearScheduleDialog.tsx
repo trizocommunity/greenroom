@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/core/utils/cn";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
 
 type EnrichedScheduleEntry = any;
@@ -43,10 +46,11 @@ export function ClearScheduleDialog({
   }) => Promise<void>;
   isClearing: boolean;
 }) {
-  const [dayKey, setDayKey] = useState<string>("ALL");
-  const [stageId, setStageId] = useState<string>("ALL");
+  const [dayKey, setDayKey] = useState<string>("");
+  const [stageId, setStageId] = useState<string>("");
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
+  const [dayOpen, setDayOpen] = useState(false);
 
   const days = useMemo(() => {
     const map = new Map<string, string>();
@@ -66,10 +70,41 @@ export function ClearScheduleDialog({
       }));
   }, [entries]);
 
+  const matchingCount = useMemo(() => {
+    if (!dayKey || !stageId) return null;
+    let count = 0;
+    for (const e of entries) {
+      if (dayKey) {
+        const d = parseStoredScheduleInstant(e.startTime);
+        if (Number.isNaN(d.getTime()) || format(d, "yyyy-MM-dd") !== dayKey) continue;
+      }
+      if (stageId && e.stage?.id !== stageId) continue;
+      if (startTime) {
+        const d = parseStoredScheduleInstant(e.startTime);
+        if (Number.isNaN(d.getTime())) continue;
+        const startStr = format(d, "HH:mm");
+        if (startStr < startTime) continue;
+      }
+      if (endTime && e.endTime) {
+        const d = parseStoredScheduleInstant(e.endTime);
+        if (Number.isNaN(d.getTime())) continue;
+        const endStr = format(d, "HH:mm");
+        if (endStr > endTime) continue;
+      }
+      count++;
+    }
+    return count;
+  }, [entries, dayKey, stageId, startTime, endTime]);
+
+  const timeError = startTime && endTime && startTime > endTime ? "End time must be after start time." : null;
+  const noMatchError = matchingCount === 0 ? "No scheduled items found matching these filters." : null;
+  const canClear = !!dayKey && !!stageId && !timeError && matchingCount !== null && matchingCount > 0;
+
   const handleClear = async () => {
+    if (!canClear) return;
     await onClear({
-      dayKey: dayKey === "ALL" ? null : dayKey,
-      stageId: stageId === "ALL" ? null : stageId,
+      dayKey: dayKey || null,
+      stageId: stageId || null,
       startTime: startTime || null,
       endTime: endTime || null,
     });
@@ -81,36 +116,66 @@ export function ClearScheduleDialog({
         <DialogHeader>
           <DialogTitle>Clear Schedule</DialogTitle>
           <DialogDescription>
-            Bulk remove entries from the schedule by applying filters. Leave a filter empty to ignore it.
+            Bulk remove entries from the schedule by applying filters. Time is optional.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col">
             <Label>Day</Label>
-            <Select value={dayKey} onValueChange={setDayKey} disabled={isClearing}>
-              <SelectTrigger>
-                <SelectValue placeholder="All days" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All days</SelectItem>
-                {days.map((d) => (
-                  <SelectItem key={d.key} value={d.key}>
-                    {d.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={dayOpen} onOpenChange={setDayOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={dayOpen}
+                  className="w-full justify-between font-normal"
+                  disabled={isClearing}
+                >
+                  {dayKey
+                    ? days.find((d) => d.key === dayKey)?.label
+                    : "Select day..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search day..." />
+                  <CommandList>
+                    <CommandEmpty>No day found.</CommandEmpty>
+                    <CommandGroup>
+                      {days.map((d) => (
+                        <CommandItem
+                          key={d.key}
+                          value={d.label}
+                          onSelect={() => {
+                            setDayKey(d.key);
+                            setDayOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              dayKey === d.key ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {d.label}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
             <Label>Stage</Label>
             <Select value={stageId} onValueChange={setStageId} disabled={isClearing}>
               <SelectTrigger>
-                <SelectValue placeholder="All stages" />
+                <SelectValue placeholder="Select stage..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All stages</SelectItem>
                 {stages.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
@@ -140,13 +205,26 @@ export function ClearScheduleDialog({
               />
             </div>
           </div>
+          
+          {(timeError || noMatchError) && (
+            <div className="flex items-center gap-2 text-sm text-destructive mt-1">
+              <AlertTriangle className="h-4 w-4" />
+              <span>{timeError || noMatchError}</span>
+            </div>
+          )}
+          
+          {matchingCount !== null && matchingCount > 0 && !timeError && (
+            <div className="text-sm text-muted-foreground mt-1">
+              Found {matchingCount} entry{matchingCount === 1 ? "" : "s"} to clear.
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isClearing}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleClear} disabled={isClearing}>
+          <Button variant="destructive" onClick={handleClear} disabled={!canClear || isClearing}>
             {isClearing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
             Clear Matching Entries
           </Button>
