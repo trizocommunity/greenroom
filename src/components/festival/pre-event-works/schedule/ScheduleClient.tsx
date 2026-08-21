@@ -466,6 +466,7 @@ export function ScheduleClient({
                 <Plus className="h-4 w-4" />
                 Add Schedule
               </Button>
+              </>
             )}
           </div>
         </div>
