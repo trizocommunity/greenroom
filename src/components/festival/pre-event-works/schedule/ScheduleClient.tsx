@@ -1,7 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Calendar,
@@ -15,21 +14,17 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useCreateScheduleItem,
   useDeleteScheduleItem,
   useUpdateScheduleItem,
 } from "@/api/client/schedule";
-import {
-  type CalendarGroupBy,
-  ScheduleCalendarView,
-} from "@/components/festival/pre-event-works/schedule/ScheduleCalendarView";
 
-import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
+import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,12 +73,11 @@ import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type ConflictParts,
+  cancelCallListNotification,
   checkScheduleConflict,
-  clearScheduleEntries,
   type EnrichedScheduleEntry,
   getScheduleEntriesEnriched,
   notifyCallList,
-  cancelCallListNotification,
   type SchedulableProgramme,
 } from "@/features/schedule/actions/schedule.actions";
 import {
@@ -94,6 +88,7 @@ import {
   localWallClockToDate,
   parseStoredScheduleInstant,
 } from "@/features/schedule/utils/schedule-datetime";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 import { toast } from "@/lib/toast";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
@@ -147,10 +142,8 @@ export function ScheduleClient({
 }: ScheduleClientProps) {
   const router = useRouter();
   const { isReadOnly } = useFestivalReadOnly();
-  const displayTz = useDisplayTimezone();
   const [entries, setEntries] =
     useState<EnrichedScheduleEntry[]>(initialEntries);
-  const [viewMode, setViewMode] = useState<"calendar" | "table">("table");
   const [addOpen, setAddOpen] = useState(false);
   const [addFormError, setAddFormError] = useState<string | null>(null);
   const [addFormConflictParts, setAddFormConflictParts] =
@@ -161,22 +154,49 @@ export function ScheduleClient({
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [swapEntry, setSwapEntry] = useState<EnrichedScheduleEntry | null>(
     null,
   );
   const [reportingEntry, setReportingEntry] =
     useState<EnrichedScheduleEntry | null>(null);
-  const [groupBy, setGroupBy] = useState<CalendarGroupBy>("date");
-  const [clearOpen, setClearOpen] = useState(false);
-  const [clearStageId, setClearStageId] = useState("");
-  const [clearDateKey, setClearDateKey] = useState("");
-  const [clearing, setClearing] = useState(false);
-  const [timelineStart, setTimelineStart] = useState<string>("07:00");
-  const [timelineEnd, setTimelineEnd] = useState<string>("23:00");
 
-  const dayTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  /* UC15 — schedule-channel delta. Another admin adding/moving a slot
+     pushes here; we re-pull the enriched entries (re-runs the conflict
+     check on the server with the latest data) and re-render the table +
+     calendar. Hook has its own backoff; auto-reconnect is built in.
+     `liveStatus` is consumed by the polling fallback below so we don't
+     double-refresh while SSE is healthy. */
+  const { data: scheduleEvent, status: liveStatus } = useLiveChannel<{
+    festivalId: string;
+    entryId: string;
+    action: "CREATED" | "UPDATED" | "DELETED";
+    at: string;
+  }>({
+    url: `/api/v1/festivals/${festivalId}/schedule/stream`,
+  });
+
+  useEffect(() => {
+    if (!scheduleEvent) return;
+    router.refresh();
+  }, [scheduleEvent, router]);
+
+  /* Polling fallback. No pre-Issue-48 poll loop existed for this page —
+     Issue 48 sub-slice B added SSE-only. The brief's rollback clause
+     ("every consumer must keep its existing poll loop as fallback")
+     still requires a polling path, so we add one at the 30s cadence
+     the brief specifies. Suppressed while SSE is open so a healthy
+     connection doesn't double-refresh. If SSE drops + reconnects
+     inside the 30s window both fire — harmless, the refresh re-reads
+     the same loader. */
+  useEffect(() => {
+    if (liveStatus === "open") return;
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [router, liveStatus]);
 
   const hasStages = stages.length > 0;
   const hasProgrammes = programmes.length > 0;
@@ -191,35 +211,6 @@ export function ScheduleClient({
     const data = await getScheduleEntriesEnriched(festivalId);
     setEntries(data);
   }, [festivalId]);
-
-  // Grouped by day
-  const groupedByDay = entries.reduce<Record<string, EnrichedScheduleEntry[]>>(
-    (acc, entry) => {
-      const key = getDateKey(parseStoredScheduleInstant(entry.startTime));
-      if (!key) return acc;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(entry);
-      return acc;
-    },
-    {},
-  );
-
-  const sortedDays = Object.keys(groupedByDay).sort();
-  const effectiveActiveDay =
-    activeDayKey && groupedByDay[activeDayKey]
-      ? activeDayKey
-      : (sortedDays[0] ?? null);
-
-  useEffect(() => {
-    if (!effectiveActiveDay) return;
-    const node = dayTabRefs.current[effectiveActiveDay];
-    if (!node) return;
-    node.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-  }, [effectiveActiveDay]);
 
   // Conflict count
   const conflictCount = useMemo(() => {
@@ -415,189 +406,7 @@ export function ScheduleClient({
           </div>
         </div>
 
-        {/* Controls bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-          <div className="relative w-full md:max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search competitions, categories, stages..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                onClick={() => setSearchQuery("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-
-          <hr className="border-border mt-5 " />
-
-          <div className="flex flex-wrap sm:flex-row items-center gap-2 md:gap-5 lg:gap-10 justify-between">
-            {!isStageManager ? (
-              <Tabs
-                value={viewMode}
-                onValueChange={(v) => setViewMode(v as "calendar" | "table")}
-              >
-                <TabsList className="h-9 ">
-                  <TabsTrigger value="table" className="gap-1.5 text-xs">
-                    <TableProperties className="h-3.5 w-3.5" />
-                    Table
-                  </TabsTrigger>
-                  <TabsTrigger value="calendar" className="gap-1.5 text-xs">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Calendar
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            ) : (
-              <div />
-            )}
-            <div className="flex items-center gap-2 shrink-0">
-              {viewMode === "calendar" && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-xs"
-                    >
-                      <Settings2 className="h-3.5 w-3.5" />
-                      Layout
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-72">
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm font-medium">Timeline Layout</p>
-                        <p className="text-xs text-muted-foreground">
-                          Customize your schedule display.
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">
-                          Group rows by
-                        </Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setGroupBy("date")}
-                            className={cn(
-                              "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-                              groupBy === "date"
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-background text-muted-foreground hover:bg-muted",
-                            )}
-                          >
-                            Date
-                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">
-                              Stages as rows
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setGroupBy("stage")}
-                            className={cn(
-                              "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-                              groupBy === "stage"
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-background text-muted-foreground hover:bg-muted",
-                            )}
-                          >
-                            Stage
-                            <span className="block text-[10px] font-normal opacity-70 mt-0.5">
-                              Dates as rows
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">
-                            Start Time
-                          </Label>
-                          <Input
-                            type="time"
-                            value={timelineStart}
-                            onChange={(e) => setTimelineStart(e.target.value)}
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">
-                            End Time
-                          </Label>
-                          <Input
-                            type="time"
-                            value={timelineEnd}
-                            onChange={(e) => setTimelineEnd(e.target.value)}
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
-
-              {!isReadOnly && !isStageManager && entries.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
-                  onClick={() => setClearOpen(true)}
-                  disabled={isReadOnly}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Clear
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
-
-      {/* Day tabs for calendar view (date grouping only) */}
-      {viewMode === "calendar" &&
-        groupBy === "date" &&
-        sortedDays.length > 0 && (
-          <div
-            className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto gap-2 border-b border-border pb-3"
-            role="tablist"
-          >
-            {sortedDays.map((dayKey, index) => {
-              const dayCount = groupedByDay[dayKey].length;
-              const isActive = effectiveActiveDay === dayKey;
-              return (
-                <button
-                  key={dayKey}
-                  ref={(node) => {
-                    dayTabRefs.current[dayKey] = node;
-                  }}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setActiveDayKey(dayKey)}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 snap-center",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  Day {index + 1}
-                  <span className="ml-2 opacity-80">({dayCount})</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
 
       {/* Empty state */}
       {entries.length === 0 ? (
@@ -622,21 +431,6 @@ export function ScheduleClient({
               "Click 'Add Schedule' to start building your competition schedule."}
           </p>
         </div>
-      ) : viewMode === "calendar" ? (
-        <ScheduleCalendarView
-          entries={entries}
-          stages={stages}
-          activeDayKey={effectiveActiveDay}
-          onEntryClick={(entry) => {
-            if (isReadOnly) return;
-            setEditEntry(entry);
-          }}
-          searchQuery={searchQuery}
-          groupBy={groupBy}
-          sortedDays={sortedDays}
-          timelineStart={timelineStart}
-          timelineEnd={timelineEnd}
-        />
       ) : (
         <ScheduleTableView
           festivalId={festivalId}
@@ -658,8 +452,10 @@ export function ScheduleClient({
           }}
           isReadOnly={isReadOnly}
           searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
         />
       )}
+
 
       {/* Add Entry Drawer */}
       <AddEntryDialog
@@ -725,108 +521,6 @@ export function ScheduleClient({
         onOpenChange={(open) => !open && setSwapEntry(null)}
         onSwapped={refresh}
       />
-
-      {/* Clear Schedule Dialog */}
-      <Dialog
-        open={clearOpen}
-        onOpenChange={(open) => {
-          setClearOpen(open);
-          if (!open) {
-            setClearStageId("");
-            setClearDateKey("");
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Clear Schedule</DialogTitle>
-            <DialogDescription>
-              Optionally filter which slots to remove. Leave both blank to clear
-              all slots for this event.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-sm">Stage (optional)</Label>
-              <Select value={clearStageId} onValueChange={setClearStageId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All stages" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All stages</SelectItem>
-                  {stages.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">Date (optional)</Label>
-              <Input
-                type="date"
-                value={clearDateKey}
-                onChange={(e) => setClearDateKey(e.target.value)}
-                placeholder="dd-mm-yyyy"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setClearOpen(false);
-                setClearStageId("");
-                setClearDateKey("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={clearing}
-              onClick={async () => {
-                setClearing(true);
-                try {
-                  const filters: { stageId?: string; dateKey?: string } = {};
-                  if (clearStageId && clearStageId !== "__all__")
-                    filters.stageId = clearStageId;
-                  if (clearDateKey) filters.dateKey = clearDateKey;
-                  const result = await clearScheduleEntries(
-                    festivalId,
-                    Object.keys(filters).length > 0 ? filters : undefined,
-                  );
-                  if (result.success) {
-                    toast.success(
-                      `Cleared ${result.count} schedule ${result.count === 1 ? "entry" : "entries"}.`,
-                    );
-                    setClearOpen(false);
-                    setClearStageId("");
-                    setClearDateKey("");
-                    refresh();
-                  } else {
-                    toast.error(result.error || "Failed to clear schedule.");
-                  }
-                } catch (error: any) {
-                  toast.error(error?.message || "Failed to clear schedule.");
-                } finally {
-                  setClearing(false);
-                }
-              }}
-            >
-              {clearing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                  Clearing…
-                </>
-              ) : (
-                "Clear"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <ScheduleReportingDrawer
         festivalId={festivalId}

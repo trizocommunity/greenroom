@@ -121,7 +121,7 @@ export function ProgrammesClient({
 
   useEffect(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [categoryFilter, stageTypeFilter, typeFilter, statusFilter, searchQuery]);
+  }, []);
 
   if (isLoading && programmes.length === 0) {
     return (

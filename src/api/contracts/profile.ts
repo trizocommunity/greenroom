@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { zodTimezoneLoose } from "@/core/datetime";
-
 export const profileSchema = z.object({
   userId: z.string(),
   role: z.enum(["USER", "SUPER_ADMIN"]),
@@ -14,7 +12,6 @@ export const updateProfileInput = z.object({
   phone: z.string().optional(),
   age: z.number().optional(),
   userRole: z.string().optional(),
-  timezone: zodTimezoneLoose.optional(),
 });
 
 export const getExpiredResultsPdfInput = z.object({

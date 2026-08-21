@@ -20,8 +20,6 @@ export interface BuildPdfOptions {
   sections: PdfSection[];
   pageLayout: PageLayout;
   emptyMessage?: string;
-  /** IANA timezone used for the "Generated on" footer. */
-  timezone?: string;
 }
 
 const MARGIN = 14;
@@ -52,7 +50,7 @@ export function buildSectionedPdf(options: BuildPdfOptions): Buffer {
   doc.setFontSize(9);
   doc.setTextColor(120);
   doc.text(
-    `Generated ${formatDateTime(serverNow(), { tz: options.timezone, dateStyle: "medium", timeStyle: "short" })}`,
+    `Generated ${formatDateTime(serverNow(), { dateStyle: "medium", timeStyle: "short" })} UTC`,
     pageWidth / 2,
     38,
     {

@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { useSuperAdminAnalytics } from "@/api/client/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 
 export interface PurchaseSummaryDto {
   userId: string;
@@ -92,12 +93,33 @@ export function AnalyticsCharts({ initialData }: AnalyticsChartsProps) {
     initialData ? new Date() : null,
   );
 
+  /* UC13 — super-admin stats stream. Every festival create, payment
+     received, support ticket opened pushes a delta here. The payload
+     itself is `{ tickedAt: string }` — we don't care about the fields,
+     just that *something* changed, so the `refetch` runs react-query's
+     optimistic revalidation and the charts re-render. */
+  const { data: statsEvent, status: liveStatus } = useLiveChannel<{
+    tickedAt: string;
+  }>({
+    url: "/api/v1/super-admin/stats/stream",
+  });
+
   useEffect(() => {
+    if (!statsEvent) return;
+    refetch();
+  }, [statsEvent, refetch]);
+
+  useEffect(() => {
+    /* Polling fallback. The 60s cadence matches the pre-Issue-48
+       behaviour — documented in the page description ("refresh every
+       minute with live data"). Skips when SSE is open so we don't
+       double-refetch. */
+    if (liveStatus === "open") return;
     const interval = setInterval(() => {
       refetch();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [refetch]);
+  }, [refetch, liveStatus]);
 
   useEffect(() => {
     if (dataUpdatedAt) {

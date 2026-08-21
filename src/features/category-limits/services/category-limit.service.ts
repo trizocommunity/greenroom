@@ -140,7 +140,9 @@ export const CategoryLimitService = {
       categoryIds.map((cid) => findLimitByCategoryId(cid)),
     );
     const limitMap = new Map<string, CategoryLimit | null>();
-    categoryIds.forEach((cid, i) => limitMap.set(cid, limits[i]));
+    categoryIds.forEach((cid, i) => {
+      limitMap.set(cid, limits[i]);
+    });
 
     // Batch fetch assignment counts for all participants
     const countMap = await batchGetParticipantAssignmentCounts(
@@ -210,7 +212,7 @@ export const CategoryLimitService = {
       const limit = limitMap.get(cat.id) ?? null;
       const catParticipantIds = participantsByCategory.get(cat.id) ?? [];
 
-      let violationCounts = { stage: 0, nonStage: 0, all: 0, total: 0 };
+      const violationCounts = { stage: 0, nonStage: 0, all: 0, total: 0 };
 
       if (limit && catParticipantIds.length > 0) {
         const countMap = await batchGetParticipantAssignmentCounts(
@@ -228,7 +230,13 @@ export const CategoryLimitService = {
         violationCounts.total = participantsOver.size;
       }
 
-      result.push({ id: cat.id, name: cat.name, type: cat.type, limit, violationCounts });
+      result.push({
+        id: cat.id,
+        name: cat.name,
+        type: cat.type,
+        limit,
+        violationCounts,
+      });
     }
 
     return result;
@@ -243,7 +251,16 @@ export const CategoryLimitService = {
     festivalId: string,
   ): Promise<
     Array<{
-      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; dateOfBirth: string | Date | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
+      participant: {
+        id: string;
+        name: string;
+        chestNumber: string | null;
+        groupId: string | null;
+        dateOfBirth: string | Date | null;
+        group: { id: string; name: string; color: string | null } | null;
+        categoryId: string;
+        category: { id: string; name: string } | null;
+      };
       status: ParticipantLimitStatus;
     }>
   > {
@@ -252,11 +269,15 @@ export const CategoryLimitService = {
 
     const participants = await db.query.participant.findMany({
       where: (p, { and, eq }) =>
-        and(
-          eq(p.categoryId, categoryId),
-          eq(p.festivalId, festivalId),
-        ),
-      columns: { id: true, name: true, chestNumber: true, groupId: true, categoryId: true, dateOfBirth: true },
+        and(eq(p.categoryId, categoryId), eq(p.festivalId, festivalId)),
+      columns: {
+        id: true,
+        name: true,
+        chestNumber: true,
+        groupId: true,
+        categoryId: true,
+        dateOfBirth: true,
+      },
       with: {
         group: { columns: { id: true, name: true, color: true } },
         category: { columns: { id: true, name: true } },
@@ -271,7 +292,16 @@ export const CategoryLimitService = {
     );
 
     const violators: Array<{
-      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; dateOfBirth: string | Date | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
+      participant: {
+        id: string;
+        name: string;
+        chestNumber: string | null;
+        groupId: string | null;
+        dateOfBirth: string | Date | null;
+        group: { id: string; name: string; color: string | null } | null;
+        categoryId: string;
+        category: { id: string; name: string } | null;
+      };
       status: ParticipantLimitStatus;
     }> = [];
 
@@ -298,29 +328,53 @@ export const CategoryLimitService = {
   async getAllViolatorsForFestival(festivalId: string): Promise<
     Array<{
       category: { id: string; name: string };
-      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; dateOfBirth: string | Date | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
+      participant: {
+        id: string;
+        name: string;
+        chestNumber: string | null;
+        groupId: string | null;
+        dateOfBirth: string | Date | null;
+        group: { id: string; name: string; color: string | null } | null;
+        categoryId: string;
+        category: { id: string; name: string } | null;
+      };
       status: ParticipantLimitStatus;
     }>
   > {
-    const categoriesWithLimits = await this.getLimitsWithViolationsForFestival(festivalId);
-    const violatingCategories = categoriesWithLimits.filter(c => c.violationCounts.total > 0 && c.limit);
+    const categoriesWithLimits =
+      await this.getLimitsWithViolationsForFestival(festivalId);
+    const violatingCategories = categoriesWithLimits.filter(
+      (c) => c.violationCounts.total > 0 && c.limit,
+    );
 
     if (violatingCategories.length === 0) return [];
 
-    let allViolators: Array<{
+    const allViolators: Array<{
       category: { id: string; name: string };
-      participant: { id: string; name: string; chestNumber: string | null; groupId: string | null; dateOfBirth: string | Date | null; group: { id: string; name: string; color: string | null } | null; categoryId: string; category: { id: string; name: string } | null };
+      participant: {
+        id: string;
+        name: string;
+        chestNumber: string | null;
+        groupId: string | null;
+        dateOfBirth: string | Date | null;
+        group: { id: string; name: string; color: string | null } | null;
+        categoryId: string;
+        category: { id: string; name: string } | null;
+      };
       status: ParticipantLimitStatus;
     }> = [];
 
     for (const cat of violatingCategories) {
-      const catViolators = await this.getViolatorsForCategory(cat.id, festivalId);
+      const catViolators = await this.getViolatorsForCategory(
+        cat.id,
+        festivalId,
+      );
       allViolators.push(
         ...catViolators.map((v) => ({
           category: { id: cat.id, name: cat.name },
           participant: v.participant,
           status: v.status,
-        }))
+        })),
       );
     }
 
@@ -333,7 +387,12 @@ export const CategoryLimitService = {
 function buildLimitStatus(
   categoryId: string,
   limit: CategoryLimit,
-  counts: { participantId: string; stageCount: number; nonStageCount: number; allCount: number },
+  counts: {
+    participantId: string;
+    stageCount: number;
+    nonStageCount: number;
+    allCount: number;
+  },
 ): ParticipantLimitStatus {
   const isOverStage =
     limit.maxStage !== null && counts.stageCount > limit.maxStage;

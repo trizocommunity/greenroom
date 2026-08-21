@@ -38,6 +38,7 @@ import {
   getParticipantLeaderboardView,
   isResultVisibleForLeaderboard,
 } from "@/features/results/services/leaderboard-visibility.service";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 
 function assignmentOf(r: any) {
   return r.programmeAssignment ?? r.assignment;
@@ -141,7 +142,7 @@ type ParticipantRow = {
 export function LeaderboardClient({
   festival,
   results,
-  publishedStandings = [],
+  publishedStandings: _publishedStandings = [],
   categories = [],
   groups = [],
   defaultParticipantFilterCategory,
@@ -164,7 +165,7 @@ export function LeaderboardClient({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [searchQuery, participantFilterCategory, participantFilterGroup]);
+  }, []);
 
   const festivalContext = useFestival();
   const tier = getResolvedTier(tierProp ?? festivalContext.tier);
@@ -248,13 +249,32 @@ export function LeaderboardClient({
     searchQuery,
   ]);
 
-  // Polling refresh every 15 seconds.
+  // UC7 — standings channel. Every `announceResult` pushes a delta; the
+  //    easiest correct client is to refresh the server loader and let the
+  //    board re-derive from the freshly-loaded `results` and
+  //    `publishedStandings` props. Auto-reconnect backoff is built in.
+  const { data: standingsEvent, status: liveStatus } = useLiveChannel<{
+    festivalId: string;
+    teamStandings: unknown[] | null;
+    lastUpdatedAt: string;
+  }>({
+    url: `/api/v1/festivals/${festival.id}/standings/stream`,
+  });
+
   useEffect(() => {
+    if (!standingsEvent) return;
+    router.refresh();
+  }, [standingsEvent, router]);
+
+  // Polling fallback. The 15s cadence matches the pre-Issue-48 behaviour;
+  //    suppressed when SSE is open so we don't double-refetch.
+  useEffect(() => {
+    if (liveStatus === "open") return;
     const id = window.setInterval(() => {
       router.refresh();
     }, 15000);
     return () => window.clearInterval(id);
-  }, [router]);
+  }, [router, liveStatus]);
 
   return (
     <div className="space-y-6">
@@ -435,6 +455,7 @@ export function LeaderboardClient({
             participantStandings
               .slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
               .map((row) => (
+                // biome-ignore lint/a11y/noStaticElementInteractions: leaderboard row that opens a participant detail dialog on click
                 <div
                   key={row.participantId}
                   onClick={() => setSelectedParticipant(row)}

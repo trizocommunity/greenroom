@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateFilterCombobox } from "@/components/ui/date-filter-combobox";
 import {
   Select,
   SelectContent,
@@ -144,12 +144,13 @@ export function ReportingFilterSheet({
 
           {filters.filterScheduleState !== "UNSCHEDULED" && (
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Date
-              </label>
-              <DatePicker
-                date={filters.filterDate}
+              </p>
+              <DateFilterCombobox
+                value={filters.filterDate}
                 onChange={filters.setFilterDate}
+                availableDates={filters.scheduledDates}
                 placeholder="All Dates"
                 className="h-10"
               />

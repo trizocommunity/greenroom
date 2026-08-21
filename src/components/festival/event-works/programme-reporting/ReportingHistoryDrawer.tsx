@@ -8,6 +8,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { formatDateTime } from "@/core/datetime";
+import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 import type { ProgrammeHistoryDetail } from "./reporting-status";
 
 /**
@@ -17,11 +18,9 @@ import type { ProgrammeHistoryDetail } from "./reporting-status";
  */
 export function ReportingHistoryDrawer({
   historyDetail,
-  displayTz,
   onClose,
 }: {
   historyDetail: ProgrammeHistoryDetail | null;
-  displayTz: string;
   onClose: () => void;
 }) {
   return (
@@ -147,23 +146,25 @@ export function ReportingHistoryDrawer({
                                 className="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
                               >
                                 <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-[11px] font-semibold sm:text-[12px]">
-                                      {index + 1}, {entry.label}
-                                    </p>
-                                    <p className="text-[10px] text-muted-foreground flex gap-2">
-                                      {entry.membersCount != null && (
-                                        <span className="text-blue-600 dark:text-blue-400 font-medium">
-                                          {entry.membersCount} Members
-                                        </span>
-                                      )}
-                                      {entry.membersCount == null && (
-                                        <span>{entry.chestOrTeam}</span>
-                                      )}
-                                      <span className="text-green-600 dark:text-green-400 font-medium">
-                                        {entry.group}
-                                      </span>
-                                    </p>
+                                  <div className="min-w-0 flex-1 flex gap-2">
+                                    <span className="text-xs font-semibold mt-[2px]">
+                                      {index + 1}.
+                                    </span>
+                                    <ParticipantNameBlock
+                                      className="flex-1"
+                                      primaryName={
+                                        historyDetail.type === "GROUP"
+                                          ? entry.label
+                                          : entry.label
+                                      }
+                                      isGroup={historyDetail.type === "GROUP"}
+                                      subtitle={
+                                        historyDetail.type === "GROUP"
+                                          ? `${entry.group} · ${entry.chestOrTeam}`
+                                          : entry.group
+                                      }
+                                      teamMemberNames={entry.teamMemberNames}
+                                    />
                                   </div>
                                   <span className="rounded border bg-purple/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-purple">
                                     {entry.code}
@@ -174,7 +175,6 @@ export function ReportingHistoryDrawer({
                                     Reported:{" "}
                                     {entry.reportedAt
                                       ? formatDateTime(entry.reportedAt, {
-                                          tz: displayTz,
                                           dateStyle: "medium",
                                           timeStyle: "short",
                                         })
@@ -184,7 +184,6 @@ export function ReportingHistoryDrawer({
                                     Spun/Issued:{" "}
                                     {entry.spunAt
                                       ? formatDateTime(entry.spunAt, {
-                                          tz: displayTz,
                                           dateStyle: "medium",
                                           timeStyle: "short",
                                         })

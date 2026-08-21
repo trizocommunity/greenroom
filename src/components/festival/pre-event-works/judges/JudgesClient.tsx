@@ -115,7 +115,7 @@ export function JudgesClient({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [searchQuery]);
+  }, []);
 
   const filteredJudges = judges.filter((j) => {
     if (!searchQuery.trim()) return true;

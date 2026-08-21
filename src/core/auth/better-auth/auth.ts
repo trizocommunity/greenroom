@@ -135,11 +135,6 @@ export const auth = betterAuth({
         defaultValue: true,
         input: false,
       },
-      timezone: {
-        type: "string",
-        required: false,
-        input: false,
-      },
     },
   },
 
@@ -171,8 +166,10 @@ export const auth = betterAuth({
       storeOTP: "hashed",
       async sendVerificationOTP({ email, otp }) {
         if (process.env.GREENROOM_SILENT_AUTH === "1") return;
-        const { sendEmail } = await import("@/core/integrations/email/send");
-        await sendEmail({
+        const { sendEmailSync } = await import(
+          "@/core/integrations/email/send"
+        );
+        await sendEmailSync({
           to: email,
           kind: {
             kind: "sign_in_otp",
@@ -205,8 +202,10 @@ export const auth = betterAuth({
         // user — we want an email.
         async sendOTP({ otp, user: u }) {
           if (process.env.GREENROOM_SILENT_AUTH === "1") return;
-          const { sendEmail } = await import("@/core/integrations/email/send");
-          await sendEmail({
+          const { sendEmailSync } = await import(
+            "@/core/integrations/email/send"
+          );
+          await sendEmailSync({
             to: u.email,
             kind: { kind: "two_factor_otp", otp, email: u.email },
           });

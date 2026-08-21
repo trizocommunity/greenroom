@@ -68,7 +68,7 @@ describe("renderEmail — festival_expiring_soon", () => {
       festivalName: "Suffa Mehfil",
       daysRemaining: 7,
       expiresOn: "2026-08-08",
-      dashboardUrl: "https://greenroomm.vercel.app/dashboard/suffa-mehfil",
+      dashboardUrl: "https://greenroomfestivals.in/dashboard/suffa-mehfil",
     });
     expect(result.subject).toBe("[Greenroom] Suffa Mehfil expires in 7 days");
     expect(result.html).toContain("Suffa Mehfil");

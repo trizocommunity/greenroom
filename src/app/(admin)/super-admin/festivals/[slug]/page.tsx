@@ -28,7 +28,6 @@ export default async function AdminFestivalDetailPage({
   }
 
   const festivalId = festival.id;
-  const festivalTz = festival.timezone ?? "UTC";
   const derivedStatus = getDerivedFestivalStatus({
     status: (festival.status ?? "READY") as any,
     startDate: festival.startDate,
@@ -110,7 +109,6 @@ export default async function AdminFestivalDetailPage({
               <span className="text-muted-foreground">Created At</span>
               <span className="text-right">
                 {formatDate(festival.createdAt, {
-                  tz: festivalTz,
                   style: "medium",
                 })}
               </span>
@@ -124,7 +122,6 @@ export default async function AdminFestivalDetailPage({
                 <span className="text-muted-foreground">Expired At</span>
                 <span className="text-right">
                   {formatDate(festival.expiredAt, {
-                    tz: festivalTz,
                     style: "medium",
                   })}
                 </span>
@@ -232,7 +229,6 @@ export default async function AdminFestivalDetailPage({
                     <Badge variant="outline">{ev.event}</Badge>
                     <span className="text-muted-foreground">
                       {formatDateTime(ev.occurredAt, {
-                        tz: festivalTz,
                         dateStyle: "medium",
                         timeStyle: "short",
                       })}

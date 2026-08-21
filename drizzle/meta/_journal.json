@@ -253,6 +253,20 @@
       "when": 1786720939048,
       "tag": "0035_slim_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1787000000000,
+      "tag": "0052_drop_timezone_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1787152471204,
+      "tag": "0037_curly_the_anarchist",
+      "breakpoints": true
     }
   ]
 }

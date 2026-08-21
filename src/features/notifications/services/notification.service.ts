@@ -8,6 +8,10 @@ import {
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
+import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
+import { isEnabled } from "@/features/plan-features/services/feature-gate";
+import { loadFeatureOverrides } from "@/features/plan-features/services/plan-features.service";
+import { getResolvedTier } from "@/features/plan-features/services/tier";
 
 type DeliveryChannel = "IN_APP" | "EMAIL";
 
@@ -114,6 +118,20 @@ async function resolveRecipients(
 
 export const NotificationService = {
   async dispatch(input: NotificationInput): Promise<{ created: number }> {
+    // Feature gate: the in-app notification system requires both the
+    // `notifications` master toggle and `schedule` (notifications are
+    // scoped to scheduled programmes). When either is disabled, short
+    // circuit before any DB work so BASIC festivals don't accumulate
+    // orphan `programme_notification` rows.
+    const festival = await findFestivalById(input.festivalId);
+    if (!festival) return { created: 0 };
+
+    const overrides = await loadFeatureOverrides(festival.tier);
+    const tier = getResolvedTier(festival.tier);
+    const notificationsOn = isEnabled(tier, "notifications", overrides);
+    const scheduleOn = isEnabled(tier, "schedule", overrides);
+    if (!notificationsOn || !scheduleOn) return { created: 0 };
+
     const recipients = await resolveRecipients(input.festivalId, input.targets);
     if (!recipients.participantRecipients.length) return { created: 0 };
 

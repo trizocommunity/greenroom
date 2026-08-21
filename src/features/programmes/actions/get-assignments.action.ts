@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray, asc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/core/database/client";
 import {
@@ -55,19 +55,39 @@ export async function getProgrammeAssignmentsAction(
           participantGroupTable,
           eq(participantTable.groupId, participantGroupTable.id),
         )
-        .where(eq(assignmentTable.festivalId, festivalId)),
+        .where(
+          inArray(
+            assignmentTable.programmeId,
+            db
+              .select({ id: programmeTable.id })
+              .from(programmeTable)
+              .where(eq(programmeTable.festivalId, festivalId)),
+          ),
+        )
+        .orderBy(
+          asc(groupTable.name),
+          asc(participantGroupTable.name),
+          asc(assignmentTable.teamNumber),
+          asc(participantTable.name),
+        ),
       db
         .select({
           assignmentId: programmeAssignmentMemberTable.assignmentId,
           participantId: programmeAssignmentMemberTable.participantId,
+          participantName: participantTable.name,
         })
         .from(programmeAssignmentMemberTable)
+        .leftJoin(
+          participantTable,
+          eq(programmeAssignmentMemberTable.participantId, participantTable.id),
+        )
         .where(eq(programmeAssignmentMemberTable.festivalId, festivalId)),
       db
         .select({
           programmeId: programmeTeamLeadTable.programmeId,
           groupId: programmeTeamLeadTable.groupId,
           teamNumber: programmeTeamLeadTable.teamNumber,
+          participantId: programmeTeamLeadTable.participantId,
           participantName: participantTable.name,
         })
         .from(programmeTeamLeadTable)
@@ -82,7 +102,7 @@ export async function getProgrammeAssignmentsAction(
         .where(eq(programmeTable.festivalId, festivalId)),
     ]);
 
-  const teamLeadsMap = new Map<string, string>();
+  const teamLeadsMap = new Map<string, { id: string | null; name: string }>();
   for (const tl of teamLeads) {
     if (tl.participantName) {
       teamLeadsMap.set(
@@ -91,20 +111,36 @@ export async function getProgrammeAssignmentsAction(
           groupId: tl.groupId,
           teamNumber: tl.teamNumber,
         }),
-        tl.participantName,
+        { id: tl.participantId, name: tl.participantName },
       );
     }
   }
 
-  const membersByAssignmentId = new Map<string, string[]>();
+  const membersByAssignmentId = new Map<
+    string,
+    { id: string; name: string | null }[]
+  >();
   for (const m of assignmentMembersRaw) {
     const existing = membersByAssignmentId.get(m.assignmentId) ?? [];
-    existing.push(m.participantId);
+    existing.push({ id: m.participantId, name: m.participantName });
     membersByAssignmentId.set(m.assignmentId, existing);
   }
 
   return assignmentRowsRaw.map((row) => {
     const computedGroupId = row.groupId ?? row.participantGroupId ?? null;
+    const members = membersByAssignmentId.get(row.id) ?? [];
+    
+    const explicitLead = teamLeadsMap.get(
+      teamKey({
+        programmeId: row.programmeId,
+        groupId: computedGroupId,
+        teamNumber: row.teamNumber,
+      }),
+    );
+    
+    const teamLeadName = explicitLead?.name ?? members[0]?.name ?? null;
+    const teamLeadIdToExclude = explicitLead?.id ?? members[0]?.id ?? null;
+
     return {
       id: row.id,
       programmeId: row.programmeId,
@@ -114,15 +150,12 @@ export async function getProgrammeAssignmentsAction(
       groupId: computedGroupId,
       groupName: row.groupName ?? row.participantGroupName ?? null,
       teamNumber: row.teamNumber ?? null,
-      teamLeadName:
-        teamLeadsMap.get(
-          teamKey({
-            programmeId: row.programmeId,
-            groupId: computedGroupId,
-            teamNumber: row.teamNumber,
-          }),
-        ) ?? null,
-      teamParticipantIds: membersByAssignmentId.get(row.id) ?? [],
+      teamLeadName,
+      teamParticipantIds: members.map((m) => m.id),
+      teamMemberNames: members
+        .filter((m) => m.id !== teamLeadIdToExclude)
+        .map((m) => m.name)
+        .filter(Boolean) as string[],
     };
   });
 }

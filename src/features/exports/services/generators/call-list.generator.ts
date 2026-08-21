@@ -39,17 +39,16 @@ interface CallRow {
   phone: string;
 }
 
-function formatDob(iso: string | null, festivalTz: string): string {
+function formatDob(iso: string | null): string {
   if (!iso) return "";
   return parseInstant(iso)
-    ? formatDate(iso, { tz: festivalTz, style: "medium" })
+    ? formatDate(iso, { style: "medium" })
     : "";
 }
 
 async function loadCallRows(
   festivalId: string,
   config: CallListConfig,
-  festivalTz: string,
 ): Promise<CallRow[]> {
   // Resolve which programmes are in scope (category / programme / type / schedule).
   const progConditions = [eq(programmeTable.festivalId, festivalId)];
@@ -99,10 +98,7 @@ async function loadCallRows(
     if (s.stageName) {
       let info = s.stageName;
       if (s.startTime) {
-        const timeStr = formatDate(s.startTime, {
-          tz: festivalTz,
-          style: "short",
-        });
+        const timeStr = formatDate(s.startTime, { style: "short" });
         info = `${s.stageName} (${timeStr})`;
       }
       stageInfoMap.set(s.programmeId, info);
@@ -196,7 +192,7 @@ async function loadCallRows(
       chestNumber: r.chestNumber ?? "",
       name: r.name,
       teamName: r.groupId ? (groupNameMap.get(r.groupId) ?? "") : "",
-      dob: formatDob(r.dob, festivalTz),
+      dob: formatDob(r.dob),
       phone: r.phone ?? "",
     };
   });
@@ -218,9 +214,8 @@ export async function generateCallList(
   config: CallListConfig,
   format: ExportFormat,
   festivalName: string,
-  festivalTz: string = "UTC",
 ): Promise<GeneratedExport> {
-  const rows = await loadCallRows(festivalId, config, festivalTz);
+  const rows = await loadCallRows(festivalId, config);
 
   const teamWise = config.listType === "TEAM_WISE";
 
@@ -332,7 +327,6 @@ export async function generateCallList(
       title: teamWise ? "Team-wise Call List" : "Call List",
       sections,
       pageLayout: config.pageLayout,
-      timezone: festivalTz,
     }),
     fileName: "call-list.pdf",
     mimeType: PDF_MIME,

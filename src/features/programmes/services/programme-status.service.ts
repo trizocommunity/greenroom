@@ -129,12 +129,20 @@ type PreWorksStatusInput = {
   isBasic: boolean;
 };
 
-/** READY → ASSIGNED → SCHEDULED from Pre Event Works only. */
-function computePreWorksStatus(input: PreWorksStatusInput): ProgrammeStatus {
-  if (!input.isBasic && input.hasScheduleEntry) return "SCHEDULED";
+/** READY → ASSIGNED → SCHEDULED from Pre Event Works only.
+ *
+ * Status transitions require *both* an assignment AND a schedule entry —
+ * a programme that's only scheduled but has no participants yet stays at
+ * DRAFT, and a partially-assigned programme can't jump to SCHEDULED just
+ * because someone dropped a slot in the calendar. */
+export function computePreWorksStatus(input: PreWorksStatusInput): ProgrammeStatus {
   if (input.isBasic && input.hasAssignments) return "ASSIGNED";
-  if (input.hasAssignments && input.isFullyAssignedAcrossAllGroups) {
-    return "ASSIGNED";
+  if (
+    !input.isBasic &&
+    input.hasAssignments &&
+    input.isFullyAssignedAcrossAllGroups
+  ) {
+    return input.hasScheduleEntry ? "SCHEDULED" : "ASSIGNED";
   }
   return "DRAFT";
 }

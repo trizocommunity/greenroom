@@ -1,8 +1,7 @@
 "use client";
 
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { useMemo, useState } from "react";
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import { parseInstant } from "@/core/datetime";
 import { getUiReportingStatus } from "./reporting-status";
 import type { ReportingBoardItem } from "./types";
@@ -24,8 +23,14 @@ export interface ReportingFiltersState {
   setSearchQuery: (v: string) => void;
   filterScheduleState: ScheduleStateFilter;
   setFilterScheduleState: (v: ScheduleStateFilter) => void;
-  filterDate: Date | undefined;
-  setFilterDate: (v: Date | undefined) => void;
+  /**
+   * Selected dates for the date filter. Empty array means "All Dates" (no
+   * filter); non-empty matches programmes whose schedule day is any of the
+   * selected dates (OR semantics). Defaults to `[new Date()]` to preserve
+   * the prior "today by default" behaviour.
+   */
+  filterDate: Date[];
+  setFilterDate: (v: Date[]) => void;
 
   // drawer state
   filterCategoryId: string;
@@ -65,8 +70,6 @@ export function useReportingFilters({
   festivalStages,
   initialStageId,
 }: UseReportingFiltersArgs): ReportingFiltersState {
-  const displayTz = useDisplayTimezone();
-
   const [filterCategoryId, setFilterCategoryId] = useState<string>("ALL");
   const [filterStageId, setFilterStageId] = useState<string>(
     initialStageId ?? "ALL",
@@ -75,7 +78,7 @@ export function useReportingFilters({
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterScheduleState, setFilterScheduleState] =
     useState<ScheduleStateFilter>("SCHEDULED");
-  const [filterDate, setFilterDate] = useState<Date | undefined>(new Date());
+  const [filterDate, setFilterDate] = useState<Date[]>([new Date()]);
   const [showEnded, setShowEnded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -107,8 +110,8 @@ export function useReportingFilters({
       if (item.startTime) {
         const d = parseInstant(item.startTime);
         if (d) {
-          const key = formatInTimeZone(d, displayTz, "yyyy-MM-dd");
-          const label = formatInTimeZone(d, displayTz, "EEE, MMM d, yyyy");
+          const key = format(d, "yyyy-MM-dd");
+          const label = format(d, "EEE, MMM d, yyyy");
           datesMap.set(key, label);
         }
       }
@@ -116,7 +119,7 @@ export function useReportingFilters({
     return Array.from(datesMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([key, label]) => ({ key, label }));
-  }, [board, displayTz]);
+  }, [board]);
 
   const activeFilterCount =
     (filterCategoryId !== "ALL" ? 1 : 0) +
@@ -124,7 +127,7 @@ export function useReportingFilters({
     (filterType !== "ALL" ? 1 : 0) +
     (filterStatus !== "ALL" ? 1 : 0) +
     (showEnded ? 1 : 0) +
-    (filterDate !== undefined ? 1 : 0);
+    (filterDate.length > 0 ? 1 : 0);
 
   const resetAllFilters = () => {
     setFilterCategoryId("ALL");
@@ -132,7 +135,7 @@ export function useReportingFilters({
     setFilterType("ALL");
     setFilterStatus("ALL");
     setFilterScheduleState("ALL");
-    setFilterDate(undefined);
+    setFilterDate([]);
     setShowEnded(false);
     setPageIndex(0);
   };
@@ -147,7 +150,7 @@ export function useReportingFilters({
     setFilterScheduleState(v);
     setPageIndex(0);
   };
-  const setFilterDateReset = (v: Date | undefined) => {
+  const setFilterDateReset = (v: Date[]) => {
     setFilterDate(v);
     setPageIndex(0);
   };
@@ -207,9 +210,8 @@ export function matchesReportingFilters(
     filterStageId: string;
     filterType: string;
     filterScheduleState: ScheduleStateFilter;
-    filterDate: Date | undefined;
+    filterDate: Date[];
     searchQuery: string;
-    displayTz: string;
     mounted: boolean;
   },
 ): boolean {
@@ -241,17 +243,16 @@ export function matchesReportingFilters(
   if (filters.filterScheduleState === "UNSCHEDULED" && item.scheduleEntry)
     return false;
 
-  if (filters.filterDate && filters.filterScheduleState !== "UNSCHEDULED") {
+  if (
+    filters.filterDate.length > 0 &&
+    filters.filterScheduleState !== "UNSCHEDULED"
+  ) {
     if (!item.startTime) return false;
     const d = parseInstant(item.startTime);
     if (!d) return false;
-    const key = formatInTimeZone(d, filters.displayTz, "yyyy-MM-dd");
-    const targetDate = formatInTimeZone(
-      filters.filterDate,
-      filters.displayTz,
-      "yyyy-MM-dd",
-    );
-    if (key !== targetDate) return false;
+    const key = format(d, "yyyy-MM-dd");
+    const keys = new Set(filters.filterDate.map((dt) => format(dt, "yyyy-MM-dd")));
+    if (!keys.has(key)) return false;
   }
   const query = filters.searchQuery.trim().toLowerCase();
   if (query) {

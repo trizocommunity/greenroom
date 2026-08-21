@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { LargeTimerDrawer } from "./LargeTimerDrawer";
 import { ReportingAutoOpen } from "./ReportingAutoOpen";
 import { ReportingFilterSheet } from "./ReportingFilterSheet";
@@ -44,7 +43,6 @@ export function ProgrammeReportingClient({
   /** Hides the in-page stage filter — used when the banner selector already covers it. */
   hideStageFilter?: boolean;
 }) {
-  const displayTz = useDisplayTimezone();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -63,7 +61,6 @@ export function ProgrammeReportingClient({
     selected: session.selected,
     optimisticReportedBySession: session.optimisticReportedBySession,
     mounted,
-    displayTz,
     filterArgs: {
       filterStatus: filters.filterStatus,
       filterCategoryId: filters.filterCategoryId,
@@ -72,7 +69,6 @@ export function ProgrammeReportingClient({
       filterScheduleState: filters.filterScheduleState,
       filterDate: filters.filterDate,
       searchQuery: filters.searchQuery,
-      displayTz,
       mounted,
     },
   });
@@ -114,7 +110,13 @@ export function ProgrammeReportingClient({
 
   const onSelect = (id: string) => {
     const item = derived.filteredAndSortedBoard.find((b) => b.id === id);
-    if (item?.reportingSession?.status === "CLOSED") {
+    const uiStatus = getUiReportingStatus(
+      item?.reportingSession?.status,
+      item?.reportingSession?.windowEndsAt ?? null,
+      mounted,
+    );
+
+    if (["CLOSED", "RESET", "TIMED_OUT"].includes(uiStatus)) {
       session.setTimerDrawerEntryId(id);
       return;
     }
@@ -128,6 +130,10 @@ export function ProgrammeReportingClient({
     ? (derived.filteredAndSortedBoard.find(
         (b) => b.id === session.timerDrawerEntryId,
       ) ?? null)
+    : null;
+
+  const timerHistoryDetail = session.timerDrawerEntryId
+    ? (derived.reportingHistoryDetailsById.get(session.timerDrawerEntryId) ?? null)
     : null;
 
   const historyDetail = session.historyDetailOpenId
@@ -185,7 +191,6 @@ export function ProgrammeReportingClient({
 
       <ReportingHistoryDrawer
         historyDetail={historyDetail}
-        displayTz={displayTz}
         onClose={() => session.setHistoryDetailOpenId(null)}
       />
 
@@ -201,6 +206,7 @@ export function ProgrammeReportingClient({
         festivalId={festivalId}
         item={timerItem}
         assignments={assignments}
+        historyDetail={timerHistoryDetail}
         isOpen={!!session.timerDrawerEntryId}
         onOpenChange={(open) => {
           if (!open) session.setTimerDrawerEntryId(null);

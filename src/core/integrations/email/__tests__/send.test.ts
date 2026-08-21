@@ -55,10 +55,10 @@ describe("sendEmail — global toggle", () => {
   it("proceeds to Resend when toggle is on", async () => {
     mockIsEnabled.mockResolvedValue(true);
     process.env.RESEND_API_KEY = "test_resend_key";
-    process.env.EMAIL_FROM = "Greenroom <info@trizocreatives.in>";
+    process.env.EMAIL_FROM = "Greenroom <info@greenroomfestivals.in>";
 
-    const { sendEmail } = await import("../send");
-    const result = await sendEmail({
+    const { sendEmailSync } = await import("../send");
+    const result = await sendEmailSync({
       to: "x@example.com",
       kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
     });
@@ -74,9 +74,9 @@ describe("sendEmail — global toggle", () => {
     delete process.env.RESEND_API_KEY;
 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { sendEmail } = await import("../send");
+    const { sendEmailSync } = await import("../send");
 
-    const result = await sendEmail({
+    const result = await sendEmailSync({
       to: "x@example.com",
       kind: { kind: "sign_in_otp", otp: "1234", email: "x@example.com" },
     });
@@ -97,9 +97,9 @@ describe("sendEmail — global toggle", () => {
     delete process.env.RESEND_API_KEY;
 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { sendEmail } = await import("../send");
+    const { sendEmailSync } = await import("../send");
 
-    await sendEmail({
+    await sendEmailSync({
       to: ["alice@example.com", "bob@example.com"],
       kind: { kind: "sign_in_otp", otp: "1234", email: "alice@example.com" },
     });

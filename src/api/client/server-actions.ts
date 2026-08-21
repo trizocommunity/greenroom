@@ -229,7 +229,7 @@ export function useForceCompleteJudgement() {
     mutationFn: async (configId: string) => {
       return forceCompleteJudgementAction(configId);
     },
-    onSuccess: (_, configId) => {
+    onSuccess: (_, _configId) => {
       qc.invalidateQueries({ queryKey: ["judgement"] });
       qc.invalidateQueries({ queryKey: ["programmes"] });
       toast.success("Submitted to completed programmes");

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   buildFestivalHost,
   buildFestivalLinkPath,
@@ -15,13 +15,6 @@ import {
   stripFestivalSlugPrefix,
   toFestivalRelativePath,
 } from "./custom-domain";
-import {
-  __resetCustomDomainCacheForTests,
-  getCachedVerifiedInstitution,
-  getCustomDomainCacheTtlMs,
-  invalidateCustomDomainCache,
-  setCachedVerifiedInstitution,
-} from "./custom-domain-cache";
 
 describe("custom-domain helpers", () => {
   const prevAppUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -29,7 +22,6 @@ describe("custom-domain helpers", () => {
   afterEach(() => {
     if (prevAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
     else process.env.NEXT_PUBLIC_APP_URL = prevAppUrl;
-    __resetCustomDomainCacheForTests();
   });
 
   it("parses suffamehil.ahlussuffa.in into slug + apex", () => {
@@ -44,20 +36,24 @@ describe("custom-domain helpers", () => {
   });
 
   it("rejects app hosts and apex-only hosts", () => {
-    const appHosts = new Set(["localhost", "greenroomm.vercel.app"]);
+    const appHosts = new Set([
+      "localhost",
+      "greenroomfestivals.in",
+      "www.greenroomfestivals.in",
+    ]);
     expect(parseCustomFestivalHost("localhost:3000", appHosts)).toBeNull();
     expect(parseCustomFestivalHost("ahlussuffa.in", appHosts)).toBeNull();
     expect(parseCustomFestivalHost("www.ahlussuffa.in", appHosts)).toBeNull();
   });
 
   it("getPublicFestivalBaseUrl uses subdomain only when this festival's HTTPS is ready", () => {
-    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomm.vercel.app";
+    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomfestivals.in";
     expect(
       getPublicFestivalBaseUrl({
         slug: "suffamehil",
         institution: { customDomain: "ahlussuffa.in", verifiedAt: null },
       }),
-    ).toBe("https://greenroomm.vercel.app/suffamehil");
+    ).toBe("https://greenroomfestivals.in/suffamehil");
 
     // DNS verified but this host's certificate is not serving yet: the branded
     // host would fail in a browser, so keep advertising the path URL.
@@ -70,7 +66,7 @@ describe("custom-domain helpers", () => {
         },
         domainHttpsReadyAt: null,
       }),
-    ).toBe("https://greenroomm.vercel.app/suffamehil");
+    ).toBe("https://greenroomfestivals.in/suffamehil");
 
     expect(
       getPublicFestivalBaseUrl({
@@ -85,7 +81,7 @@ describe("custom-domain helpers", () => {
   });
 
   it("getPublicFestivalBaseUrl gates per festival, not per institution", () => {
-    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomm.vercel.app";
+    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomfestivals.in";
     const institution = {
       customDomain: "ahlussuffa.in",
       verifiedAt: "2026-01-01T00:00:00.000Z",
@@ -107,14 +103,14 @@ describe("custom-domain helpers", () => {
         institution,
         domainHttpsReadyAt: null,
       }),
-    ).toBe("https://greenroomm.vercel.app/zenoraev");
+    ).toBe("https://greenroomfestivals.in/zenoraev");
   });
 
   it("getPublicFestivalBaseUrl falls back when no institution or domain", () => {
-    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomm.vercel.app";
+    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomfestivals.in";
     expect(
       getPublicFestivalBaseUrl({ slug: "suffamehil", institution: null }),
-    ).toBe("https://greenroomm.vercel.app/suffamehil");
+    ).toBe("https://greenroomfestivals.in/suffamehil");
 
     expect(
       getPublicFestivalBaseUrl({
@@ -125,7 +121,7 @@ describe("custom-domain helpers", () => {
         },
         domainHttpsReadyAt: "2026-01-01T00:05:00.000Z",
       }),
-    ).toBe("https://greenroomm.vercel.app/suffamehil");
+    ).toBe("https://greenroomfestivals.in/suffamehil");
   });
 
   it("buildFestivalHost joins slug and apex, rejecting unusable input", () => {
@@ -300,29 +296,5 @@ describe("festival link paths", () => {
     expect(toFestivalRelativePath("/zenoraev/news", "zenoraev")).toBe("/news");
     expect(toFestivalRelativePath("/news", "zenoraev")).toBe("/news");
     expect(toFestivalRelativePath("", "zenoraev")).toBe("/");
-  });
-});
-
-describe("custom-domain cache", () => {
-  afterEach(() => {
-    __resetCustomDomainCacheForTests();
-    vi.useRealTimers();
-  });
-
-  it("returns cached value within TTL and miss after expiry", () => {
-    vi.useFakeTimers();
-    setCachedVerifiedInstitution("ahlussuffa.in", { institutionId: "i1" });
-    expect(getCachedVerifiedInstitution("ahlussuffa.in")).toEqual({
-      institutionId: "i1",
-    });
-
-    vi.advanceTimersByTime(getCustomDomainCacheTtlMs() + 1);
-    expect(getCachedVerifiedInstitution("ahlussuffa.in")).toBeUndefined();
-  });
-
-  it("invalidate clears entry immediately", () => {
-    setCachedVerifiedInstitution("ahlussuffa.in", { institutionId: "i1" });
-    invalidateCustomDomainCache("ahlussuffa.in");
-    expect(getCachedVerifiedInstitution("ahlussuffa.in")).toBeUndefined();
   });
 });

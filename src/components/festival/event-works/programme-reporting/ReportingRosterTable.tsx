@@ -3,6 +3,7 @@
 import { Check, Crown, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/core/utils/cn";
+import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 import type { RosterTableRow } from "./types";
 
 interface ReportingRosterTableProps {
@@ -78,22 +79,25 @@ export function ReportingRosterTable({
                   )}
                 </div>
                 <div className="col-span-6 pr-2">
-                  <p
-                    className={cn(
-                      "font-medium truncate",
-                      row.isReported
-                        ? "text-foreground"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {row.nameColumn}
-                  </p>
-                  {row.mode === "team" && row.teamLeadName ? (
-                    <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-                      <Crown className="h-3 w-3 shrink-0 text-primary" />
-                      {row.teamLeadName}
-                    </p>
-                  ) : null}
+                  <ParticipantNameBlock
+                    primaryName={
+                      row.mode === "team"
+                        ? row.teamLeadName
+                          ? `${row.teamLeadName} & Party`
+                          : `${row.groupName || "Unknown Team"} & Party`
+                        : row.nameColumn
+                    }
+                    isGroup={row.mode === "team"}
+                    subtitle={
+                      row.mode === "team"
+                        ? row.teamCell
+                          ? `Team ${row.teamCell}`
+                          : undefined
+                        : row.groupName ?? undefined
+                    }
+                    teamMemberNames={row.mode === "team" ? row.teamMemberNames : undefined}
+                    isMuted={!row.isReported}
+                  />
                 </div>
                 <div className="col-span-2 truncate text-muted-foreground text-xs">
                   {row.groupName ?? "—"}
@@ -161,21 +165,26 @@ export function ReportingRosterTable({
                       </span>
                     )}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={cn(
-                        "block truncate text-sm font-medium",
-                        row.isReported
-                          ? "text-foreground"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {title}
-                    </span>
-                    <span className="mt-0.5 block truncate text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {subtitle}
-                    </span>
-                  </span>
+                  <ParticipantNameBlock
+                    className="flex-1 text-left"
+                    primaryName={
+                      row.mode === "team"
+                        ? row.teamLeadName
+                          ? `${row.teamLeadName} & Party`
+                          : `${row.groupName || "Unknown Team"} & Party`
+                        : row.nameColumn
+                    }
+                    isGroup={row.mode === "team"}
+                    subtitle={
+                      row.mode === "team"
+                        ? row.teamCell
+                          ? `Team ${row.teamCell}`
+                          : undefined
+                        : row.groupName ?? undefined
+                    }
+                    teamMemberNames={row.mode === "team" ? row.teamMemberNames : undefined}
+                    isMuted={!row.isReported}
+                  />
                 </button>
               ) : (
                 <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -187,21 +196,26 @@ export function ReportingRosterTable({
                       )}
                     />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        "text-sm font-medium truncate",
-                        row.isReported
-                          ? "text-foreground"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {title}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5 uppercase tracking-wide">
-                      {subtitle}
-                    </p>
-                  </div>
+                  <ParticipantNameBlock
+                    className="flex-1"
+                    primaryName={
+                      row.mode === "team"
+                        ? row.teamLeadName
+                          ? `${row.teamLeadName} & Party`
+                          : `${row.groupName || "Unknown Team"} & Party`
+                        : row.nameColumn
+                    }
+                    isGroup={row.mode === "team"}
+                    subtitle={
+                      row.mode === "team"
+                        ? row.teamCell
+                          ? `Team ${row.teamCell}`
+                          : undefined
+                        : row.groupName ?? undefined
+                    }
+                    teamMemberNames={row.mode === "team" ? row.teamMemberNames : undefined}
+                    isMuted={!row.isReported}
+                  />
                 </div>
               )}
               <div className="shrink-0 font-mono text-xs">

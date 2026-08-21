@@ -263,3 +263,17 @@ export async function getProgrammeDetailForDrawerAction(
   }
   return detail;
 }
+
+export async function getProgrammeRosterAction(
+  festivalId: string,
+  programmeId: string,
+) {
+  const session = await getSession();
+  await assertFestivalAccess(session, festivalId);
+  
+  const { getProgrammeAssignmentsAction } = await import(
+    "@/features/programmes/actions/get-assignments.action"
+  );
+  const allAssignments = await getProgrammeAssignmentsAction(festivalId);
+  return allAssignments.filter((a) => a.programmeId === programmeId);
+}

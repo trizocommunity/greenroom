@@ -1,25 +1,21 @@
-import { formatDistanceToNow as fnsFormatDistanceToNow } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { format, formatDistanceToNow } from "date-fns";
 
-import { DEFAULT_TZ, FALLBACK_DISPLAY } from "./constants";
+import { FALLBACK_DISPLAY } from "./constants";
 import { parseInstant } from "./parse";
 
 type Style = "short" | "medium" | "long";
 
 interface DateOpts {
-  tz?: string;
   style?: Style;
   locale?: string;
 }
 
 interface TimeOpts {
-  tz?: string;
   style?: "short" | "medium";
   locale?: string;
 }
 
 interface DateTimeOpts {
-  tz?: string;
   dateStyle?: Style;
   timeStyle?: "short" | "medium";
   locale?: string;
@@ -27,19 +23,15 @@ interface DateTimeOpts {
 
 function safeFormat(
   value: string | Date | null | undefined,
-  formatter: (date: Date, tz: string) => string,
+  formatter: (date: Date) => string,
 ): string {
   const date = parseInstant(value);
   if (date === null) return FALLBACK_DISPLAY;
   try {
-    return formatter(date, DEFAULT_TZ);
+    return formatter(date);
   } catch {
     return FALLBACK_DISPLAY;
   }
-}
-
-function applyTz(tz?: string): string {
-  return tz && tz.length > 0 ? tz : DEFAULT_TZ;
 }
 
 const DATE_PATTERNS: Record<Style, string> = {
@@ -60,50 +52,57 @@ const DATE_TIME_PATTERNS: Record<Style, string> = {
 };
 
 /**
- * Format a stored instant as a date-only string in the given timezone.
+ * Format a stored UTC instant as a date string in the viewer's
+ * **browser-local** timezone. Two users viewing the same instant will
+ * see the date that matches their wall clock.
  *
- *   formatDate("2026-08-15T18:30:00.000Z", { tz: "Asia/Kolkata" })
- *   // → "16 Aug 2026"
+ *   formatDate("2026-08-15T18:30:00.000Z")
+ *   // viewer in Asia/Kolkata → "16 Aug 2026"
+ *   // viewer in UTC         → "15 Aug 2026"
  */
 export function formatDate(
   value: string | Date | null | undefined,
   opts: DateOpts = {},
 ): string {
-  const tz = applyTz(opts.tz);
-  return safeFormat(value, (date, _tz) =>
-    formatInTimeZone(date, tz, DATE_PATTERNS[opts.style ?? "medium"]),
+  return safeFormat(value, (date) =>
+    format(date, DATE_PATTERNS[opts.style ?? "medium"]),
   );
 }
 
 /**
- * Format a stored instant as a time-only string in the given timezone.
+ * Format a stored UTC instant as a time string in the viewer's
+ * browser-local timezone.
+ *
+ *   formatTime("2026-08-15T18:30:00.000Z")
+ *   // viewer in IST → "00:00" (next day, so date shifts; time does too)
+ *   // viewer in UTC → "18:30"
  */
 export function formatTime(
   value: string | Date | null | undefined,
   opts: TimeOpts = {},
 ): string {
-  const tz = applyTz(opts.tz);
-  return safeFormat(value, (date, _tz) =>
-    formatInTimeZone(date, tz, TIME_PATTERNS[opts.style ?? "short"]),
+  return safeFormat(value, (date) =>
+    format(date, TIME_PATTERNS[opts.style ?? "short"]),
   );
 }
 
 /**
- * Format a stored instant as both date and time in the given timezone.
+ * Format a stored UTC instant as a date + time string in the viewer's
+ * browser-local timezone.
  */
 export function formatDateTime(
   value: string | Date | null | undefined,
   opts: DateTimeOpts = {},
 ): string {
-  const tz = applyTz(opts.tz);
-  const pattern = DATE_TIME_PATTERNS[opts.dateStyle ?? "medium"];
-  return safeFormat(value, (date, _tz) => formatInTimeZone(date, tz, pattern));
+  return safeFormat(value, (date) =>
+    format(date, DATE_TIME_PATTERNS[opts.dateStyle ?? "medium"]),
+  );
 }
 
 /**
- * Format the distance between `value` and `base` (default: now) using
- * date-fns `formatDistanceToNow`. Negative offsets → "ago"; positive
- * offsets → "in X". Returns `FALLBACK_DISPLAY` on invalid input.
+ * Format the distance between `value` and `base` (default: now).
+ * Negative offsets → "ago"; positive offsets → "in X".
+ * Returns `FALLBACK_DISPLAY` on invalid input.
  *
  *   formatRelative("2026-08-15T09:00:00.000Z", baseIso)
  *   // → "2 hours ago"
@@ -117,7 +116,7 @@ export function formatRelative(
 
   if (base === undefined) {
     try {
-      return fnsFormatDistanceToNow(date, { addSuffix: true });
+      return formatDistanceToNow(date, { addSuffix: true });
     } catch {
       return FALLBACK_DISPLAY;
     }
@@ -129,7 +128,7 @@ export function formatRelative(
   const diffMs = date.getTime() - baseDate.getTime();
   const direction = diffMs >= 0 ? "future" : "past";
   try {
-    const text = fnsFormatDistanceToNow(
+    const text = formatDistanceToNow(
       direction === "future" ? date : baseDate,
       { addSuffix: false },
     );

@@ -16,6 +16,8 @@ import {
 import { parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
 import type { AppError } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import type { Tier } from "@/core/types/app-enums";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
@@ -477,8 +479,9 @@ export async function createScheduleEntry(
     : null;
 
   const now = serverNowIso();
+  const entryId = randomUUID();
   await db.insert(scheduleEntryTable).values({
-    id: randomUUID(),
+    id: entryId,
     festivalId,
     type: data.type,
     programmeId: data.type === "PROGRAMME" ? data.programmeId : null,
@@ -506,6 +509,14 @@ export async function createScheduleEntry(
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
   } catch (e) {}
+
+  await publish(keys.festivalSchedule(festivalId), {
+    entryId,
+    stageId: data.stageId ?? null,
+    startsAt: parseInstant(data.startTime)?.toISOString() ?? null,
+    endsAt: parseInstant(data.endTime)?.toISOString() ?? null,
+  });
+
   return { success: true };
 }
 
@@ -666,6 +677,14 @@ export async function updateScheduleEntry(
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
   } catch (e) {}
+
+  await publish(keys.festivalSchedule(festivalId), {
+    entryId: id,
+    stageId: newStageId ?? null,
+    startsAt: parseInstant(newStartTime)?.toISOString() ?? null,
+    endsAt: parseInstant(newEndTime ?? null)?.toISOString() ?? null,
+  });
+
   return { success: true };
 }
 
@@ -717,6 +736,14 @@ export async function deleteScheduleEntry(
     const { revalidatePath } = await import("next/cache");
     revalidatePath("/", "layout");
   } catch (e) {}
+
+  await publish(keys.festivalSchedule(festivalId), {
+    entryId: id,
+    stageId: entry.stageId ?? null,
+    startsAt: null,
+    endsAt: null,
+  });
+
   return { success: true };
 }
 

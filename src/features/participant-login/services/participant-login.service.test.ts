@@ -51,6 +51,7 @@ vi.mock("@/core/auth/participant-session", () => ({
 
 vi.mock("@/core/integrations/email/index", () => ({
   sendEmail: (...args: unknown[]) => mockSendEmail(...args),
+  sendEmailSync: (...args: unknown[]) => mockSendEmail(...args),
 }));
 
 import { ParticipantLoginService } from "./participant-login.service";
@@ -59,7 +60,6 @@ const festival = {
   id: "fest-1",
   name: "Demo Fest",
   slug: "demo-fest",
-  timezone: "UTC",
 };
 const group = { id: "group-1", name: "Al-Qurtuba" };
 
@@ -182,21 +182,25 @@ describe("ParticipantLoginService.requestAccess", () => {
     });
   });
 
-  it("authenticates when stored DOB is at non-midnight hour in festival TZ (rolls back to correct day)", async () => {
+  it("matches DOB in browser-local time (no TZ rollover)", async () => {
     mockFindFestivalBySlug.mockResolvedValueOnce({
-      id: "fest-ist",
-      name: "IST Fest",
-      slug: "ist-fest",
-      timezone: "Asia/Kolkata",
+      id: "fest-local",
+      name: "Local Fest",
+      slug: "local-fest",
     });
+    // Stored DOB: midnight of May 13 in the runner's local timezone.
+    // Equivalently — what wallClockToInstant("2008-05-13", "00:00")
+    // produces under the new contract. User enters "2008-05-13" and
+    // the round-trip must recover the same local day.
+    const localMidnight = new Date(2008, 4, 13, 0, 0, 0);
     const participant = makeParticipant({
       isTeamLeader: false,
-      dateOfBirth: "2008-05-12T18:30:00.000Z",
+      dateOfBirth: localMidnight.toISOString(),
     });
     mockParticipantFindFirst.mockResolvedValueOnce(participant);
 
     const result = await ParticipantLoginService.requestAccess({
-      festivalSlug: "ist-fest",
+      festivalSlug: "local-fest",
       chestNumber: "101",
       identifierKind: "DOB",
       identifierValue: "2008-05-13",

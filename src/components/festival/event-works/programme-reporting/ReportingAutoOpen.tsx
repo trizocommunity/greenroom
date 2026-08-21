@@ -81,11 +81,12 @@ export function ReportingAutoOpen({
       }
       if (targetEntry.startTime) {
         const d = new Date(targetEntry.startTime);
-        if (
-          !filters.filterDate ||
-          d.toDateString() !== filters.filterDate.toDateString()
-        ) {
-          filters.setFilterDate(d);
+        const targetKey = d.toDateString();
+        const matches = filters.filterDate.some(
+          (selected) => selected.toDateString() === targetKey,
+        );
+        if (!matches) {
+          filters.setFilterDate([d]);
         }
       }
     } else if (filters.filterScheduleState !== "UNSCHEDULED") {

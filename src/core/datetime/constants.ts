@@ -1,12 +1,6 @@
 import { sql } from "drizzle-orm";
 
 /**
- * Default timezone used when no user or festival timezone is available.
- * All stored instants are UTC; this is the fallback for *display* only.
- */
-export const DEFAULT_TZ = "UTC" as const;
-
-/**
  * Sentinel returned by formatters when the input cannot be parsed.
  * Centralised so consumers can check with `=== FALLBACK_DISPLAY`.
  */

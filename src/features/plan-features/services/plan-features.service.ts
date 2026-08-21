@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
 import { PLAN_FEATURE_TOGGLE_KEYS } from "@/config/plan-features.config";
 import { TIER_CONFIG } from "@/config/pricing";
+import { cache } from "@/core/cache/instance";
 import { db } from "@/core/database/client";
 import { systemConfig } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
+import { keys } from "@/core/redis/keys";
 import type {
   BooleanFeaturePath,
   FeaturePath,
@@ -13,6 +15,7 @@ type Tier = "BASIC" | "STANDARD" | "PRO";
 
 const CONFIG_KEY = "planFeatureOverrides";
 const TOGGLE_KEY_SET = new Set<string>(PLAN_FEATURE_TOGGLE_KEYS);
+const FEATURE_GATE_TTL_MS = 5 * 60 * 1000;
 
 export type PlanFeatureOverrides = Partial<
   Record<Tier, Partial<Record<FeaturePath, boolean>>>
@@ -85,8 +88,14 @@ export async function loadAllFeatureOverrides(): Promise<
 export async function loadFeatureOverrides(
   tier: Tier,
 ): Promise<Partial<Record<BooleanFeaturePath, boolean>>> {
-  const matrix = await loadAllFeatureOverrides();
-  return matrix[tier] ?? {};
+  return cache.wrap(
+    keys.featureGateTier(tier),
+    FEATURE_GATE_TTL_MS,
+    async () => {
+      const matrix = await loadAllFeatureOverrides();
+      return matrix[tier] ?? {};
+    },
+  );
 }
 
 export async function setPlanFeatureOverride(
@@ -119,4 +128,12 @@ export async function setPlanFeatureOverride(
       cause: err,
     });
   }
+
+  await invalidateFeatureGateCache();
+}
+
+/** Wipe all tier caches after an override write. */
+export async function invalidateFeatureGateCache(): Promise<void> {
+  const tiers: Tier[] = ["BASIC", "STANDARD", "PRO"];
+  await Promise.all(tiers.map((tier) => cache.del(keys.featureGateTier(tier))));
 }

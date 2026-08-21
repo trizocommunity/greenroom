@@ -4,7 +4,7 @@ import { computeGeneralEntryStandings } from "@/features/general-entries/service
 const mockDbSelect = vi.fn();
 vi.mock("@/core/database/client", () => ({
   db: {
-    select: (...args: any[]) => ({
+    select: (..._args: any[]) => ({
       from: () => ({
         innerJoin: () => ({
           where: () => ({

@@ -30,8 +30,10 @@ export function StageContextSelector({
   const handleChange = (value: string) => {
     const cookieName = stageFilterCookieName(festivalId);
     if (value === ALL_STAGES_VALUE) {
+      // biome-ignore lint/suspicious/noDocumentCookie: stage filter is read by server components on navigation
       document.cookie = `${cookieName}=; path=/; max-age=0`;
     } else {
+      // biome-ignore lint/suspicious/noDocumentCookie: stage filter is read by server components on navigation
       document.cookie = `${cookieName}=${value}; path=/; max-age=${60 * 60 * 24 * 30}`;
     }
     router.refresh();

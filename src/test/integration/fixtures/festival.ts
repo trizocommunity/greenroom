@@ -52,8 +52,7 @@ export async function buildFestivalWithBothShapes(
         ).toISOString(),
         publicSiteEnabled: false,
         scoringSystem: "SCORE_BASED",
-        timezone: "Asia/Kolkata",
-      })
+      } as any)
       .returning()
   )[0];
 

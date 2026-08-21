@@ -93,7 +93,8 @@
               "level": "error",
               "options": {
                 "paths": {
-                  "@/core/utils/date-time": "Use @/core/datetime helpers instead — see src/core/datetime/index.ts"
+                  "@/core/utils/date-time": "Use @/core/datetime helpers instead — see src/core/datetime/index.ts",
+                  "getResolvedTier": "Import getResolvedTier from @/features/plan-features/services/tier, not from feature-gate"
                 }
               }
             }

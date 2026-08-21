@@ -8,43 +8,33 @@
  *   parseInstant("2026-08-15 09:00:00.000")   // assumed UTC
  *   parseInstant(null)                          // → null
  *
- *   // Display (always in passed tz)
- *   formatDate(iso, { tz: "Asia/Kolkata" })
- *   formatTime(iso, { tz: "Asia/Kolkata" })
- *   formatDateTime(iso, { tz: "Asia/Kolkata" })
+ *   // Display — always browser-local
+ *   formatDate(iso)                             // "15 Aug 2026"
+ *   formatTime(iso)                             // "09:00"
+ *   formatDateTime(iso)                         // "15 Aug 2026 09:00"
  *   formatRelative(iso)                         // "2 hours ago"
  *
- *   // Wall-clock ↔ UTC instant
- *   wallClockToInstant("2026-08-15", "09:00", "Asia/Kolkata")
- *   instantToWallClockParts("2026-08-15T03:30:00.000Z", "Asia/Kolkata")
+ *   // Wall-clock ↔ instant
+ *   wallClockToInstant("2026-08-15", "09:00")
+ *   instantToWallClockParts(new Date(...))
  *
- *   // Day-key for grouping/comparison (timezone-aware)
- *   dateKeyLocal(iso, "Asia/Kolkata")           // "2026-08-16"
- *   dateKeyUTC(iso)                             // "2026-08-15"
+ *   // Day-key for grouping/comparison
+ *   dateKeyLocal(date)                          // "2026-08-15" browser-local
+ *   dateKeyUTC(iso)                             // "2026-08-15" UTC
  *
  *   // Comparisons
  *   isExpired(festival.expiresAt)               // bool
  *   msUntil(otp.expiresAt)                      // ms remaining
- *   isSameDayLocal(aIso, bIso, festival.timezone)
- *
- *   // Browser / server detection
- *   getBrowserTimezone()                        // client-side, IANA name
- *   isValidTimezone("Asia/Kolkata")             // bool
- *   supportedTimezones()                        // ~600 entries on Node 18+
+ *   isSameDayLocal(a, b)                        // browser-local calendar day
  *
  *   // Zod schemas
- *   zodIsoInstant, zodCalendarDate, zodTimezone, zodTimezoneLoose
- *
- *   // Curated dropdown data
- *   TZ_OPTIONS, groupedTimezones(), labelForTimezone(name)
+ *   zodIsoInstant, zodCalendarDate
  *
  * ─── Conventions ─────────────────────────────────────────────────────
  *
  *   • Storage: every persisted timestamp is `timestamptz(3)` storing
  *     UTC, returned as `Z`-suffixed ISO string. Postgres is the clock.
- *   • Display: always call format helpers with `tz`; default is UTC.
- *   • Browser vs server: `getBrowserTimezone()` works in both. For
- *     personalised rendering, fetch `user.timezone` (see `server.ts`).
+ *   • Display: always browser-local. No `tz` parameter exists.
  */
 
 // Compare
@@ -56,12 +46,7 @@ export {
   msUntil,
 } from "./compare";
 // Constants
-export {
-  currentTimestampSql,
-  DEFAULT_TZ,
-  FALLBACK_DISPLAY,
-  MS,
-} from "./constants";
+export { currentTimestampSql, FALLBACK_DISPLAY, MS } from "./constants";
 // Drizzle schema helpers
 export { tzTimestamp, tzTimestampConfig, tzTimestampNamed } from "./drizzle";
 // Format
@@ -73,27 +58,23 @@ export {
 } from "./format";
 // Parse
 export { parseInstant, parseInstantOrThrow, toDateOrNull } from "./parse";
+// Relative-day helpers
+export {
+  midnightInTz,
+  relativeDayKey,
+  relativeDayLabel,
+} from "./relative-day";
+export type { RelativeDay } from "./relative-day";
+// Server-side clock helpers
+export {
+  fromNow,
+  nowPlus,
+  serverNow,
+  serverNowIso,
+  serverNowMs,
+} from "./server";
 // Zod schemas
-export {
-  zodCalendarDate,
-  zodDateLike,
-  zodIsoInstant,
-  zodTimezone,
-  zodTimezoneLoose,
-} from "./schemas";
-export type { TimezoneOption } from "./tz-list";
-// TZ dropdown data
-export {
-  groupedTimezones,
-  labelForTimezone,
-  TZ_OPTIONS,
-} from "./tz-list";
-// User TZ (universal — works on both client and server)
-export {
-  getBrowserTimezone,
-  isValidTimezone,
-  supportedTimezones,
-} from "./user-tz";
+export { zodCalendarDate, zodDateLike, zodIsoInstant } from "./schemas";
 export type { WallClockParts } from "./wall-clock";
 // Wall-clock
 export {
@@ -103,8 +84,3 @@ export {
   wallClockToInstant,
   zonedDayKey,
 } from "./wall-clock";
-
-// NOTE: `server.ts` is NOT re-exported here. It must be imported
-// directly with `server-only` semantics already enforced.
-// Use:
-//   import { serverNow, fromNow, resolveDisplayTimezone } from "@/core/datetime/server";

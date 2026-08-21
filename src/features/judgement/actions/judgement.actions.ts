@@ -38,6 +38,9 @@ import {
 import { dateKeyLocal, isAfter, isBefore, parseInstant } from "@/core/datetime";
 import { serverNow, serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { getRedis } from "@/core/redis/client";
+import { keys } from "@/core/redis/keys";
 import type { ProgrammeJudgementStatus } from "@/core/types/app-enums";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
@@ -358,6 +361,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
         codeLetter: string | null;
         /** GROUP-only: party number used to render "Group · Party N". */
         teamNumber: number | null;
+        teamMemberNames?: string[];
       }>;
       assignedCount: number;
       absentCount: number;
@@ -365,6 +369,12 @@ export async function getJudgementWizardDataAction(festivalId: string) {
       submittedAt: Date | null;
     }
   >();
+
+  const { getProgrammeAssignmentsAction } = await import(
+    "@/features/programmes/actions/get-assignments.action"
+  );
+  const allAssignments = await getProgrammeAssignmentsAction(festivalId);
+  const assignmentMap = new Map(allAssignments.map((a) => [a.id, a]));
 
   for (const sessionRow of latestClosedSessions) {
     if (reportingByProgrammeId.has(sessionRow.programmeId)) continue;
@@ -391,19 +401,24 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 categoryName: string | null;
                 codeLetter: string | null;
                 teamNumber: number | null;
+                teamMemberNames: string[];
               }
             >();
 
             for (const r of sessionRow.programmeReportedParticipants) {
+              const assignmentRow = r.assignmentId ? assignmentMap.get(r.assignmentId) : undefined;
               const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
               const groupName = r.group?.name ?? null;
               const key = `${groupName ?? "no-group"}::${teamNo ?? "no-team"}`;
+              
+              const teamLeadName = assignmentRow?.teamLeadName;
               const fallbackLabel = groupName
                 ? teamNo
                   ? `${groupName} - Team ${teamNo}`
                   : groupName
                 : `Team ${teamNo ?? "—"}`;
-              const label = r.participant?.name || fallbackLabel;
+              const label = teamLeadName || r.participant?.name || fallbackLabel;
+              
               const codeLetter = r.participant?.id
                 ? (codeByParticipantId.get(r.participant.id) ?? null)
                 : null;
@@ -416,12 +431,17 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                   categoryName: null,
                   codeLetter,
                   teamNumber: teamNo ?? null,
+                  teamMemberNames: assignmentRow?.teamMemberNames ?? [],
                 });
                 continue;
               }
 
               if (!existing.codeLetter && codeLetter) {
                 existing.codeLetter = codeLetter;
+              }
+              // If there are legacy multiple rows, we can still push names
+              if (r.participant?.name && r.participant.name !== existing.label && !existing.teamMemberNames.includes(r.participant.name)) {
+                existing.teamMemberNames.push(r.participant.name);
               }
             }
 
@@ -437,6 +457,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 categoryName: string | null;
                 codeLetter: string | null;
                 teamNumber: number | null;
+                teamMemberNames?: string[];
               } | null => {
                 const teamNo =
                   r.teamNumber ?? r.programmeAssignment?.teamNumber;
@@ -473,6 +494,13 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 teamNumber: number | null;
               } => Boolean(x),
             );
+
+    reportedEntries.sort((a, b) => {
+      if (a.codeLetter && b.codeLetter) return a.codeLetter.localeCompare(b.codeLetter);
+      if (a.codeLetter) return -1;
+      if (b.codeLetter) return 1;
+      return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+    });
 
     reportingByProgrammeId.set(sessionRow.programmeId, {
       stageName:
@@ -1421,19 +1449,17 @@ export async function getStagePortalBoardAction(day?: string) {
 
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.id, stagePortalSession.festivalId),
-    columns: { startDate: true, endDate: true, timezone: true },
+    columns: { startDate: true, endDate: true },
   });
-  const festivalTz = festival?.timezone ?? "UTC";
 
   const dayKeySet = isOffStage
     ? null
     : (getFestivalDateKeySet(
         festival?.startDate ?? null,
         festival?.endDate ?? null,
-        festivalTz,
       ) ?? null);
   const days = dayKeySet ? Array.from(dayKeySet).sort() : [];
-  const today = dateKeyLocal(serverNow(), festivalTz);
+  const today = dateKeyLocal(serverNow());
   let selectedDay =
     day && days.includes(day)
       ? day
@@ -1524,11 +1550,7 @@ export async function getStagePortalBoardAction(day?: string) {
     programmes = stageEntries
       .filter((e) => {
         const start = parseInstant(e.startTime);
-        return (
-          e.programme &&
-          start &&
-          dateKeyLocal(start, festivalTz) === selectedDay
-        );
+        return e.programme && start && dateKeyLocal(start) === selectedDay;
       })
       .map((e) => {
         const p = e.programme!;
@@ -1873,6 +1895,22 @@ export async function submitJudgeScoresAction(
   },
   options?: { deactivateLink?: boolean },
 ) {
+  // Absorb double-tap submissions from the Stage Portal — the first lands,
+  // the rest within 30s are dropped. Fails open to DB on Redis outage; the
+  // unique constraint on (configId, judgeId, codeLetterId) is the safety net.
+  const judgeLockKey = keys.judgeScoreDedup(input.judgeId, input.configId);
+  try {
+    const acquired = await getRedis().set(judgeLockKey, "1", "EX", 30, "NX");
+    if (acquired !== "OK") {
+      return { success: true as const, judgementComplete: false };
+    }
+  } catch (err) {
+    console.warn(
+      "[judge-score] dedup fail-open (Redis unavailable):",
+      err instanceof Error ? err.message : err,
+    );
+  }
+
   const config = await assertStagePortalAccessForConfig(input.configId);
 
   const programmeRow = await db.query.programme.findFirst({
@@ -1940,6 +1978,13 @@ export async function submitJudgeScoresAction(
           set: { score, remark, updatedAt: now, submittedAt: now },
         });
     }
+  });
+
+  await publish(keys.programmeScoreEvents(config.programmeId), {
+    programmeId: config.programmeId,
+    judgeId: input.judgeId,
+    submittedAt: now,
+    scoresCount: Object.keys(input.scoresByCodeLetterId).length,
   });
 
   await createAuditLog({

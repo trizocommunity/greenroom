@@ -12,6 +12,7 @@ const EXPORT_TYPE_LABELS: Record<ExportConfig["type"], string> = {
   VALUATION_SHEET: "Valuation Sheet",
   BADGE: "Badge",
   CERTIFICATE: "Certificate",
+  SCHEDULE: "Schedule",
 };
 
 export function exportTypeLabel(type: ExportConfig["type"]): string {
@@ -104,6 +105,16 @@ export function buildExportSummary(config: ExportConfig): ExportSummary {
       badges.push(`Quality: ${config.quality.toLowerCase()}`);
       badges.push(`${config.certificateTypes.length} types`);
       break;
+    case "SCHEDULE": {
+      summary = "Schedule";
+      const selected = config.days.length;
+      if (selected > 0) badges.push(`${selected} day${selected === 1 ? "" : "s"}`);
+      if (config.includeStage) badges.push("Stage");
+      if (config.includeDescription) badges.push("Description");
+      if (config.includeSpeakers) badges.push("Speakers");
+      if (config.includeEntryType) badges.push("Type");
+      break;
+    }
   }
 
   return { summary, badges };

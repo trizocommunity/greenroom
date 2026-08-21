@@ -16,12 +16,10 @@ export async function getFilteredEntriesAction(data: unknown) {
   if (!session?.userId) throw new AppError(ERROR_MESSAGES.UNAUTHORIZED);
 
   const parsed = getFilteredEntriesSchema.parse(data);
-  const timezone = await repo.getFestivalTimezone(parsed.festivalId);
   const entries = await repo.getEntriesBySlotAndDate(
     parsed.festivalId,
     parsed.slotId,
     parsed.date,
-    timezone,
     parsed.groupId,
     parsed.categoryId,
   );

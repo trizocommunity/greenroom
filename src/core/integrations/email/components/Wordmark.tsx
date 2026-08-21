@@ -11,7 +11,7 @@ export function EmailWordmark() {
   return (
     <Text className="m-0 mb-8 font-sans font-bold text-24 text-fg leading-none tracking-tight">
       <Link
-        href="https://greenroomm.vercel.app"
+        href="https://greenroomfestivals.in"
         className="text-fg no-underline"
       >
         Greenroom

@@ -1,4 +1,3 @@
-import { DEFAULT_TZ } from "@/core/datetime/constants";
 import {
   getScheduleDateKeyUpperBound,
   isSameCalendarDay,
@@ -10,7 +9,6 @@ export function validateScheduleTimesForFestival(
   startTime: Date,
   endTime: Date | null,
   scheduleDayKey: string | null | undefined,
-  tz: string = DEFAULT_TZ,
 ): { ok: true } | { ok: false; error: string } {
   if (!festival.startDate || !festival.endDate) {
     return {
@@ -20,7 +18,7 @@ export function validateScheduleTimesForFestival(
     };
   }
 
-  const endKey = getScheduleDateKeyUpperBound(festival.endDate, tz);
+  const endKey = getScheduleDateKeyUpperBound(festival.endDate);
   if (!endKey) {
     return {
       ok: false,
@@ -51,7 +49,7 @@ export function validateScheduleTimesForFestival(
     if (endTime <= startTime) {
       return { ok: false, error: "End time must be after start time." };
     }
-    if (!isSameCalendarDay(startTime, endTime, tz)) {
+    if (!isSameCalendarDay(startTime, endTime)) {
       return {
         ok: false,
         error: "Start and end must be on the same calendar day.",

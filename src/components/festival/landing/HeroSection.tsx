@@ -4,10 +4,13 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import type { FestivalPublicData } from "@/components/festival/FestivalContext";
 import { PUBLIC_CONTAINER } from "@/components/festival/public/PublicSection";
 import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 import { useDeadlineWindow } from "@/features/festivals/hooks/use-deadline-window";
+import { useLiveChannel } from "@/hooks/use-live-channel";
 
 interface HeroSectionProps {
   festival: FestivalPublicData;
@@ -26,6 +29,7 @@ export function HeroSection({
   basicMode = false,
   accentColor = "var(--primary)",
 }: HeroSectionProps) {
+  const router = useRouter();
   const startDate = festival.startDate ? new Date(festival.startDate) : null;
   const endDate = festival.endDate ? new Date(festival.endDate) : null;
   const basePath = useFestivalLinkBase(festival.slug);
@@ -40,6 +44,43 @@ export function HeroSection({
     festival.programmeAssignmentStartDate,
     festival.programmeAssignmentDeadline,
   );
+
+  /* UC16 — countdown ticker. The cron pushes `{ daysToStart, daysToEnd,
+     daysToExpire, tickedAt }` once a minute. We don't read the day
+     numbers client-side (the deadlines are still computed locally by
+     `useDeadlineWindow`); we just need the cadence to refresh the
+     server loader so the page stays in sync. The hook has its own
+     backoff. `liveStatus` is consumed by the polling fallback below
+     (no pre-Issue-48 poll loop existed — Issue 48 sub-slice B added
+     SSE-only, the brief's rollback clause still requires a polling
+     path, so we add one at the 60s cadence the brief specifies). */
+  const { data: countdownEvent, status: liveStatus } = useLiveChannel<{
+    festivalId: string;
+    daysToStart: number;
+    daysToEnd: number;
+    daysToExpire: number;
+    tickedAt: string;
+  }>({
+    url: `/api/v1/festivals/${festival.id}/countdown/stream`,
+  });
+
+  useEffect(() => {
+    if (!countdownEvent) return;
+    router.refresh();
+  }, [countdownEvent, router]);
+
+  /* Polling fallback. 60s cadence matches the brief (countdown only
+     needs minute resolution). Suppressed while SSE is open so a
+     healthy connection doesn't double-refresh. If SSE drops +
+     reconnects inside the 60s window both fire — harmless, the
+     refresh re-reads the same loader. */
+  useEffect(() => {
+    if (liveStatus === "open") return;
+    const id = window.setInterval(() => {
+      router.refresh();
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, [router, liveStatus]);
 
   const dateLabel =
     startDate && endDate

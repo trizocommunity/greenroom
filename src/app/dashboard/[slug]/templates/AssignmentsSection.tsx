@@ -187,7 +187,12 @@ export function AssignmentsSection({
               <div className="py-4 pb-0 space-y-6">
                 {/* Type Selection */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Assignment Type</label>
+                  <label
+                    htmlFor="assign-type-trigger"
+                    className="text-sm font-medium"
+                  >
+                    Assignment Type
+                  </label>
                   <Select
                     value={assignType}
                     onValueChange={(val) => {
@@ -196,9 +201,10 @@ export function AssignmentsSection({
                     }}
                     disabled={isPending}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="assign-type-trigger">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
+
                     <SelectContent>
                       <SelectItem value="RESULT">Result Poster</SelectItem>
                       <SelectItem value="CERTIFICATE">Certificate</SelectItem>
@@ -215,9 +221,7 @@ export function AssignmentsSection({
                 {/* Template Selection / Preview */}
                 {assignType && (
                   <div className="space-y-3">
-                    <label className="text-sm font-medium">
-                      Select Template
-                    </label>
+                    <span className="text-sm font-medium">Select Template</span>
                     {availableTemplatesForType.length === 0 ? (
                       <div className="text-sm text-muted-foreground p-4 border rounded-md border-dashed text-center">
                         No published templates found for this type.
@@ -225,6 +229,7 @@ export function AssignmentsSection({
                     ) : (
                       <div className="flex overflow-x-auto snap-x gap-4 pb-2 px-1">
                         {availableTemplatesForType.map((t) => (
+                          // biome-ignore lint/a11y/noStaticElementInteractions: template card with embedded canvas preview; rendered as a single selectable unit
                           <div
                             key={t.code}
                             onClick={() =>
@@ -257,10 +262,14 @@ export function AssignmentsSection({
                 {assignType === "RESULT" && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">
+                      <label
+                        htmlFor="from-result-no"
+                        className="text-sm font-medium"
+                      >
                         From Result No.
                       </label>
                       <Input
+                        id="from-result-no"
                         type="number"
                         min={1}
                         value={fromResult}
@@ -269,10 +278,14 @@ export function AssignmentsSection({
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">
+                      <label
+                        htmlFor="to-result-no"
+                        className="text-sm font-medium"
+                      >
                         To Result No.
                       </label>
                       <Input
+                        id="to-result-no"
                         type="number"
                         min={1}
                         value={toResult}
@@ -285,7 +298,10 @@ export function AssignmentsSection({
 
                 {assignType === "CERTIFICATE" && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">
+                    <label
+                      htmlFor="cert-type-trigger"
+                      className="text-sm font-medium"
+                    >
                       Certificate Type
                     </label>
                     <Select
@@ -293,7 +309,7 @@ export function AssignmentsSection({
                       onValueChange={setCertType}
                       disabled={isPending}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="cert-type-trigger">
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent>

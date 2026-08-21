@@ -1,53 +1,62 @@
+import "server-only";
+import { cache } from "@/core/cache/instance";
+import { getRedis } from "@/core/redis/client";
+import { keys } from "@/core/redis/keys";
+
 type CacheValue = { institutionId: string } | null;
 
-type CacheEntry = {
-  expiresAt: number;
-  value: CacheValue;
-};
+/** TTL for a verified apex hit (positive cache). */
+const POSITIVE_TTL_MS = 60_000;
+/** Shorter TTL for "no verified institution here" (negative cache). */
+const NEGATIVE_TTL_MS = 30_000;
 
-const TTL_MS = 60_000;
-const cache = new Map<string, CacheEntry>();
-
-export function getCustomDomainCacheTtlMs(): number {
-  return TTL_MS;
+export function getCustomDomainPositiveTtlMs(): number {
+  return POSITIVE_TTL_MS;
 }
 
 /** Returns undefined on miss; null means negative cache (unknown/unverified). */
-export function getCachedVerifiedInstitution(
+export async function getCachedVerifiedInstitution(
   customDomain: string,
-): CacheValue | undefined {
-  const key = customDomain.toLowerCase();
-  const entry = cache.get(key);
-  if (!entry) return undefined;
-  if (Date.now() >= entry.expiresAt) {
-    cache.delete(key);
-    return undefined;
-  }
-  return entry.value;
+): Promise<CacheValue | undefined> {
+  const normalized = customDomain.toLowerCase();
+  return cache.get<CacheValue>(keys.domainHost(normalized));
 }
 
-export function setCachedVerifiedInstitution(
+export async function setCachedVerifiedInstitution(
   customDomain: string,
   value: CacheValue,
-): void {
-  cache.set(customDomain.toLowerCase(), {
-    expiresAt: Date.now() + TTL_MS,
-    value,
+): Promise<void> {
+  const ttlMs = value === null ? NEGATIVE_TTL_MS : POSITIVE_TTL_MS;
+  await cache.set(keys.domainHost(customDomain.toLowerCase()), value, {
+    ttlMs,
   });
 }
 
-/** Invalidate one apex or clear the whole map when domain is omitted. */
-export function invalidateCustomDomainCache(
+/** Invalidate one apex or wipe every `greenroom:domain:*` key when omitted. */
+export async function invalidateCustomDomainCache(
   customDomain?: string | null,
-): void {
+): Promise<void> {
   if (!customDomain) {
-    cache.clear();
+    // Pattern-delete is the only way to clear every cached apex without
+    // tracking membership. Bounded: keys live under one prefix and the set
+    // is small (one entry per verified institution).
+    const redis = getRedis();
+    const stream = redis.scanStream({ match: `${keys.domainHost("")}*` });
+    const pipeline = redis.pipeline();
+    let buffered = 0;
+    for await (const keysBatch of stream) {
+      for (const k of keysBatch) {
+        pipeline.del(k);
+        buffered += 1;
+      }
+    }
+    if (buffered > 0) await pipeline.exec();
     return;
   }
-  cache.delete(customDomain.toLowerCase());
+  await cache.del(keys.domainHost(customDomain.toLowerCase()));
 }
 
-/** Test helper — wipe cache between unit tests. */
-export function __resetCustomDomainCacheForTests(): void {
-  cache.clear();
+/** Test helper — wipe every cached apex between unit tests. */
+export async function __resetCustomDomainCacheForTests(): Promise<void> {
+  await invalidateCustomDomainCache();
 }

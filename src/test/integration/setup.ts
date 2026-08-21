@@ -2,7 +2,12 @@ import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
 } from "@testcontainers/postgresql";
+import {
+  RedisContainer,
+  type StartedRedisContainer,
+} from "@testcontainers/redis";
 import { execSync } from "child_process";
+import Redis from "ioredis";
 import { afterAll, beforeAll, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -26,12 +31,19 @@ let client: Pool;
 let db: ReturnType<typeof drizzle>;
 let connectionUri: string;
 
+let redisContainer: StartedRedisContainer;
+let redisClient: Redis;
+
 export function getDb() {
   return db;
 }
 
 export function getConnectionUri() {
   return connectionUri;
+}
+
+export function getRedis(): Redis {
+  return redisClient;
 }
 
 beforeAll(async () => {
@@ -61,9 +73,26 @@ beforeAll(async () => {
     },
     stdio: "ignore",
   });
+
+  redisContainer = await new RedisContainer("redis:7-alpine").start();
+  const redisUrl = redisContainer.getConnectionUrl();
+
+  // Export REDIS_URL so any module that lazily reads it (e.g. the
+  // `redis` singleton in `@/core/redis/client`) connects to this
+  // instance instead of the production URL.
+  process.env.REDIS_URL = redisUrl;
+
+  redisClient = new Redis(redisUrl, {
+    maxRetriesPerRequest: 3,
+    enableReadyCheck: true,
+    lazyConnect: false,
+  });
+  await redisClient.ping();
 }, 60_000);
 
 afterAll(async () => {
+  await redisClient?.quit();
+  await redisContainer?.stop();
   await client?.end();
   await container?.stop();
 });

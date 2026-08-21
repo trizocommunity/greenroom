@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateScheduleTimesForFestival } from "./schedule-times-validation";
 
-const IST = "Asia/Kolkata";
-
 function festival(
   opts: { startDate?: string | null; endDate?: string | null } = {},
 ) {
@@ -220,34 +218,6 @@ describe("validateScheduleTimesForFestival", () => {
         "2026-08-16",
       );
       expect(result.ok).toBe(true);
-    });
-  });
-
-  describe("timezone handling", () => {
-    it("upper bound matches the festival tz, not UTC", () => {
-      const result = validateScheduleTimesForFestival(
-        {
-          startDate: "2026-08-15T00:00:00.000Z",
-          endDate: "2026-08-18T18:30:00.000Z",
-        },
-        new Date("2026-08-18T13:00:00.000Z"),
-        null,
-        "2026-08-19",
-        IST,
-      );
-      expect(result.ok).toBe(true);
-
-      const rejected = validateScheduleTimesForFestival(
-        {
-          startDate: "2026-08-15T00:00:00.000Z",
-          endDate: "2026-08-18T18:30:00.000Z",
-        },
-        new Date("2026-08-19T18:30:00.000Z"),
-        null,
-        "2026-08-20",
-        IST,
-      );
-      expect(rejected.ok).toBe(false);
     });
   });
 });

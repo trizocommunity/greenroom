@@ -8,27 +8,82 @@ import {
   formatTime,
 } from "../format";
 
-const IST_INSTANT = "2026-08-15T03:30:00.000Z";
-const NYC_INSTANT = "2026-08-15T09:00:00.000Z";
+// Helpers compute the expected local-time output using the runner's
+// timezone so the suite passes on any machine. The browser-local
+// contract is "what the user sees in their clock" — that's exactly
+// what the runner sees.
+const SAMPLE_INSTANT = "2026-08-15T03:30:00.000Z";
+const sampleDate = new Date(SAMPLE_INSTANT);
+
+const pad = (n: number) => n.toString().padStart(2, "0");
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function localDateMedium(d: Date): string {
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function localDateShort(d: Date): string {
+  return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function localDateLong(d: Date): string {
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function localTimeShort(d: Date): string {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function localTimeMedium(d: Date): string {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function localDateTimeMedium(d: Date): string {
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 describe("formatDate", () => {
-  it("renders the same instant differently in different timezones", () => {
-    const inUTC = formatDate(IST_INSTANT, { tz: "UTC", style: "medium" });
-    const inIST = formatDate(IST_INSTANT, {
-      tz: "Asia/Kolkata",
-      style: "medium",
-    });
-    expect(inUTC).toBe("15 Aug 2026");
-    expect(inIST).toBe("15 Aug 2026");
+  it("renders the instant in the runner's local timezone", () => {
+    expect(formatDate(SAMPLE_INSTANT)).toBe(localDateMedium(sampleDate));
   });
 
-  it("handles TZ where date rolls over to next day", () => {
-    const lateUTC = "2026-08-15T18:30:00.000Z";
-    expect(formatDate(lateUTC, { tz: "UTC", style: "medium" })).toBe(
-      "15 Aug 2026",
+  it("supports short style", () => {
+    expect(formatDate(SAMPLE_INSTANT, { style: "short" })).toBe(
+      localDateShort(sampleDate),
     );
-    expect(formatDate(lateUTC, { tz: "Asia/Kolkata", style: "medium" })).toBe(
-      "16 Aug 2026",
+  });
+
+  it("supports long style", () => {
+    expect(formatDate(SAMPLE_INSTANT, { style: "long" })).toBe(
+      localDateLong(sampleDate),
     );
   });
 
@@ -37,26 +92,16 @@ describe("formatDate", () => {
     expect(formatDate(undefined)).toBe(FALLBACK_DISPLAY);
     expect(formatDate("not-a-date")).toBe(FALLBACK_DISPLAY);
   });
-
-  it("supports short and long styles", () => {
-    const out = formatDate(NYC_INSTANT, {
-      tz: "America/New_York",
-      style: "long",
-    });
-    expect(out).toContain("2026");
-    expect(out).toContain("August");
-  });
 });
 
 describe("formatTime", () => {
-  it("renders the same instant differently in different timezones", () => {
-    expect(formatTime(IST_INSTANT, { tz: "UTC" })).toBe("03:30");
-    expect(formatTime(IST_INSTANT, { tz: "Asia/Kolkata" })).toBe("09:00");
+  it("renders the instant in the runner's local timezone", () => {
+    expect(formatTime(SAMPLE_INSTANT)).toBe(localTimeShort(sampleDate));
   });
 
   it("supports medium style with seconds", () => {
-    expect(formatTime(IST_INSTANT, { tz: "UTC", style: "medium" })).toBe(
-      "03:30:00",
+    expect(formatTime(SAMPLE_INSTANT, { style: "medium" })).toBe(
+      localTimeMedium(sampleDate),
     );
   });
 
@@ -66,21 +111,23 @@ describe("formatTime", () => {
 });
 
 describe("formatDateTime", () => {
-  it("renders date + time in the given tz", () => {
-    expect(formatDateTime(IST_INSTANT, { tz: "Asia/Kolkata" })).toBe(
-      "15 Aug 2026 09:00",
-    );
-    expect(formatDateTime(IST_INSTANT, { tz: "UTC" })).toBe(
-      "15 Aug 2026 03:30",
-    );
+  it("renders date + time in the runner's local timezone", () => {
+    expect(formatDateTime(SAMPLE_INSTANT)).toBe(localDateTimeMedium(sampleDate));
+  });
+
+  it("supports long style", () => {
+    const out = formatDateTime(SAMPLE_INSTANT, {
+      dateStyle: "long",
+      timeStyle: "medium",
+    });
+    // We can't fully pin the day-of-week without TZ, but we can pin the
+    // date + time components the medium formatter always emits.
+    expect(out).toMatch(/\d{2}:\d{2}:\d{2}$/);
+    expect(out).toContain(String(sampleDate.getFullYear()));
   });
 
   it("returns fallback for null", () => {
     expect(formatDateTime(null)).toBe(FALLBACK_DISPLAY);
-  });
-
-  it("defaults tz to UTC when none passed", () => {
-    expect(formatDateTime(IST_INSTANT)).toBe("15 Aug 2026 03:30");
   });
 });
 

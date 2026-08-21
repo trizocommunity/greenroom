@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { ParticipantNavbar } from "@/components/participant/ParticipantNavbar";
 import { CustomDomainProvider } from "@/components/providers/custom-domain-provider";
-import { UserTimezoneProviderClient } from "@/components/providers/user-timezone-provider-client";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
@@ -100,32 +99,30 @@ export default async function ParticipantLayout({
   );
 
   return (
-    <UserTimezoneProviderClient festivalTimezone={festival.timezone ?? null}>
-      <CustomDomainProvider customDomain={customDomain}>
-        <FestivalProvider festival={festivalProviderValue}>
-          <div className="min-h-screen md:pt-10">
-            <ParticipantNavbar
-              festival={{
-                slug: festival.slug ?? slug,
-                name: festival.name,
-              }}
-              participant={{
-                id: participant.id,
-                isTeamLeader: Boolean(participant.isTeamLeader),
-                name: participant.name,
-              }}
-              participantSlugParam={participantSlug}
-              participantMainHref={
-                participant.isTeamLeader
-                  ? `${festivalBase}/${participantSlug}/dashboard`
-                  : `${festivalBase}/${participantSlug}`
-              }
-              assignedProgrammesTopStatus={assignedProgrammesTopStatus}
-            />
-            {children}
-          </div>
-        </FestivalProvider>
-      </CustomDomainProvider>
-    </UserTimezoneProviderClient>
+    <CustomDomainProvider customDomain={customDomain}>
+      <FestivalProvider festival={festivalProviderValue}>
+        <div className="min-h-screen md:pt-10">
+          <ParticipantNavbar
+            festival={{
+              slug: festival.slug ?? slug,
+              name: festival.name,
+            }}
+            participant={{
+              id: participant.id,
+              isTeamLeader: Boolean(participant.isTeamLeader),
+              name: participant.name,
+            }}
+            participantSlugParam={participantSlug}
+            participantMainHref={
+              participant.isTeamLeader
+                ? `${festivalBase}/${participantSlug}/dashboard`
+                : `${festivalBase}/${participantSlug}`
+            }
+            assignedProgrammesTopStatus={assignedProgrammesTopStatus}
+          />
+          {children}
+        </div>
+      </FestivalProvider>
+    </CustomDomainProvider>
   );
 }

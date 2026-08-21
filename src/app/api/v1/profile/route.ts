@@ -36,9 +36,6 @@ const handler = createProtectedHandler({
     }
 
     const updateData = { ...parsed.data };
-    if (updateData.timezone === "") {
-      updateData.timezone = null as any; // Using as any since the schema might only allow string | undefined if we aren't careful, but Drizzle accepts null for nullable columns
-    }
 
     const [updated] = await db
       .update(usersTable)

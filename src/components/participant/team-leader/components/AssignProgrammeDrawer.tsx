@@ -28,11 +28,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
 import { cn } from "@/core/utils/cn";
 import type { CategoryType, StageType } from "@/core/types/app-enums";
-import type { ProgrammeForAssignment, MyParticipantForAssignment } from "../types";
+import type {
+  ProgrammeForAssignment,
+  MyParticipantForAssignment,
+} from "../types";
 
 function stageTypeLabel(stageType?: StageType | null): string {
   return stageType === "NON_STAGE" ? "Off stage" : "On stage";
@@ -55,7 +63,11 @@ interface AssignProgrammeDrawerProps {
   deleteAssignment: any;
   deleteTeamAssignment: any;
   removeTeamMember: any;
-  programmeCategoryOptions: { id: string; name: string; type: CategoryType | null }[];
+  programmeCategoryOptions: {
+    id: string;
+    name: string;
+    type: CategoryType | null;
+  }[];
 }
 
 export function AssignProgrammeDrawer({
@@ -78,12 +90,23 @@ export function AssignProgrammeDrawer({
   programmeCategoryOptions,
 }: AssignProgrammeDrawerProps) {
   const [participantSearch, setParticipantSearch] = useState<string>("");
-  const [participantFilter, setParticipantFilter] = useState<"ALL" | "AVAILABLE" | "ASSIGNED">("ALL");
-  const [participantCategoryFilter, setParticipantCategoryFilter] = useState<string>("ALL");
-  const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
-  const [removedParticipantIds, setRemovedParticipantIds] = useState<string[]>([]);
-  const [teamLeadChoice, setTeamLeadChoice] = useState<Record<number, string>>({});
-  const [teamOverrides, setTeamOverrides] = useState<Record<string, number>>({});
+  const [participantFilter, setParticipantFilter] = useState<
+    "ALL" | "AVAILABLE" | "ASSIGNED"
+  >("ALL");
+  const [participantCategoryFilter, setParticipantCategoryFilter] =
+    useState<string>("ALL");
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<
+    string[]
+  >([]);
+  const [removedParticipantIds, setRemovedParticipantIds] = useState<string[]>(
+    [],
+  );
+  const [teamLeadChoice, setTeamLeadChoice] = useState<Record<number, string>>(
+    {},
+  );
+  const [teamOverrides, setTeamOverrides] = useState<Record<string, number>>(
+    {},
+  );
   const [isEditingAssignments, setIsEditingAssignments] = useState(false);
 
   useEffect(() => {
@@ -138,7 +161,11 @@ export function AssignProgrammeDrawer({
     }
 
     return filtered;
-  }, [participantsForSelectedProgramme, participantSearch, participantCategoryFilter]);
+  }, [
+    participantsForSelectedProgramme,
+    participantSearch,
+    participantCategoryFilter,
+  ]);
 
   const alreadyAssignedParticipantIdsForSelectedProgramme = useMemo(() => {
     if (!selectedProgramme) return new Set<string>();
@@ -157,20 +184,31 @@ export function AssignProgrammeDrawer({
   const visibleParticipants = useMemo(() => {
     if (participantFilter === "ALL") return filteredParticipants;
     return filteredParticipants.filter((s) => {
-      const isAssigned = alreadyAssignedParticipantIdsForSelectedProgramme.has(s.id);
+      const isAssigned = alreadyAssignedParticipantIdsForSelectedProgramme.has(
+        s.id,
+      );
       return participantFilter === "ASSIGNED" ? isAssigned : !isAssigned;
     });
-  }, [filteredParticipants, participantFilter, alreadyAssignedParticipantIdsForSelectedProgramme]);
+  }, [
+    filteredParticipants,
+    participantFilter,
+    alreadyAssignedParticipantIdsForSelectedProgramme,
+  ]);
 
   const selectedNewParticipantIdsToAssign = useMemo(() => {
     if (!selectedProgramme) return [];
     return selectedParticipantIds.filter(
       (id) => !alreadyAssignedParticipantIdsForSelectedProgramme.has(id),
     );
-  }, [selectedProgramme, selectedParticipantIds, alreadyAssignedParticipantIdsForSelectedProgramme]);
+  }, [
+    selectedProgramme,
+    selectedParticipantIds,
+    alreadyAssignedParticipantIdsForSelectedProgramme,
+  ]);
 
   const selectedNewCount = selectedNewParticipantIdsToAssign.length;
-  const assignedCountForSelected = alreadyAssignedParticipantIdsForSelectedProgramme.size;
+  const assignedCountForSelected =
+    alreadyAssignedParticipantIdsForSelectedProgramme.size;
 
   type LimitTracking =
     | {
@@ -197,7 +235,9 @@ export function AssignProgrammeDrawer({
       a?.participant?.groupId ??
       a?.participant?.group?.id;
 
-    const dbAssignmentsForProgrammeInLeaderGroup = (assignments as any[]).filter((a) => {
+    const dbAssignmentsForProgrammeInLeaderGroup = (
+      assignments as any[]
+    ).filter((a) => {
       return (
         getProgrammeId(a) === selectedProgramme.id &&
         getGroupId(a) === leaderGroupId
@@ -228,7 +268,13 @@ export function AssignProgrammeDrawer({
       existingMembersCount: activeExistingCount,
       remainingSlots: totalCapacity - activeExistingCount - selectedNewCount,
     };
-  }, [assignments, selectedProgramme, leaderGroupId, selectedNewCount, removedParticipantIds]);
+  }, [
+    assignments,
+    selectedProgramme,
+    leaderGroupId,
+    selectedNewCount,
+    removedParticipantIds,
+  ]);
 
   const isOverLimit =
     limitTracking?.type === "INDIVIDUAL"
@@ -325,7 +371,7 @@ export function AssignProgrammeDrawer({
       }[] = [];
       for (const participantId of participantIds) {
         let teamNumber = teamOverrides[participantId];
-        
+
         if (!teamNumber) {
           const alloc = allocateOneParticipant();
           if (alloc === null) return [];
@@ -333,7 +379,7 @@ export function AssignProgrammeDrawer({
         } else {
           // If explicitly chosen but team is full, UI handles the warning, we just assign
         }
-        
+
         existingTeams.add(teamNumber);
         teamCounts.set(teamNumber, (teamCounts.get(teamNumber) || 0) + 1);
         result.push({ programmeId: programme.id, participantId, teamNumber });
@@ -454,9 +500,12 @@ export function AssignProgrammeDrawer({
     if (requiresTeamLead && selectedProgramme.type === "GROUP") {
       for (const t of teamsNeedingLead) {
         const chosenId = teamLeadChoice[t.teamNumber];
-        const existingLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
-        const isExistingLeadRemoved = existingLead && removedParticipantIds.includes(existingLead.participantId);
-        
+        const existingLead =
+          existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
+        const isExistingLeadRemoved =
+          existingLead &&
+          removedParticipantIds.includes(existingLead.participantId);
+
         if (chosenId && chosenId !== existingLead?.participantId) {
           hasLeadChanges = true;
         }
@@ -465,19 +514,30 @@ export function AssignProgrammeDrawer({
 
     const existingParticipantsToMove = (assignments as any[]).filter((a) => {
       const assignmentProgrammeId = a?.programme?.id ?? a?.programmeId;
-      const assignmentGroupId = a?.group?.id ?? a?.participant?.groupId ?? a?.participant?.group?.id;
-      if (assignmentProgrammeId !== selectedProgramme.id || assignmentGroupId !== leaderGroupId) return false;
+      const assignmentGroupId =
+        a?.group?.id ?? a?.participant?.groupId ?? a?.participant?.group?.id;
+      if (
+        assignmentProgrammeId !== selectedProgramme.id ||
+        assignmentGroupId !== leaderGroupId
+      )
+        return false;
       if (removedParticipantIds.includes(a.participant?.id)) return false;
-      
+
       const override = teamOverrides[a.participant?.id];
       if (override && override !== a.teamNumber) return true;
       return false;
     });
 
-    const participantsToMoveIds = existingParticipantsToMove.map(a => a.participant.id);
+    const participantsToMoveIds = existingParticipantsToMove.map(
+      (a) => a.participant.id,
+    );
     const allRemovedIds = [...removedParticipantIds, ...participantsToMoveIds];
 
-    if (selectedNewCount === 0 && allRemovedIds.length === 0 && !hasLeadChanges) {
+    if (
+      selectedNewCount === 0 &&
+      allRemovedIds.length === 0 &&
+      !hasLeadChanges
+    ) {
       toast.error("No changes to save");
       return;
     }
@@ -500,11 +560,15 @@ export function AssignProgrammeDrawer({
             assignmentsToDelete.map((a) => {
               if (selectedProgramme.type === "GROUP") {
                 const teamNumber = a.teamNumber;
-                let replacementLeadId: string | undefined = undefined;
-                
+                let replacementLeadId: string | undefined;
+
                 // If removing the current lead, check if a new one was selected
-                const existingLead = existingTeamLeads[`${selectedProgramme.id}:${teamNumber}`];
-                if (existingLead && existingLead.participantId === a.participant.id) {
+                const existingLead =
+                  existingTeamLeads[`${selectedProgramme.id}:${teamNumber}`];
+                if (
+                  existingLead &&
+                  existingLead.participantId === a.participant.id
+                ) {
                   const newLeadChoice = teamLeadChoice[teamNumber];
                   if (newLeadChoice) {
                     replacementLeadId = newLeadChoice;
@@ -518,7 +582,10 @@ export function AssignProgrammeDrawer({
                   replacementLeadParticipantId: replacementLeadId,
                 });
               } else {
-                return deleteAssignment.mutateAsync({ festivalId, assignmentId: a.id });
+                return deleteAssignment.mutateAsync({
+                  festivalId,
+                  assignmentId: a.id,
+                });
               }
             }),
           );
@@ -527,21 +594,30 @@ export function AssignProgrammeDrawer({
           return;
         }
       }
-    }    if (selectedNewCount === 0 && participantsToMoveIds.length === 0 && !hasLeadChanges) {
+    }
+    if (
+      selectedNewCount === 0 &&
+      participantsToMoveIds.length === 0 &&
+      !hasLeadChanges
+    ) {
       toast.success("Assignments updated");
       clearSelection();
       setIsEditingAssignments(false);
       return;
     }
 
-    const selectedParticipantsList = participantsForSelectedProgramme.filter((s) => 
-      selectedParticipantIds.includes(s.id) || participantsToMoveIds.includes(s.id)
+    const selectedParticipantsList = participantsForSelectedProgramme.filter(
+      (s) =>
+        selectedParticipantIds.includes(s.id) ||
+        participantsToMoveIds.includes(s.id),
     );
-    
+
     const participantIdsToAssign = selectedParticipantsList
       .map((s) => s.id)
       .filter(
-        (id) => !alreadyAssignedParticipantIdsForSelectedProgramme.has(id) || participantsToMoveIds.includes(id),
+        (id) =>
+          !alreadyAssignedParticipantIdsForSelectedProgramme.has(id) ||
+          participantsToMoveIds.includes(id),
       );
 
     if (participantIdsToAssign.length === 0 && !hasLeadChanges) {
@@ -579,16 +655,22 @@ export function AssignProgrammeDrawer({
       teamLeadsByTeam = {};
       for (const t of teamsNeedingLead) {
         const chosenId = teamLeadChoice[t.teamNumber];
-        const existingLead = existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
-        const isExistingLeadRemoved = existingLead && allRemovedIds.includes(existingLead.participantId);
+        const existingLead =
+          existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`];
+        const isExistingLeadRemoved =
+          existingLead && allRemovedIds.includes(existingLead.participantId);
 
         if (chosenId && chosenId !== existingLead?.participantId) {
-          teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = chosenId;
+          teamLeadsByTeam[
+            `${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`
+          ] = chosenId;
         } else if (existingLead && !isExistingLeadRemoved) {
-          teamLeadsByTeam[`${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`] = existingLead.participantId;
+          teamLeadsByTeam[
+            `${selectedProgramme.id}:${leaderGroupId}:${t.teamNumber}`
+          ] = existingLead.participantId;
         } else {
-           toast.error(`Choose a team lead for Team ${t.teamNumber}`);
-           return;
+          toast.error(`Choose a team lead for Team ${t.teamNumber}`);
+          return;
         }
       }
     }
@@ -609,10 +691,11 @@ export function AssignProgrammeDrawer({
         new Set(
           (assignments as any[])
             .filter(
-              (a) => (a.programme?.id ?? a.programmeId) === selectedProgramme.id
+              (a) =>
+                (a.programme?.id ?? a.programmeId) === selectedProgramme.id,
             )
-            .map((a) => a.teamNumber)
-        )
+            .map((a) => a.teamNumber),
+        ),
       );
 
       if (teamNumbers.length === 0) return;
@@ -625,8 +708,8 @@ export function AssignProgrammeDrawer({
               programmeId: selectedProgramme.id,
               groupId: leaderGroupId,
               teamNumber: tn,
-            })
-          )
+            }),
+          ),
         );
         toast.success("Assignments cleared");
       } catch (e) {
@@ -718,37 +801,48 @@ export function AssignProgrammeDrawer({
                             Team {t.teamNumber}
                           </span>
                           <div className="flex items-center gap-2">
-                            {requiresTeamLead && t.used > 0 && (isEditingAssignments || t.newIds.length > 0) && (
-                              <Select
-                                value={
-                                  teamLeadChoice[t.teamNumber] ??
-                                  existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`]?.participantId ??
-                                  ""
-                                }
-                                onValueChange={(v) =>
-                                  setTeamLeadChoice((prev) => ({
-                                    ...prev,
-                                    [t.teamNumber]: v,
-                                  }))
-                                }
-                              >
-                                <SelectTrigger className="h-7 w-[120px] rounded-full border-border text-[11px] shadow-none bg-background">
-                                  <div className="flex min-w-0 items-center gap-1.5">
-                                    <Crown className="h-3 w-3 shrink-0 text-primary" />
-                                    <span className="truncate">
-                                      <SelectValue placeholder="Select lead" />
-                                    </span>
-                                  </div>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {[...t.existingIds, ...t.newIds].map((id) => (
-                                    <SelectItem key={id} value={id} className="text-[11px]">
-                                      {participantByIdLookup.get(id)?.name ?? id}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
+                            {requiresTeamLead &&
+                              t.used > 0 &&
+                              (isEditingAssignments || t.newIds.length > 0) && (
+                                <Select
+                                  value={
+                                    teamLeadChoice[t.teamNumber] ??
+                                    existingTeamLeads[
+                                      `${selectedProgramme.id}:${t.teamNumber}`
+                                    ]?.participantId ??
+                                    ""
+                                  }
+                                  onValueChange={(v) =>
+                                    setTeamLeadChoice((prev) => ({
+                                      ...prev,
+                                      [t.teamNumber]: v,
+                                    }))
+                                  }
+                                >
+                                  <SelectTrigger className="h-7 w-[120px] rounded-full border-border text-[11px] shadow-none bg-background">
+                                    <div className="flex min-w-0 items-center gap-1.5">
+                                      <Crown className="h-3 w-3 shrink-0 text-primary" />
+                                      <span className="truncate">
+                                        <SelectValue placeholder="Select lead" />
+                                      </span>
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {[...t.existingIds, ...t.newIds].map(
+                                      (id) => (
+                                        <SelectItem
+                                          key={id}
+                                          value={id}
+                                          className="text-[11px]"
+                                        >
+                                          {participantByIdLookup.get(id)
+                                            ?.name ?? id}
+                                        </SelectItem>
+                                      ),
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              )}
                             <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
                               {t.used}/{groupTeamPreview.maxPerTeam}
                             </span>
@@ -761,23 +855,29 @@ export function AssignProgrammeDrawer({
                             </span>
                           ) : (
                             [...t.existingIds, ...t.newIds].map((id) => {
-                              const isLead = id === (teamLeadChoice[t.teamNumber] ?? existingTeamLeads[`${selectedProgramme.id}:${t.teamNumber}`]?.participantId);
+                              const isLead =
+                                id ===
+                                (teamLeadChoice[t.teamNumber] ??
+                                  existingTeamLeads[
+                                    `${selectedProgramme.id}:${t.teamNumber}`
+                                  ]?.participantId);
                               return (
-                              <span
-                                key={id}
-                                className={cn(
-                                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
-                                  isLead
-                                    ? "border border-primary/30 bg-primary/20 font-medium text-primary"
-                                    : t.newIds.includes(id)
-                                      ? "bg-primary/12 text-primary"
-                                      : "bg-muted text-muted-foreground",
-                                )}
-                              >
-                                {isLead && <Crown className="h-2.5 w-2.5" />}
-                                {participantByIdLookup.get(id)?.name ?? id}
-                              </span>
-                            )})
+                                <span
+                                  key={id}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+                                    isLead
+                                      ? "border border-primary/30 bg-primary/20 font-medium text-primary"
+                                      : t.newIds.includes(id)
+                                        ? "bg-primary/12 text-primary"
+                                        : "bg-muted text-muted-foreground",
+                                  )}
+                                >
+                                  {isLead && <Crown className="h-2.5 w-2.5" />}
+                                  {participantByIdLookup.get(id)?.name ?? id}
+                                </span>
+                              );
+                            })
                           )}
                         </div>
                       </div>
@@ -806,7 +906,11 @@ export function AssignProgrammeDrawer({
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-2 truncate text-sm font-medium text-heading">
                                 {s.name}
-                                {assignments.some((a: any) => a.participant?.id === s.id && a.limitWarning?.isOverLimit) && (
+                                {assignments.some(
+                                  (a: any) =>
+                                    a.participant?.id === s.id &&
+                                    a.limitWarning?.isOverLimit,
+                                ) && (
                                   <TooltipProvider>
                                     <Tooltip delayDuration={300}>
                                       <TooltipTrigger>
@@ -814,7 +918,8 @@ export function AssignProgrammeDrawer({
                                       </TooltipTrigger>
                                       <TooltipContent side="right">
                                         <p className="text-xs">
-                                          Participant has exceeded their allowed limit for a category.
+                                          Participant has exceeded their allowed
+                                          limit for a category.
                                         </p>
                                       </TooltipContent>
                                     </Tooltip>
@@ -873,28 +978,26 @@ export function AssignProgrammeDrawer({
                       )}
                     </div>
                     <div className="flex gap-1">
-                      {(["ALL", "AVAILABLE", "ASSIGNED"] as const).map(
-                        (f) => (
-                          <button
-                            key={f}
-                            type="button"
-                            aria-pressed={participantFilter === f}
-                            onClick={() => setParticipantFilter(f)}
-                            className={cn(
-                              "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                              participantFilter === f
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:text-foreground",
-                            )}
-                          >
-                            {f === "ALL"
-                              ? "All"
-                              : f === "AVAILABLE"
-                                ? "Available"
-                                : "Assigned"}
-                          </button>
-                        ),
-                      )}
+                      {(["ALL", "AVAILABLE", "ASSIGNED"] as const).map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          aria-pressed={participantFilter === f}
+                          onClick={() => setParticipantFilter(f)}
+                          className={cn(
+                            "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                            participantFilter === f
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {f === "ALL"
+                            ? "All"
+                            : f === "AVAILABLE"
+                              ? "Available"
+                              : "Assigned"}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -914,9 +1017,7 @@ export function AssignProgrammeDrawer({
                           alreadyAssignedParticipantIdsForSelectedProgramme.has(
                             s.id,
                           );
-                        const isRemoved = removedParticipantIds.includes(
-                          s.id,
-                        );
+                        const isRemoved = removedParticipantIds.includes(s.id);
                         const isNewSelected = selectedParticipantIds.includes(
                           s.id,
                         );
@@ -940,7 +1041,7 @@ export function AssignProgrammeDrawer({
                               "flex items-center justify-between px-3.5 py-3 transition-colors",
                               checked && "bg-primary/[0.06]",
                               isAssignedDB && !isRemoved && "bg-muted/40",
-                              disableForLimit && "opacity-45"
+                              disableForLimit && "opacity-45",
                             )}
                           >
                             <label
@@ -968,7 +1069,11 @@ export function AssignProgrammeDrawer({
                               <span className="min-w-0 flex-1">
                                 <span className="flex items-center gap-2 truncate text-sm font-medium text-heading">
                                   {s.name}
-                                  {assignments.some((a: any) => a.participant?.id === s.id && a.limitWarning?.isOverLimit) && (
+                                  {assignments.some(
+                                    (a: any) =>
+                                      a.participant?.id === s.id &&
+                                      a.limitWarning?.isOverLimit,
+                                  ) && (
                                     <TooltipProvider>
                                       <Tooltip delayDuration={300}>
                                         <TooltipTrigger>
@@ -976,7 +1081,8 @@ export function AssignProgrammeDrawer({
                                         </TooltipTrigger>
                                         <TooltipContent side="right">
                                           <p className="text-xs">
-                                            Participant has exceeded their allowed limit for a category.
+                                            Participant has exceeded their
+                                            allowed limit for a category.
                                           </p>
                                         </TooltipContent>
                                       </Tooltip>
@@ -990,14 +1096,17 @@ export function AssignProgrammeDrawer({
                             </label>
 
                             <div className="flex shrink-0 items-center gap-2 pl-3">
-                              {isAssignedDB && !isRemoved && !isEditingAssignments && (
-                                <StatusPill tone="live" icon={Check}>
-                                  Assigned
-                                </StatusPill>
-                              )}
-                              {teamNumber != null && !isRemoved && (
-                                isEditingAssignments ? (
-                                  <Select 
+                              {isAssignedDB &&
+                                !isRemoved &&
+                                !isEditingAssignments && (
+                                  <StatusPill tone="live" icon={Check}>
+                                    Assigned
+                                  </StatusPill>
+                                )}
+                              {teamNumber != null &&
+                                !isRemoved &&
+                                (isEditingAssignments ? (
+                                  <Select
                                     value={String(teamNumber)}
                                     onValueChange={(val) => {
                                       setTeamOverrides((prev) => ({
@@ -1010,8 +1119,18 @@ export function AssignProgrammeDrawer({
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {Array.from({ length: selectedProgramme.maxTeamsPerGroup ?? 1 }, (_, i) => i + 1).map((num) => (
-                                        <SelectItem key={num} value={String(num)}>
+                                      {Array.from(
+                                        {
+                                          length:
+                                            selectedProgramme.maxTeamsPerGroup ??
+                                            1,
+                                        },
+                                        (_, i) => i + 1,
+                                      ).map((num) => (
+                                        <SelectItem
+                                          key={num}
+                                          value={String(num)}
+                                        >
                                           Team {num}
                                         </SelectItem>
                                       ))}
@@ -1021,8 +1140,7 @@ export function AssignProgrammeDrawer({
                                   <StatusPill tone="muted">
                                     Team {teamNumber}
                                   </StatusPill>
-                                )
-                              )}
+                                ))}
                             </div>
                           </li>
                         );

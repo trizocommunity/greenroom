@@ -91,7 +91,6 @@ describe("festival ↔ institution link", () => {
             status: "READY",
             expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
             scoringSystem: "SCORE_BASED",
-            timezone: "Asia/Kolkata",
           })
           .returning()
       )[0];
@@ -170,7 +169,6 @@ describe("festival ↔ institution link", () => {
             status: "READY",
             expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
             scoringSystem: "SCORE_BASED",
-            timezone: "Asia/Kolkata",
           })
           .returning()
       )[0];

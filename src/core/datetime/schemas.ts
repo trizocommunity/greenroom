@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { TZ_OPTIONS } from "./tz-list";
-
 /**
  * Zod schema for a stored UTC instant string. Accepts both `Z` and
  * explicit `±HH:MM` offsets, as well as Postgres-style timestamps
@@ -26,19 +24,3 @@ export const zodDateLike = z.union([z.date(), zodIsoInstant]);
 export const zodCalendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
   message: "Expected YYYY-MM-DD",
 });
-
-/**
- * Zod schema for an IANA timezone name. Accepts any string in the
- * curated TZ_OPTIONS list. Validates only *known* zones — this is a
- * closed system (drop-down driven), so unknown values are user errors.
- */
-export const zodTimezone = z.enum(
-  TZ_OPTIONS.map((opt) => opt.value) as [string, ...string[]],
-);
-
-/**
- * Loose timezone validator: accepts any string but warns on unknown
- * names. Use when the source is freeform (e.g. browser auto-detect).
- * Allowing empty string so we can explicitly unset/use browser default.
- */
-export const zodTimezoneLoose = z.string().max(64);

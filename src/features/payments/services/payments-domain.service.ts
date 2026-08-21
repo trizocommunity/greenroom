@@ -1,10 +1,12 @@
-import { and, eq, gte, ne, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { TIER_CONFIG } from "@/config/pricing";
 import { db } from "@/core/database/client";
 import { generateId } from "@/core/database/ids";
 import { payment, userPurchaseSummary } from "@/core/database/schema";
 import { isExpired } from "@/core/datetime";
 import { fromNow, MS, serverNowIso, serverNowMs } from "@/core/datetime/server";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import {
   getActivePaymentForUser,
   getLatestPaymentForUser,
@@ -12,7 +14,6 @@ import {
   updatePaymentStatus,
 } from "@/features/payments/repositories/payment.repository";
 import {
-  getRazorpayKeyId,
   RazorpayService,
 } from "@/features/payments/services/razorpay.service";
 
@@ -26,13 +27,66 @@ type InitiatePaymentParams = {
   tier: Tier;
 };
 
-type InitiatePaymentResult = {
+export type InitiatePaymentSuccess = {
   paymentId: string;
   orderId: string;
   amount: number;
   currency: string;
-  key: string | undefined;
 };
+
+export type PendingOrderExists = {
+  outcome: "pendingExists";
+  paymentId: string;
+  orderId: string;
+  tier: Tier;
+};
+
+export type InitiatePaymentResult =
+  | InitiatePaymentSuccess
+  | PendingOrderExists;
+
+export class PendingOrderExistsError extends Error {
+  readonly code = "PENDING_ORDER_EXISTS" as const;
+  constructor(
+    public readonly paymentId: string,
+    public readonly orderId: string | null,
+    public readonly tier: Tier,
+  ) {
+    super(
+      `A pending order already exists for tier ${tier}. Complete or cancel it before starting a new one.`,
+    );
+    this.name = "PendingOrderExistsError";
+  }
+}
+
+/**
+ * Postgres unique_violation SQLSTATE — used to detect a race between two
+ * concurrent `POST /payments` requests that both saw no pending row and
+ * both tried to insert.
+ */
+const PG_UNIQUE_VIOLATION = "23505";
+
+/**
+ * Find the (userId, purpose) pending payment row.
+ *
+ * Scope must match the partial unique index
+ * `payment_userId_purpose_pending_unique_idx` exactly — see schema.ts:
+ *   UNIQUE (userId, purpose) WHERE status = 'PENDING' AND used = false.
+ *
+ * The previous implementation filtered by `tier` and a 24h window, which
+ * was narrower than the index and caused constraint violations when a
+ * user had an in-flight order at a different tier (or one older than 24h).
+ */
+async function findPendingPayment(userId: string, purpose: PaymentPurpose) {
+  return db.query.payment.findFirst({
+    where: and(
+      eq(payment.userId, userId),
+      eq(payment.purpose, purpose),
+      eq(payment.status, "PENDING"),
+      eq(payment.used, false),
+    ),
+  });
+}
 
 export async function initiatePaymentDomain(
   params: InitiatePaymentParams,
@@ -44,25 +98,31 @@ export async function initiatePaymentDomain(
     throw new Error("Tier configuration not found");
   }
 
-  const existingPayment = await db.query.payment.findFirst({
-    where: and(
-      eq(payment.userId, userId),
-      eq(payment.tier, tier),
-      eq(payment.purpose, purpose),
-      eq(payment.status, "PENDING"),
-      eq(payment.used, false),
-      gte(payment.createdAt, fromNow(-MS.day)),
-    ),
-  });
+  const existing = await findPendingPayment(userId, purpose);
 
-  if (existingPayment?.providerId) {
-    return {
-      paymentId: existingPayment.id,
-      orderId: existingPayment.providerId,
-      amount: config.price * 100,
-      currency: "INR",
-      key: getRazorpayKeyId(),
-    };
+  if (existing) {
+    if (existing.tier !== tier) {
+      throw new PendingOrderExistsError(
+        existing.id,
+        existing.providerId,
+        existing.tier,
+      );
+    }
+
+    if (existing.providerId) {
+      return {
+        paymentId: existing.id,
+        orderId: existing.providerId,
+        amount: config.price * 100,
+        currency: "INR",
+      };
+    }
+
+    // Stale row from a prior failed insert — clean up and fall through.
+    await db
+      .update(payment)
+      .set({ status: "FAILED" })
+      .where(eq(payment.id, existing.id));
   }
 
   const order = await RazorpayService.createOrder(
@@ -74,30 +134,61 @@ export async function initiatePaymentDomain(
 
   const validUntil = fromNow(config.festivalDurationDays * MS.day);
 
-  const newPayment = await db
-    .insert(payment)
-    .values({
-      id: generateId(),
-      amount: config.price,
-      currency: "INR",
-      status: "PENDING",
-      providerId: order.id,
-      userId,
-      purpose,
-      tier,
-      used: false,
-      validUntil,
-      updatedAt: serverNowIso(),
-    })
-    .returning();
+  try {
+    const inserted = await db
+      .insert(payment)
+      .values({
+        id: generateId(),
+        amount: config.price,
+        currency: "INR",
+        status: "PENDING",
+        providerId: order.id,
+        userId,
+        purpose,
+        tier,
+        used: false,
+        validUntil,
+        updatedAt: serverNowIso(),
+      })
+      .returning();
 
-  return {
-    paymentId: newPayment[0].id,
-    orderId: order.id,
-    amount: config.price * 100,
-    currency: "INR",
-    key: getRazorpayKeyId(),
-  };
+    return {
+      paymentId: inserted[0].id,
+      orderId: order.id,
+      amount: config.price * 100,
+      currency: "INR",
+    };
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code;
+    if (code !== PG_UNIQUE_VIOLATION) throw err;
+
+    // Lost the race against a concurrent insert. The Razorpay order we
+    // just created is now orphaned — caller will use the winner's orderId.
+    // Razorpay's Orders API has no cancel endpoint, but unpaid orders
+    // auto-expire (typically within 24h), so this is safe to leave.
+    console.warn(
+      "[initiatePaymentDomain] lost insert race; orphaned Razorpay order will auto-expire",
+      { orderId: order.id, userId, tier },
+    );
+
+    const winner = await findPendingPayment(userId, purpose);
+    if (!winner) throw err;
+
+    if (winner.tier !== tier) {
+      throw new PendingOrderExistsError(
+        winner.id,
+        winner.providerId,
+        winner.tier,
+      );
+    }
+
+    return {
+      paymentId: winner.id,
+      orderId: winner.providerId ?? order.id,
+      amount: config.price * 100,
+      currency: "INR",
+    };
+  }
 }
 
 export async function verifyPaymentDomain(
@@ -207,6 +298,12 @@ export async function verifyPaymentByOrderIdDomain(payload: {
   }
 
   await updatePaymentStatus(paymentRecord.id, "PAID", razorpay_payment_id);
+
+  await publish(keys.superAdminStats(), {
+    type: "payment_received",
+    delta: 1,
+    occurredAt: serverNowIso(),
+  });
 
   return true;
 }

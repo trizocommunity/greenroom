@@ -147,6 +147,7 @@ export const exportType = pgEnum("ExportType", [
   "VALUATION_SHEET",
   "BADGE",
   "CERTIFICATE",
+  "SCHEDULE",
 ]);
 export const exportFormat = pgEnum("ExportFormat", ["PDF", "CSV"]);
 export const exportStatus = pgEnum("ExportStatus", [
@@ -306,7 +307,6 @@ export const user = pgTable(
     accountType: accountType(),
     institutionId: text(),
     isActive: boolean().default(true).notNull(),
-    timezone: text(),
     createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
     updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
   },
@@ -521,7 +521,6 @@ export const festival = pgTable(
     expiredAt: tzTimestamp(),
     institutionId: text(),
     festivalType: festivalTypeEnum().default("INDEPENDENT").notNull(),
-    timezone: text().notNull(),
     archivedAt: tzTimestamp(),
   },
   (table) => [
@@ -641,7 +640,6 @@ export const categoryProgrammeLimit = pgTable(
 );
 
 // ─── 5. group (depends on: festival) ─────────────────────────────────────────
-
 
 export const group = pgTable(
   "group",

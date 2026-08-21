@@ -1,14 +1,14 @@
-import { Search, Plus, ChevronRight, ShieldAlert, Mail, Phone } from "lucide-react";
-import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ChevronRight,
+  Mail,
+  Phone,
+  Plus,
+  Search,
+  ShieldAlert,
+} from "lucide-react";
+import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
@@ -20,9 +20,16 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { CategoryType, StageType } from "@/core/types/app-enums";
 import { cn } from "@/core/utils/cn";
 import type { ProgrammeForAssignment } from "../types";
-import type { CategoryType, StageType } from "@/core/types/app-enums";
 
 function stageTypeLabel(stageType?: StageType | null): string {
   return stageType === "NON_STAGE" ? "Off stage" : "On stage";
@@ -41,25 +48,34 @@ interface ProgrammesTabProps {
   managerName?: string | null;
   managerEmail?: string | null;
   managerPhone?: string | null;
-  
+
   programmeSearch: string;
   setProgrammeSearch: (val: string) => void;
   selectedProgrammeCategoryId: string;
   setSelectedProgrammeCategoryId: (val: string) => void;
-  programmeCategoryOptions: { id: string; name: string; type: CategoryType | null }[];
+  programmeCategoryOptions: {
+    id: string;
+    name: string;
+    type: CategoryType | null;
+  }[];
   selectedProgrammeType: string;
   setSelectedProgrammeType: (val: "ALL" | "GROUP" | "INDIVIDUAL") => void;
   assignmentStatusFilter: string;
-  setAssignmentStatusFilter: (val: "ALL" | "COMPLETED" | "NOT_COMPLETED") => void;
-  
+  setAssignmentStatusFilter: (
+    val: "ALL" | "COMPLETED" | "NOT_COMPLETED",
+  ) => void;
+
   setAssignmentModalOpen: (open: boolean) => void;
-  
+
   eligibleProgrammes: ProgrammeForAssignment[];
   assignPageIndex: number;
   setAssignPageIndex: (page: number | ((p: number) => number)) => void;
   pageSize: number;
-  
-  groupCapacityByProgrammeId: Map<string, { used: number; total: number; isFull: boolean }>;
+
+  groupCapacityByProgrammeId: Map<
+    string,
+    { used: number; total: number; isFull: boolean }
+  >;
   openAssignDrawer: (programmeId: string) => void;
 }
 
@@ -76,7 +92,7 @@ export function ProgrammesTab({
   managerName,
   managerEmail,
   managerPhone,
-  
+
   programmeSearch,
   setProgrammeSearch,
   selectedProgrammeCategoryId,
@@ -86,14 +102,14 @@ export function ProgrammesTab({
   setSelectedProgrammeType,
   assignmentStatusFilter,
   setAssignmentStatusFilter,
-  
+
   setAssignmentModalOpen,
-  
+
   eligibleProgrammes,
   assignPageIndex,
   setAssignPageIndex,
   pageSize,
-  
+
   groupCapacityByProgrammeId,
   openAssignDrawer,
 }: ProgrammesTabProps) {
@@ -103,8 +119,8 @@ export function ProgrammesTab({
         <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-blue-500/30 bg-blue-500/[0.06] px-4 py-3 text-sm text-blue-600">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <p className="leading-relaxed">
-            The festival manager hasn't set an assignment window yet — reach
-            out to them to enable new assignments.
+            The festival manager hasn't set an assignment window yet — reach out
+            to them to enable new assignments.
           </p>
         </div>
       )}
@@ -160,9 +176,7 @@ export function ProgrammesTab({
               {(managerName || managerEmail || managerPhone) && (
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
                   {managerName && (
-                    <span className="text-muted-foreground">
-                      {managerName}
-                    </span>
+                    <span className="text-muted-foreground">{managerName}</span>
                   )}
                   {managerEmail && (
                     <a
@@ -202,15 +216,15 @@ export function ProgrammesTab({
         <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-sm text-amber-600">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <p className="leading-relaxed">
-            The festival manager has disabled removing assignments. Contact
-            them if something needs to change.
+            The festival manager has disabled removing assignments. Contact them
+            if something needs to change.
           </p>
         </div>
       )}
 
-      <div>
-        <div className="mb-3 sm:mb-5 flex flex-col xl:flex-row xl:items-center gap-3">
-          <div className="relative flex-1">
+      <div className="flex flex-col gap-2">
+        <div className=" grid grid-cols-3 sm:grid-cols-5  gap-2">
+          <div className="col-span-3 sm:col-span-1   relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search programmes..."
@@ -219,73 +233,66 @@ export function ProgrammesTab({
               className="h-10 w-full rounded-full pl-9"
             />
           </div>
-          <div className="flex flex-wrap lg:flex-row items-center gap-2">
-            <div className="w-full grid grid-cols-3 gap-2 lg:w-auto">
-              <Select
-                value={selectedProgrammeCategoryId}
-                onValueChange={setSelectedProgrammeCategoryId}
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm w-auto">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All categories</SelectItem>
-                  {programmeCategoryOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <Select
+            value={selectedProgrammeCategoryId}
+            onValueChange={setSelectedProgrammeCategoryId}
+          >
+            <SelectTrigger className="h-9 rounded-full text-sm w-full  sm:w-auto">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All categories</SelectItem>
+              {programmeCategoryOptions.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              <Select
-                value={selectedProgrammeType}
-                onValueChange={(v) =>
-                  setSelectedProgrammeType(
-                    v as "ALL" | "GROUP" | "INDIVIDUAL",
-                  )
-                }
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm w-auto">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All types</SelectItem>
-                  <SelectItem value="GROUP">Group</SelectItem>
-                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
-                </SelectContent>
-              </Select>
+          <Select
+            value={selectedProgrammeType}
+            onValueChange={(v) =>
+              setSelectedProgrammeType(v as "ALL" | "GROUP" | "INDIVIDUAL")
+            }
+          >
+            <SelectTrigger className="h-9 rounded-full text-sm w-full sm:w-auto">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All types</SelectItem>
+              <SelectItem value="GROUP">Group</SelectItem>
+              <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+            </SelectContent>
+          </Select>
 
-              <Select
-                value={assignmentStatusFilter}
-                onValueChange={(v) =>
-                  setAssignmentStatusFilter(
-                    v as "ALL" | "COMPLETED" | "NOT_COMPLETED",
-                  )
-                }
-              >
-                <SelectTrigger className="h-9 rounded-full text-sm w-auto">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All statuses</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="NOT_COMPLETED">Uncompleted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {canAssign && (
-              <Button
-                size="sm"
-                className="h-9 w-full lg:w-auto rounded-full xl:ml-2"
-                onClick={() => setAssignmentModalOpen(true)}
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                New assignment
-              </Button>
-            )}
-          </div>
+          <Select
+            value={assignmentStatusFilter}
+            onValueChange={(v) =>
+              setAssignmentStatusFilter(
+                v as "ALL" | "COMPLETED" | "NOT_COMPLETED",
+              )
+            }
+          >
+            <SelectTrigger className="h-9 rounded-full text-sm w-full sm:w-auto">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="NOT_COMPLETED">Uncompleted</SelectItem>
+            </SelectContent>
+          </Select>
+          {canAssign && (
+            <Button
+              className="h-9 w-full col-span-4 sm:col-span-1 sm:w-auto rounded-full "
+              size="sm"
+              onClick={() => setAssignmentModalOpen(true)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              New assignment
+            </Button>
+          )}
         </div>
 
         {eligibleProgrammes.length === 0 ? (
@@ -319,8 +326,7 @@ export function ProgrammesTab({
                             </span>
                           </div>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {p.category.name} · {stageTypeLabel(p.stageType)}{" "}
-                            ·{" "}
+                            {p.category.name} · {stageTypeLabel(p.stageType)} ·{" "}
                             {p.type === "GROUP"
                               ? `Team · ${p.maxTeamsPerGroup} teams of ${p.maxParticipantsPerTeam}`
                               : `Individual · max ${p.maxParticipantsPerGroup}`}

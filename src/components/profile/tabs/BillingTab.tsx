@@ -10,7 +10,6 @@ import {
   StatusPill,
   type StatusTone,
 } from "@/components/app/AppSection";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { BillingHistorySkeleton } from "@/components/ui/Skeletons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate, parseInstant } from "@/core/datetime";
@@ -29,7 +28,6 @@ export function BillingTab() {
   const payments = data?.history ?? [];
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const displayTz = useDisplayTimezone();
 
   if (isLoading) {
     return (
@@ -89,7 +87,6 @@ export function BillingTab() {
                           {[
                             payment.createdAt
                               ? formatDate(createdAt, {
-                                  tz: displayTz,
                                   style: "long",
                                 })
                               : "Unknown date",

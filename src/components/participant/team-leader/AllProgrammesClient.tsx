@@ -86,7 +86,7 @@ export function AllProgrammesClient({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [selectedCategoryId]);
+  }, []);
 
   const visibleItems = useMemo(() => {
     return items.filter(
@@ -97,24 +97,26 @@ export function AllProgrammesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Select
-          value={selectedCategoryId}
-          onValueChange={setSelectedCategoryId}
-        >
-          <SelectTrigger className="h-9 w-full rounded-full sm:w-[220px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categoryOptions.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+      <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Select
+            value={selectedCategoryId}
+            onValueChange={setSelectedCategoryId}
+          >
+            <SelectTrigger className="h-9 w-full rounded-full">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categoryOptions.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div />
+        </div>
         <p className="text-xs tabular-nums text-muted-foreground">
           {visibleItems.length} of {items.length}
         </p>

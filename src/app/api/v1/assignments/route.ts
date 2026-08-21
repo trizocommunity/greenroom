@@ -64,7 +64,7 @@ const adminOnlyHandler = createProtectedHandler({
     const parsed = createAssignmentInput.safeParse(data);
     if (!parsed.success)
       return badRequest("INVALID_INPUT", parsed.error.message);
-    let result;
+    let result: Awaited<ReturnType<typeof AssignmentService.create>>;
     if (parsed.data.participantId) {
       result = await AssignmentService.create(festivalId, {
         programmeId: parsed.data.programmeId,

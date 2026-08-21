@@ -378,9 +378,7 @@ export const ManualBookService = {
 
     doc.setFontSize(10);
     const fmt = (s: string | null) =>
-      s && parseInstant(s)
-        ? formatDate(s, { tz: "UTC", style: "medium" })
-        : "N/A";
+      s && parseInstant(s) ? formatDate(s, { style: "medium" }) : "N/A";
     doc.text(
       `${data.festival.tierLabel} Plan | ${fmt(data.festival.startDate)} - ${fmt(data.festival.endDate)}`,
       pageW / 2,
@@ -484,7 +482,7 @@ export const ManualBookService = {
 
     doc.setFontSize(8);
     doc.text(
-      `Generated on ${formatDate(serverNow(), { tz: "UTC", style: "medium" })}`,
+      `Generated on ${formatDate(serverNow(), { style: "medium" })} UTC`,
       pageW / 2,
       290,
       { align: "center" },

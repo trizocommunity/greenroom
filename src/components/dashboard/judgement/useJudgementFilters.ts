@@ -1,9 +1,8 @@
 "use client";
 
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import { useCallback, useState } from "react";
 import { parseInstant } from "@/core/datetime";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import type { Programme, ReportingDetails } from "./types";
 
 export type ScheduleStateFilter = "ALL" | "SCHEDULED" | "UNSCHEDULED";
@@ -14,8 +13,14 @@ export interface JudgementFiltersState {
   setSearchQuery: (v: string) => void;
   filterScheduleState: ScheduleStateFilter;
   setFilterScheduleState: (v: ScheduleStateFilter) => void;
-  filterDate: Date | undefined;
-  setFilterDate: (v: Date | undefined) => void;
+  /**
+   * Selected dates for the date filter. Empty array means "All Dates" (no
+   * filter); non-empty matches programmes whose schedule day is any of the
+   * selected dates (OR semantics). Defaults to `[new Date()]` to preserve
+   * the prior "today by default" behaviour.
+   */
+  filterDate: Date[];
+  setFilterDate: (v: Date[]) => void;
 
   // drawer state (stage + category + type)
   selectedStageId: string;
@@ -56,6 +61,10 @@ export interface JudgementFiltersState {
 /**
  * Holds every filter input for the judgement dashboard. Components read state
  * via the returned object; pure filtering lives in `judgementFilters` below.
+ *
+ * Note: the `scheduledDates` list for the date combobox is computed by the
+ * parent (e.g. `JudgementWizardClient`) so it stays in sync with the live
+ * React Query data; this hook just owns the user-controlled filter state.
  */
 export function useJudgementFilters({
   stages = [],
@@ -65,9 +74,7 @@ export function useJudgementFilters({
   stages?: Array<{ id: string; name: string }>;
   initialStageId?: string | null;
   hideStageFilter?: boolean;
-}): JudgementFiltersState {
-  const displayTz = useDisplayTimezone();
-
+} = {}): JudgementFiltersState {
   const autoLockedStageId =
     hideStageFilter && stages.length === 1 ? stages[0]!.id : null;
   const [selectedStageId, setSelectedStageId] = useState<string>(
@@ -77,7 +84,7 @@ export function useJudgementFilters({
 
   const [filterScheduleState, setFilterScheduleState] =
     useState<ScheduleStateFilter>("SCHEDULED");
-  const [filterDate, setFilterDate] = useState<Date | undefined>(new Date());
+  const [filterDate, setFilterDate] = useState<Date[]>([new Date()]);
 
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [filterType, setFilterType] = useState<string>("ALL");
@@ -113,21 +120,19 @@ export function useJudgementFilters({
       if (filterScheduleState === "UNSCHEDULED" && details?.scheduleStart)
         return false;
 
-      if (filterDate && details?.scheduleStart) {
+      if (filterDate.length > 0 && details?.scheduleStart) {
         const d = parseInstant(details.scheduleStart);
         if (d) {
-          const key = formatInTimeZone(d, displayTz, "yyyy-MM-dd");
-          const targetDate = formatInTimeZone(
-            filterDate,
-            displayTz,
-            "yyyy-MM-dd",
+          const key = format(d, "yyyy-MM-dd");
+          const keys = new Set(
+            filterDate.map((dt) => format(dt, "yyyy-MM-dd")),
           );
-          if (key !== targetDate) return false;
+          if (!keys.has(key)) return false;
         }
       }
       return true;
     },
-    [filterScheduleState, filterDate, displayTz],
+    [filterScheduleState, filterDate],
   );
 
   return {

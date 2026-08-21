@@ -3,7 +3,7 @@
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateFilterCombobox } from "@/components/ui/date-filter-combobox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -28,6 +28,7 @@ export function JudgementFiltersBar({
   onFilterScheduleStateChange,
   filterDate,
   onFilterDateChange,
+  scheduledDates,
   activeFilterCount,
   onOpenFilterSheet,
 }: {
@@ -35,8 +36,9 @@ export function JudgementFiltersBar({
   onSearchChange: (v: string) => void;
   filterScheduleState: ScheduleStateFilter;
   onFilterScheduleStateChange: (v: ScheduleStateFilter) => void;
-  filterDate: Date | undefined;
-  onFilterDateChange: (v: Date | undefined) => void;
+  filterDate: Date[];
+  onFilterDateChange: (v: Date[]) => void;
+  scheduledDates: Array<{ key: string; label: string }>;
   activeFilterCount: number;
   onOpenFilterSheet: () => void;
 }) {
@@ -81,9 +83,10 @@ export function JudgementFiltersBar({
       </div>
 
       <div className="col-span-3 sm:col-span-1 min-w-[130px]">
-        <DatePicker
-          date={filterDate}
+        <DateFilterCombobox
+          value={filterDate}
           onChange={onFilterDateChange}
+          availableDates={scheduledDates}
           placeholder="All Dates"
           className="h-10 bg-background"
         />

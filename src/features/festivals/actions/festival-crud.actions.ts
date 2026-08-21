@@ -18,6 +18,8 @@ import {
   ERROR_MESSAGES,
   handleActionError,
 } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
   type CreateFestivalInput,
@@ -25,6 +27,7 @@ import {
 } from "@/features/festivals/schemas/festival.schema";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
+import { invalidatePublicFestivalCaches } from "@/features/festivals/services/public-cache-invalidation";
 import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 import { reconcileFestivalDomain } from "@/features/institutions/services/custom-domain-provisioning.service";
 import { resolveInstitutionIdForOwner } from "@/features/institutions/services/festival-institution-link.service";
@@ -117,8 +120,6 @@ export async function createFestival(input: CreateFestivalInput) {
           institutionType: (data.institutionType as any) || "OTHER",
           institutionName: data.institutionName,
           location: data.location,
-          timezone:
-            data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
           startDate: parseInstant(data.startDate)?.toISOString(),
           endDate: parseInstant(data.endDate)?.toISOString(),
           ownerId: session.userId,
@@ -167,6 +168,12 @@ export async function createFestival(input: CreateFestivalInput) {
       targetType: "FESTIVAL",
       targetId: result.id,
       metadata: { name: result.name, tier: result.tier },
+    });
+
+    await publish(keys.superAdminStats(), {
+      type: "festival_created",
+      delta: 1,
+      occurredAt: result.createdAt,
     });
 
     revalidatePath("/profile");
@@ -365,6 +372,10 @@ export async function updateFestivalSettingsAction(
       .returning();
 
     revalidatePath(`/dashboard/${festival.slug}/settings`);
+    await invalidatePublicFestivalCaches({
+      festivalId,
+      slug: festival.slug,
+    });
     return { success: true, data: updated };
   } catch (error) {
     return handleActionError(error);
@@ -424,6 +435,10 @@ export async function setPublicSiteEnabledAction(
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
     revalidatePath(`/dashboard/${festival.slug}`);
+    await invalidatePublicFestivalCaches({
+      festivalId,
+      slug: festival.slug,
+    });
     return { success: true };
   } catch (error) {
     return handleActionError(error);
@@ -495,6 +510,10 @@ export async function updateFestivalBrandingAction(data: {
     });
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
+    await invalidatePublicFestivalCaches({
+      festivalId: festival.id,
+      slug: festival.slug,
+    });
     return { success: true };
   } catch (error) {
     return handleActionError(error);
@@ -606,7 +625,6 @@ export async function relaunchFestival(input: {
           expiresAt,
           publicSiteEnabled: false,
           scoringSystem: "SCORE_BASED",
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           createdAt: now,
           updatedAt: now,
         })

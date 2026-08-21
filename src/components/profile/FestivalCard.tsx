@@ -10,7 +10,6 @@ import {
   StatusPill,
   type StatusTone,
 } from "@/components/app/AppSection";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import { getFestivalDurationDays } from "@/config/pricing";
 import { formatDate, parseInstant } from "@/core/datetime";
@@ -46,7 +45,6 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
   const isActive = !isExpired && (status === "ONGOING" || status === "READY");
 
   const totalDays = getFestivalDurationDays();
-  const displayTz = useDisplayTimezone();
   const createdAt = parseInstant(festival.createdAt) ?? new Date(NaN);
   const expiresAt = festival.expiresAt
     ? (parseInstant(festival.expiresAt) ?? addDays(createdAt, totalDays))
@@ -84,7 +82,7 @@ export function FestivalCard({ festival, onEdit }: FestivalCardProps) {
             {festival.name}
           </h3>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Created {formatDate(createdAt, { tz: displayTz, style: "long" })}
+            Created {formatDate(createdAt, { style: "long" })}
           </p>
         </div>
 

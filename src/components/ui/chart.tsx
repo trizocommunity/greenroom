@@ -78,6 +78,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 
   return (
     <style
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: theme CSS is built from a static THEMES map and a generated id, not user input
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(

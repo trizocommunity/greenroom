@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { FestivalRoleBadge } from "@/components/festival/FestivalRoleBadge";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +44,6 @@ export function PendingInvitationCard({
   const resendInvitation = useResendInvitation();
   const [isCancelling, setIsCancelling] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const displayTz = useDisplayTimezone();
 
   const handleCancel = async () => {
     setIsCancelling(true);
@@ -204,7 +202,7 @@ export function PendingInvitationCard({
             <span className="text-sm whitespace-nowrap">
               <span className="text-muted-foreground">Invited: </span>
               <span className="font-medium text-foreground">
-                {formatDate(createdAt, { tz: displayTz, style: "medium" })}
+                {formatDate(createdAt, { style: "medium" })}
               </span>
             </span>
           </div>
@@ -214,7 +212,7 @@ export function PendingInvitationCard({
                 {isExpired ? "Expired On: " : "Expires: "}
               </span>
               <span className="font-medium text-foreground">
-                {formatDate(expiresAt, { tz: displayTz, style: "medium" })}
+                {formatDate(expiresAt, { style: "medium" })}
               </span>
             </span>
           </div>

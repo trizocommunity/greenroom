@@ -1,4 +1,5 @@
 import { and, count, desc, eq, isNotNull } from "drizzle-orm";
+import { cache } from "@/core/cache/instance";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
@@ -28,6 +29,7 @@ export type PublicNewsData = {
 
 export const PUBLIC_NEWS_PAGE_SIZE = 10;
 const MAX_NEWS_PAGE_SIZE = 50;
+const PUBLIC_NEWS_TTL_MS = 10 * 60 * 1000;
 
 /**
  * A page of published news posts, newest first.
@@ -35,6 +37,10 @@ const MAX_NEWS_PAGE_SIZE = 50;
  * Posts carry their full `content`, so a festival with a busy news feed used
  * to ship every article inside the first HTML payload. The page size caps
  * that; further pages come from `/api/festivals/[slug]/news`.
+ *
+ * Page 1 is cached per festivalId for 10 minutes — append-only writes mean
+ * stale pages are fine and the cache invalidates on every news write.
+ * Pages 2+ bypass the cache (they're tiny and only hit by client pagination).
  */
 export async function getPublicNewsData(
   festivalSlug: string,
@@ -46,6 +52,23 @@ export async function getPublicNewsData(
     Math.max(1, Math.trunc(options?.pageSize ?? PUBLIC_NEWS_PAGE_SIZE)),
   );
 
+  if (page !== 1) {
+    return loadPublicNewsPage(festivalSlug, page, pageSize);
+  }
+
+  const festivalId = await resolveFestivalId(festivalSlug);
+  if (!festivalId) return null;
+
+  return cache.wrap(keys.newsList(festivalId), PUBLIC_NEWS_TTL_MS, async () =>
+    loadPublicNewsPage(festivalSlug, 1, pageSize),
+  );
+}
+
+async function loadPublicNewsPage(
+  festivalSlug: string,
+  page: number,
+  pageSize: number,
+): Promise<PublicNewsData | null> {
   const festival = await db.query.festival.findFirst({
     where: eq(festivalTable.slug, festivalSlug),
     columns: { id: true, name: true, slug: true, branding: true },
@@ -123,4 +146,25 @@ export async function getPublicNewsPostBySlug(
     festival: { name: festival.name, slug: festival.slug },
     post: post as PublicNewsPost,
   };
+}
+
+// Slug → festivalId resolver, cached separately so the news cache and media
+// cache share the result for the same slug.
+import { keys } from "@/core/redis/keys";
+
+const SLUG_TO_ID_TTL_MS = 60 * 60 * 1000;
+
+async function resolveFestivalId(festivalSlug: string): Promise<string | null> {
+  const cacheKey = `${keys.slugFestival(festivalSlug)}:id`;
+  const cached = await cache.get<string>(cacheKey);
+  if (cached !== null) return cached;
+
+  const row = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, festivalSlug),
+    columns: { id: true },
+  });
+  if (!row) return null;
+
+  await cache.set(cacheKey, row.id, { ttlMs: SLUG_TO_ID_TTL_MS });
+  return row.id;
 }

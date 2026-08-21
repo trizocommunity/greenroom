@@ -1,5 +1,4 @@
 import { MS } from "./constants";
-import { isValidTimezone } from "./user-tz";
 
 /**
  * Server-side "now" — returns a fresh `Date` from the Node clock.
@@ -44,47 +43,3 @@ export function nowPlus(offsetMs: number): Date {
 }
 
 export { MS };
-
-/**
- * Resolve which timezone to use when rendering a date in the current
- * request context. Resolution order:
- *   1. Explicit `tz` argument (highest priority)
- *   2. Festival's `timezone` column if `festivalId` is provided
- *   3. User's `timezone` column if `userId` is provided
- *   4. `"UTC"` as last-resort
- *
- * The optional `lookup` callback is used to read festival/user rows
- * without binding this module to a specific ORM. Most callers will
- * pass a small `(ids) => Promise<{ festivalTz?, userTz? }>` adapter.
- */
-export async function resolveDisplayTimezone(
-  ctx: {
-    tz?: string;
-    festivalId?: string;
-    userId?: string;
-  },
-  lookup?: (ctx: { festivalId?: string; userId?: string }) => Promise<{
-    festivalTz?: string | null;
-    userTz?: string | null;
-  }>,
-): Promise<string> {
-  if (ctx.tz && isValidTimezone(ctx.tz)) return ctx.tz;
-  if (lookup) {
-    const { festivalTz, userTz } = await lookup(ctx);
-    if (festivalTz && isValidTimezone(festivalTz)) return festivalTz;
-    if (userTz && isValidTimezone(userTz)) return userTz;
-  }
-  return "UTC";
-}
-
-/**
- * Server-side helper: read the current user's timezone from the session.
- * Returns `null` when not authenticated or when the column is unset.
- * Used by server actions / API routes to render datetimes in the user's
- * preferred timezone. See Phase 7 wiring.
- */
-export type SessionUserTimezoneReader = () => Promise<string | null>;
-
-export function noopUserTimezoneReader(): Promise<string | null> {
-  return Promise.resolve(null);
-}

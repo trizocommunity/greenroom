@@ -5,8 +5,6 @@ import { Crown, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
-import { reportedEntriesFromScratchTiles } from "@/features/programmes/domain/reported-entries";
-import { ReportedEntriesPanel } from "./ReportedEntriesPanel";
 import type { ScratchTile } from "./types";
 
 type ScratchGridProps = {
@@ -37,7 +35,6 @@ export function ScratchGrid({
 }: ScratchGridProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const reportedEntries = reportedEntriesFromScratchTiles({ tiles });
 
   const current = tiles.find((t) => t.queuePosition === currentQueuePosition);
   const remaining = tiles.filter((t) => !t.revealedAt).length;
@@ -167,7 +164,6 @@ export function ScratchGrid({
         </p>
       ) : null}
 
-      <ReportedEntriesPanel entries={reportedEntries} />
     </div>
   );
 }

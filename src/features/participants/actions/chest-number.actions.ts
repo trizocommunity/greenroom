@@ -12,6 +12,8 @@ import {
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import { generateProfileSlug } from "@/core/utils/slug";
 
 export async function getChestNumberSettings(festivalId: string) {
@@ -206,6 +208,14 @@ export async function generateChestNumbers(festivalId: string) {
   });
 
   revalidatePath(`/dashboard/${festival.slug}/pre-event-works/participants`);
+
+  await publish(keys.festivalChestNumbers(festivalId), {
+    groupId: null,
+    range: { count: eligibleParticipants.length },
+    assignedBy: session!.userId,
+    assignedAt: serverNowIso(),
+  });
+
   return {
     count: eligibleParticipants.length,
     message: `Chest numbers generated for ${eligibleParticipants.length} participants.`,
@@ -253,7 +263,14 @@ export async function assignChestNumberForNewParticipant(
   const session = await getSession();
   await assertFestivalAccess(session, festivalId, { requireWritable: true });
 
-  return assignChestNumberForParticipantInternal(festivalId, participantId, tx);
+  await assignChestNumberForParticipantInternal(festivalId, participantId, tx);
+
+  await publish(keys.festivalChestNumbers(festivalId), {
+    groupId: null,
+    range: { count: 1 },
+    assignedBy: session!.userId,
+    assignedAt: serverNowIso(),
+  });
 }
 
 export async function assignChestNumberForParticipantInternal(
@@ -486,4 +503,11 @@ export async function updateAllChestNumbers(
   });
 
   revalidatePath(`/dashboard/${festival.slug}/pre-event-works/participants`);
+
+  await publish(keys.festivalChestNumbers(festivalId), {
+    groupId: null,
+    range: { count: eligibleParticipants.length },
+    assignedBy: session!.userId,
+    assignedAt: serverNowIso(),
+  });
 }

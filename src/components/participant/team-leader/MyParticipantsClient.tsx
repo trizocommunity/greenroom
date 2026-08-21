@@ -1,6 +1,6 @@
 "use client";
 
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import {
   Crown,
   ExternalLink,
@@ -26,7 +26,6 @@ import { ParticipantDetailsDialog } from "@/components/festival/pre-event-works/
 import { AddParticipantDialog } from "@/components/participant/team-leader/AddParticipantDialog";
 import { EditParticipantDialog } from "@/components/participant/team-leader/EditParticipantDialog";
 import { useFestivalPath } from "@/components/providers/custom-domain-provider";
-import { useDisplayTimezone } from "@/components/providers/user-timezone-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -108,7 +107,6 @@ export function MyParticipantsClient({
 }) {
   const router = useRouter();
   const toFestivalPath = useFestivalPath(festivalSlug);
-  const festivalTz = useDisplayTimezone();
   const {
     isLocked,
     isUnconfigured,
@@ -126,9 +124,8 @@ export function MyParticipantsClient({
   const canEditParticipants = tlHasAccess && canEdit;
 
   const formatBound = useMemo(
-    () => (d: Date | null) =>
-      d ? formatInTimeZone(d, festivalTz, "EEE, MMM d • h:mm a") : null,
-    [festivalTz],
+    () => (d: Date | null) => (d ? format(d, "EEE, MMM d • h:mm a") : null),
+    [],
   );
   const startLabel = formatBound(windowStartDate);
   const deadlineLabel = formatBound(windowEndDate);
@@ -165,14 +162,14 @@ export function MyParticipantsClient({
       filtered = filtered.filter(
         (s) =>
           s.name.toLowerCase().includes(q) ||
-          (s.chestNumber && s.chestNumber.toLowerCase().includes(q)),
+          s.chestNumber?.toLowerCase().includes(q),
       );
     }
     return filtered;
   }, [participants, selectedCategoryId, participantSearch]);
 
   // Reset pagination when filter changes
-  useMemo(() => setPageIndex(0), [selectedCategoryId, participantSearch]);
+  useMemo(() => setPageIndex(0), []);
 
   return (
     <div className="space-y-8">
@@ -181,31 +178,11 @@ export function MyParticipantsClient({
         title="My participants"
         description="Everyone in your group, with their category and chest number."
         actions={
-          <>
-            <DeadlinesCard
-              label="Participants"
-              start={windowStart}
-              end={deadline}
-            />
-            {canAddParticipants && (
-              <AddParticipantDialog
-                festivalId={festivalId}
-                categories={allCategories}
-                disabled={runtimeIsReadOnly}
-                onCreated={() => router.refresh()}
-                trigger={
-                  <Button
-                    size="sm"
-                    disabled={runtimeIsReadOnly}
-                    className="h-9 rounded-full"
-                  >
-                    <Plus className="mr-1.5 h-3.5 w-3.5" />
-                    Add participant
-                  </Button>
-                }
-              />
-            )}
-          </>
+          <DeadlinesCard
+            label="Participants"
+            start={windowStart}
+            end={deadline}
+          />
         }
       />
 
@@ -273,22 +250,22 @@ export function MyParticipantsClient({
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search participants by name or chest number..."
-            value={participantSearch}
-            onChange={(e) => setParticipantSearch(e.target.value)}
-            className="h-10 w-full rounded-full pl-9"
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search participants by name or chest number..."
+              value={participantSearch}
+              onChange={(e) => setParticipantSearch(e.target.value)}
+              className="h-10 w-full rounded-full pl-9"
+            />
+          </div>
           <Select
             value={selectedCategoryId}
             onValueChange={setSelectedCategoryId}
           >
-            <SelectTrigger className="h-9 w-full rounded-full sm:w-[200px]">
+            <SelectTrigger className="h-10 w-full rounded-full">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -300,11 +277,29 @@ export function MyParticipantsClient({
               ))}
             </SelectContent>
           </Select>
-
-          <p className="text-xs tabular-nums text-muted-foreground">
-            {visibleParticipants.length} of {participants.length}
-          </p>
+          {canAddParticipants ? (
+            <AddParticipantDialog
+              festivalId={festivalId}
+              categories={allCategories}
+              disabled={runtimeIsReadOnly}
+              onCreated={() => router.refresh()}
+              trigger={
+                <Button
+                  className="order-3 h-10 w-full rounded-full sm:col-span-2"
+                  disabled={runtimeIsReadOnly}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add participant
+                </Button>
+              }
+            />
+          ) : (
+            <div className="order-3 sm:col-span-2" />
+          )}
         </div>
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {visibleParticipants.length} of {participants.length}
+        </p>
       </div>
 
       {visibleParticipants.length === 0 ? (
@@ -328,7 +323,9 @@ export function MyParticipantsClient({
                       <span className="truncate text-[15px] font-medium text-heading">
                         {s.name}
                       </span>
-                      {s.assignments?.some((a: any) => a.limitWarning?.isOverLimit) && (
+                      {s.assignments?.some(
+                        (a: any) => a.limitWarning?.isOverLimit,
+                      ) && (
                         <StatusPill tone="danger" icon={ShieldAlert}>
                           Limit Exceeded
                         </StatusPill>

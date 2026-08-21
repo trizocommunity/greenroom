@@ -41,7 +41,6 @@ const handler = createProtectedHandler({
       slug,
       location,
       institutionName,
-      timezone,
       startDate,
       endDate,
     } = parsed.data;
@@ -58,7 +57,6 @@ const handler = createProtectedHandler({
         institutionType as (typeof festivalsTable.institutionType.enumValues)[number],
       institutionName,
       location,
-      timezone,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
     });

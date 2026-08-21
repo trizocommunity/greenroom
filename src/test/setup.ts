@@ -22,6 +22,7 @@ afterEach(() => {
 beforeAll(() => {
   Object.assign(process.env, {
     NODE_ENV: "test",
+    TZ: "UTC",
     DATABASE_URL: "postgresql://test:test@localhost:5432/test",
     BETTER_AUTH_SECRET: "test-secret-key-for-testing-only",
     BETTER_AUTH_URL: "http://localhost:3000",

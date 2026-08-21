@@ -49,7 +49,7 @@ export function EditorCanvasSizeSetup({
   const onWidthChange = (val: string) => {
     setWidthInput(val);
     const w = parseInt(val, 10);
-    if (!isNaN(w) && w > 0 && lockAspect) {
+    if (!Number.isNaN(w) && w > 0 && lockAspect) {
       setHeightInput(String(Math.round(w / aspect)));
     }
   };
@@ -57,7 +57,7 @@ export function EditorCanvasSizeSetup({
   const onHeightChange = (val: string) => {
     setHeightInput(val);
     const h = parseInt(val, 10);
-    if (!isNaN(h) && h > 0 && lockAspect) {
+    if (!Number.isNaN(h) && h > 0 && lockAspect) {
       setWidthInput(String(Math.round(h * aspect)));
     }
   };

@@ -28,7 +28,6 @@ export const createFestivalInput = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   location: z.string().optional(),
-  timezone: z.string().optional(),
   publicSiteEnabled: z.boolean().optional(),
   institutionName: z.string().optional(),
   institutionType: z.string().optional(),
@@ -42,7 +41,6 @@ export const updateFestivalInput = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   location: z.string().optional(),
-  timezone: z.string().optional(),
   publicSiteEnabled: z.boolean().optional(),
   slug: z
     .string()

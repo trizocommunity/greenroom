@@ -27,7 +27,11 @@ const handler = createProtectedHandler({
       return badRequest("INVALID_INPUT", parsed.error.message);
     }
 
-    const rateLimit = checkRateLimit(`upload:${user!.userId}`, 10, MS.hour);
+    const rateLimit = await checkRateLimit(
+      `upload:${user!.userId}`,
+      10,
+      MS.hour,
+    );
     if (!rateLimit.allowed) {
       return tooManyRequests("Upload limit exceeded. Please try again later.");
     }

@@ -1,17 +1,16 @@
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { participant } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { publish } from "@/core/pubsub/redis-pubsub";
+import { keys } from "@/core/redis/keys";
 import * as repo from "../repositories/food-entry.repository";
 
-export async function getFoodHallDashboardData(
-  festivalId: string,
-  timezone: string,
-) {
+export async function getFoodHallDashboardData(festivalId: string) {
   const slots = await repo.getFoodSlots(festivalId);
   const today = new Date();
-  const todayString = formatInTimeZone(today, timezone, "yyyy-MM-dd");
+  const todayString = format(today, "yyyy-MM-dd");
   let sessions = await repo.getFoodSessionsWithStats(
     festivalId,
     todayString,
@@ -52,7 +51,6 @@ export async function getFoodHallDashboardData(
     slots,
     todaySessionsBySlotId,
     todayString,
-    timezone,
   };
 }
 
@@ -77,7 +75,7 @@ export async function recordFoodEntry(
   const p = await db.query.participant.findFirst({
     where: and(
       eq(participant.festivalId, festivalId),
-      eq(participant.chestNumber, chestNumber), // assuming chestNumber exists on participant
+      eq(participant.chestNumber, chestNumber),
     ),
   });
 
@@ -89,7 +87,6 @@ export async function recordFoodEntry(
   }
 
   // 3. Prevent duplicate entry for this session
-  // Done via database unique constraint (sessionId, participantId)
   try {
     const entry = await repo.insertFoodEntry({
       id: crypto.randomUUID(),
@@ -100,12 +97,18 @@ export async function recordFoodEntry(
       scannedByName: scannedByName || "Unknown",
       scannedByEmail,
     });
+
+    await publish(keys.foodHallEvents(session.slotId), {
+      participantId: p.id,
+      chestNumber,
+      scannedAt: entry.scannedAt,
+    });
+
     return {
       ...entry,
       participantName: p.name,
     };
   } catch (error: any) {
-    // Catch unique constraint violation (code 23505 in Postgres)
     if (error.code === "23505") {
       throw new AppError(
         "Participant has already checked into this session.",

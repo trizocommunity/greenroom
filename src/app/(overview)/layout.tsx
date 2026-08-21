@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import DashboardNavbar from "@/components/layout/DashboardNavbar";
-import { UserTimezoneProviderClient } from "@/components/providers/user-timezone-provider-client";
 import { getCurrentUser } from "@/core/auth/current-user";
 
 export default async function DashboardLayout({
@@ -23,11 +22,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <UserTimezoneProviderClient userTimezone={user.timezone}>
-      <div className="min-h-screen bg-background">
-        <DashboardNavbar user={user} />
-        <div className="pt-18">{children}</div>
-      </div>
-    </UserTimezoneProviderClient>
+    <div className="min-h-screen bg-background">
+      <DashboardNavbar user={user} />
+      <div className="pt-18">{children}</div>
+    </div>
   );
 }

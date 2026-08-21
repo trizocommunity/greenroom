@@ -1,8 +1,16 @@
 "use client";
 
-import { Loader2, Megaphone } from "lucide-react";
+import {
+  Loader2,
+  Megaphone,
+  MapPin,
+  Users,
+  User,
+  PlayCircle,
+  Hash,
+} from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -13,10 +21,11 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { startProgrammeReportingAction } from "@/features/programmes/actions/programme-reporting.actions";
+import { getProgrammeRosterAction } from "@/features/programmes/actions/programme.actions";
 import { notifyCallList } from "@/features/schedule/actions/schedule.actions";
 import type { EnrichedScheduleEntry } from "@/features/schedule/actions/schedule.actions";
 import { toast } from "@/lib/toast";
-import { MapPin, Users, User, PlayCircle } from "lucide-react";
+import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 
 interface ScheduleReportingDrawerProps {
   festivalId: string;
@@ -37,6 +46,20 @@ export function ScheduleReportingDrawer({
   const params = useParams();
   const slug = params?.slug as string;
   const [isPending, startTransition] = useTransition();
+  const [roster, setRoster] = useState<any[]>([]);
+  const [loadingRoster, setLoadingRoster] = useState(false);
+
+  useEffect(() => {
+    if (open && entry?.type === "PROGRAMME" && entry.programme) {
+      setLoadingRoster(true);
+      getProgrammeRosterAction(festivalId, entry.programme.id)
+        .then((data) => setRoster(data))
+        .catch(() => toast.error("Failed to load roster"))
+        .finally(() => setLoadingRoster(false));
+    } else {
+      setRoster([]);
+    }
+  }, [open, entry, festivalId]);
 
   if (!entry || entry.type !== "PROGRAMME" || !entry.programme) {
     return null;
@@ -84,7 +107,7 @@ export function ScheduleReportingDrawer({
             You are about to open the reporting desk for this programme.
           </DrawerDescription>
         </DrawerHeader>
-        <div className="py-4 space-y-4">
+        <div className="py-2 px-4 overflow-y-auto space-y-4">
           <div className="bg-muted/40 rounded-xl p-4 border space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5 mb-1">
@@ -132,8 +155,81 @@ export function ScheduleReportingDrawer({
               </div>
             </div>
           </div>
+
+          <div className="space-y-2 pb-4">
+            <h3 className="text-sm font-semibold text-foreground px-1">
+              Roster
+            </h3>
+            {loadingRoster ? (
+              <div className="flex justify-center p-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : roster.length === 0 ? (
+              <p className="text-sm text-muted-foreground px-1">
+                No participants assigned.
+              </p>
+            ) : (
+              <div className="border rounded-md divide-y overflow-hidden bg-background">
+                {(() => {
+                  if (!isGroup) {
+                    return roster.map((r, i) => (
+                      <div
+                        key={r.id || i}
+                        className="p-3 text-sm flex items-center justify-between gap-3"
+                      >
+                        <ParticipantNameBlock
+                          className="flex-1"
+                          primaryName={r.participantName || "Unnamed Participant"}
+                          isGroup={false}
+                        />
+                        {r.chestNumber && (
+                          <div className="shrink-0 flex items-center text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                            <Hash className="w-3 h-3 mr-1" />
+                            {r.chestNumber}
+                          </div>
+                        )}
+                      </div>
+                    ));
+                  }
+
+                  const byTeam = new Map<string, any[]>();
+                  for (const r of roster) {
+                    const key = `${r.groupId ?? "no-group"}::${r.teamNumber ?? "no-team"}`;
+                    if (!byTeam.has(key)) byTeam.set(key, []);
+                    byTeam.get(key)!.push(r);
+                  }
+
+                  return Array.from(byTeam.values()).map((members, i) => {
+                    const lead = members[0];
+                    const teamMemberNames = lead.teamMemberNames?.length > 0 
+                      ? lead.teamMemberNames 
+                      : members.slice(1).map((m: any) => m.participantName).filter(Boolean);
+                    
+                    return (
+                      <div
+                        key={lead.id || i}
+                        className="p-3 text-sm flex items-center justify-between gap-3"
+                      >
+                        <ParticipantNameBlock
+                          className="flex-1"
+                          primaryName={lead.teamLeadName
+                            ? `${lead.teamLeadName} & Party`
+                            : lead.participantName
+                              ? `${lead.participantName} & Party`
+                              : `${lead.groupName || "Unknown Team"} & Party`}
+                          isGroup={true}
+                          subtitle={lead.teamNumber ? `Team ${lead.teamNumber}` : undefined}
+                          teamMemberNames={teamMemberNames}
+                        />
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
+          </div>
         </div>
-        <DrawerFooter className="pt-0">
+        <DrawerFooter className="pt-0 border-t mt-auto bg-background">
           <Button className="w-full" onClick={handleStart} disabled={isPending}>
             {isPending ? (
               <>

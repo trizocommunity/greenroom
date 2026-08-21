@@ -87,3 +87,23 @@ export function useDeleteExport() {
     },
   );
 }
+
+export function useExportBlob({
+  exportId,
+  format,
+  enabled,
+}: {
+  exportId: string | null;
+  format: "PDF" | "CSV";
+  enabled: boolean;
+}) {
+  return useQuery<Blob | null>({
+    queryKey: ["export-blob", exportId, format],
+    enabled: !!exportId && enabled,
+    queryFn: async () => {
+      const res = await fetch(`/api/exports/${exportId}/download`);
+      if (!res.ok) throw new Error("Failed to fetch export");
+      return res.blob();
+    },
+  });
+}
