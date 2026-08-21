@@ -25,6 +25,7 @@ import {
 import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
+import { ClearScheduleDialog } from "@/components/festival/pre-event-works/schedule/ClearScheduleDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -158,6 +159,8 @@ export function ScheduleClient({
   const [swapEntry, setSwapEntry] = useState<EnrichedScheduleEntry | null>(
     null,
   );
+  const [clearScheduleOpen, setClearScheduleOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [reportingEntry, setReportingEntry] =
     useState<EnrichedScheduleEntry | null>(null);
 
@@ -335,6 +338,57 @@ export function ScheduleClient({
     }
   };
 
+  const handleClearSchedule = async (filters: {
+    dayKey: string | null;
+    stageId: string | null;
+    startTime: string | null;
+    endTime: string | null;
+  }) => {
+    setIsClearing(true);
+    try {
+      if (isReadOnly) return;
+      const toDelete = entries.filter((e) => {
+        if (filters.dayKey) {
+          const d = parseStoredScheduleInstant(e.startTime);
+          if (Number.isNaN(d.getTime()) || format(d, "yyyy-MM-dd") !== filters.dayKey) return false;
+        }
+        if (filters.stageId && e.stage?.id !== filters.stageId) return false;
+        if (filters.startTime) {
+          const d = parseStoredScheduleInstant(e.startTime);
+          if (Number.isNaN(d.getTime())) return false;
+          const startStr = format(d, "HH:mm");
+          if (startStr < filters.startTime) return false;
+        }
+        if (filters.endTime && e.endTime) {
+          const d = parseStoredScheduleInstant(e.endTime);
+          if (Number.isNaN(d.getTime())) return false;
+          const endStr = format(d, "HH:mm");
+          if (endStr > filters.endTime) return false;
+        }
+        return true;
+      });
+
+      if (toDelete.length === 0) {
+        toast.info("No entries matched the selected filters.");
+        setClearScheduleOpen(false);
+        return;
+      }
+
+      await Promise.all(
+        toDelete.map((e) => deleteScheduleItem.mutateAsync({ festivalId, entryId: e.id }))
+      );
+
+      toast.success(`Removed ${toDelete.length} entries from schedule.`);
+      setEntries((prev) => prev.filter((e) => !toDelete.find((d) => d.id === e.id)));
+      setClearScheduleOpen(false);
+      refresh();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to clear schedule entries.");
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const handleNotify = async (entry: EnrichedScheduleEntry) => {
     try {
       const res = await notifyCallList(festivalId, entry.id);
@@ -378,7 +432,18 @@ export function ScheduleClient({
               </Badge>
             )}
             {!isReadOnly && (
-              <Button
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setClearScheduleOpen(true)}
+                  disabled={!canAdd || entries.length === 0}
+                  className="gap-1.5"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear Schedule
+                </Button>
+                <Button
                 size="sm"
                 onClick={() => {
                   if (!hasStages) {
@@ -529,6 +594,15 @@ export function ScheduleClient({
         onSuccess={() => {
           setReportingEntry(null);
         }}
+      />
+
+      <ClearScheduleDialog
+        open={clearScheduleOpen}
+        onOpenChange={setClearScheduleOpen}
+        entries={entries}
+        stages={stages}
+        onClear={handleClearSchedule}
+        isClearing={isClearing}
       />
     </div>
   );
