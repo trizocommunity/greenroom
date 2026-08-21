@@ -314,7 +314,7 @@ export function ScheduleTableView({
         </div>
       )}
 
-      <div className="flex flex-row flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto lg:justify-end">
+      <div className="grid grid-cols-2 md:grid-cols-3 items-center gap-2 lg:gap-3 w-full lg:w-auto lg:justify-end">
         {days.length > 1 && (
           <DateFilterCombobox
             value={filterDay}
