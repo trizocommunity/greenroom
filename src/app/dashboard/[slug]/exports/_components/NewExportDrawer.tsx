@@ -30,6 +30,7 @@ import { JudgeListFilters } from "./filters/JudgeListFilters";
 import { ResultsFilters } from "./filters/ResultsFilters";
 import { TeamResultFilters } from "./filters/TeamResultFilters";
 import { ValuationSheetFilters } from "./filters/ValuationSheetFilters";
+import { ScheduleFilters } from "./filters/ScheduleFilters";
 
 interface NewExportDrawerProps {
   festivalId: string;
@@ -60,6 +61,16 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
       certificateTypes: ["PARTICIPATION"],
       categoryIds: [],
       programmeIds: [],
+    };
+  }
+  if (type === "SCHEDULE") {
+    return {
+      type: "SCHEDULE",
+      days: [],
+      includeStage: true,
+      includeDescription: true,
+      includeSpeakers: false,
+      includeEntryType: false,
     };
   }
   try {
@@ -240,6 +251,13 @@ export function NewExportDrawer({
             )}
             {config?.type === "CERTIFICATE" && (
               <CertificateFilters
+                festivalId={festivalId}
+                value={config}
+                onChange={setConfig}
+              />
+            )}
+            {config?.type === "SCHEDULE" && (
+              <ScheduleFilters
                 festivalId={festivalId}
                 value={config}
                 onChange={setConfig}

@@ -12,6 +12,9 @@ import {
   useUpdateParticipant,
 } from "@/api/client/participants";
 import { useFestival } from "@/components/festival/FestivalContext";
+import { useEditLock } from "@/core/locks/use-edit-lock";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateOfBirthPicker } from "@/components/ui/date-picker";
 import {
@@ -102,6 +105,9 @@ export function ParticipantDialog({
     isControlled && setControlledOpen ? setControlledOpen : setInternalOpen;
 
   const isEditing = !!participantToEdit;
+
+  const { hasLock, lockedBy, isLoadingLock } = useEditLock("participant", isEditing ? participantToEdit.id : null, open);
+  const actuallyReadOnly = (!hasLock && isEditing);
   const { data: groups = [] } = useGroups(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
   const createParticipant = useCreateParticipant();
@@ -266,7 +272,7 @@ export function ParticipantDialog({
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={isLoading}
+                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -298,7 +304,7 @@ export function ParticipantDialog({
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={isLoading}
+                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -336,7 +342,7 @@ export function ParticipantDialog({
                             field.onChange(d ? dateOfBirthToIsoString(d) : "")
                           }
                           placeholder="Select date of birth"
-                          disabled={isLoading}
+                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
                         />
                       </FormControl>
                       <FormMessage />
@@ -354,7 +360,7 @@ export function ParticipantDialog({
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={isLoading}
+                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -438,7 +444,7 @@ export function ParticipantDialog({
                   variant="outline"
                   type="button"
                   onClick={() => setOpen(false)}
-                  disabled={isLoading}
+                  disabled={actuallyReadOnly || isLoading || isLoadingLock}
                 >
                   Cancel
                 </Button>

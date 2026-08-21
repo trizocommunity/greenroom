@@ -15,7 +15,7 @@ const EDIT_LOCK_TTL_SECONDS = 60;
  *   - `{ acquired: false, heldBy }` when another actor holds it
  */
 export async function acquireEditLock(
-  entityType: "programme" | "category" | "judgementConfig",
+  entityType: string,
   entityId: string,
   actorId: string,
 ): Promise<{ acquired: true } | { acquired: false; heldBy: string }> {
@@ -41,7 +41,7 @@ export async function acquireEditLock(
 const RELEASE_LUA = `if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end`;
 
 export async function releaseEditLock(
-  entityType: "programme" | "category" | "judgementConfig",
+  entityType: string,
   entityId: string,
   actorId: string,
 ): Promise<void> {
@@ -60,7 +60,7 @@ export async function releaseEditLock(
  * holds the lock.
  */
 export async function heartbeatEditLock(
-  entityType: "programme" | "category" | "judgementConfig",
+  entityType: string,
   entityId: string,
   actorId: string,
 ): Promise<boolean> {

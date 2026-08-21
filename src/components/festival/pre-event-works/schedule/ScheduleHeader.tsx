@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
@@ -13,6 +13,7 @@ export type ScheduleHeaderProps = {
   hasFestivalDates: boolean;
   canAdd: boolean;
   onAddClick: () => void;
+  onClearClick: () => void;
 };
 
 export function ScheduleHeader({
@@ -23,6 +24,7 @@ export function ScheduleHeader({
   hasFestivalDates,
   canAdd,
   onAddClick,
+  onClearClick,
 }: ScheduleHeaderProps) {
   return (
     <div className="flex flex-row items-center justify-between gap-3">
@@ -35,29 +37,41 @@ export function ScheduleHeader({
           </Badge>
         )}
         {!isReadOnly && (
-          <Button
-            size="sm"
-            onClick={() => {
-              if (!hasStages) {
-                toast.error("Create at least one stage first.");
-                return;
-              }
-              if (!hasProgrammes) {
-                toast.error("Create programmes first.");
-                return;
-              }
-              if (!hasFestivalDates) {
-                toast.error("Set festival dates first.");
-                return;
-              }
-              onAddClick();
-            }}
-            disabled={!canAdd}
-            className="gap-1.5"
-          >
-            <Plus className="h-4 w-4" />
-            Add Schedule
-          </Button>
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onClearClick}
+              disabled={!canAdd}
+              className="gap-1.5"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear Schedule
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (!hasStages) {
+                  toast.error("Create at least one stage first.");
+                  return;
+                }
+                if (!hasProgrammes) {
+                  toast.error("Create programmes first.");
+                  return;
+                }
+                if (!hasFestivalDates) {
+                  toast.error("Set festival dates first.");
+                  return;
+                }
+                onAddClick();
+              }}
+              disabled={!canAdd}
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Add Schedule
+            </Button>
+          </>
         )}
       </div>
     </div>

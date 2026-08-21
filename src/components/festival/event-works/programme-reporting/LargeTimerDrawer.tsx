@@ -82,13 +82,14 @@ export function LargeTimerDrawer({
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
-      <DrawerContent className="pb-8">
-        <DrawerHeader className="text-center">
-          <DrawerTitle className="text-xl">{item?.programme.name}</DrawerTitle>
-        </DrawerHeader>
+      <DrawerContent className="pb-0">
+        <div className="overflow-y-auto pb-8">
+          <DrawerHeader className="text-center">
+            <DrawerTitle className="text-xl">{item?.programme.name}</DrawerTitle>
+          </DrawerHeader>
 
-        <div className="flex flex-col items-center justify-center p-8">
-          <div
+          <div className="flex flex-col items-center justify-center p-8 pt-0">
+            <div
             className={cn(
               "font-mono font-bold tracking-tighter transition-colors",
               isOver ? "text-red-500 animate-pulse" : "text-foreground",
@@ -265,6 +266,7 @@ export function LargeTimerDrawer({
               </div>
             </div>
           )}
+          </div>
         </div>
       </DrawerContent>
     </Drawer>

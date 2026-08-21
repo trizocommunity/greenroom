@@ -27,6 +27,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
+import { useEditLock } from "@/core/locks/use-edit-lock";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, Lock } from "lucide-react";
+
 
 const GroupSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -74,6 +78,15 @@ export function GroupDialog({
   const updateGroup = useUpdateGroup();
 
   const isEditing = !!group;
+  // Edit Lock Integration
+  const { hasLock, lockedBy, isLoadingLock } = useEditLock(
+    "group",
+    isEditing ? group?.id : null,
+    open && !readOnly
+  );
+  
+  const actuallyReadOnly = readOnly || (!hasLock && isEditing);
+
   const isLoading = createGroup.isPending || updateGroup.isPending;
 
   const form = useForm({
@@ -153,7 +166,16 @@ export function GroupDialog({
                 ? "Update group details."
                 : "Add a new group (School/College)."}
           </DrawerDescription>
-        </DrawerHeader>
+        {isEditing && !hasLock && (
+            <Alert variant="destructive" className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>This page is locked (Read-Only)</AlertTitle>
+              <AlertDescription>
+                <strong>{lockedBy}</strong> is currently editing this group. You cannot make changes until they finish.
+              </AlertDescription>
+            </Alert>
+          )}
+</DrawerHeader>
 
         <Form {...form}>
           <form
@@ -170,7 +192,7 @@ export function GroupDialog({
                     <FormControl>
                       <Input
                         placeholder="e.g. Model School"
-                        disabled={readOnly || isLoading}
+                        disabled={actuallyReadOnly || isLoading || isLoadingLock}
                         {...field}
                         value={field.value ?? ""}
                       />
@@ -191,7 +213,7 @@ export function GroupDialog({
                         <button
                           key={c}
                           type="button"
-                          disabled={readOnly || isLoading}
+                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
                           onClick={() => field.onChange(c)}
                           className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 transition-all ${
                             field.value === c
@@ -214,9 +236,9 @@ export function GroupDialog({
                 type="button"
                 variant="outline"
                 onClick={() => setOpen(false)}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingLock}
               >
-                {readOnly ? "Close" : "Cancel"}
+                {actuallyReadOnly ? "Close" : "Cancel"}
               </Button>
               {!readOnly && (
                 <Button

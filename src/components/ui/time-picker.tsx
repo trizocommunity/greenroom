@@ -21,6 +21,15 @@ export interface TimePickerProps {
   minuteStep?: number; // Minute increments (e.g. 1, 5, 15)
 }
 
+function formatTo12Hour(h: number, m: number) {
+  const isPM = h >= 12;
+  const h12 = h % 12 || 12;
+  const hStr = h12.toString().padStart(2, "0");
+  const mStr = m.toString().padStart(2, "0");
+  const ampm = isPM ? "PM" : "AM";
+  return `${hStr}:${mStr} ${ampm}`;
+}
+
 export function TimePicker({
   id,
   value,
@@ -43,7 +52,7 @@ export function TimePicker({
         return {
           hour: h,
           minute: m,
-          display: `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`,
+          display: formatTo12Hour(h, m),
         };
       }
       return { hour: undefined, minute: undefined, display: value };
@@ -54,7 +63,7 @@ export function TimePicker({
       return {
         hour: h,
         minute: m,
-        display: `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`,
+        display: formatTo12Hour(h, m),
       };
     }
     return { hour: undefined, minute: undefined, display: "" };
@@ -158,16 +167,19 @@ export function TimePicker({
       <PopoverContent className="w-auto p-3" align="start">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between px-1 text-xs font-semibold text-muted-foreground">
-            <span className="w-16 text-center">Hours</span>
+            <span className="w-20 text-center">Hours</span>
             <span className="w-16 text-center">Minutes</span>
           </div>
           <div className="flex gap-2">
             <div
               ref={hourListRef}
-              className="h-48 w-16 overflow-y-auto rounded-md border border-input p-1 space-y-1 overscroll-contain"
+              className="h-48 w-20 overflow-y-auto rounded-md border border-input p-1 space-y-1 overscroll-contain"
             >
               {hours.map((h) => {
                 const isSelected = selectedHour === h;
+                const isPM = h >= 12;
+                const h12 = h % 12 || 12;
+                const ampm = isPM ? "PM" : "AM";
                 return (
                   <button
                     key={h}
@@ -181,7 +193,7 @@ export function TimePicker({
                         : "hover:bg-accent hover:text-accent-foreground text-foreground",
                     )}
                   >
-                    {h.toString().padStart(2, "0")}
+                    {`${h12} ${ampm}`}
                   </button>
                 );
               })}

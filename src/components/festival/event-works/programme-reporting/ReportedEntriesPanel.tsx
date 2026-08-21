@@ -36,7 +36,7 @@ export function ReportedEntriesPanel({
       <h3 className="mb-2 text-[10px] font-semibold tracking-tight uppercase text-muted-foreground">
         Reported Participants (A-Z)
       </h3>
-      <div className="space-y-1 max-h-48 overflow-y-auto pr-2">
+      <div className="space-y-1 overflow-y-auto pr-2">
         {sorted.map((entry) => {
           const code = entry.code && entry.code !== "—" ? entry.code : "—";
           return (
