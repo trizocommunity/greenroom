@@ -2,7 +2,7 @@
 
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
 import { useQuery } from "@tanstack/react-query";
-import { Crown, Loader2, Plus, User } from "lucide-react";
+import { Crown, Loader2, Plus, User, AlertCircle, Lock } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,6 +13,8 @@ import {
   useProgramme,
   useUpdateProgramme,
 } from "@/api/client/programmes";
+import { useEditLock } from "@/core/locks/use-edit-lock";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StatusPill } from "@/components/app/AppSection";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
@@ -139,14 +141,25 @@ export function ProgrammeDialog({
   });
 
   const isEditing = !!programme;
+  
+  // Edit Lock Integration
+  const { hasLock, lockedBy, isLoadingLock } = useEditLock(
+    "programme",
+    isEditing ? programme.id : null,
+    open && !readOnly
+  );
+  
+  // If we are editing, but we don't have the lock, force it to read-only
+  const actuallyReadOnly = readOnly || (!hasLock && isEditing);
+  
   const isLoadingAction =
-    createProgramme.isPending || updateProgramme.isPending;
+    createProgramme.isPending || updateProgramme.isPending || isLoadingLock;
   const { isValid } = form.formState;
 
   // Fetch details if viewing (readOnly)
   const { data: details, isLoading: isLoadingDetails } = useProgramme(
     festivalId,
-    open && readOnly ? programme?.id : undefined,
+    open && actuallyReadOnly ? programme?.id : undefined,
   );
 
   const canUseAuditDrawer = useFeatureTag("programme.auditDrawer");
@@ -164,13 +177,13 @@ export function ProgrammeDialog({
         return {};
       }
     },
-    enabled: Boolean(open && readOnly && programme?.id),
+    enabled: Boolean(open && actuallyReadOnly && programme?.id),
     staleTime: 30_000,
   });
   const { data: activityDetail, isLoading: isLoadingActivity } = useQuery({
     queryKey: ["programme-detail-drawer", festivalId, programme?.id],
     queryFn: () => getProgrammeDetailForDrawerAction(festivalId, programme!.id),
-    enabled: Boolean(open && readOnly && canUseAuditDrawer && programme?.id),
+    enabled: Boolean(open && actuallyReadOnly && canUseAuditDrawer && programme?.id),
     staleTime: 30_000,
   });
 
@@ -237,13 +250,13 @@ export function ProgrammeDialog({
   );
 
   useEffect(() => {
-    if (!open || readOnly) return;
+    if (!open || actuallyReadOnly) return;
     syncHiddenLimitFields(programmeType);
     void form.trigger();
-  }, [programmeType, open, readOnly, form, syncHiddenLimitFields]);
+  }, [programmeType, open, actuallyReadOnly, form, syncHiddenLimitFields]);
 
   const onSubmit = async (data: ProgrammeFormValues) => {
-    if (readOnly) return;
+    if (actuallyReadOnly) return;
     try {
       if (isEditing && programme) {
         await updateProgramme.mutateAsync({
@@ -540,20 +553,29 @@ export function ProgrammeDialog({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>
-            {readOnly
+            {actuallyReadOnly
               ? form.getValues("name")
               : isEditing
                 ? "Edit Programme"
                 : "Create Programme"}
           </DrawerTitle>
           <DrawerDescription>
-            {readOnly
+            {actuallyReadOnly
               ? "View programme details and assignments."
               : "Configure programme rules."}
           </DrawerDescription>
+          {isEditing && !hasLock && (
+            <Alert variant="destructive" className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>This page is locked (Read-Only)</AlertTitle>
+              <AlertDescription>
+                <strong>{lockedBy}</strong> is currently editing this programme. You cannot make changes until they finish.
+              </AlertDescription>
+            </Alert>
+          )}
         </DrawerHeader>
 
-        {readOnly ? (
+        {actuallyReadOnly ? (
           renderDetails()
         ) : (
           <Form {...form}>

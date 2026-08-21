@@ -10,6 +10,9 @@ import {
   useCreateCategory,
   useUpdateCategory,
 } from "@/api/client/categories";
+import { useEditLock } from "@/core/locks/use-edit-lock";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -77,7 +80,16 @@ export function CategoryDialog({
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const isEditing = !!category;
-  const isLoading = createCategory.isPending || updateCategory.isPending;
+  
+  // Edit Lock Integration
+  const { hasLock, lockedBy, isLoadingLock } = useEditLock(
+    "category",
+    isEditing ? category.id : null,
+    open && !readOnly
+  );
+  
+  const actuallyReadOnly = readOnly || (!hasLock && isEditing);
+  const isLoading = createCategory.isPending || updateCategory.isPending || isLoadingLock;
 
   const form = useForm({
     resolver: zodResolver(CategorySchema),
@@ -141,19 +153,28 @@ export function CategoryDialog({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>
-            {readOnly
-              ? "Category Details"
+            {actuallyReadOnly
+              ? form.getValues("name") || "Category Details"
               : isEditing
                 ? "Edit Category"
                 : "Create Category"}
           </DrawerTitle>
           <DrawerDescription>
-            {readOnly
+            {actuallyReadOnly
               ? "View category details."
               : isEditing
                 ? "Update category details."
                 : "Add a new category."}
           </DrawerDescription>
+          {isEditing && !hasLock && (
+            <Alert variant="destructive" className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>This page is locked (Read-Only)</AlertTitle>
+              <AlertDescription>
+                <strong>{lockedBy}</strong> is currently editing this category. You cannot make changes until they finish.
+              </AlertDescription>
+            </Alert>
+          )}
         </DrawerHeader>
 
         <Form {...form}>
@@ -172,7 +193,7 @@ export function CategoryDialog({
                       <FormControl>
                         <Input
                           placeholder="e.g. Juniors"
-                          disabled={readOnly || isLoading}
+                          disabled={actuallyReadOnly || isLoading}
                           {...field}
                         />
                       </FormControl>
@@ -190,7 +211,7 @@ export function CategoryDialog({
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
-                        disabled={readOnly || isLoading}
+                        disabled={actuallyReadOnly || isLoading}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -217,7 +238,7 @@ export function CategoryDialog({
                     <FormControl>
                       <Input
                         placeholder="e.g. For participants below 12 years"
-                        disabled={readOnly || isLoading}
+                        disabled={actuallyReadOnly || isLoading}
                         {...field}
                       />
                     </FormControl>
@@ -234,7 +255,7 @@ export function CategoryDialog({
                 onClick={() => setOpen(false)}
                 disabled={isLoading}
               >
-                {readOnly ? "Close" : "Cancel"}
+                {actuallyReadOnly ? "Close" : "Cancel"}
               </Button>
               {!readOnly && (
                 <Button

@@ -108,6 +108,7 @@ export async function getParticipantAssignmentCounts(
   // INDIVIDUAL assignments where participant is directly assigned
   const individualRows = await db
     .select({
+      programmeId: programmeAssignment.programmeId,
       stageType: programmeTable.stageType,
     })
     .from(programmeAssignment)
@@ -127,6 +128,7 @@ export async function getParticipantAssignmentCounts(
   // GROUP assignments where participant is a member
   const memberRows = await db
     .select({
+      programmeId: programmeAssignment.programmeId,
       stageType: programmeTable.stageType,
     })
     .from(programmeAssignmentMember)
@@ -147,8 +149,19 @@ export async function getParticipantAssignmentCounts(
     );
 
   const allRows = [...individualRows, ...memberRows];
-  const stageCount = allRows.filter((r) => r.stageType === "STAGE").length;
-  const nonStageCount = allRows.filter(
+  
+  // Deduplicate by programmeId
+  const uniqueProgrammes = new Map<string, typeof allRows[0]>();
+  for (const row of allRows) {
+    if (!uniqueProgrammes.has(row.programmeId)) {
+      uniqueProgrammes.set(row.programmeId, row);
+    }
+  }
+  
+  const uniqueRows = Array.from(uniqueProgrammes.values());
+
+  const stageCount = uniqueRows.filter((r) => r.stageType === "STAGE").length;
+  const nonStageCount = uniqueRows.filter(
     (r) => r.stageType === "NON_STAGE",
   ).length;
 
@@ -156,7 +169,7 @@ export async function getParticipantAssignmentCounts(
     participantId,
     stageCount,
     nonStageCount,
-    allCount: allRows.length,
+    allCount: uniqueRows.length,
   };
 }
 
@@ -173,6 +186,7 @@ export async function batchGetParticipantAssignmentCounts(
   const individualRows = await db
     .select({
       participantId: programmeAssignment.participantId,
+      programmeId: programmeAssignment.programmeId,
       stageType: programmeTable.stageType,
     })
     .from(programmeAssignment)
@@ -193,6 +207,7 @@ export async function batchGetParticipantAssignmentCounts(
   const memberRows = await db
     .select({
       participantId: programmeAssignmentMember.participantId,
+      programmeId: programmeAssignment.programmeId,
       stageType: programmeTable.stageType,
     })
     .from(programmeAssignmentMember)
@@ -213,6 +228,8 @@ export async function batchGetParticipantAssignmentCounts(
     );
 
   const result = new Map<string, ParticipantLimitCounts>();
+  // Store unique programme IDs per participant
+  const participantProgrammes = new Map<string, Set<string>>();
 
   for (const id of participantIds) {
     result.set(id, {
@@ -221,23 +238,29 @@ export async function batchGetParticipantAssignmentCounts(
       nonStageCount: 0,
       allCount: 0,
     });
+    participantProgrammes.set(id, new Set<string>());
   }
 
-  for (const row of individualRows) {
-    if (!row.participantId) continue;
+  const processRow = (row: { participantId: string | null; programmeId: string; stageType: string }) => {
+    if (!row.participantId) return;
     const entry = result.get(row.participantId);
-    if (!entry) continue;
+    const seen = participantProgrammes.get(row.participantId);
+    if (!entry || !seen) return;
+    
+    if (seen.has(row.programmeId)) return;
+    seen.add(row.programmeId);
+
     entry.allCount++;
     if (row.stageType === "STAGE") entry.stageCount++;
     else if (row.stageType === "NON_STAGE") entry.nonStageCount++;
+  };
+
+  for (const row of individualRows) {
+    processRow(row);
   }
 
   for (const row of memberRows) {
-    const entry = result.get(row.participantId);
-    if (!entry) continue;
-    entry.allCount++;
-    if (row.stageType === "STAGE") entry.stageCount++;
-    else if (row.stageType === "NON_STAGE") entry.nonStageCount++;
+    processRow(row);
   }
 
   return result;

@@ -8,6 +8,9 @@ import * as z from "zod";
 import { useMembers } from "@/api/client/members";
 import { useAssignStageManager } from "@/api/client/stage-assignments";
 import { useCreateStage, useUpdateStage } from "@/api/client/stages";
+import { useEditLock } from "@/core/locks/use-edit-lock";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -61,7 +64,16 @@ export function StageDialog({
     (m) => m.role === "STAGE_MANAGER" && m.isActive,
   );
   const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
-  const isLoading = createStage.isPending || updateStage.isPending;
+  const isEditing = !!stageToEdit;
+  
+  // Edit Lock Integration
+  const { hasLock, lockedBy, isLoadingLock } = useEditLock(
+    "stage",
+    isEditing ? stageToEdit.id : null,
+    open
+  );
+  const actuallyReadOnly = (!hasLock && isEditing);
+  const isLoading = createStage.isPending || updateStage.isPending || isLoadingLock;
 
   const form = useForm({
     resolver: zodResolver(StageSchema),
@@ -130,7 +142,7 @@ export function StageDialog({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>
-            {stageToEdit ? "Edit Stage" : "Create Stage"}
+            {actuallyReadOnly ? (form.getValues("name") || "View Stage") : stageToEdit ? "Edit Stage" : "Create Stage"}
           </DrawerTitle>
           <DrawerDescription>
             {stageToEdit
@@ -223,7 +235,7 @@ export function StageDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={isLoading}
+                disabled={actuallyReadOnly || isLoading}
               >
                 Cancel
               </Button>
