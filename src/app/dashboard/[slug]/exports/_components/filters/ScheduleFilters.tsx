@@ -2,6 +2,9 @@
 
 import { AlertCircle } from "lucide-react";
 import { useMemo } from "react";
+import { format } from "date-fns";
+import { useFestival } from "@/api/client/festivals";
+import { useSchedule } from "@/api/client/schedule";
 
 import {
   buildScheduleDayOptions,
@@ -15,19 +18,30 @@ interface Props {
   festivalId: string;
   value: ScheduleConfig;
   onChange: (value: ScheduleConfig) => void;
-  startDate: string | null;
-  endDate: string | null;
-  /** Calendar day keys (yyyy-MM-dd) that have at least one schedule entry. */
-  scheduledDayKeys: string[];
 }
 
 export function ScheduleFilters({
+  festivalId,
   value,
   onChange,
-  startDate,
-  endDate,
-  scheduledDayKeys,
 }: Props) {
+  const { data: festival } = useFestival(festivalId);
+  const { data: schedule } = useSchedule(festivalId);
+
+  const startDate = festival?.startDate ?? null;
+  const endDate = festival?.endDate ?? null;
+
+  const scheduledDayKeys = useMemo(() => {
+    if (!schedule) return [];
+    const keys = new Set<string>();
+    for (const entry of schedule) {
+      if (entry.startTime) {
+        keys.add(format(new Date(entry.startTime), "yyyy-MM-dd"));
+      }
+    }
+    return Array.from(keys);
+  }, [schedule]);
+
   const dayOptions = useMemo(
     () => buildScheduleDayOptions(startDate, endDate),
     [startDate, endDate],

@@ -7,6 +7,7 @@ import {
   Phone,
   Trophy,
   Users,
+  Calendar,
 } from "lucide-react";
 import type { ExportConfig } from "@/features/exports/schemas/export-config.schema";
 
@@ -23,6 +24,14 @@ export interface ExportTypeMeta {
 }
 
 export const EXPORT_TYPES: ExportTypeMeta[] = [
+  {
+    id: "SCHEDULE",
+    title: "Schedule",
+    description: "Festival schedule grouped by day and stage.",
+    icon: Calendar,
+    implemented: true,
+    formats: ["PDF"],
+  },
   {
     id: "VALUATION_SHEET",
     title: "Valuation Sheet",
