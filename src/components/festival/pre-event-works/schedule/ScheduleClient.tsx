@@ -441,7 +441,7 @@ export function ScheduleClient({
                   className="gap-1.5"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Clear Schedule
+                  <span className="hidden sm:inline">Clear Schedule</span>
                 </Button>
                 <Button
                 size="sm"
