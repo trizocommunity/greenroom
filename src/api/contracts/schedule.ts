@@ -46,6 +46,7 @@ export const reorderScheduleInput = z.object({
 export const typeFilterEnum = z.enum(["PROGRAMME", "SESSION"]);
 
 export type ScheduleEntry = z.infer<typeof scheduleEntrySchema>;
+export type Schedule = ScheduleEntry;
 export type CreateScheduleEntryInput = z.infer<typeof createScheduleEntryInput>;
 export type UpdateScheduleEntryInput = z.infer<typeof updateScheduleEntryInput>;
 export type ReorderScheduleInput = z.infer<typeof reorderScheduleInput>;
