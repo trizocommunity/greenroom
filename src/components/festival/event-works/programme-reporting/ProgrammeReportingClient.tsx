@@ -116,7 +116,7 @@ export function ProgrammeReportingClient({
       mounted,
     );
 
-    if (["CLOSED", "RESET", "TIMED_OUT"].includes(uiStatus)) {
+    if (["CLOSED", "TIMED_OUT"].includes(uiStatus)) {
       session.setTimerDrawerEntryId(id);
       return;
     }
