@@ -124,7 +124,7 @@ export function buildProgrammeHistory(
         mounted,
       ),
     }))
-    .filter(({ status }) => ["CLOSED", "RESET", "TIMED_OUT"].includes(status))
+    .filter(({ status }) => ["CLOSED", "TIMED_OUT"].includes(status))
     .sort((a, b) => {
       const rankDelta =
         historyStatusRank(a.status) - historyStatusRank(b.status);
@@ -220,7 +220,7 @@ export function buildProgrammeHistoryDetails(
       item.reportingSession?.windowEndsAt ?? null,
       mounted,
     );
-    if (!["CLOSED", "RESET", "TIMED_OUT"].includes(uiStatus)) continue;
+    if (!["CLOSED", "TIMED_OUT"].includes(uiStatus)) continue;
 
     const programmeId = item.programme?.id;
     const programmeType = item.programme?.type ?? "—";
