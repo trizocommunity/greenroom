@@ -76,29 +76,20 @@ export function TimePicker({
     number | undefined
   >(parsedTime.minute);
 
-  const [selectedAmPm, setSelectedAmPm] = React.useState<"AM" | "PM">(
-    parsedTime.hour !== undefined ? (parsedTime.hour >= 12 ? "PM" : "AM") : "AM"
-  );
-
   const hourListRef = React.useRef<HTMLDivElement>(null);
   const minuteListRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     setSelectedHour(parsedTime.hour);
     setSelectedMinute(parsedTime.minute);
-    if (parsedTime.hour !== undefined) {
-      setSelectedAmPm(parsedTime.hour >= 12 ? "PM" : "AM");
-    }
   }, [parsedTime.hour, parsedTime.minute]);
-
-  const currentH12 = selectedHour !== undefined ? (selectedHour % 12 || 12) : undefined;
 
   React.useEffect(() => {
     if (open) {
       setTimeout(() => {
-        if (hourListRef.current && currentH12 !== undefined) {
+        if (hourListRef.current && selectedHour !== undefined) {
           const el = hourListRef.current.querySelector(
-            `[data-hour="${currentH12}"]`,
+            `[data-hour="${selectedHour}"]`,
           );
           el?.scrollIntoView({ block: "center", behavior: "instant" });
         }
@@ -110,10 +101,10 @@ export function TimePicker({
         }
       }, 10);
     }
-  }, [open, currentH12, selectedMinute]);
+  }, [open, selectedHour, selectedMinute]);
 
-  const hours12 = React.useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => i + 1);
+  const hours = React.useMemo(() => {
+    return Array.from({ length: 24 }, (_, i) => i);
   }, []);
 
   const minutes = React.useMemo(() => {
@@ -141,15 +132,11 @@ export function TimePicker({
     }
   };
 
-  const handleHourClick = (h12: number) => {
-    let h24 = h12;
-    if (selectedAmPm === "PM" && h12 !== 12) h24 += 12;
-    if (selectedAmPm === "AM" && h12 === 12) h24 = 0;
-    
-    setSelectedHour(h24);
+  const handleHourClick = (h: number) => {
+    setSelectedHour(h);
     const m = selectedMinute ?? 0;
     setSelectedMinute(m);
-    handleCommit(h24, m);
+    handleCommit(h, m);
   };
 
   const handleMinuteClick = (m: number) => {
@@ -157,21 +144,6 @@ export function TimePicker({
     const h = selectedHour ?? 0;
     setSelectedHour(h);
     handleCommit(h, m);
-  };
-
-  const handleAmPmClick = (ampm: "AM" | "PM") => {
-    setSelectedAmPm(ampm);
-    let h24 = selectedHour ?? 0;
-    const h12 = h24 % 12 || 12;
-    
-    if (ampm === "PM" && h12 !== 12) h24 = h12 + 12;
-    if (ampm === "AM" && h12 === 12) h24 = 0;
-    if (ampm === "AM" && h12 !== 12) h24 = h12;
-
-    setSelectedHour(h24);
-    const m = selectedMinute ?? 0;
-    setSelectedMinute(m);
-    handleCommit(h24, m);
   };
 
   return (
@@ -195,17 +167,19 @@ export function TimePicker({
       <PopoverContent className="w-auto p-3" align="start">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between px-1 text-xs font-semibold text-muted-foreground">
-            <span className="w-16 text-center">Hours</span>
+            <span className="w-20 text-center">Hours</span>
             <span className="w-16 text-center">Minutes</span>
-            <span className="w-16 text-center">AM/PM</span>
           </div>
           <div className="flex gap-2">
             <div
               ref={hourListRef}
-              className="h-48 w-16 overflow-y-auto rounded-md border border-input p-1 space-y-1 overscroll-contain"
+              className="h-48 w-20 overflow-y-auto rounded-md border border-input p-1 space-y-1 overscroll-contain"
             >
-              {hours12.map((h) => {
-                const isSelected = currentH12 === h;
+              {hours.map((h) => {
+                const isSelected = selectedHour === h;
+                const isPM = h >= 12;
+                const h12 = h % 12 || 12;
+                const ampm = isPM ? "PM" : "AM";
                 return (
                   <button
                     key={h}
@@ -219,7 +193,7 @@ export function TimePicker({
                         : "hover:bg-accent hover:text-accent-foreground text-foreground",
                     )}
                   >
-                    {h.toString().padStart(2, "0")}
+                    {`${h12} ${ampm}`}
                   </button>
                 );
               })}
@@ -244,26 +218,6 @@ export function TimePicker({
                     )}
                   >
                     {m.toString().padStart(2, "0")}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="h-48 w-16 rounded-md border border-input p-1 space-y-1">
-              {(["AM", "PM"] as const).map((ampm) => {
-                const isSelected = selectedAmPm === ampm;
-                return (
-                  <button
-                    key={ampm}
-                    type="button"
-                    onClick={() => handleAmPmClick(ampm)}
-                    className={cn(
-                      "flex h-7 w-full items-center justify-center rounded text-xs font-semibold transition-colors",
-                      isSelected
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-accent hover:text-accent-foreground text-foreground",
-                    )}
-                  >
-                    {ampm}
                   </button>
                 );
               })}
