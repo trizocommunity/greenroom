@@ -114,35 +114,37 @@ export function CompletedJudgementDrawer({
         </DrawerHeader>
 
         {detail ? (
-          <div className="space-y-6 pb-8 ">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="text-[10px]">
-                {judgementStatusLabel(detail.judgementStatus)}
-              </Badge>
-              <Badge variant="secondary" className="text-[10px]">
-                {detail.judgingMode}
-              </Badge>
-              {durationLabel ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-purple/40 bg-purple/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-purple">
-                  <Clock className="h-3 w-3" aria-hidden />
-                  {durationLabel}
-                </span>
-              ) : null}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="space-y-6 pb-8">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="text-[10px]">
+                  {judgementStatusLabel(detail.judgementStatus)}
+                </Badge>
+                <Badge variant="secondary" className="text-[10px]">
+                  {detail.judgingMode}
+                </Badge>
+                {durationLabel ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-purple/40 bg-purple/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-purple">
+                    <Clock className="h-3 w-3" aria-hidden />
+                    {durationLabel}
+                  </span>
+                ) : null}
+              </div>
+
+              <ReviewScores
+                detail={detail}
+                sortedRows={sortedRows}
+                formatCardDateTime={formatCardDateTime}
+              />
+
+              <Separator />
+
+              <ViewDetails
+                detail={detail}
+                durationLabel={durationLabel}
+                timeline={timeline}
+              />
             </div>
-
-            <ReviewScores
-              detail={detail}
-              sortedRows={sortedRows}
-              formatCardDateTime={formatCardDateTime}
-            />
-
-            <Separator />
-
-            <ViewDetails
-              detail={detail}
-              durationLabel={durationLabel}
-              timeline={timeline}
-            />
           </div>
         ) : null}
       </DrawerContent>

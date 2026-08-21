@@ -27,9 +27,9 @@
 
 - [x] Type lives under `src/features/programmes/`
 - [x] No cycle: action imports type, UI imports type — never the other direction
-- [x] `npm run lint` shows no new errors
-- [x] `npx tsc --noEmit` passes
-- [x] `npm run build` passes
+- [x] `pnpm lint` shows no new errors
+- [x] `pnpm exec tsc --noEmit` passes
+- [x] `pnpm build` passes
 
 ## Discovered during
 

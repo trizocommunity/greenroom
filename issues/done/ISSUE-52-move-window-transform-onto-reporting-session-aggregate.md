@@ -23,8 +23,8 @@ Edge-case semantics decided: anchor on `nowMs` and add the scheduled duration (`
 - [x] `Date.now() + ...` does not appear in the service (replaced with `computeWindowEndsAt(...)`)
 - [x] Aggregate exposes the window calculation as a named export (`computeWindowEndsAt`)
 - [x] Decision on edge-case semantics is documented in code comment
-- [x] `npm run test:unit` passes — 5 new tests cover the helper
-- [x] `npm run build` passes
+- [x] `pnpm test:unit` passes — 5 new tests cover the helper
+- [x] `pnpm build` passes
 
 ## Discovered during
 

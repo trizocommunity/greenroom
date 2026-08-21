@@ -70,7 +70,7 @@ Neon's `neon-http` driver doesn't support interactive transactions in production
 ## Solution: Provisioning Plan
 
 ### Phase 0 â€” Auth
-- Run `npx neonctl auth` (one-time interactive browser login to a Neon account), or generate an API key in the Neon console and export it as `NEON_API_KEY` for non-interactive use.
+- Run `pnpm dlx neonctl auth` (one-time interactive browser login to a Neon account), or generate an API key in the Neon console and export it as `NEON_API_KEY` for non-interactive use.
 
 ### Phase 1 â€” Provision project
 - `neonctl projects create --name greenroom` â†’ capture project ID and default branch connection string.
@@ -83,7 +83,7 @@ Neon's `neon-http` driver doesn't support interactive transactions in production
 - `.env.example` â€” 14 env vars documented (DATABASE_URL, DATABASE_URL_UNPOOLED, JWT_SECRET, NEXT_PUBLIC_APP_URL, RAZORPAY_*, RESEND_API_KEY, EMAIL_FROM, NEXT_PUBLIC_CLOUDINARY_*, CLOUDINARY_API_*, CRON_SECRET). Sentry removed (see Completion log).
 
 ### Phase 3 â€” Apply schema (done 2026-07-31, with reset caveat)
-- `npm run db:push` applied against Neon `main` branch (`ep-bitter-smoke-avclbqrj.c-11.us-east-1.aws.neon.tech`). Result: **45 public tables + 28 enums** in `neondb`.
+- `pnpm db:push` applied against Neon `main` branch (`ep-bitter-smoke-avclbqrj.c-11.us-east-1.aws.neon.tech`). Result: **45 public tables + 28 enums** in `neondb`.
 - **Caveat:** the `main` branch already contained 47 tables + 25 enums from earlier work that pre-dated this issue. They were dropped before the push so the resulting schema matches the current `schema.ts`. If anyone had data they wanted to preserve on `main`, it is now gone — recopy from a Neon branch snapshot if needed.
 - Spot-check: ran a follow-up `SELECT COUNT(*)` query against `pg_tables` / `pg_type` to confirm row counts match the schema's expected tables.
 

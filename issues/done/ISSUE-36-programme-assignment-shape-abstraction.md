@@ -410,7 +410,7 @@ Integration tests at `src/test/integration/programme-membership.test.ts` (Issue 
 
 | # | Phase | Deliverable | Verify |
 |---|---|---|---|
-| A.1 | Add relation | `programmeAssignmentMembers` on `participantRelations` | `npm run typecheck`; existing tests pass |
+| A.1 | Add relation | `programmeAssignmentMembers` on `participantRelations` | `pnpm typecheck`; existing tests pass |
 | A.2 | Helper module | `programme-membership.service.ts` with both helpers + `EnrolledProgramme` type | Unit tests pass with mocked DB |
 | A.3 | Central loader | `findParticipantByFestivalAndProfileSlug` exposes `assignedProgrammes`; 5 consumer files use it | All 5 consumer pages render correctly; manual smoke test |
 | A.4 | Drawer filter | `ParticipantDetailsDialog.tsx` uses `a.participant?.id === participant.id \|\| a.participantId === participant.id` | Manual: drawer shows GROUP assignments |

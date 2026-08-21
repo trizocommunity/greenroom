@@ -462,8 +462,8 @@ Same for `BulkUploadParticipantsModal.tsx`: add the banner if not already presen
 
 ## Verification
 
-- `npm run test:unit` + `npm run test:integration` pass
-- `npm run audit:write-path` returns zero flags for `revalidatePath` and `invalidateQueries`
+- `pnpm test:unit` + `pnpm test:integration` pass
+- `pnpm audit:write-path` returns zero flags for `revalidatePath` and `invalidateQueries`
 - Manual: upload 100 participants → all visible with chest numbers, errors listed
 - Manual: upload 50 programmes → all visible after upload (no manual refresh)
 - Manual: edit any resource via API path → page refreshes without full reload

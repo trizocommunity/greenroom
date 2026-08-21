@@ -70,7 +70,7 @@ Never reuse between dev and prod, and never commit them.
 ### First-time setup
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env.local        # or .env — both are gitignored
 ```
 
@@ -81,8 +81,8 @@ Fill `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, and a database URL (next step).
 **Option A — local Docker Postgres** (zero-config, mirrors nothing about prod):
 
 ```bash
-npm run db:setup   # docker compose up + db:push + db:seed
-npm run dev
+pnpm db:setup   # docker compose up + db:push + db:seed
+pnpm dev
 ```
 
 Defaults from `.env.example` point at `localhost:5433` → `greenroom` DB. SSL
@@ -96,32 +96,32 @@ neonctl connection-string main --pooled       # → DATABASE_URL
 neonctl connection-string main                # → DATABASE_URL_UNPOOLED
 # paste both into .env.local
 
-npm run db:push    # apply current schema
-npm run db:seed   # optional: Super Admin + sample festival
-npm run dev
+pnpm db:push    # apply current schema
+pnpm db:seed   # optional: Super Admin + sample festival
+pnpm dev
 ```
 
 ### Day-to-day commands
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Start Next dev server on `:3000` |
-| `npm test` | Vitest (all projects) |
-| `npm run test:unit` | Vitest unit project |
-| `npm run test:integration` | Vitest integration project |
-| `npm run lint` | Biome lint |
-| `npm run format` | Biome format `--write` |
-| `npm run check` | Biome check (lint + format) `--write` |
-| `npm run db:start` / `db:stop` / `db:logs` | Docker Postgres lifecycle |
-| `npm run db:studio` | Drizzle Studio (DB GUI) |
-| `npm run db:generate` | Diff schema → SQL migration files in `drizzle/` |
-| `npm run db:push` | Apply schema directly (no migration files); interactive prompts on non-empty DBs |
-| `npm run db:migrate` | Same as `db:push` today (see "Footguns" §7) |
-| `npm run db:seed` | Full seed: Super Admin + festival owner + sample festival |
-| `npm run db:seed:admin` | Super Admin only (see §5) |
-| `npm run db:clean` | `DROP SCHEMA public CASCADE` — refuses remote URLs without `--force` |
-| `npm run db:reset` | `db:clean` + `db:push` (local-only unless `--force`) |
-| `npm run db:setup` | `db:start` + `db:push` + `db:seed` (Docker path) |
+| `pnpm dev` | Start Next dev server on `:3000` |
+| `pnpm test` | Vitest (all projects) |
+| `pnpm test:unit` | Vitest unit project |
+| `pnpm test:integration` | Vitest integration project |
+| `pnpm lint` | Biome lint |
+| `pnpm format` | Biome format `--write` |
+| `pnpm check` | Biome check (lint + format) `--write` |
+| `pnpm db:start` / `db:stop` / `db:logs` | Docker Postgres lifecycle |
+| `pnpm db:studio` | Drizzle Studio (DB GUI) |
+| `pnpm db:generate` | Diff schema → SQL migration files in `drizzle/` |
+| `pnpm db:push` | Apply schema directly (no migration files); interactive prompts on non-empty DBs |
+| `pnpm db:migrate` | Same as `db:push` today (see "Footguns" §7) |
+| `pnpm db:seed` | Full seed: Super Admin + festival owner + sample festival |
+| `pnpm db:seed:admin` | Super Admin only (see §5) |
+| `pnpm db:clean` | `DROP SCHEMA public CASCADE` — refuses remote URLs without `--force` |
+| `pnpm db:reset` | `db:clean` + `db:push` (local-only unless `--force`) |
+| `pnpm db:setup` | `db:start` + `db:push` + `db:seed` (Docker path) |
 
 ### Email in dev
 
@@ -149,9 +149,9 @@ once the project has any real data, switch to `db:generate` + replay.
 ### Target: `db:generate` + `db:migrate` (file-based)
 
 ```bash
-npm run db:generate    # writes drizzle/NNNN_*.sql + updates the journal
+pnpm db:generate    # writes drizzle/NNNN_*.sql + updates the journal
 # review the SQL, commit it
-DATABASE_URL_UNPOOLED=<prod-unpooled> npm run db:migrate
+DATABASE_URL_UNPOOLED=<prod-unpooled> pnpm db:migrate
 ```
 
 This is reproducible, reviewable in PRs, and survives `drizzle-kit`'s
@@ -170,7 +170,7 @@ a follow-up to `issues/done/neon-database-adoption.md`.
 
 Two scripts, both with safety checks so you can't accidentally nuke prod.
 
-### `npm run db:seed` — full sample festival
+### `pnpm db:seed` — full sample festival
 
 `scripts/seed.ts` + `scripts/seed/*.ts` create:
 
@@ -183,7 +183,7 @@ Two scripts, both with safety checks so you can't accidentally nuke prod.
 5. Participants, programmes, sessions — sized for QA snapshots.
 6. Prints a summary table to stdout.
 
-### `npm run db:seed:admin` — Super Admin only
+### `pnpm db:seed:admin` — Super Admin only
 
 `scripts/seed-superadmin.ts` is idempotent: it upserts the Super Admin row
 (updates `fullName` / `displayName` / `updatedAt` if the user already exists,
@@ -202,15 +202,15 @@ if (!isLocal && !force) {
 ```
 
 `--force` is read via `process.argv.includes("--force")`. **Caveat:** when
-invoked via `npm run db:seed:admin -- --force`, npm forwards the flag to npm
+invoked via `pnpm db:seed:admin -- --force`, pnpm forwards the flag to pnpm
 itself, not to the script — `process.argv` does not see it. Run directly
 through `tsx` to pass it through:
 
 ```bash
-npx tsx scripts/seed-superadmin.ts --force
+pnpm exec tsx scripts/seed-superadmin.ts --force
 ```
 
-### `npm run db:clean` / `db:reset`
+### `pnpm db:clean` / `db:reset`
 
 `scripts/clean.ts` drops the `public` schema and recreates it. The safety
 guard is stricter: it also rejects any URL that contains neither
@@ -305,14 +305,14 @@ call will be 403'd until the new value is live.
 ### Reset the local DB
 
 ```bash
-npm run db:reset    # clean + push + seed (Docker Postgres only)
-npm run db:reset -- --force   # if you pointed .env at a non-local URL
+pnpm db:reset    # clean + push + seed (Docker Postgres only)
+pnpm db:reset -- --force   # if you pointed .env at a non-local URL
 ```
 
 ### Inspect a DB
 
 ```bash
-npm run db:studio   # Drizzle Studio, uses DATABASE_URL_UNPOOLED
+pnpm db:studio   # Drizzle Studio, uses DATABASE_URL_UNPOOLED
 ```
 
 Or directly:
@@ -326,7 +326,7 @@ psql "$(neonctl connection-string main --pooled)"
 Today the project uses `db:push` (see §4). To apply a schema change to prod:
 
 ```bash
-DATABASE_URL_UNPOOLED=<prod-direct-url> npm run db:push
+DATABASE_URL_UNPOOLED=<prod-direct-url> pnpm db:push
 ```
 
 Against a non-empty prod DB, drizzle-kit tries to interactively resolve table
@@ -342,8 +342,8 @@ or switch to file-based migrations (`db:generate` + replay).
    to use locally, but fresh clones won't have one — copy from
    `.env.example`.
 
-2. **`npm run db:seed:admin -- --force` does NOT pass `--force` through.**
-   Run `npx tsx scripts/seed-superadmin.ts --force` directly (same for
+2. **`pnpm db:seed:admin -- --force` does NOT pass `--force` through.**
+   Run `pnpm exec tsx scripts/seed-superadmin.ts --force` directly (same for
    `db:clean` / `db:reset`).
 
 3. **`drizzle-kit push` against a non-empty DB is fragile.** Drop schema
@@ -375,7 +375,7 @@ or switch to file-based migrations (`db:generate` + replay).
    transactions. The current `pg.Pool` setup stays. (Decision recorded in
    `issues/done/neon-database-adoption.md` §3.)
 
-10. **`npm run db:clean` against prod will drop everything.** The guard
+10. **`pnpm db:clean` against prod will drop everything.** The guard
     catches remote URLs that aren't `localhost|127.0.0.1|::1` AND don't
     contain `neondb_owner`, but if you ever change the prod role name, the
     guard silently lets you through. Verify the URL manually before

@@ -267,18 +267,18 @@ import { useFestivals, useCreateFestival } from "@/api/client/festivals";
 - [ ] Delete `src/trpc/` directory
 - [ ] Delete `src/app/api/trpc/` route handler
 - [ ] Delete any legacy REST routes not under `v1/`
-- [ ] Run `npm run lint` and fix all broken imports
-- [ ] Run `npm run build` to verify
+- [ ] Run `pnpm lint` and fix all broken imports
+- [ ] Run `pnpm build` to verify
 
 ---
 
 ## Verification
 
 After each phase:
-- [ ] `npm run lint` â€” zero warnings
+- [ ] `pnpm lint` â€” zero warnings
 - [ ] Manual smoke test
 
 After Phase 6:
-- [ ] `npm run build` â€” successful
+- [ ] `pnpm build` â€” successful
 - [ ] All features functional
 - [ ] Zero tRPC imports remaining

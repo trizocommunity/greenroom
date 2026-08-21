@@ -708,12 +708,12 @@ Signed Cloudinary upload URLs are generated per request (templates, branding log
 - [ ] Hit rate ≥ 80% on Feature Gate, host, slug, profile caches after 24h of traffic.
 - [ ] No N+1 queries introduced.
 - [ ] All fail-open paths tested (simulated Redis down → graceful Postgres fallback).
-- [ ] `npm run test:integration` green.
+- [ ] `pnpm test:integration` green.
 
 ## Verification
 
 ```bash
-npm run test:integration
+pnpm test:integration
 # Manual: open browser devtools, hit each gated route 10x,
 # confirm zero Postgres queries on hits via Neon dashboard log.
 ```

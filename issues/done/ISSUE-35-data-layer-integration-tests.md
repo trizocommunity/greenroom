@@ -24,7 +24,7 @@ Add a real PostgreSQL integration test suite alongside the existing unit suite. 
 | 5 | Fixture location | `src/test/integration/fixtures/` |
 | 6 | Coverage target | Every service that touches `programme_assignment`, `programme_assignment_member`, or runs a multi-row write inside a transaction |
 | 7 | CI | Integration tests run on PR; failure fails CI |
-| 8 | Local dev | `npm run test:integration` requires Docker. Local devs without Docker fall back to `npm run test:unit` only |
+| 8 | Local dev | `pnpm test:integration` requires Docker. Local devs without Docker fall back to `pnpm test:unit` only |
 | 9 | Mocked DB stays | Yes — unit suite remains mocked. Integration suite is additive, not replacement |
 | 10 | Coverage tool | Existing V8 coverage; integration tests count for coverage |
 | 11 | Schema push strategy | `drizzle-kit push` directly (faster than migrations for tests; tests don't need migration history) |
@@ -139,7 +139,7 @@ beforeAll(async () => {
   client = postgres(url, { max: 5 });
   db = drizzle(client, { schema });
 
-  execSync("npx drizzle-kit push --config=drizzle.config.ts", {
+  execSync("pnpm exec drizzle-kit push --config=drizzle.config.ts", {
     env: { ...process.env, DATABASE_URL: url },
     stdio: "ignore",
   });
@@ -325,7 +325,7 @@ export async function seedGroupAssignment(
 ### 6. CI
 
 `.github/workflows/ci.yml` (or equivalent CI config):
-- Add `npm run test:integration` to the test job
+- Add `pnpm test:integration` to the test job
 - Cache `postgres:16-alpine` Docker image
 - Fail PR on integration failure
 - Set `DOCKER_HOST` if running on GitHub Actions runners
@@ -334,14 +334,14 @@ export async function seedGroupAssignment(
 
 | # | Phase | Deliverable | Verify |
 |---|---|---|---|
-| D.1 | Vitest two-project config | `vitest.config.ts` has `unit` + `integration` projects; new `test:unit` and `test:integration` scripts | `npm run test:unit` passes; `npm run test:integration` runs (even with 0 tests) |
+| D.1 | Vitest two-project config | `vitest.config.ts` has `unit` + `integration` projects; new `test:unit` and `test:integration` scripts | `pnpm test:unit` passes; `pnpm test:integration` runs (even with 0 tests) |
 | D.2 | Testcontainer setup | `src/test/integration/setup.ts` spins Postgres, pushes schema, exposes `getDb()` | Dummy insert/read test passes |
 | D.3 | `withTransaction` helper | `src/test/integration/with-transaction.ts` | Test confirms data inserted inside helper is invisible to the next test |
 | D.4 | Festival fixture | `src/test/integration/fixtures/festival.ts` with both shapes | `buildFestivalWithBothShapes` produces a queryable tree |
 | D.5 | `programme-membership.test.ts` | Issue A coverage | CI green |
 | D.6 | `bulk-create-participants.test.ts` + `bulk-create-programmes.test.ts` | Issue B coverage | CI green |
 | D.7 | `creator-columns.test.ts` | Issue C coverage | CI green |
-| D.8 | CI integration | `npm run test:integration` runs on PR | Green on a no-op PR |
+| D.8 | CI integration | `pnpm test:integration` runs on PR | Green on a no-op PR |
 
 ## Files Touched
 
@@ -361,11 +361,11 @@ export async function seedGroupAssignment(
 
 ## Verification
 
-- `npm run test:unit` — passes (no regression in existing tests)
-- `npm run test:integration` — passes (new tests run against ephemeral Postgres)
+- `pnpm test:unit` — passes (no regression in existing tests)
+- `pnpm test:integration` — passes (new tests run against ephemeral Postgres)
 - CI: both jobs green on PR
 - Coverage report includes the new integration tests
-- Manual: a developer without Docker can still run `npm run test:unit` and the existing test suite passes
+- Manual: a developer without Docker can still run `pnpm test:unit` and the existing test suite passes
 
 ## Out-of-Scope Notes
 

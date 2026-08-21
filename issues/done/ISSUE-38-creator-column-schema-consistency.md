@@ -300,7 +300,7 @@ For each new creator column, render in the relevant detail drawer:
 - Migration runs cleanly on dev DB; backfill populates all existing rows
 - Existing stages created via the API route now show their creator's name in the UI (manual + integration test)
 - Off-stage provisioned stages show "Created by: System"
-- TypeScript: `npm run typecheck` passes (no consumer still references the old `createdBy` column)
+- TypeScript: `pnpm typecheck` passes (no consumer still references the old `createdBy` column)
 - Existing unit tests pass
 - New integration tests at `creator-columns.test.ts` pass
 - For Phase 2/3: same pattern — migration + backfill + writer updates + tests
