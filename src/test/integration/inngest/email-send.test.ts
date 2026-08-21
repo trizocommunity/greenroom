@@ -5,8 +5,9 @@
  *   - Resend 4xx → NonRetriableError (no retry)
  *   - Resend 2xx → success returned to caller
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { NonRetriableError } from "inngest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 

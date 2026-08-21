@@ -8,9 +8,9 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
   CommandList,
-  CommandInput,
 } from "@/components/ui/command";
 import {
   Popover,

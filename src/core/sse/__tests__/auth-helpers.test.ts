@@ -20,8 +20,12 @@ vi.mock("@/core/auth/stage-portal-session", () => ({
 vi.mock("@/core/database/client", () => ({
   db: {
     query: {
-      programme: { findFirst: (...args: unknown[]) => mockProgrammeFindFirst(...args) },
-      festival: { findFirst: (...args: unknown[]) => mockFestivalFindFirst(...args) },
+      programme: {
+        findFirst: (...args: unknown[]) => mockProgrammeFindFirst(...args),
+      },
+      festival: {
+        findFirst: (...args: unknown[]) => mockFestivalFindFirst(...args),
+      },
     },
   },
 }));
@@ -58,7 +62,10 @@ describe("requireAdminSession", () => {
   });
 
   it("returns null (allow) when there is a session", async () => {
-    mockGetSessionFromHeaders.mockResolvedValue({ userId: "u1", role: "ADMIN" });
+    mockGetSessionFromHeaders.mockResolvedValue({
+      userId: "u1",
+      role: "ADMIN",
+    });
     const res = await requireAdminSession(REQ);
     expect(res).toBeNull();
   });
@@ -72,7 +79,10 @@ describe("requireSuperAdmin", () => {
   });
 
   it("returns 403 when the session is admin but not super-admin", async () => {
-    mockGetSessionFromHeaders.mockResolvedValue({ userId: "u1", role: "ADMIN" });
+    mockGetSessionFromHeaders.mockResolvedValue({
+      userId: "u1",
+      role: "ADMIN",
+    });
     const res = await requireSuperAdmin(REQ);
     expect(res?.status).toBe(403);
     expect(await res?.json()).toEqual({ error: "FORBIDDEN" });
@@ -97,7 +107,10 @@ describe("requireAdminOrStagePortal", () => {
   });
 
   it("returns null (allow) when the admin session is present", async () => {
-    mockGetSessionFromHeaders.mockResolvedValue({ userId: "u1", role: "ADMIN" });
+    mockGetSessionFromHeaders.mockResolvedValue({
+      userId: "u1",
+      role: "ADMIN",
+    });
     mockGetStagePortalSessionFromCookie.mockResolvedValue(null);
     const res = await requireAdminOrStagePortal(REQ, "p1");
     expect(res).toBeNull();

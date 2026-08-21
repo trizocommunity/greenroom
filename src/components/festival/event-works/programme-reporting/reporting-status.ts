@@ -322,10 +322,10 @@ export function buildProgrammeHistoryDetails(
                   lead?.teamParticipantIds?.length || members.length,
                 teamMemberNames: lead?.teamMemberNames?.length
                   ? lead.teamMemberNames
-                  : members
+                  : (members
                       .slice(1)
                       .map((m) => m.participantName)
-                      .filter(Boolean) as string[],
+                      .filter(Boolean) as string[]),
               };
             },
           )

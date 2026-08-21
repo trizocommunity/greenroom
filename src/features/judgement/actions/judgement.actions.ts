@@ -406,19 +406,22 @@ export async function getJudgementWizardDataAction(festivalId: string) {
             >();
 
             for (const r of sessionRow.programmeReportedParticipants) {
-              const assignmentRow = r.assignmentId ? assignmentMap.get(r.assignmentId) : undefined;
+              const assignmentRow = r.assignmentId
+                ? assignmentMap.get(r.assignmentId)
+                : undefined;
               const teamNo = r.teamNumber ?? r.programmeAssignment?.teamNumber;
               const groupName = r.group?.name ?? null;
               const key = `${groupName ?? "no-group"}::${teamNo ?? "no-team"}`;
-              
+
               const teamLeadName = assignmentRow?.teamLeadName;
               const fallbackLabel = groupName
                 ? teamNo
                   ? `${groupName} - Team ${teamNo}`
                   : groupName
                 : `Team ${teamNo ?? "—"}`;
-              const label = teamLeadName || r.participant?.name || fallbackLabel;
-              
+              const label =
+                teamLeadName || r.participant?.name || fallbackLabel;
+
               const codeLetter = r.participant?.id
                 ? (codeByParticipantId.get(r.participant.id) ?? null)
                 : null;
@@ -440,7 +443,11 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 existing.codeLetter = codeLetter;
               }
               // If there are legacy multiple rows, we can still push names
-              if (r.participant?.name && r.participant.name !== existing.label && !existing.teamMemberNames.includes(r.participant.name)) {
+              if (
+                r.participant?.name &&
+                r.participant.name !== existing.label &&
+                !existing.teamMemberNames.includes(r.participant.name)
+              ) {
                 existing.teamMemberNames.push(r.participant.name);
               }
             }
@@ -496,7 +503,8 @@ export async function getJudgementWizardDataAction(festivalId: string) {
             );
 
     reportedEntries.sort((a, b) => {
-      if (a.codeLetter && b.codeLetter) return a.codeLetter.localeCompare(b.codeLetter);
+      if (a.codeLetter && b.codeLetter)
+        return a.codeLetter.localeCompare(b.codeLetter);
       if (a.codeLetter) return -1;
       if (b.codeLetter) return 1;
       return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });

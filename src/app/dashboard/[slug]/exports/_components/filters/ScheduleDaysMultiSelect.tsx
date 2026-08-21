@@ -18,11 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  dateKeyLocal,
-  formatDate,
-  relativeDayLabel,
-} from "@/core/datetime";
+import { dateKeyLocal, formatDate, relativeDayLabel } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 
 export interface ScheduleDayOption {
@@ -74,13 +70,9 @@ export function ScheduleDaysMultiSelect({
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
 
-  const dayKeys = React.useMemo(
-    () => options.map((o) => o.key),
-    [options],
-  );
+  const dayKeys = React.useMemo(() => options.map((o) => o.key), [options]);
   const selectedSet = React.useMemo(() => new Set(value), [value]);
-  const allSelected =
-    options.length > 0 && selectedSet.size === options.length;
+  const allSelected = options.length > 0 && selectedSet.size === options.length;
 
   const { todayKey, yesterdayKey, tomorrowKey } = React.useMemo(() => {
     const now = new Date();
@@ -154,12 +146,7 @@ export function ScheduleDaysMultiSelect({
     return candidates
       .map((r) => ({
         ...r,
-        tokens: [
-          r.rel.toLowerCase(),
-          r.label,
-          r.key,
-          longLabel(r.key),
-        ]
+        tokens: [r.rel.toLowerCase(), r.label, r.key, longLabel(r.key)]
           .filter(Boolean)
           .join(" "),
       }))
@@ -171,14 +158,7 @@ export function ScheduleDaysMultiSelect({
           r.tokens.toLowerCase().includes(q)
         );
       });
-  }, [
-    yesterdayKey,
-    todayKey,
-    tomorrowKey,
-    optionKeySet,
-    query,
-    longLabel,
-  ]);
+  }, [yesterdayKey, todayKey, tomorrowKey, optionKeySet, query, longLabel]);
 
   const visibleDayOptions = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -269,7 +249,9 @@ export function ScheduleDaysMultiSelect({
               placeholder="Search day…"
             />
             <CommandList className="max-h-72">
-              {showEmptyState ? <CommandEmpty>No day found.</CommandEmpty> : null}
+              {showEmptyState ? (
+                <CommandEmpty>No day found.</CommandEmpty>
+              ) : null}
 
               {visibleQuickRows.length > 0 ? (
                 <CommandGroup heading="Quick filters">

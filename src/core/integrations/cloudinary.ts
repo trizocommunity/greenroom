@@ -134,9 +134,7 @@ export async function applyTransformations(
   const cfg = readConfig();
   if (!cfg) throw new CloudinaryConfigError();
 
-  const eager = transformations
-    .map((t) => buildEagerString(t))
-    .join("|");
+  const eager = transformations.map((t) => buildEagerString(t)).join("|");
 
   const timestamp = Math.round(serverNowMs() / 1000);
   const params: Record<string, string> = {

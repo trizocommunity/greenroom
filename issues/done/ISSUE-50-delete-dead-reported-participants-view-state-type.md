@@ -14,8 +14,8 @@
 
 - [x] The type alias is removed
 - [x] `git grep ReportedParticipantsViewState` returns nothing
-- [x] `npm run lint` shows no new errors
-- [x] `npx tsc --noEmit` passes
+- [x] `pnpm lint` shows no new errors
+- [x] `pnpm exec tsc --noEmit` passes
 
 ## Discovered during
 

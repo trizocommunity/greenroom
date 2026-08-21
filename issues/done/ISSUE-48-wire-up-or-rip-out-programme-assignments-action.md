@@ -28,7 +28,7 @@ Changed from `(festivalId, programmeId)` to `(festivalId)` — the page needs al
 
 - [x] `getProgrammeAssignmentsAction` is called from at least one production code path
 - [x] The TODO comment on line 54 is resolved (programme-team-lead join now uses `programme.festivalId`)
-- [x] No regression in `npm run test:unit` or `npm run build`
+- [x] No regression in `pnpm test:unit` or `pnpm build`
 
 ## Discovered during
 

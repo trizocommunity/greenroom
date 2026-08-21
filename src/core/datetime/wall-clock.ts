@@ -91,11 +91,7 @@ export function dateKeyUTC(value: string | Date): string {
   // Force UTC for the format — date-fns' `format()` reads the *local*
   // time of the Date, but we want the canonical UTC bucket.
   return new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-    ),
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
   )
     .toISOString()
     .slice(0, 10);

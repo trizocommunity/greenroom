@@ -4,7 +4,11 @@ import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { PendingOrderExistsError, useInitiatePayment, useVerifyPayment } from "@/api/client";
+import {
+  PendingOrderExistsError,
+  useInitiatePayment,
+  useVerifyPayment,
+} from "@/api/client";
 import {
   AlertDialog,
   AlertDialogAction,

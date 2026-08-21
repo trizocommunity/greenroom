@@ -148,10 +148,12 @@ describe("filterProgrammesForEventWorks", () => {
   });
 
   it("BASIC: legacy DRAFT with assignments still appears", () => {
-    const legacy = [{ id: "legacy", status: "DRAFT", assignments: [{ id: "x" }] }];
-    expect(filterProgrammesForEventWorks(legacy, "BASIC").map((p) => p.id)).toEqual(
-      ["legacy"],
-    );
+    const legacy = [
+      { id: "legacy", status: "DRAFT", assignments: [{ id: "x" }] },
+    ];
+    expect(
+      filterProgrammesForEventWorks(legacy, "BASIC").map((p) => p.id),
+    ).toEqual(["legacy"]);
   });
 
   it("STANDARD/PRO: keeps SCHEDULED and PUBLISHED, drops ASSIGNED", () => {

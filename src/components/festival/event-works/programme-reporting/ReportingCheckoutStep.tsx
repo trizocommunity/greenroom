@@ -1,7 +1,7 @@
 "use client";
 
 import { QrScanner } from "./QrScanner";
-import { ScanResponseFooter, type ScanEntry } from "./ScanResponseFooter";
+import { type ScanEntry, ScanResponseFooter } from "./ScanResponseFooter";
 import type { ReportingBoardItem } from "./types";
 import type { ReportingSessionState } from "./useReportingSession";
 

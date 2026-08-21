@@ -1,5 +1,6 @@
 "use client";
 
+import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 import {
   Drawer,
   DrawerContent,
@@ -8,7 +9,6 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { formatDateTime } from "@/core/datetime";
-import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 import type { ProgrammeHistoryDetail } from "./reporting-status";
 
 /**

@@ -34,8 +34,8 @@ The identity of "a team in a programme" — `programmeId × groupId × teamNumbe
 - [x] `TeamKey` type declared once
 - [x] All 5 sites use the helper
 - [x] `git grep "::"` in the affected files returns nothing for team-key uses (verified — see follow-up)
-- [x] `npm run test:unit` passes — especially any team-aggregation tests
-- [x] `npm run build` passes
+- [x] `pnpm test:unit` passes — especially any team-aggregation tests
+- [x] `pnpm build` passes
 
 ## Discovered during
 

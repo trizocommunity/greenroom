@@ -2,10 +2,10 @@ import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   categoryProgrammeLimit,
-  programme as programmeTable,
+  participant as participantTable,
   programmeAssignment,
   programmeAssignmentMember,
-  participant as participantTable,
+  programme as programmeTable,
 } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
 
@@ -148,7 +148,9 @@ export async function getParticipantAssignmentCounts(
 
   const allRows = [...individualRows, ...memberRows];
   const stageCount = allRows.filter((r) => r.stageType === "STAGE").length;
-  const nonStageCount = allRows.filter((r) => r.stageType === "NON_STAGE").length;
+  const nonStageCount = allRows.filter(
+    (r) => r.stageType === "NON_STAGE",
+  ).length;
 
   return {
     participantId,

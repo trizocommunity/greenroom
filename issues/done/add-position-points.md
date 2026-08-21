@@ -24,7 +24,7 @@ No open questions.
 - Set defaults to 5, 3, and 1 respectively.
 
 #### [NEW] Drizzle Migration
-- Generate a drizzle migration (`npx drizzle-kit generate`) to add the new columns to the database.
+- Generate a drizzle migration (`pnpm exec drizzle-kit generate`) to add the new columns to the database.
 
 ---
 ### Services & Actions

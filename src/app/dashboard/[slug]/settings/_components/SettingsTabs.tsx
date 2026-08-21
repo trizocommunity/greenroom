@@ -1,6 +1,6 @@
 "use client";
 
-import { Gavel, Globe, Settings2, Sparkles, ShieldAlert } from "lucide-react";
+import { Gavel, Globe, Settings2, ShieldAlert, Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
 import { ScoringPolicyClient } from "@/components/dashboard/judgement/ScoringPolicyClient";
@@ -9,8 +9,8 @@ import {
   type CustomDomainState,
   FestivalLiveClient,
 } from "./FestivalLiveClient";
-import { SettingsForm } from "./SettingsForm";
 import { LimitationPolicyClient } from "./LimitationPolicyClient";
+import { SettingsForm } from "./SettingsForm";
 
 interface SettingsTabsProps {
   festival: any;

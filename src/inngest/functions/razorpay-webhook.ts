@@ -33,8 +33,9 @@ export const razorpayWebhook = inngest.createFunction(
       payload: Record<string, unknown>;
     };
 
-    const paymentEntity = (payload as { payment?: { entity?: { order_id?: string; id?: string } } })
-      .payment?.entity;
+    const paymentEntity = (
+      payload as { payment?: { entity?: { order_id?: string; id?: string } } }
+    ).payment?.entity;
     const orderId = paymentEntity?.order_id;
     if (!orderId) {
       return { skipped: true, reason: "missing order_id", eventId };

@@ -128,10 +128,9 @@ export function formatRelative(
   const diffMs = date.getTime() - baseDate.getTime();
   const direction = diffMs >= 0 ? "future" : "past";
   try {
-    const text = formatDistanceToNow(
-      direction === "future" ? date : baseDate,
-      { addSuffix: false },
-    );
+    const text = formatDistanceToNow(direction === "future" ? date : baseDate, {
+      addSuffix: false,
+    });
     return direction === "future" ? `in ${text}` : `${text} ago`;
   } catch {
     return FALLBACK_DISPLAY;

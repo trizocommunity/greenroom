@@ -1,21 +1,6 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
 import { Check, Crown, Loader2, ShieldAlert } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,19 +12,34 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { AppEmptyState, StatusPill } from "@/components/app/AppSection";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { toast } from "@/lib/toast";
-import { cn } from "@/core/utils/cn";
 import type { CategoryType, StageType } from "@/core/types/app-enums";
+import { cn } from "@/core/utils/cn";
+import { toast } from "@/lib/toast";
 import type {
-  ProgrammeForAssignment,
   MyParticipantForAssignment,
+  ProgrammeForAssignment,
 } from "../types";
 
 function stageTypeLabel(stageType?: StageType | null): string {

@@ -34,7 +34,7 @@ Move the success-state mutations inside the `if (res.success)` branch. On failur
 - [x] Drawer does **not** close and route does **not** push on action failure
 - [x] `onSuccess` only runs after the awaited action resolves with `success: true`
 - [x] Behaviour on success is unchanged from today
-- [x] `npm run test:unit` passes (no regression in adjacent tests)
+- [x] `pnpm test:unit` passes (no regression in adjacent tests)
 
 ## Discovered during
 

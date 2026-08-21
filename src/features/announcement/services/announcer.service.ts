@@ -15,12 +15,12 @@
  */
 
 export {
-  type AnnouncerQueueProgramme,
   type ActiveReportingProgramme,
-  getAnnouncerQueue,
-  getResultsConsoleProgrammes,
+  type AnnouncerQueueProgramme,
   getActiveReportingSessions,
+  getAnnouncerQueue,
   getCallListProgrammes,
+  getResultsConsoleProgrammes,
 } from "@/features/announcement/services/announcer-queue.read-model";
 export {
   getPenOfTheFest,

@@ -4,9 +4,9 @@ import CTASection from "@/components/home/CTASection";
 import { PageHeader } from "@/components/layout/Section";
 
 export const metadata: Metadata = {
-  title: "Features | Greenroom",
+  title: "Features",
   description:
-    "Every module inside Greenroom — pre-event setup, stages and schedule, judging, results, the public site, and exports.",
+    "Explore Greenroom's features: pre-event setup, scheduling, live scoring, judges portal, automated results, and paperless certificates for your festival.",
 };
 
 export default function FeaturesPage() {

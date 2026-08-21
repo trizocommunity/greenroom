@@ -1,27 +1,25 @@
 import "server-only";
 
-import { and, asc, eq } from "drizzle-orm";
 import { format } from "date-fns";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
-import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 import type { ScheduleConfig } from "@/features/exports/schemas/export-config.schema";
-import {
-  PDF_MIME,
-} from "@/features/exports/services/render/pdf-doc";
 import {
   buildDayWiseSchedulePdf,
   type DayWiseScheduleDay,
   type DayWiseScheduleRow,
 } from "@/features/exports/services/render/day-wise-schedule-pdf";
+import { PDF_MIME } from "@/features/exports/services/render/pdf-doc";
 import type {
   ExportFormat,
   GeneratedExport,
 } from "@/features/exports/types/export.types";
+import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 
 export async function generateSchedule(
   festivalId: string,
@@ -57,10 +55,7 @@ export async function generateSchedule(
       programme: { with: { category: true } },
       stage: true,
     },
-    orderBy: [
-      asc(scheduleEntryTable.startTime),
-      asc(scheduleEntryTable.order),
-    ],
+    orderBy: [asc(scheduleEntryTable.startTime), asc(scheduleEntryTable.order)],
   });
 
   const rowsByDay = new Map<string, DayWiseScheduleRow[]>();
@@ -73,7 +68,7 @@ export async function generateSchedule(
 
     const programmeName =
       e.type === "SESSION"
-        ? e.title ?? e.sessionType ?? "Session"
+        ? (e.title ?? e.sessionType ?? "Session")
         : (e.programme?.name ?? "—");
     const categoryName =
       e.programme?.category?.name ?? (e.type === "SESSION" ? "Sessions" : "—");

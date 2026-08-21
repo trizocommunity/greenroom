@@ -1,9 +1,9 @@
 "use client";
 
 import { Check, Crown, Loader2 } from "lucide-react";
+import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/core/utils/cn";
-import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
 import type { RosterTableRow } from "./types";
 
 interface ReportingRosterTableProps {
@@ -93,9 +93,11 @@ export function ReportingRosterTable({
                         ? row.teamCell
                           ? `Team ${row.teamCell}`
                           : undefined
-                        : row.groupName ?? undefined
+                        : (row.groupName ?? undefined)
                     }
-                    teamMemberNames={row.mode === "team" ? row.teamMemberNames : undefined}
+                    teamMemberNames={
+                      row.mode === "team" ? row.teamMemberNames : undefined
+                    }
                     isMuted={!row.isReported}
                   />
                 </div>
@@ -180,9 +182,11 @@ export function ReportingRosterTable({
                         ? row.teamCell
                           ? `Team ${row.teamCell}`
                           : undefined
-                        : row.groupName ?? undefined
+                        : (row.groupName ?? undefined)
                     }
-                    teamMemberNames={row.mode === "team" ? row.teamMemberNames : undefined}
+                    teamMemberNames={
+                      row.mode === "team" ? row.teamMemberNames : undefined
+                    }
                     isMuted={!row.isReported}
                   />
                 </button>
@@ -211,9 +215,11 @@ export function ReportingRosterTable({
                         ? row.teamCell
                           ? `Team ${row.teamCell}`
                           : undefined
-                        : row.groupName ?? undefined
+                        : (row.groupName ?? undefined)
                     }
-                    teamMemberNames={row.mode === "team" ? row.teamMemberNames : undefined}
+                    teamMemberNames={
+                      row.mode === "team" ? row.teamMemberNames : undefined
+                    }
                     isMuted={!row.isReported}
                   />
                 </div>

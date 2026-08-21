@@ -7,8 +7,9 @@
  *   - 400 on a missing X-Razorpay-Signature header
  *   - 400 on a malformed JSON body
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import crypto from "crypto";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -45,7 +46,10 @@ beforeEach(() => {
   mockEnqueue.mockResolvedValue(undefined);
 });
 
-function makeRequest(body: string, headers: Record<string, string> = {}): Request {
+function makeRequest(
+  body: string,
+  headers: Record<string, string> = {},
+): Request {
   return new Request("http://test/api/v1/payments/webhook", {
     method: "POST",
     body,

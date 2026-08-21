@@ -5,9 +5,9 @@ import { useEffect } from "react";
 import { useExportBlob } from "@/api/client/exports";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/core/datetime";
-import { getExportTypeMeta } from "./export-types";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 import { CsvPreviewViewer } from "./CsvPreviewViewer";
+import { getExportTypeMeta } from "./export-types";
 import { PdfPreviewViewer } from "./PdfPreviewViewer";
 
 interface Props {
@@ -16,11 +16,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function ExportPreviewOverlay({
-  exportId,
-  exports,
-  onClose,
-}: Props) {
+export function ExportPreviewOverlay({ exportId, exports, onClose }: Props) {
   const row = exportId ? exports.find((e) => e.id === exportId) : null;
   const open = !!exportId;
   const status = row?.status ?? null;
@@ -72,15 +68,21 @@ export function ExportPreviewOverlay({
       {/* Header */}
       <header className="flex items-center gap-3 border-b px-4 sm:px-6 py-3 shrink-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          {meta?.icon && <meta.icon className="h-5 w-5 text-muted-foreground shrink-0" />}
+          {meta?.icon && (
+            <meta.icon className="h-5 w-5 text-muted-foreground shrink-0" />
+          )}
           <div className="min-w-0 flex-1">
             <div className="font-medium truncate">
-              {row.fileName ?? `${meta?.title ?? "Export"}.${format.toLowerCase()}`}
+              {row.fileName ??
+                `${meta?.title ?? "Export"}.${format.toLowerCase()}`}
             </div>
             <div className="text-xs text-muted-foreground truncate">
               {meta?.title ?? "Export"} · {subtitle}
               {row.itemCount != null && (
-                <> · {row.itemCount} item{row.itemCount === 1 ? "" : "s"}</>
+                <>
+                  {" "}
+                  · {row.itemCount} item{row.itemCount === 1 ? "" : "s"}
+                </>
               )}
             </div>
           </div>
@@ -113,7 +115,9 @@ export function ExportPreviewOverlay({
         ) : status === "PROCESSING" || blob.isLoading ? (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            {status === "PROCESSING" ? "Generating your export…" : "Loading preview…"}
+            {status === "PROCESSING"
+              ? "Generating your export…"
+              : "Loading preview…"}
           </div>
         ) : blob.isError ? (
           <div className="flex h-full items-center justify-center p-8 text-center text-sm text-destructive">
@@ -153,19 +157,18 @@ export function ExportPreviewOverlay({
           variant="outline"
           size="sm"
           onClick={() => {
-            window.open(`/api/v1/exports/${row.id}/download?inline=1`, "_blank", "noopener");
+            window.open(
+              `/api/v1/exports/${row.id}/download?inline=1`,
+              "_blank",
+              "noopener",
+            );
           }}
           disabled={status !== "COMPLETED"}
         >
           <ExternalLink className="h-4 w-4 mr-1.5" />
           Open in new tab
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={onClose}
-        >
+        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
           Close
         </Button>
       </footer>

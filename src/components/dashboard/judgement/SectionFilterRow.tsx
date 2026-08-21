@@ -1,7 +1,6 @@
 "use client";
 
 import { Calendar, X } from "lucide-react";
-import { cn } from "@/core/utils/cn";
 import {
   Select,
   SelectContent,
@@ -9,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/core/utils/cn";
 
 /**
  * A compact search input with the calendar icon (visual cue only) and a clear

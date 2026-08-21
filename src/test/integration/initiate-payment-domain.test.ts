@@ -209,17 +209,19 @@ describe("initiatePaymentDomain — duplicate pending guard", () => {
         const orderId = `order-${randomUUID()}`;
         if (!winnerInserted) {
           winnerInserted = true;
-          await getDb().insert(paymentTable).values({
-            id: randomUUID(),
-            userId: user.id,
-            amount: 1500,
-            currency: "INR",
-            providerId: orderId,
-            status: "PENDING",
-            purpose: "FESTIVAL_CREATION",
-            used: false,
-            tier: "BASIC",
-          } as never);
+          await getDb()
+            .insert(paymentTable)
+            .values({
+              id: randomUUID(),
+              userId: user.id,
+              amount: 1500,
+              currency: "INR",
+              providerId: orderId,
+              status: "PENDING",
+              purpose: "FESTIVAL_CREATION",
+              used: false,
+              tier: "BASIC",
+            } as never);
         }
         return { id: orderId };
       });

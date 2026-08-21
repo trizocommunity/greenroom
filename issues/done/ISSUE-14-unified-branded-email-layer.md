@@ -139,7 +139,7 @@ The existing daily cron at `/api/v1/cron` now also calls `FestivalExpirationServ
 
 ## Acceptance Criteria (all met)
 
-- [x] `npm install @react-email/components @react-email/render` succeeds
+- [x] `pnpm add @react-email/components @react-email/render` succeeds
 - [x] `src/core/integrations/email/{tokens,theme}.ts` export DARK + LIGHT palettes + Tailwind config
 - [x] `<BrandedLayout>`, `<EmailButton>`, `<EmailFooter>`, `<EmailWordmark>` primitives
 - [x] 4 kind renderers (magic-link, festival-invitation, team-leader-otp, festival-expiring-soon)
@@ -152,7 +152,7 @@ The existing daily cron at `/api/v1/cron` now also calls `FestivalExpirationServ
 - [x] Cron calls `runFestivalExpiringSoonEmails`; idempotent via `festivalExpiringSoonEmailSentAt`
 - [x] Vitest: 14 tests pass (per-kind render, theme swap, send.ts toggle, tokens drift)
 - [x] Biome lint clean across all 26 touched files
-- [x] `npx tsc --noEmit` clean (no new errors)
+- [x] `pnpm exec tsc --noEmit` clean (no new errors)
 
 ---
 

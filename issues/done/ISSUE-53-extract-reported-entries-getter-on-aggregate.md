@@ -28,8 +28,8 @@ Each call site had its own dedup logic, and the dedup rules actually differed (I
 - [x] Both UI sites consume the helper (no inline `Map` dedup)
 - [x] `ReportedEntriesPanel` is the single render component
 - [x] Behaviour unchanged in both places (manual smoke check pending)
-- [x] `npm run test:unit` passes
-- [x] `npm run build` passes
+- [x] `pnpm test:unit` passes
+- [x] `pnpm build` passes
 
 ## Discovered during
 

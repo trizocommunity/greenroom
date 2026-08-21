@@ -71,17 +71,15 @@ export const exportJob = inngest.createFunction(
       format: ExportFormat;
     };
 
-    const { festivalName } = await step.run("load-festival",
-      async () => {
-        const festivalRow = await db.query.festival.findFirst({
-          where: eq(festivalTable.id, festivalId),
-          columns: { name: true },
-        });
-        return {
-          festivalName: festivalRow?.name ?? "",
-        };
-      },
-    );
+    const { festivalName } = await step.run("load-festival", async () => {
+      const festivalRow = await db.query.festival.findFirst({
+        where: eq(festivalTable.id, festivalId),
+        columns: { name: true },
+      });
+      return {
+        festivalName: festivalRow?.name ?? "",
+      };
+    });
 
     const startedAt = serverNowMs();
     const generatedRaw = await step.run(

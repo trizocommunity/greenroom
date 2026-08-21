@@ -8,16 +8,17 @@ import {
   Clock,
   Flag,
   MapPin,
+  Search,
   Tag,
   Users,
-  Search,
   X,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
+import { ProgrammeTimer } from "@/components/festival/event-works/programme-reporting/ReportingBoardList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DateFilterCombobox } from "@/components/ui/date-filter-combobox";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -31,12 +32,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import type { EnrichedScheduleEntry } from "@/features/schedule/actions/schedule.actions";
 import { calculateProgrammeDuration } from "@/features/schedule/utils/programme-duration";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
-import { ProgrammeTimer } from "@/components/festival/event-works/programme-reporting/ReportingBoardList";
-import { parseInstant } from "@/core/datetime";
 
 interface ScheduleTableViewProps {
   festivalId: string;

@@ -1,8 +1,8 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
-import type { Programme, ReportingDetails, ReportedEntry } from "./types";
+import { Badge } from "@/components/ui/badge";
+import type { Programme, ReportedEntry, ReportingDetails } from "./types";
 
 /**
  * Compact read-only list of who's on stage inside the start-judgement
@@ -59,9 +59,15 @@ function RosterRow({
     ? `${entry.label ?? "Party"} & ${partySuffix}`
     : entry.label;
 
-  const groupNameEl = isGroup && entry.groupName && entry.groupName !== entry.label ? entry.groupName : null;
-  const catNameEl = entry.categoryName && entry.categoryName !== programmeCategory ? entry.categoryName : null;
-  
+  const groupNameEl =
+    isGroup && entry.groupName && entry.groupName !== entry.label
+      ? entry.groupName
+      : null;
+  const catNameEl =
+    entry.categoryName && entry.categoryName !== programmeCategory
+      ? entry.categoryName
+      : null;
+
   const subtitle = [groupNameEl, catNameEl].filter(Boolean).join(" · ");
 
   return (

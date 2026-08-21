@@ -19,6 +19,7 @@ import { computeWindowEndsAt } from "@/features/programmes/domain/reporting-sess
 import { teamKey } from "@/features/programmes/domain/team-key";
 import { ReportingSessionRepository } from "@/features/programmes/repositories/reporting-session.repository";
 import { updateProgrammeStatus } from "@/features/programmes/services/programme-status.service";
+import { calculateProgrammeDuration } from "@/features/schedule/utils/programme-duration";
 import {
   type AccessSession,
   StageAssignmentService,
@@ -26,7 +27,6 @@ import {
 import { shuffleInPlace } from "./code-letter-adapter.service";
 import { ReportingEventAdapter } from "./reporting-event-adapter.service";
 import { groupIntoUnits, planScratchCodes } from "./scratch-code-plan";
-import { calculateProgrammeDuration } from "@/features/schedule/utils/programme-duration";
 
 async function getOrCreateSessionByProgramme(
   programmeId: string,
@@ -588,15 +588,19 @@ export const ProgrammeReportingService = {
         },
       });
       if (programme) {
-        const unitCount = session.reportedParticipants.length > 0
-          ? (session.programmeType === "GROUP"
+        const unitCount =
+          session.reportedParticipants.length > 0
+            ? session.programmeType === "GROUP"
               ? new Set(
                   session.reportedParticipants.map((p) =>
-                    teamKey.partial({ groupId: p.groupId, teamNumber: p.teamNumber }),
+                    teamKey.partial({
+                      groupId: p.groupId,
+                      teamNumber: p.teamNumber,
+                    }),
                   ),
                 ).size
-              : session.reportedParticipants.length)
-          : session.assignments.length;
+              : session.reportedParticipants.length
+            : session.assignments.length;
 
         const { totalMinutes } = calculateProgrammeDuration({
           type: programme.type,
@@ -607,7 +611,9 @@ export const ProgrammeReportingService = {
         });
 
         if (totalMinutes > 0) {
-          windowEndsAt = new Date(Date.now() + totalMinutes * 60_000).toISOString();
+          windowEndsAt = new Date(
+            Date.now() + totalMinutes * 60_000,
+          ).toISOString();
         }
       }
     }

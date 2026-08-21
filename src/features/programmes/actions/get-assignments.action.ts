@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, inArray, asc } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/core/database/client";
 import {
@@ -129,7 +129,7 @@ export async function getProgrammeAssignmentsAction(
   return assignmentRowsRaw.map((row) => {
     const computedGroupId = row.groupId ?? row.participantGroupId ?? null;
     const members = membersByAssignmentId.get(row.id) ?? [];
-    
+
     const explicitLead = teamLeadsMap.get(
       teamKey({
         programmeId: row.programmeId,
@@ -137,7 +137,7 @@ export async function getProgrammeAssignmentsAction(
         teamNumber: row.teamNumber,
       }),
     );
-    
+
     const teamLeadName = explicitLead?.name ?? members[0]?.name ?? null;
     const teamLeadIdToExclude = explicitLead?.id ?? members[0]?.id ?? null;
 

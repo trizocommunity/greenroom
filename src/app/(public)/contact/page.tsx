@@ -3,9 +3,9 @@ import ContactForm from "@/components/contact/ContactForm";
 import { PageHeader, Section } from "@/components/layout/Section";
 
 export const metadata: Metadata = {
-  title: "Contact | Greenroom",
+  title: "Contact",
   description:
-    "Tell us about your festival — the format, the judging rules, the timeline — and we'll show you how Greenroom runs it.",
+    "Contact the Greenroom team to set up your next cultural festival, competition, or arts fest using our paperless management software.",
 };
 
 const CHANNELS = [

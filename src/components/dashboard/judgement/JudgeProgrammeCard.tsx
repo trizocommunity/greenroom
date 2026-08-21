@@ -1,10 +1,10 @@
 "use client";
 
 import { KeyRound } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ProgrammeProgressFunnel } from "@/components/dashboard/judgement/ProgrammeProgressFunnel";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/core/utils/cn";
 import { JudgementTimer } from "./JudgementTimer";
 import type { ActiveConfig, JudgedProgrammeCard, Programme } from "./types";

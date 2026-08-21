@@ -1,7 +1,13 @@
 "use client";
 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
 

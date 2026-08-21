@@ -65,7 +65,7 @@ src/
 
 **Command:**
 ```bash
-npm install zustand
+pnpm add zustand
 ```
 
 **No other dependencies needed.**

@@ -8,9 +8,9 @@ import {
 } from "@/components/layout/Section";
 
 export const metadata: Metadata = {
-  title: "About | Greenroom",
+  title: "About",
   description:
-    "Greenroom is built for the institutions that stage cultural festivals — and for the people who used to tabulate them by hand.",
+    "Learn about Greenroom. We build paperless festival management software for institutions, schools, colleges, and madrasas to automate their cultural events.",
 };
 
 const STORY = [

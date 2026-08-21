@@ -704,14 +704,14 @@ All significant mutations are logged to `audit_log`:
 ### 7.4 Database Setup
 
 ```bash
-npm run db:setup  # starts Docker + pushes schema + seeds
+pnpm db:setup  # starts Docker + pushes schema + seeds
 ```
 
 ```bash
-npm run db:start    # docker compose up -d
-npm run db:push     # drizzle-kit push
-npm run db:seed     # seeds Super Admin + sample festival
-npm run db:studio   # open Drizzle Studio
+pnpm db:start    # docker compose up -d
+pnpm db:push     # drizzle-kit push
+pnpm db:seed     # seeds Super Admin + sample festival
+pnpm db:studio   # open Drizzle Studio
 ```
 
 ---

@@ -27,10 +27,67 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Greenroom | Paperless Festival Management",
+  metadataBase: new URL("https://greenroomfestivals.in"),
+  title: {
+    default: "Greenroom | Paperless Festival Management",
+    template: "%s | Greenroom",
+  },
   description:
-    "A premium, reliable platform to run large-scale festivals without chaos.",
+    "A premium, reliable platform to run large-scale festivals, competitions, and youth fests without paper or chaos. Automate scoring, schedules, and certificates.",
   applicationName: "Greenroom",
+  keywords: [
+    // Core Brand
+    "Greenroom",
+    "Greenroom Festival Management",
+    "Paperless Festival",
+
+    // Festival Types
+    "Cultural Fest Software",
+    "Arts Festival Management",
+    "Art Fest Software",
+    "Live Festivals Management",
+    "Youth Fest Management",
+    "Competition Tabulation Software",
+    "School Annual Day Software",
+    "Music and Dance Competition Scoring",
+    "Quiz and Debate League Management",
+
+    // Kerala Specific & Regional
+    "Kalolsavam Management Software",
+    "Sahithyolsavam Software",
+    "Madrasa Fest Tabulation",
+    "Kerala Arts Festival Software",
+    "Mahotsavam Management",
+
+    // National & International
+    "Inter-college Fest Management",
+    "University Youth Festival Software",
+    "Global Festival Management SaaS",
+    "Live Scoring for Competitions",
+    "Judges Scoring App",
+  ],
+  authors: [{ name: "Trizo" }],
+  creator: "Trizo",
+  publisher: "Trizo",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    title: "Greenroom | Paperless Festival Management",
+    description:
+      "Run your next large-scale festival without the paperwork. One platform for participants, schedules, and live scoring.",
+    url: "https://greenroomfestivals.in",
+    siteName: "Greenroom",
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Greenroom | Paperless Festival Management",
+    description: "Run your next large-scale festival without the paperwork.",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -51,6 +108,34 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://greenroomfestivals.in/#organization",
+        name: "Greenroom",
+        url: "https://greenroomfestivals.in",
+        logo: "https://greenroomfestivals.in/icons/apple-touch-icon.png",
+        description:
+          "Greenroom is a paperless festival and competition management software platform.",
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://greenroomfestivals.in/#software",
+        name: "Greenroom",
+        url: "https://greenroomfestivals.in",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Any",
+        description:
+          "A premium platform to manage large-scale cultural festivals, arts fests, and competitions.",
+        provider: {
+          "@id": "https://greenroomfestivals.in/#organization",
+        },
+      },
+    ],
+  };
+
   return (
     <html
       lang="en"
@@ -61,6 +146,10 @@ export default function RootLayout({
       <body
         className={`${outfit.variable} ${instrumentSerif.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <NextTopLoader height={2} color="#d72626" showSpinner={false} />
         <ThemeProvider>
           <QueryProvider>
