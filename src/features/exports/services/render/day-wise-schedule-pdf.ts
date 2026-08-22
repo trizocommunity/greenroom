@@ -83,12 +83,12 @@ export function buildDayWiseSchedulePdf(
   doc.setFont("times", "italic");
   doc.setFontSize(28);
   doc.setTextColor(20, 20, 20);
-  
+
   const titleLines = doc.splitTextToSize(options.festivalName, contentWidth);
   doc.text(titleLines, MARGIN, 24);
-  
-  let y = 24 + (titleLines.length * 10);
-  
+
+  let y = 24 + titleLines.length * 10;
+
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(120, 120, 120);
@@ -96,7 +96,7 @@ export function buildDayWiseSchedulePdf(
     `Generated: ${format(shiftToClientTZ(serverNow(), options.timezoneOffset), "d MMM yyyy, h:mm a")}`,
     pageWidth - MARGIN,
     20,
-    { align: "right" }
+    { align: "right" },
   );
 
   y += 5;
@@ -123,26 +123,40 @@ export function buildDayWiseSchedulePdf(
   let isAlternateRow = false;
 
   const renderScheduleRow = (row: DayWiseScheduleRow) => {
-    const timeText = formatTimeRange(row.startTime, row.endTime, options.timeDisplay, options.timezoneOffset);
+    const timeText = formatTimeRange(
+      row.startTime,
+      row.endTime,
+      options.timeDisplay,
+      options.timezoneOffset,
+    );
     const titleText = row.programmeName;
-    
+
     const bullets: string[] = [];
     bullets.push(`Category: ${row.categoryName}`);
-    if (options.includeDescription && row.description) bullets.push(row.description);
-    if (options.includeStage && row.stageName) bullets.push(`Stage: ${row.stageName}`);
-    if (options.includeSpeakers && row.speakers) bullets.push(`Speakers: ${row.speakers}`);
-    if (options.includeEntryType && row.entryType) bullets.push(`Type: ${row.entryType}`);
-    
+    if (options.includeDescription && row.description)
+      bullets.push(row.description);
+    if (options.includeStage && row.stageName)
+      bullets.push(`Stage: ${row.stageName}`);
+    if (options.includeSpeakers && row.speakers)
+      bullets.push(`Speakers: ${row.speakers}`);
+    if (options.includeEntryType && row.entryType)
+      bullets.push(`Type: ${row.entryType}`);
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     const splitTitle = doc.splitTextToSize(titleText, contentWidth * 0.75);
-    
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    const splitBullets = bullets.map(b => doc.splitTextToSize(`• ${b}`, contentWidth * 0.75));
-    
-    const totalBulletLines = splitBullets.reduce((acc, lines) => acc + lines.length, 0);
-    const textHeight = (splitTitle.length * 5.5) + (totalBulletLines * 5);
+    const splitBullets = bullets.map((b) =>
+      doc.splitTextToSize(`• ${b}`, contentWidth * 0.75),
+    );
+
+    const totalBulletLines = splitBullets.reduce(
+      (acc, lines) => acc + lines.length,
+      0,
+    );
+    const textHeight = splitTitle.length * 5.5 + totalBulletLines * 5;
     const rowHeight = Math.max(textHeight + 10, 18); // Min height of 18mm
 
     ensureSpace(rowHeight);
@@ -162,15 +176,15 @@ export function buildDayWiseSchedulePdf(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text(splitTitle, MARGIN, textY);
-    textY += (splitTitle.length * 5.5);
+    textY += splitTitle.length * 5.5;
 
     // Left Column: Bullet Details
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(50, 50, 50);
-    splitBullets.forEach(lines => {
+    splitBullets.forEach((lines) => {
       doc.text(lines, MARGIN + 2, textY);
-      textY += (lines.length * 5);
+      textY += lines.length * 5;
     });
 
     // Right Column: Time
@@ -187,7 +201,7 @@ export function buildDayWiseSchedulePdf(
   // Grouping chronologically per day
   for (const day of options.days) {
     if (day.rows.length === 0) continue;
-    
+
     if (!isFirstDay) {
       doc.addPage();
       y = MARGIN + 4;
@@ -207,12 +221,14 @@ export function buildDayWiseSchedulePdf(
     isAlternateRow = false;
 
     // Sort all rows for the day chronologically
-    const sortedRows = [...day.rows].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+    const sortedRows = [...day.rows].sort(
+      (a, b) => a.startTime.getTime() - b.startTime.getTime(),
+    );
 
     for (const row of sortedRows) {
       renderScheduleRow(row);
     }
-    
+
     y += 10; // Space between days
   }
 

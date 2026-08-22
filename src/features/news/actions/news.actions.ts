@@ -10,6 +10,7 @@ import { festivalNews } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
 import { serverNowIso } from "@/core/datetime/server";
 import type { Tier } from "@/core/types/app-enums";
+import { slugify } from "@/core/utils/slug";
 import { findFestivalById } from "@/features/festivals/repositories/festival.repository";
 import { invalidatePublicFestivalCaches } from "@/features/festivals/services/public-cache-invalidation";
 import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
@@ -49,6 +50,8 @@ export async function createNewsPostAction(
     return { success: false, error: "News is not available on your plan." };
   }
 
+  const generatedSlug = slugify(data.title) || "news";
+
   await StorageBackedFieldService.mutateUrls({
     festivalId,
     add: [data.imageUrl],
@@ -58,6 +61,7 @@ export async function createNewsPostAction(
         updatedAt: serverNowIso(),
         festivalId,
         title: data.title,
+        slug: generatedSlug,
         excerpt: data.excerpt ?? null,
         content: data.content,
         imageUrl: data.imageUrl ?? null,
@@ -104,6 +108,8 @@ export async function updateNewsPostAction(
   const nextImageUrl =
     data.imageUrl !== undefined ? data.imageUrl : existing.imageUrl;
 
+  const newSlug = data.title ? slugify(data.title) || undefined : undefined;
+
   await StorageBackedFieldService.mutateSingleUrl({
     festivalId,
     currentUrl: existing.imageUrl,
@@ -113,6 +119,7 @@ export async function updateNewsPostAction(
         .update(festivalNews)
         .set({
           ...(data.title !== undefined && { title: data.title }),
+          ...(newSlug !== undefined && { slug: newSlug }),
           ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
           ...(data.content !== undefined && { content: data.content }),
           ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),

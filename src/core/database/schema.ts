@@ -1858,6 +1858,7 @@ export const festivalNews = pgTable(
     id: text().primaryKey().notNull(),
     festivalId: text().notNull(),
     title: text().notNull(),
+    slug: text("slug"),
     content: text().notNull(),
     imageUrl: text(),
     publishedAt: tzTimestamp(),

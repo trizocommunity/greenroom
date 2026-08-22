@@ -1,7 +1,11 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Instrument_Serif, Outfit } from "next/font/google";
+import {
+  Instrument_Serif,
+  Noto_Sans_Malayalam,
+  Outfit,
+} from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
 import { GlobalErrorRegion } from "@/components/errors";
 import QueryProvider from "@/components/providers/QueryProvider";
@@ -14,6 +18,12 @@ const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
   weight: ["300", "400", "500", "600", "700"],
+});
+
+const malayalam = Noto_Sans_Malayalam({
+  subsets: ["malayalam"],
+  variable: "--font-malayalam",
+  weight: ["400", "500", "600", "700"],
 });
 
 // Editorial display serif used sparingly for premium headline moments on
@@ -144,10 +154,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className={`${outfit.variable} ${instrumentSerif.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
+        className={`${outfit.variable} ${instrumentSerif.variable} ${malayalam.variable} antialiased bg-background text-foreground flex flex-col min-h-screen`}
       >
         <script
           type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD script
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <NextTopLoader height={2} color="#d72626" showSpinner={false} />

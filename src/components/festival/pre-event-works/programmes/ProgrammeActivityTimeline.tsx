@@ -197,7 +197,7 @@ export function ProgrammeActivityTimeline({
   const groups = groupByDay(entries);
 
   return (
-    <ScrollArea className={cn(scrollClassName, className)}>
+    <div className={cn(scrollClassName, className, "overflow-y-auto")}>
       <div className="space-y-5 pr-3">
         {groups.map((group) => (
           <div key={group.heading} className="space-y-3">
@@ -244,6 +244,6 @@ export function ProgrammeActivityTimeline({
           </div>
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "festival_news" ADD COLUMN "slug" text;

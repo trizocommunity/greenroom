@@ -52,7 +52,7 @@ const config: Config = {
         pink: "var(--pink)",
       },
       fontFamily: {
-        sans: ["var(--font-outfit)", "sans-serif"],
+        sans: ["var(--font-outfit)", "var(--font-malayalam)", "sans-serif"],
         display: ["var(--font-display)", "serif"],
       },
     },

@@ -26,7 +26,7 @@ export async function generateMetadata({
   if (!festival) return { title: "Festival Not Found" };
 
   const branding = getBrandingFromJson(festival.branding);
-  
+
   const fallbackColor = branding?.colors?.primary || "#d72626";
   const initials = (festival.name.substring(0, 2) || "GR").toUpperCase();
   const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="${fallbackColor}"/><text x="50" y="54" font-family="sans-serif" font-weight="bold" font-size="45" fill="white" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
@@ -141,7 +141,9 @@ export default async function FestivalLayout({
           url: festivalData.orgWebsite,
         }
       : undefined,
-    image: festivalData.logo || "https://greenroomfestivals.in/icons/apple-touch-icon.png",
+    image:
+      festivalData.logo ||
+      "https://greenroomfestivals.in/icons/apple-touch-icon.png",
   };
 
   return (

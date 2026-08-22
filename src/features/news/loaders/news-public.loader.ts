@@ -8,6 +8,7 @@ import {
 
 export type PublicNewsPost = {
   id: string;
+  slug: string | null;
   title: string;
   excerpt: string | null;
   content: string;
@@ -88,6 +89,7 @@ async function loadPublicNewsPage(
       offset: (page - 1) * pageSize,
       columns: {
         id: true,
+        slug: true,
         title: true,
         excerpt: true,
         content: true,
@@ -132,6 +134,7 @@ export async function getPublicNewsPostBySlug(
     ),
     columns: {
       id: true,
+      slug: true,
       title: true,
       excerpt: true,
       content: true,
@@ -146,6 +149,84 @@ export async function getPublicNewsPostBySlug(
     festival: { name: festival.name, slug: festival.slug },
     post: post as PublicNewsPost,
   };
+}
+
+export async function getPublicNewsPostBySlugString(
+  festivalSlug: string,
+  newsSlug: string,
+): Promise<{
+  festival: { name: string; slug: string; branding: unknown };
+  post: PublicNewsPost;
+} | null> {
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, festivalSlug),
+    columns: { id: true, name: true, slug: true, branding: true },
+  });
+  if (!festival) return null;
+
+  const post = await db.query.festivalNews.findFirst({
+    where: and(
+      eq(newsTable.festivalId, festival.id),
+      eq(newsTable.slug, newsSlug),
+      isNotNull(newsTable.publishedAt),
+    ),
+    columns: {
+      id: true,
+      slug: true,
+      title: true,
+      excerpt: true,
+      content: true,
+      imageUrl: true,
+      publishedAt: true,
+      createdAt: true,
+    },
+  });
+  if (!post) return null;
+
+  return {
+    festival: {
+      name: festival.name,
+      slug: festival.slug,
+      branding: festival.branding,
+    },
+    post: post as PublicNewsPost,
+  };
+}
+
+export async function getRelatedNews(
+  festivalSlug: string,
+  excludeNewsSlug: string,
+  limit: number = 3,
+): Promise<PublicNewsPost[]> {
+  const festival = await db.query.festival.findFirst({
+    where: eq(festivalTable.slug, festivalSlug),
+    columns: { id: true },
+  });
+  if (!festival) return [];
+
+  const posts = await db.query.festivalNews.findMany({
+    where: and(
+      eq(newsTable.festivalId, festival.id),
+      isNotNull(newsTable.publishedAt),
+      // we can't do `notEq` easily without importing it, so let's import `ne`
+    ),
+    orderBy: [desc(newsTable.publishedAt)],
+    columns: {
+      id: true,
+      title: true,
+      slug: true,
+      excerpt: true,
+      content: true,
+      imageUrl: true,
+      publishedAt: true,
+      createdAt: true,
+    },
+    limit: limit + 1,
+  });
+
+  return (posts as any[])
+    .filter((p) => p.slug !== excludeNewsSlug)
+    .slice(0, limit) as PublicNewsPost[];
 }
 
 // Slug → festivalId resolver, cached separately so the news cache and media
