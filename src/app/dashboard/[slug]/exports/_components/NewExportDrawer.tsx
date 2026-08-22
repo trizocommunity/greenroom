@@ -28,9 +28,9 @@ import { CallListFilters } from "./filters/CallListFilters";
 import { CertificateFilters } from "./filters/CertificateFilters";
 import { JudgeListFilters } from "./filters/JudgeListFilters";
 import { ResultsFilters } from "./filters/ResultsFilters";
+import { ScheduleFilters } from "./filters/ScheduleFilters";
 import { TeamResultFilters } from "./filters/TeamResultFilters";
 import { ValuationSheetFilters } from "./filters/ValuationSheetFilters";
-import { ScheduleFilters } from "./filters/ScheduleFilters";
 
 interface NewExportDrawerProps {
   festivalId: string;
@@ -118,10 +118,16 @@ export function NewExportDrawer({
       toast.error("Please complete the export options.");
       return;
     }
+
+    const finalConfig = { ...parsed.data };
+    if (finalConfig.type === "SCHEDULE") {
+      finalConfig.timezoneOffset = new Date().getTimezoneOffset();
+    }
+
     const result = await createExport.mutateAsync({
       festivalId,
       format,
-      config: parsed.data,
+      config: finalConfig,
     });
     if (result.status === "FAILED") {
       toast.error("Export failed to generate.");

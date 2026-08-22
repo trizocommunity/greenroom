@@ -109,6 +109,7 @@ export async function generateSchedule(
       includeDescription: config.includeDescription,
       includeSpeakers: config.includeSpeakers,
       includeEntryType: config.includeEntryType,
+      timezoneOffset: config.timezoneOffset,
       days,
     }),
     fileName,

@@ -28,11 +28,19 @@ export interface BuildDayWiseSchedulePdfOptions {
   includeDescription: boolean;
   includeSpeakers: boolean;
   includeEntryType: boolean;
+  timezoneOffset?: number;
   days: DayWiseScheduleDay[];
 }
 
 const MARGIN = 14;
 const LINE = 6;
+
+function shiftToClientTZ(date: Date, clientOffset?: number): Date {
+  if (clientOffset === undefined) return date;
+  const serverOffset = date.getTimezoneOffset();
+  const shiftMs = (serverOffset - clientOffset) * 60000;
+  return new Date(date.getTime() + shiftMs);
+}
 
 function formatDayHeading(dayKey: string): string {
   const [y, m, d] = dayKey.split("-").map(Number);
@@ -46,12 +54,15 @@ function formatTimeRange(
   start: Date,
   end: Date | null,
   mode: "START_AND_END" | "START_ONLY",
+  clientOffset?: number,
 ): string {
-  const startStr = format(start, "h:mm a");
+  const shiftedStart = shiftToClientTZ(start, clientOffset);
+  const startStr = format(shiftedStart, "h:mm a");
   if (mode === "START_ONLY") return startStr;
 
   if (!end || Number.isNaN(end.getTime())) return `${startStr} –`;
-  const endStr = format(end, "h:mm a");
+  const shiftedEnd = shiftToClientTZ(end, clientOffset);
+  const endStr = format(shiftedEnd, "h:mm a");
   return `${startStr} – ${endStr}`;
 }
 
@@ -82,7 +93,7 @@ export function buildDayWiseSchedulePdf(
   doc.setFont("helvetica", "normal");
   doc.setTextColor(120, 120, 120);
   doc.text(
-    `Generated: ${format(serverNow(), "d MMM yyyy, h:mm a")}`,
+    `Generated: ${format(shiftToClientTZ(serverNow(), options.timezoneOffset), "d MMM yyyy, h:mm a")}`,
     pageWidth - MARGIN,
     20,
     { align: "right" }
@@ -112,7 +123,7 @@ export function buildDayWiseSchedulePdf(
   let isAlternateRow = false;
 
   const renderScheduleRow = (row: DayWiseScheduleRow) => {
-    const timeText = formatTimeRange(row.startTime, row.endTime, options.timeDisplay);
+    const timeText = formatTimeRange(row.startTime, row.endTime, options.timeDisplay, options.timezoneOffset);
     const titleText = row.programmeName;
     
     const bullets: string[] = [];
