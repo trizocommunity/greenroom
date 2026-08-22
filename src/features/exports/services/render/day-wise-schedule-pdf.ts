@@ -68,169 +68,33 @@ export function buildDayWiseSchedulePdf(
   const contentWidth = pageWidth - MARGIN * 2;
   const bottomLimit = pageHeight - MARGIN;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.setTextColor(0, 0, 0);
-  doc.text(options.festivalName, MARGIN, 24);
-
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 100, 100);
-  doc.text("Schedule", MARGIN, 32);
-
+  // Title - Times Italic to emulate the elegant script font from template
+  doc.setFont("times", "italic");
+  doc.setFontSize(28);
+  doc.setTextColor(20, 20, 20);
+  
+  const titleLines = doc.splitTextToSize(options.festivalName, contentWidth);
+  doc.text(titleLines, MARGIN, 24);
+  
+  let y = 24 + (titleLines.length * 10);
+  
   doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(120, 120, 120);
   doc.text(
     `Generated: ${format(serverNow(), "d MMM yyyy, h:mm a")}`,
     pageWidth - MARGIN,
-    24,
-    { align: "right" },
+    20,
+    { align: "right" }
   );
 
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.5);
-  doc.line(MARGIN, 36, pageWidth - MARGIN, 36);
+  y += 5;
 
-  doc.setTextColor(0, 0, 0);
-
-  let y = 46;
   const ensureSpace = (needed: number) => {
     if (y + needed > bottomLimit) {
       doc.addPage();
       y = MARGIN + 4;
     }
-  };
-
-  const columnWeights = (): number[] => {
-    const weights: number[] = [1.6, 4];
-    if (options.includeEntryType) weights.push(1.2);
-    if (options.includeStage) weights.push(2);
-    if (options.includeDescription) weights.push(3);
-    if (options.includeSpeakers) weights.push(2.5);
-    return weights;
-  };
-
-  const headers = (): string[] => {
-    const out: string[] = ["Time", "Programme/s"];
-    if (options.includeEntryType) out.push("Type");
-    if (options.includeStage) out.push("Stage");
-    if (options.includeDescription) out.push("Description");
-    if (options.includeSpeakers) out.push("Speakers");
-    return out;
-  };
-
-  const renderSection = (heading: string, rows: DayWiseScheduleRow[]) => {
-    ensureSpace(LINE * 4);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(heading, MARGIN, y);
-    y += LINE;
-
-    const cols = headers();
-    const weights = columnWeights();
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    const colWidths = weights.map((w) => (w / totalWeight) * contentWidth);
-    const colX: number[] = [];
-    let acc = MARGIN;
-    for (const w of colWidths) {
-      colX.push(acc);
-      acc += w;
-    }
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.setFillColor(245, 245, 245);
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.2);
-
-    // Draw header background and borders
-    doc.rect(MARGIN, y - 4, contentWidth, LINE + 1, "FD");
-
-    cols.forEach((col, i) => {
-      doc.text(col, colX[i] + 1.5, y);
-    });
-    y += LINE + 1;
-
-    doc.setFont("helvetica", "normal");
-
-    // Group rows by time-range key; collapse duplicates ("Essay – M, Poem – E").
-    const groups = new Map<string, DayWiseScheduleRow[]>();
-    for (const r of rows) {
-      const timeKey = formatTimeRange(
-        r.startTime,
-        r.endTime,
-        options.timeDisplay,
-      );
-      const list = groups.get(timeKey) ?? [];
-      list.push(r);
-      groups.set(timeKey, list);
-    }
-
-    for (const [timeKey, group] of groups) {
-      const programmeNames = group.map(programmeLabel).join(", ");
-      const entryTypes = options.includeEntryType
-        ? Array.from(new Set(group.map((r) => r.entryType))).join(", ")
-        : "";
-      const stageNames = options.includeStage
-        ? Array.from(new Set(group.map((r) => r.stageName ?? ""))).join(", ")
-        : "";
-      const descriptions = options.includeDescription
-        ? group
-            .map((r) => r.description ?? "")
-            .filter((s) => s.length > 0)
-            .join(" | ")
-        : "";
-      const speakers = options.includeSpeakers
-        ? group
-            .map((r) => r.speakers ?? "")
-            .filter((s) => s.length > 0)
-            .join(", ")
-        : "";
-
-      const cells = [timeKey, programmeNames];
-      if (options.includeEntryType) cells.push(entryTypes);
-      if (options.includeStage) cells.push(stageNames);
-      if (options.includeDescription) cells.push(descriptions);
-      if (options.includeSpeakers) cells.push(speakers);
-
-      // Calculate row height by wrapping text
-      let maxLines = 1;
-      const cellLines = cells.map((cell, i) => {
-        const text = cell === null || cell === undefined ? "" : String(cell);
-        const maxWidth = colWidths[i]! - 3;
-        const lines = doc.splitTextToSize(text, maxWidth);
-        if (lines.length > maxLines) maxLines = lines.length;
-        return lines as string[];
-      });
-
-      const rowHeight = LINE + (maxLines - 1) * 4;
-      ensureSpace(rowHeight);
-
-      // We bold the time column for better readability
-      cells.forEach((_, i) => {
-        if (i === 0) doc.setFont("helvetica", "bold");
-        else doc.setFont("helvetica", "normal");
-
-        const lines = cellLines[i];
-        doc.text(lines, colX[i] + 1.5, y);
-      });
-
-      // Reset to normal
-      doc.setFont("helvetica", "normal");
-
-      // Row bottom border
-      doc.setDrawColor(235, 235, 235);
-      doc.line(
-        MARGIN,
-        y - 4 + rowHeight,
-        pageWidth - MARGIN,
-        y - 4 + rowHeight,
-      );
-
-      y += rowHeight;
-    }
-
-    y += LINE;
   };
 
   if (options.days.length === 0) {
@@ -245,49 +109,92 @@ export function buildDayWiseSchedulePdf(
     return Buffer.from(doc.output("arraybuffer"));
   }
 
-  // Group rows by dayKey → categoryName → morning/afternoon for the layout.
-  for (const day of options.days) {
-    // Skip days with no rows entirely.
-    if (day.rows.length === 0) continue;
-    const heading = formatDayHeading(day.dayKey);
+  let isAlternateRow = false;
 
-    // Bucket rows by category + half-day (morning < 12:00, afternoon >= 12:00).
-    const hourOf = (r: DayWiseScheduleRow) => r.startTime.getHours();
-    const buckets = new Map<string, DayWiseScheduleRow[]>();
-    for (const r of day.rows) {
-      const half = hourOf(r) < 12 ? "Morning" : "Afternoon";
-      const key = `${r.categoryName}|${half}`;
-      const list = buckets.get(key) ?? [];
-      list.push(r);
-      buckets.set(key, list);
-    }
-
-    // Render day heading.
-    ensureSpace(LINE * 4);
+  const renderScheduleRow = (row: DayWiseScheduleRow) => {
+    const timeText = formatTimeRange(row.startTime, row.endTime, options.timeDisplay);
+    const titleText = row.programmeName;
+    
+    const bullets: string[] = [];
+    bullets.push(`Category: ${row.categoryName}`);
+    if (options.includeDescription && row.description) bullets.push(row.description);
+    if (options.includeStage && row.stageName) bullets.push(`Stage: ${row.stageName}`);
+    if (options.includeSpeakers && row.speakers) bullets.push(`Speakers: ${row.speakers}`);
+    if (options.includeEntryType && row.entryType) bullets.push(`Type: ${row.entryType}`);
+    
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text(heading, MARGIN, y);
-    y += LINE + 2;
+    doc.setFontSize(11);
+    const splitTitle = doc.splitTextToSize(titleText, contentWidth * 0.75);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const splitBullets = bullets.map(b => doc.splitTextToSize(`• ${b}`, contentWidth * 0.75));
+    
+    const totalBulletLines = splitBullets.reduce((acc, lines) => acc + lines.length, 0);
+    const textHeight = (splitTitle.length * 5.5) + (totalBulletLines * 5);
+    const rowHeight = Math.max(textHeight + 10, 18); // Min height of 18mm
 
-    const categoryOrder: string[] = [];
-    const seen = new Set<string>();
-    for (const r of day.rows) {
-      if (!seen.has(r.categoryName)) {
-        seen.add(r.categoryName);
-        categoryOrder.push(r.categoryName);
-      }
-    }
+    ensureSpace(rowHeight);
 
-    for (const cat of categoryOrder) {
-      const morning = buckets.get(`${cat}|Morning`) ?? [];
-      const afternoon = buckets.get(`${cat}|Afternoon`) ?? [];
-      if (morning.length > 0) {
-        renderSection(`${cat} — Morning`, morning);
-      }
-      if (afternoon.length > 0) {
-        renderSection(`${cat} — Afternoon`, afternoon);
-      }
+    // Row Background
+    if (isAlternateRow) {
+      doc.setFillColor(232, 240, 242); // Light blueish grey
+    } else {
+      doc.setFillColor(255, 255, 255);
     }
+    doc.rect(0, y, pageWidth, rowHeight, "F");
+
+    let textY = y + 8; // Top padding
+
+    // Left Column: Programme Name
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(splitTitle, MARGIN, textY);
+    textY += (splitTitle.length * 5.5);
+
+    // Left Column: Bullet Details
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(50, 50, 50);
+    splitBullets.forEach(lines => {
+      doc.text(lines, MARGIN + 2, textY);
+      textY += (lines.length * 5);
+    });
+
+    // Right Column: Time
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(timeText, pageWidth - MARGIN, y + 8, { align: "right" });
+
+    y += rowHeight;
+    isAlternateRow = !isAlternateRow;
+  };
+
+  // Grouping chronologically per day
+  for (const day of options.days) {
+    if (day.rows.length === 0) continue;
+    
+    // Render day heading
+    ensureSpace(16);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text(formatDayHeading(day.dayKey), MARGIN, y + 6);
+    y += 12;
+
+    // Reset alternate coloring at the start of each day for consistency
+    isAlternateRow = false;
+
+    // Sort all rows for the day chronologically
+    const sortedRows = [...day.rows].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+
+    for (const row of sortedRows) {
+      renderScheduleRow(row);
+    }
+    
+    y += 10; // Space between days
   }
 
   return Buffer.from(doc.output("arraybuffer"));
