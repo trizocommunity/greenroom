@@ -25,9 +25,9 @@ afterEach(async () => {
 });
 
 describe("cache seam", () => {
-  it("returns null on a missing key", async () => {
+  it("returns undefined on a missing key", async () => {
     const value = await cache.get<string>("greenroom:test:missing");
-    expect(value).toBeNull();
+    expect(value).toBeUndefined();
   });
 
   it("returns the same value that was set", async () => {
@@ -45,12 +45,12 @@ describe("cache seam", () => {
     await cache.set(key, { days: 5 }, { ttlMs: 1_000 });
 
     const before = await cache.get<{ days: number }>(key);
-    expect(before).not.toBeNull();
+    expect(before).not.toBeUndefined();
 
     await new Promise((resolve) => setTimeout(resolve, 1_500));
 
     const after = await cache.get<{ days: number }>(key);
-    expect(after).toBeNull();
+    expect(after).toBeUndefined();
   });
 
   it("removes a key on del", async () => {
@@ -61,7 +61,7 @@ describe("cache seam", () => {
 
     const got =
       await cache.get<typeof cache extends never ? never : object>(key);
-    expect(got).toBeNull();
+    expect(got).toBeUndefined();
   });
 
   it("wrap populates on miss and serves cached on hit", async () => {

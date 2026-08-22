@@ -1,0 +1,1 @@
+import { db } from '../src/core/database/client'; import { institution } from '../src/core/database/schema'; import { eq } from 'drizzle-orm'; async function run() { const res = await db.query.institution.findFirst({ where: eq(institution.customDomain, 'ahlussuffadars.in') }); console.log(res); process.exit(0); } run();

@@ -67,6 +67,7 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
     return {
       type: "SCHEDULE",
       days: [],
+      timeDisplay: "START_AND_END",
       includeStage: true,
       includeDescription: true,
       includeSpeakers: false,

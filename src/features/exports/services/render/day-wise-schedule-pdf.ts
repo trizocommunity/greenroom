@@ -23,6 +23,7 @@ export interface DayWiseScheduleDay {
 
 export interface BuildDayWiseSchedulePdfOptions {
   festivalName: string;
+  timeDisplay: "START_AND_END" | "START_ONLY";
   includeStage: boolean;
   includeDescription: boolean;
   includeSpeakers: boolean;
@@ -41,10 +42,16 @@ function formatDayHeading(dayKey: string): string {
   return todayKey === dayKey ? `${formatted} (Today)` : formatted;
 }
 
-function formatTimeRange(start: Date, end: Date | null): string {
-  const startStr = format(start, "HH:mm");
+function formatTimeRange(
+  start: Date,
+  end: Date | null,
+  mode: "START_AND_END" | "START_ONLY",
+): string {
+  const startStr = format(start, "h:mm a");
+  if (mode === "START_ONLY") return startStr;
+
   if (!end || Number.isNaN(end.getTime())) return `${startStr} –`;
-  const endStr = format(end, "HH:mm");
+  const endStr = format(end, "h:mm a");
   return `${startStr} – ${endStr}`;
 }
 
@@ -62,20 +69,30 @@ export function buildDayWiseSchedulePdf(
   const bottomLimit = pageHeight - MARGIN;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text(options.festivalName, pageWidth / 2, 24, { align: "center" });
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(120);
-  doc.text(
-    `Generated ${format(serverNow(), "d MMM yyyy HH:mm")}`,
-    pageWidth / 2,
-    32,
-    { align: "center" },
-  );
-  doc.setTextColor(0);
+  doc.setFontSize(22);
+  doc.setTextColor(0, 0, 0);
+  doc.text(options.festivalName, MARGIN, 24);
 
-  let y = 44;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  doc.text("Schedule", MARGIN, 32);
+
+  doc.setFontSize(9);
+  doc.text(
+    `Generated: ${format(serverNow(), "d MMM yyyy, h:mm a")}`,
+    pageWidth - MARGIN,
+    24,
+    { align: "right" },
+  );
+
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN, 36, pageWidth - MARGIN, 36);
+
+  doc.setTextColor(0, 0, 0);
+
+  let y = 46;
   const ensureSpace = (needed: number) => {
     if (y + needed > bottomLimit) {
       doc.addPage();
@@ -122,26 +139,34 @@ export function buildDayWiseSchedulePdf(
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.setFillColor(240, 240, 240);
-    doc.rect(MARGIN, y - 4, contentWidth, LINE, "F");
+    doc.setFillColor(245, 245, 245);
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+
+    // Draw header background and borders
+    doc.rect(MARGIN, y - 4, contentWidth, LINE + 1, "FD");
+
     cols.forEach((col, i) => {
       doc.text(col, colX[i] + 1.5, y);
     });
-    y += LINE;
+    y += LINE + 1;
 
     doc.setFont("helvetica", "normal");
 
     // Group rows by time-range key; collapse duplicates ("Essay – M, Poem – E").
     const groups = new Map<string, DayWiseScheduleRow[]>();
     for (const r of rows) {
-      const timeKey = formatTimeRange(r.startTime, r.endTime);
+      const timeKey = formatTimeRange(
+        r.startTime,
+        r.endTime,
+        options.timeDisplay,
+      );
       const list = groups.get(timeKey) ?? [];
       list.push(r);
       groups.set(timeKey, list);
     }
 
     for (const [timeKey, group] of groups) {
-      ensureSpace(LINE);
       const programmeNames = group.map(programmeLabel).join(", ");
       const entryTypes = options.includeEntryType
         ? Array.from(new Set(group.map((r) => r.entryType))).join(", ")
@@ -168,13 +193,41 @@ export function buildDayWiseSchedulePdf(
       if (options.includeDescription) cells.push(descriptions);
       if (options.includeSpeakers) cells.push(speakers);
 
-      cells.forEach((text, i) => {
-        const maxChars = colWidths[i]! / 1.8;
-        const clipped =
-          text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text;
-        doc.text(clipped, colX[i] + 1.5, y);
+      // Calculate row height by wrapping text
+      let maxLines = 1;
+      const cellLines = cells.map((cell, i) => {
+        const text = cell === null || cell === undefined ? "" : String(cell);
+        const maxWidth = colWidths[i]! - 3;
+        const lines = doc.splitTextToSize(text, maxWidth);
+        if (lines.length > maxLines) maxLines = lines.length;
+        return lines as string[];
       });
-      y += LINE;
+
+      const rowHeight = LINE + (maxLines - 1) * 4;
+      ensureSpace(rowHeight);
+
+      // We bold the time column for better readability
+      cells.forEach((_, i) => {
+        if (i === 0) doc.setFont("helvetica", "bold");
+        else doc.setFont("helvetica", "normal");
+
+        const lines = cellLines[i];
+        doc.text(lines, colX[i] + 1.5, y);
+      });
+
+      // Reset to normal
+      doc.setFont("helvetica", "normal");
+
+      // Row bottom border
+      doc.setDrawColor(235, 235, 235);
+      doc.line(
+        MARGIN,
+        y - 4 + rowHeight,
+        pageWidth - MARGIN,
+        y - 4 + rowHeight,
+      );
+
+      y += rowHeight;
     }
 
     y += LINE;
