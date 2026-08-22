@@ -58,6 +58,12 @@ export default async function NewsPage({ params }: Props) {
         "var(--primary)")
       : "var(--primary)";
 
+  const { headers } = await import("next/headers");
+  const { getFestivalLinkBase } = await import("@/features/institutions/lib/custom-domain");
+  const h = await headers();
+  const isCustomDomain = !!h.get("x-custom-domain");
+  const linkBase = getFestivalLinkBase(slug, isCustomDomain);
+
   return (
     <PublicSection>
       <SectionHeader
@@ -73,6 +79,7 @@ export default async function NewsPage({ params }: Props) {
         hasMore={data.hasMore}
         pageSize={data.pageSize}
         festivalSlug={data.festival.slug}
+        linkBase={linkBase}
         accentColor={accentColor}
       />
     </PublicSection>
