@@ -74,6 +74,7 @@ const handler = createProtectedHandler({
           updatedAt: serverNowIso(),
           festivalId,
           title: parsed.data.title,
+          slug: (await import("@/core/utils/slug")).slugify(parsed.data.title) || "news",
           excerpt: parsed.data.excerpt ?? null,
           content: parsed.data.content,
           imageUrl: parsed.data.imageUrl ?? null,
@@ -138,7 +139,10 @@ const handler = createProtectedHandler({
         await tx
           .update(festivalNews)
           .set({
-            ...(data.title !== undefined && { title: data.title }),
+            ...(data.title !== undefined && { 
+              title: data.title,
+              slug: (await import("@/core/utils/slug")).slugify(data.title) || "news"
+            }),
             ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
             ...(data.content !== undefined && { content: data.content }),
             ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),

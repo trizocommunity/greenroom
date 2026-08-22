@@ -2,6 +2,8 @@
 
 import {
   Eye,
+  EyeOff,
+  Globe,
   ImagePlus,
   Loader2,
   MoreVertical,
@@ -33,6 +35,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -214,6 +224,21 @@ export function NewsClient({
     }
   };
 
+  const handleTogglePublish = async (post: NewsPost) => {
+    try {
+      await updateNews.mutateAsync({
+        festivalId,
+        postId: post.id,
+        data: {
+          publishedAt: post.publishedAt ? null : new Date().toISOString(),
+        },
+      });
+      toast.success(post.publishedAt ? "News unpublished" : "News published");
+    } catch (err) {
+      // error handled by mutation
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isReadOnly) return;
     const file = e.target.files?.[0];
@@ -373,6 +398,19 @@ export function NewsClient({
                             <Pencil className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleTogglePublish(post)}>
+                            {post.publishedAt ? (
+                              <>
+                                <EyeOff className="h-4 w-4 mr-2" />
+                                Unpublish
+                              </>
+                            ) : (
+                              <>
+                                <Globe className="h-4 w-4 mr-2" />
+                                Publish
+                              </>
+                            )}
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
@@ -512,18 +550,18 @@ export function NewsClient({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent className="max-w-lg overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>
               {editingId ? "Edit news post" : "Create news post"}
-            </DialogTitle>
-            <DialogDescription>
+            </SheetTitle>
+            <SheetDescription>
               Title and content are shown on your public news page. Add an
               excerpt for meta and social sharing.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
+            </SheetDescription>
+          </SheetHeader>
+          <div className="grid gap-4 py-6">
             <div className="grid gap-2">
               <Label htmlFor="news-title">Title</Label>
               <Input
@@ -597,7 +635,7 @@ export function NewsClient({
                   setForm((f) => ({ ...f, content: e.target.value }))
                 }
                 placeholder="Full story..."
-                rows={6}
+                rows={12}
                 className="resize-none"
                 disabled={isReadOnly}
               />
@@ -616,7 +654,7 @@ export function NewsClient({
               <Label htmlFor="news-published">Publish now</Label>
             </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="mt-4 pb-8">
             <Button
               size="sm"
               variant="outline"
@@ -634,9 +672,9 @@ export function NewsClient({
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingId ? "Update" : "Create"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
