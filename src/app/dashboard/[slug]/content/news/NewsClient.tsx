@@ -27,14 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+
 import {
   Sheet,
   SheetContent,
@@ -484,42 +477,44 @@ export function NewsClient({
       )}
 
       {/* View details modal */}
-      <Dialog
+      <Sheet
         open={!!viewDetailsPost}
         onOpenChange={(open) => !open && setViewDetailsPost(null)}
       >
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{viewDetailsPost?.title}</DialogTitle>
-            <DialogDescription>
-              {viewDetailsPost?.publishedAt
-                ? `Published ${formatDate(parseInstant(viewDetailsPost.publishedAt), { style: "medium" })}`
-                : "Draft"}
-            </DialogDescription>
-          </DialogHeader>
-          {viewDetailsPost && (
-            <div className="space-y-4 py-2">
-              {viewDetailsPost.imageUrl && (
-                <div className="relative w-full aspect-video">
-                  <Image
-                    src={viewDetailsPost.imageUrl}
-                    alt={viewDetailsPost.title}
-                    fill
-                    className="rounded-lg object-cover bg-muted"
-                  />
+        <SheetContent className="max-w-lg sm:max-w-xl flex flex-col h-full p-0 gap-0">
+          <div className="flex-1 overflow-y-auto p-6">
+            <SheetHeader>
+              <SheetTitle>{viewDetailsPost?.title}</SheetTitle>
+              <SheetDescription>
+                {viewDetailsPost?.publishedAt
+                  ? `Published ${formatDate(parseInstant(viewDetailsPost.publishedAt), { style: "medium" })}`
+                  : "Draft"}
+              </SheetDescription>
+            </SheetHeader>
+            {viewDetailsPost && (
+              <div className="space-y-4 py-6">
+                {viewDetailsPost.imageUrl && (
+                  <div className="relative w-full aspect-video">
+                    <Image
+                      src={viewDetailsPost.imageUrl}
+                      alt={viewDetailsPost.title}
+                      fill
+                      className="rounded-lg object-cover bg-muted"
+                    />
+                  </div>
+                )}
+                {viewDetailsPost.excerpt && (
+                  <p className="text-sm text-muted-foreground font-medium">
+                    {viewDetailsPost.excerpt}
+                  </p>
+                )}
+                <div className="text-sm whitespace-pre-wrap">
+                  {viewDetailsPost.content}
                 </div>
-              )}
-              {viewDetailsPost.excerpt && (
-                <p className="text-sm text-muted-foreground font-medium">
-                  {viewDetailsPost.excerpt}
-                </p>
-              )}
-              <div className="text-sm whitespace-pre-wrap">
-                {viewDetailsPost.content}
               </div>
-            </div>
-          )}
-          <DialogFooter>
+            )}
+          </div>
+          <SheetFooter className="p-6 border-t shrink-0">
             <Button
               size="sm"
               variant="outline"
@@ -539,108 +534,110 @@ export function NewsClient({
                 Edit
               </Button>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
-        <SheetContent className="max-w-lg overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>
-              {editingId ? "Edit news post" : "Create news post"}
-            </SheetTitle>
-            <SheetDescription>
-              Title and content are shown on your public news page. Add an
-              excerpt for meta and social sharing.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="grid gap-4 py-6">
-            <div className="grid gap-2">
-              <Label htmlFor="news-title">Title</Label>
-              <Input
-                id="news-title"
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
-                }
-                placeholder="Headline"
-                disabled={isReadOnly}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="news-excerpt">Excerpt (for meta / social)</Label>
-              <Input
-                id="news-excerpt"
-                value={form.excerpt}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, excerpt: e.target.value }))
-                }
-                placeholder="Short summary"
-                disabled={isReadOnly}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Featured image</Label>
-              <div className="flex gap-2">
+        <SheetContent className="max-w-lg sm:max-w-xl flex flex-col h-full p-0 gap-0">
+          <div className="flex-1 overflow-y-auto p-6">
+            <SheetHeader>
+              <SheetTitle>
+                {editingId ? "Edit news post" : "Create news post"}
+              </SheetTitle>
+              <SheetDescription>
+                Title and content are shown on your public news page. Add an
+                excerpt for meta and social sharing.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-4 py-6">
+              <div className="grid gap-2">
+                <Label htmlFor="news-title">Title</Label>
                 <Input
-                  value={form.imageUrl}
+                  id="news-title"
+                  value={form.title}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, imageUrl: e.target.value }))
+                    setForm((f) => ({ ...f, title: e.target.value }))
                   }
-                  placeholder="Image URL"
+                  placeholder="Headline"
                   disabled={isReadOnly}
                 />
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="news-excerpt">Excerpt (for meta / social)</Label>
+                <Input
+                  id="news-excerpt"
+                  value={form.excerpt}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, excerpt: e.target.value }))
+                  }
+                  placeholder="Short summary"
+                  disabled={isReadOnly}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  disabled={isReadOnly || uploadMutation.isPending}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {uploadMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ImagePlus className="h-4 w-4" />
-                  )}
-                </Button>
+              </div>
+              <div className="grid gap-2">
+                <Label>Featured image</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={form.imageUrl}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, imageUrl: e.target.value }))
+                    }
+                    placeholder="Image URL"
+                    disabled={isReadOnly}
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={isReadOnly || uploadMutation.isPending}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploadMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImagePlus className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="news-content">Content</Label>
+                <Textarea
+                  id="news-content"
+                  value={form.content}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, content: e.target.value }))
+                  }
+                  placeholder="Full story..."
+                  rows={12}
+                  className="resize-none"
+                  disabled={isReadOnly}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="news-published"
+                  checked={form.published}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, published: e.target.checked }))
+                  }
+                  className="rounded border"
+                  disabled={isReadOnly}
+                />
+                <Label htmlFor="news-published">Publish now</Label>
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="news-content">Content</Label>
-              <Textarea
-                id="news-content"
-                value={form.content}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, content: e.target.value }))
-                }
-                placeholder="Full story..."
-                rows={12}
-                className="resize-none"
-                disabled={isReadOnly}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="news-published"
-                checked={form.published}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, published: e.target.checked }))
-                }
-                className="rounded border"
-                disabled={isReadOnly}
-              />
-              <Label htmlFor="news-published">Publish now</Label>
-            </div>
           </div>
-          <SheetFooter className="mt-4 pb-8">
+          <SheetFooter className="p-6 border-t shrink-0">
             <Button
               size="sm"
               variant="outline"
