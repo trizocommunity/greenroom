@@ -57,8 +57,8 @@ export function useUpdateNews() {
   >({
     mutationFn: async ({ festivalId, postId, data }) => {
       const response = await apiClient.put<ApiResponse<NewsPost>>(
-        `/news?festivalId=${encodeURIComponent(festivalId)}`,
-        { festivalId, postId, data },
+        `/news?festivalId=${encodeURIComponent(festivalId)}&postId=${encodeURIComponent(postId)}`,
+        { data },
       );
       return handleApiResponse(response.data);
     },
@@ -76,7 +76,7 @@ export function useDeleteNews() {
   return useMutation<void, Error, DeleteNewsPostInput>({
     mutationFn: async (data) => {
       const response = await apiClient.delete<ApiResponse<void>>(
-        `/news?festivalId=${encodeURIComponent(data.festivalId)}`,
+        `/news?festivalId=${encodeURIComponent(data.festivalId)}&postId=${encodeURIComponent(data.postId)}`,
         { data },
       );
       return handleApiResponse(response.data);
