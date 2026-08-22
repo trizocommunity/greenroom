@@ -1,7 +1,7 @@
 "use client";
 
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
-import { Loader2, Plus } from "lucide-react";
+import { AlertCircle, Loader2, Lock, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -10,9 +10,7 @@ import {
   useCreateCategory,
   useUpdateCategory,
 } from "@/api/client/categories";
-import { useEditLock } from "@/core/locks/use-edit-lock";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -39,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useEditLock } from "@/core/locks/use-edit-lock";
 import { toast } from "@/lib/toast";
 
 const CategorySchema = z.object({
@@ -80,16 +79,17 @@ export function CategoryDialog({
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const isEditing = !!category;
-  
+
   // Edit Lock Integration
   const { hasLock, lockedBy, isLoadingLock } = useEditLock(
     "category",
     isEditing ? category.id : null,
-    open && !readOnly
+    open && !readOnly,
   );
-  
+
   const actuallyReadOnly = readOnly || (!hasLock && isEditing);
-  const isLoading = createCategory.isPending || updateCategory.isPending || isLoadingLock;
+  const isLoading =
+    createCategory.isPending || updateCategory.isPending || isLoadingLock;
 
   const form = useForm({
     resolver: zodResolver(CategorySchema),
@@ -167,11 +167,15 @@ export function CategoryDialog({
                 : "Add a new category."}
           </DrawerDescription>
           {isEditing && !hasLock && (
-            <Alert variant="destructive" className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600">
+            <Alert
+              variant="destructive"
+              className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600"
+            >
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>This page is locked (Read-Only)</AlertTitle>
               <AlertDescription>
-                <strong>{lockedBy}</strong> is currently editing this category. You cannot make changes until they finish.
+                <strong>{lockedBy}</strong> is currently editing this category.
+                You cannot make changes until they finish.
               </AlertDescription>
             </Alert>
           )}

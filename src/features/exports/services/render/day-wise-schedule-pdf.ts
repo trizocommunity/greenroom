@@ -183,10 +183,18 @@ export function buildDayWiseSchedulePdf(
     isAlternateRow = !isAlternateRow;
   };
 
+  let isFirstDay = true;
   // Grouping chronologically per day
   for (const day of options.days) {
     if (day.rows.length === 0) continue;
     
+    if (!isFirstDay) {
+      doc.addPage();
+      y = MARGIN + 4;
+    } else {
+      isFirstDay = false;
+    }
+
     // Render day heading
     ensureSpace(16);
     doc.setFont("helvetica", "bold");

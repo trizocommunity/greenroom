@@ -1,6 +1,15 @@
-import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Loader2, Check, ChevronsUpDown, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -18,9 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/core/utils/cn";
 import { parseStoredScheduleInstant } from "@/features/schedule/utils/schedule-datetime";
 
@@ -76,7 +87,8 @@ export function ClearScheduleDialog({
     for (const e of entries) {
       if (dayKey) {
         const d = parseStoredScheduleInstant(e.startTime);
-        if (Number.isNaN(d.getTime()) || format(d, "yyyy-MM-dd") !== dayKey) continue;
+        if (Number.isNaN(d.getTime()) || format(d, "yyyy-MM-dd") !== dayKey)
+          continue;
       }
       if (stageId && e.stage?.id !== stageId) continue;
       if (startTime) {
@@ -96,9 +108,20 @@ export function ClearScheduleDialog({
     return count;
   }, [entries, dayKey, stageId, startTime, endTime]);
 
-  const timeError = startTime && endTime && startTime > endTime ? "End time must be after start time." : null;
-  const noMatchError = matchingCount === 0 ? "No scheduled items found matching these filters." : null;
-  const canClear = !!dayKey && !!stageId && !timeError && matchingCount !== null && matchingCount > 0;
+  const timeError =
+    startTime && endTime && startTime > endTime
+      ? "End time must be after start time."
+      : null;
+  const noMatchError =
+    matchingCount === 0
+      ? "No scheduled items found matching these filters."
+      : null;
+  const canClear =
+    !!dayKey &&
+    !!stageId &&
+    !timeError &&
+    matchingCount !== null &&
+    matchingCount > 0;
 
   const handleClear = async () => {
     if (!canClear) return;
@@ -116,7 +139,8 @@ export function ClearScheduleDialog({
         <DialogHeader>
           <DialogTitle>Clear Schedule</DialogTitle>
           <DialogDescription>
-            Bulk remove entries from the schedule by applying filters. Time is optional.
+            Bulk remove entries from the schedule by applying filters. Time is
+            optional.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,7 +180,7 @@ export function ClearScheduleDialog({
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              dayKey === d.key ? "opacity-100" : "opacity-0"
+                              dayKey === d.key ? "opacity-100" : "opacity-0",
                             )}
                           />
                           {d.label}
@@ -171,7 +195,11 @@ export function ClearScheduleDialog({
 
           <div className="space-y-2">
             <Label>Stage</Label>
-            <Select value={stageId} onValueChange={setStageId} disabled={isClearing}>
+            <Select
+              value={stageId}
+              onValueChange={setStageId}
+              disabled={isClearing}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select stage..." />
               </SelectTrigger>
@@ -205,27 +233,38 @@ export function ClearScheduleDialog({
               />
             </div>
           </div>
-          
+
           {(timeError || noMatchError) && (
             <div className="flex items-center gap-2 text-sm text-destructive mt-1">
               <AlertTriangle className="h-4 w-4" />
               <span>{timeError || noMatchError}</span>
             </div>
           )}
-          
+
           {matchingCount !== null && matchingCount > 0 && !timeError && (
             <div className="text-sm text-muted-foreground mt-1">
-              Found {matchingCount} entry{matchingCount === 1 ? "" : "s"} to clear.
+              Found {matchingCount} entry{matchingCount === 1 ? "" : "s"} to
+              clear.
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isClearing}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isClearing}
+          >
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleClear} disabled={!canClear || isClearing}>
-            {isClearing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+          <Button
+            variant="destructive"
+            onClick={handleClear}
+            disabled={!canClear || isClearing}
+          >
+            {isClearing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : null}
             Clear Matching Entries
           </Button>
         </DialogFooter>

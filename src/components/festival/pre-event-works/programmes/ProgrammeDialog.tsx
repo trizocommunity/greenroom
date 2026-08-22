@@ -2,7 +2,7 @@
 
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
 import { useQuery } from "@tanstack/react-query";
-import { Crown, Loader2, Plus, User, AlertCircle, Lock } from "lucide-react";
+import { AlertCircle, Crown, Loader2, Lock, Plus, User } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,11 +13,10 @@ import {
   useProgramme,
   useUpdateProgramme,
 } from "@/api/client/programmes";
-import { useEditLock } from "@/core/locks/use-edit-lock";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StatusPill } from "@/components/app/AppSection";
 import { useFestival } from "@/components/festival/FestivalContext";
 import { ProgrammeActivityTimeline } from "@/components/festival/pre-event-works/programmes/ProgrammeActivityTimeline";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEditLock } from "@/core/locks/use-edit-lock";
 import { useFeatureTag } from "@/features/plan-features/hooks/use-feature";
 import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
 import { getProgrammeDetailForDrawerAction } from "@/features/programmes/actions/programme.actions";
@@ -141,17 +141,17 @@ export function ProgrammeDialog({
   });
 
   const isEditing = !!programme;
-  
+
   // Edit Lock Integration
   const { hasLock, lockedBy, isLoadingLock } = useEditLock(
     "programme",
     isEditing ? programme.id : null,
-    open && !readOnly
+    open && !readOnly,
   );
-  
+
   // If we are editing, but we don't have the lock, force it to read-only
   const actuallyReadOnly = readOnly || (!hasLock && isEditing);
-  
+
   const isLoadingAction =
     createProgramme.isPending || updateProgramme.isPending || isLoadingLock;
   const { isValid } = form.formState;
@@ -183,7 +183,9 @@ export function ProgrammeDialog({
   const { data: activityDetail, isLoading: isLoadingActivity } = useQuery({
     queryKey: ["programme-detail-drawer", festivalId, programme?.id],
     queryFn: () => getProgrammeDetailForDrawerAction(festivalId, programme!.id),
-    enabled: Boolean(open && actuallyReadOnly && canUseAuditDrawer && programme?.id),
+    enabled: Boolean(
+      open && actuallyReadOnly && canUseAuditDrawer && programme?.id,
+    ),
     staleTime: 30_000,
   });
 
@@ -565,11 +567,15 @@ export function ProgrammeDialog({
               : "Configure programme rules."}
           </DrawerDescription>
           {isEditing && !hasLock && (
-            <Alert variant="destructive" className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600">
+            <Alert
+              variant="destructive"
+              className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600"
+            >
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>This page is locked (Read-Only)</AlertTitle>
               <AlertDescription>
-                <strong>{lockedBy}</strong> is currently editing this programme. You cannot make changes until they finish.
+                <strong>{lockedBy}</strong> is currently editing this programme.
+                You cannot make changes until they finish.
               </AlertDescription>
             </Alert>
           )}

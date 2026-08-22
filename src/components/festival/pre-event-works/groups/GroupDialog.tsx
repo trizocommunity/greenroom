@@ -1,11 +1,12 @@
 "use client";
 
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
-import { Loader2, Plus } from "lucide-react";
+import { AlertCircle, Loader2, Lock, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useCreateGroup, useUpdateGroup } from "@/api/client/groups";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -26,11 +27,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/lib/toast";
 import { useEditLock } from "@/core/locks/use-edit-lock";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Lock } from "lucide-react";
-
+import { toast } from "@/lib/toast";
 
 const GroupSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -82,9 +80,9 @@ export function GroupDialog({
   const { hasLock, lockedBy, isLoadingLock } = useEditLock(
     "group",
     isEditing ? group?.id : null,
-    open && !readOnly
+    open && !readOnly,
   );
-  
+
   const actuallyReadOnly = readOnly || (!hasLock && isEditing);
 
   const isLoading = createGroup.isPending || updateGroup.isPending;
@@ -166,16 +164,20 @@ export function GroupDialog({
                 ? "Update group details."
                 : "Add a new group (School/College)."}
           </DrawerDescription>
-        {isEditing && !hasLock && (
-            <Alert variant="destructive" className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600">
+          {isEditing && !hasLock && (
+            <Alert
+              variant="destructive"
+              className="mt-4 bg-amber-50 border-amber-200 text-amber-800 [&>svg]:text-amber-600"
+            >
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>This page is locked (Read-Only)</AlertTitle>
               <AlertDescription>
-                <strong>{lockedBy}</strong> is currently editing this group. You cannot make changes until they finish.
+                <strong>{lockedBy}</strong> is currently editing this group. You
+                cannot make changes until they finish.
               </AlertDescription>
             </Alert>
           )}
-</DrawerHeader>
+        </DrawerHeader>
 
         <Form {...form}>
           <form
@@ -192,7 +194,9 @@ export function GroupDialog({
                     <FormControl>
                       <Input
                         placeholder="e.g. Model School"
-                        disabled={actuallyReadOnly || isLoading || isLoadingLock}
+                        disabled={
+                          actuallyReadOnly || isLoading || isLoadingLock
+                        }
                         {...field}
                         value={field.value ?? ""}
                       />
@@ -213,7 +217,9 @@ export function GroupDialog({
                         <button
                           key={c}
                           type="button"
-                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
+                          disabled={
+                            actuallyReadOnly || isLoading || isLoadingLock
+                          }
                           onClick={() => field.onChange(c)}
                           className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 transition-all ${
                             field.value === c

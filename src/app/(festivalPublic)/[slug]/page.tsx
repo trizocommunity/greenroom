@@ -24,31 +24,6 @@ import { getPublicNewsData } from "@/features/news/loaders/news-public.loader";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
 import { getResolvedTier } from "@/features/plan-features/services/tier";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug: festivalSlug } = await params;
-  const data = await getPublicFestivalData(festivalSlug);
-
-  if (!data) return { title: "Festival Not Found" };
-
-  const { festival } = data;
-  const title = festival.name;
-  const description = festival.tagline || festival.description || undefined;
-
-  return {
-    title: title,
-    description,
-    openGraph: {
-      title: title,
-      description,
-      images: [],
-    },
-  };
-}
-
 export default async function FestivalPage({
   params,
 }: {

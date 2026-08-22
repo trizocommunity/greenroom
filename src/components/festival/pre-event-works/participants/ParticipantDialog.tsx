@@ -1,7 +1,7 @@
 "use client";
 
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
-import { Cake, Loader2, Tag, Users } from "lucide-react";
+import { AlertCircle, Cake, Loader2, Lock, Tag, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -12,9 +12,7 @@ import {
   useUpdateParticipant,
 } from "@/api/client/participants";
 import { useFestival } from "@/components/festival/FestivalContext";
-import { useEditLock } from "@/core/locks/use-edit-lock";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateOfBirthPicker } from "@/components/ui/date-picker";
 import {
@@ -42,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useEditLock } from "@/core/locks/use-edit-lock";
 import { cn } from "@/core/utils/cn";
 import { validateParticipantsAction } from "@/features/participants/actions/participant.actions";
 import { toast } from "@/lib/toast";
@@ -106,8 +105,12 @@ export function ParticipantDialog({
 
   const isEditing = !!participantToEdit;
 
-  const { hasLock, lockedBy, isLoadingLock } = useEditLock("participant", isEditing ? participantToEdit.id : null, open);
-  const actuallyReadOnly = (!hasLock && isEditing);
+  const { hasLock, lockedBy, isLoadingLock } = useEditLock(
+    "participant",
+    isEditing ? participantToEdit.id : null,
+    open,
+  );
+  const actuallyReadOnly = !hasLock && isEditing;
   const { data: groups = [] } = useGroups(festivalId);
   const { data: categories = [] } = useCategories(festivalId);
   const createParticipant = useCreateParticipant();
@@ -272,7 +275,9 @@ export function ParticipantDialog({
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
+                          disabled={
+                            actuallyReadOnly || isLoading || isLoadingLock
+                          }
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -304,7 +309,9 @@ export function ParticipantDialog({
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
+                          disabled={
+                            actuallyReadOnly || isLoading || isLoadingLock
+                          }
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -342,7 +349,9 @@ export function ParticipantDialog({
                             field.onChange(d ? dateOfBirthToIsoString(d) : "")
                           }
                           placeholder="Select date of birth"
-                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
+                          disabled={
+                            actuallyReadOnly || isLoading || isLoadingLock
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -360,7 +369,9 @@ export function ParticipantDialog({
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={actuallyReadOnly || isLoading || isLoadingLock}
+                          disabled={
+                            actuallyReadOnly || isLoading || isLoadingLock
+                          }
                         >
                           <FormControl>
                             <SelectTrigger>

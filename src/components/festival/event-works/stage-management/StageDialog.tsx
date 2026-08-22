@@ -1,16 +1,14 @@
 "use client";
 
 import { standardSchemaResolver as zodResolver } from "@hookform/resolvers/standard-schema";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useMembers } from "@/api/client/members";
 import { useAssignStageManager } from "@/api/client/stage-assignments";
 import { useCreateStage, useUpdateStage } from "@/api/client/stages";
-import { useEditLock } from "@/core/locks/use-edit-lock";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -32,6 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useEditLock } from "@/core/locks/use-edit-lock";
 import { toast } from "@/lib/toast";
 
 const StageSchema = z.object({
@@ -65,15 +64,16 @@ export function StageDialog({
   );
   const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
   const isEditing = !!stageToEdit;
-  
+
   // Edit Lock Integration
   const { hasLock, lockedBy, isLoadingLock } = useEditLock(
     "stage",
     isEditing ? stageToEdit.id : null,
-    open
+    open,
   );
-  const actuallyReadOnly = (!hasLock && isEditing);
-  const isLoading = createStage.isPending || updateStage.isPending || isLoadingLock;
+  const actuallyReadOnly = !hasLock && isEditing;
+  const isLoading =
+    createStage.isPending || updateStage.isPending || isLoadingLock;
 
   const form = useForm({
     resolver: zodResolver(StageSchema),
@@ -142,7 +142,11 @@ export function StageDialog({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>
-            {actuallyReadOnly ? (form.getValues("name") || "View Stage") : stageToEdit ? "Edit Stage" : "Create Stage"}
+            {actuallyReadOnly
+              ? form.getValues("name") || "View Stage"
+              : stageToEdit
+                ? "Edit Stage"
+                : "Create Stage"}
           </DrawerTitle>
           <DrawerDescription>
             {stageToEdit
