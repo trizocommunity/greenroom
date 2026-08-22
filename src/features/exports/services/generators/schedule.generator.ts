@@ -19,7 +19,6 @@ import type {
   ExportFormat,
   GeneratedExport,
 } from "@/features/exports/types/export.types";
-import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 
 export async function generateSchedule(
   festivalId: string,
@@ -32,22 +31,7 @@ export async function generateSchedule(
     columns: { startDate: true, endDate: true },
   });
 
-  // Resolve the calendar days that are allowed for this export. If the
-  // user picked specific days, intersect with the festival range (only
-  // days that actually exist on the festival). An empty list is treated
-  // as "every festival day".
-  const festivalDayKeys =
-    getFestivalDateKeySet(
-      festivalRow?.startDate ?? null,
-      festivalRow?.endDate ?? null,
-    ) ?? new Set<string>();
-
-  const selectedKeys =
-    config.days.length > 0
-      ? config.days.filter(
-          (d) => festivalDayKeys.size === 0 || festivalDayKeys.has(d),
-        )
-      : [...festivalDayKeys];
+  const selectedKeys = config.days;
 
   const entries = await db.query.scheduleEntry.findMany({
     where: and(eq(scheduleEntryTable.festivalId, festivalId)),
@@ -89,8 +73,11 @@ export async function generateSchedule(
     rowsByDay.set(dayKey, list);
   }
 
-  // Preserve the user's selected order (or festival-day order) in the PDF.
-  const orderedKeys = selectedKeys;
+  // Preserve the user's selected order. If none selected, sort all days chronologically.
+  const orderedKeys =
+    selectedKeys.length > 0
+      ? selectedKeys
+      : Array.from(rowsByDay.keys()).sort();
   const days: DayWiseScheduleDay[] = [];
   for (const k of orderedKeys) {
     const list = rowsByDay.get(k) ?? [];
@@ -102,8 +89,8 @@ export async function generateSchedule(
   if (days.length === 0) {
     throw new Error(
       config.days.length > 0
-        ? "No schedule entries on the selected days."
-        : "No schedule entries on the festival days.",
+        ? "No schedule entries exist for the selected days.\n\n➡️ Add at least one **schedule/programme entry**, then retry the PDF/CSV export."
+        : "No schedule entries exist for the festival days.\n\n➡️ Add at least one **schedule/programme entry**, then retry the PDF/CSV export.",
     );
   }
 
