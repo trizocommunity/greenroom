@@ -36,6 +36,7 @@ interface PublicNewsViewProps {
   hasMore: boolean;
   pageSize: number;
   festivalSlug: string;
+  linkBase?: string;
   accentColor?: string;
 }
 
@@ -52,6 +53,7 @@ export function PublicNewsView({
   hasMore: initialHasMore,
   pageSize,
   festivalSlug,
+  linkBase,
   accentColor = "var(--primary)",
 }: PublicNewsViewProps) {
   const [openId, setOpenId] = useState<string | null>(
@@ -171,7 +173,7 @@ export function PublicNewsView({
                       />
                       <div className="mt-6">
                         <a
-                          href={`/${festivalSlug}/news/${post.slug || post.id}`}
+                          href={`${linkBase ?? `/${festivalSlug}`}/news/${post.slug || post.id}`}
                           className="inline-flex items-center text-sm font-medium hover:underline"
                           style={{ color: accentColor }}
                         >

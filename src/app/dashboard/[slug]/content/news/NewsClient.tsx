@@ -244,13 +244,6 @@ export function NewsClient({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
-    if (
-      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
-      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME === "demo"
-    ) {
-      toast.error("Cloudinary is not configured.");
-      return;
-    }
     try {
       const result = await uploadMutation.mutateAsync({
         file,
@@ -608,14 +601,7 @@ export function NewsClient({
                   type="button"
                   variant="outline"
                   size="icon"
-                  disabled={
-                    isReadOnly ||
-                    uploadMutation.isPending ||
-                    !(
-                      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME &&
-                      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME !== "demo"
-                    )
-                  }
+                  disabled={isReadOnly || uploadMutation.isPending}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {uploadMutation.isPending ? (

@@ -9,7 +9,7 @@ export const uploadFolderEnum = z.enum([
 ]);
 
 export const uploadInput = z.object({
-  file: z.string().regex(/^data:image\/(jpeg|png|gif|webp|svg\+xml);base64,/),
+  file: z.string().regex(/^data:(image|video|application)\/[a-zA-Z0-9+.-]+;base64,/i),
   folder: uploadFolderEnum,
   festivalId: z.string(),
 });
