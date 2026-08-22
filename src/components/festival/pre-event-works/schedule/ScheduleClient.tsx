@@ -21,11 +21,10 @@ import {
   useDeleteScheduleItem,
   useUpdateScheduleItem,
 } from "@/api/client/schedule";
-
+import { ClearScheduleDialog } from "@/components/festival/pre-event-works/schedule/ClearScheduleDialog";
 import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
-import { ClearScheduleDialog } from "@/components/festival/pre-event-works/schedule/ClearScheduleDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -350,7 +349,11 @@ export function ScheduleClient({
       const toDelete = entries.filter((e) => {
         if (filters.dayKey) {
           const d = parseStoredScheduleInstant(e.startTime);
-          if (Number.isNaN(d.getTime()) || format(d, "yyyy-MM-dd") !== filters.dayKey) return false;
+          if (
+            Number.isNaN(d.getTime()) ||
+            format(d, "yyyy-MM-dd") !== filters.dayKey
+          )
+            return false;
         }
         if (filters.stageId && e.stage?.id !== filters.stageId) return false;
         if (filters.startTime) {
@@ -375,11 +378,15 @@ export function ScheduleClient({
       }
 
       await Promise.all(
-        toDelete.map((e) => deleteScheduleItem.mutateAsync({ festivalId, entryId: e.id }))
+        toDelete.map((e) =>
+          deleteScheduleItem.mutateAsync({ festivalId, entryId: e.id }),
+        ),
       );
 
       toast.success(`Removed ${toDelete.length} entries from schedule.`);
-      setEntries((prev) => prev.filter((e) => !toDelete.find((d) => d.id === e.id)));
+      setEntries((prev) =>
+        prev.filter((e) => !toDelete.find((d) => d.id === e.id)),
+      );
       setClearScheduleOpen(false);
       refresh();
     } catch (error: any) {
@@ -444,28 +451,28 @@ export function ScheduleClient({
                   <span className="hidden sm:inline">Clear Schedule</span>
                 </Button>
                 <Button
-                size="sm"
-                onClick={() => {
-                  if (!hasStages) {
-                    toast.error("Create at least one stage first.");
-                    return;
-                  }
-                  if (!hasProgrammes) {
-                    toast.error("Create programmes first.");
-                    return;
-                  }
-                  if (!hasFestivalDates) {
-                    toast.error("Set festival dates first.");
-                    return;
-                  }
-                  setAddOpen(true);
-                }}
-                disabled={!canAdd}
-                className="gap-1.5"
-              >
-                <Plus className="h-4 w-4" />
-                Add Schedule
-              </Button>
+                  size="sm"
+                  onClick={() => {
+                    if (!hasStages) {
+                      toast.error("Create at least one stage first.");
+                      return;
+                    }
+                    if (!hasProgrammes) {
+                      toast.error("Create programmes first.");
+                      return;
+                    }
+                    if (!hasFestivalDates) {
+                      toast.error("Set festival dates first.");
+                      return;
+                    }
+                    setAddOpen(true);
+                  }}
+                  disabled={!canAdd}
+                  className="gap-1.5"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Schedule
+                </Button>
               </>
             )}
           </div>

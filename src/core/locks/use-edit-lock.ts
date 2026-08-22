@@ -32,7 +32,7 @@ export function useEditLock(
       setIsLoadingLock(true);
       try {
         const result = await acquireLockAction(entityType, entityId!);
-        
+
         if (!isActive) return;
 
         if (result.acquired) {
@@ -55,7 +55,8 @@ export function useEditLock(
           setLockedBy(result.heldBy);
         }
       } catch (err) {
-        console.error("Failed to acquire lock", err); toast.error("Database connection failed. Unable to acquire edit lock.");
+        console.error("Failed to acquire lock", err);
+        toast.error("Database connection failed. Unable to acquire edit lock.");
       } finally {
         if (isActive) setIsLoadingLock(false);
       }

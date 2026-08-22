@@ -149,15 +149,15 @@ export async function getParticipantAssignmentCounts(
     );
 
   const allRows = [...individualRows, ...memberRows];
-  
+
   // Deduplicate by programmeId
-  const uniqueProgrammes = new Map<string, typeof allRows[0]>();
+  const uniqueProgrammes = new Map<string, (typeof allRows)[0]>();
   for (const row of allRows) {
     if (!uniqueProgrammes.has(row.programmeId)) {
       uniqueProgrammes.set(row.programmeId, row);
     }
   }
-  
+
   const uniqueRows = Array.from(uniqueProgrammes.values());
 
   const stageCount = uniqueRows.filter((r) => r.stageType === "STAGE").length;
@@ -241,12 +241,16 @@ export async function batchGetParticipantAssignmentCounts(
     participantProgrammes.set(id, new Set<string>());
   }
 
-  const processRow = (row: { participantId: string | null; programmeId: string; stageType: string }) => {
+  const processRow = (row: {
+    participantId: string | null;
+    programmeId: string;
+    stageType: string;
+  }) => {
     if (!row.participantId) return;
     const entry = result.get(row.participantId);
     const seen = participantProgrammes.get(row.participantId);
     if (!entry || !seen) return;
-    
+
     if (seen.has(row.programmeId)) return;
     seen.add(row.programmeId);
 

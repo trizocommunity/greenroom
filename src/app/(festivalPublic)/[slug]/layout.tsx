@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
@@ -7,6 +8,50 @@ import { CustomDomainProvider } from "@/components/providers/custom-domain-provi
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
 import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug: festivalSlug } = await params;
+  const hdrs = await headers();
+  const institutionId = hdrs.get("x-institution-id");
+
+  const festival = await findFestivalBySlugForPublic(
+    festivalSlug,
+    institutionId,
+  );
+
+  if (!festival) return { title: "Festival Not Found" };
+
+  const branding = getBrandingFromJson(festival.branding);
+  const logo = branding?.logo || "/favicon.ico";
+
+  return {
+    title: {
+      default: festival.name,
+      template: `%s | ${festival.name}`,
+    },
+    description: festival.tagline || festival.description || undefined,
+    icons: {
+      icon: logo,
+      apple: logo,
+    },
+    openGraph: {
+      title: festival.name,
+      description: festival.tagline || festival.description || undefined,
+      siteName: festival.name,
+      images: logo && logo !== "/favicon.ico" ? [{ url: logo }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: festival.name,
+      description: festival.tagline || festival.description || undefined,
+      images: logo && logo !== "/favicon.ico" ? [logo] : [],
+    },
+  };
+}
 
 export default async function FestivalLayout({
   children,
@@ -68,9 +113,37 @@ export default async function FestivalLayout({
     isExpired: expired,
   };
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: festivalData.name,
+    description: festivalData.description || festivalData.tagline,
+    startDate: festivalData.startDate,
+    endDate: festivalData.endDate,
+    location: festivalData.location
+      ? {
+          "@type": "Place",
+          name: festivalData.location,
+          address: festivalData.location,
+        }
+      : undefined,
+    organizer: festivalData.orgName
+      ? {
+          "@type": "Organization",
+          name: festivalData.orgName,
+          url: festivalData.orgWebsite,
+        }
+      : undefined,
+    image: festivalData.logo || "https://greenroomfestivals.in/icons/apple-touch-icon.png",
+  };
+
   return (
     <CustomDomainProvider customDomain={customDomain}>
       <FestivalProvider festival={festivalData as any}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <div className="min-h-screen flex flex-col">
           <FestivalNavbar festival={festivalData as any} />
           <main className="flex-1 pt-16">{children}</main>

@@ -1,16 +1,16 @@
 "use client";
 
+import { format } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { useMemo } from "react";
-import { format } from "date-fns";
 import { useFestival } from "@/api/client/festivals";
 import { useSchedule } from "@/api/client/schedule";
 
 import { DateFilterCombobox } from "@/components/ui/date-filter-combobox";
-import { dateKeyLocal, midnightInTz } from "@/core/datetime";
 import { Label } from "@/components/ui/label";
+import { dateKeyLocal, midnightInTz } from "@/core/datetime";
 import type { ScheduleConfig } from "@/features/exports/schemas/export-config.schema";
-import { ToggleRow, SegmentedControl, TIME_DISPLAY_OPTIONS } from "./controls";
+import { SegmentedControl, TIME_DISPLAY_OPTIONS, ToggleRow } from "./controls";
 
 interface Props {
   festivalId: string;
@@ -45,7 +45,7 @@ export function ScheduleFilters({ festivalId, value, onChange }: Props) {
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
 
     const dates: { key: string; label: string }[] = [];
-    let current = new Date(start);
+    const current = new Date(start);
     while (current <= end) {
       const key = format(current, "yyyy-MM-dd");
       dates.push({
