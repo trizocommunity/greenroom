@@ -123,9 +123,12 @@ export const certificateConfig = z.object({
   programmeIds: idList,
 });
 
+export const timeDisplayMode = z.enum(["START_AND_END", "START_ONLY"]);
+
 export const scheduleConfig = z.object({
   type: z.literal("SCHEDULE"),
   days: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).default([]),
+  timeDisplay: timeDisplayMode.default("START_AND_END"),
   includeStage: z.boolean().default(true),
   includeDescription: z.boolean().default(true),
   includeSpeakers: z.boolean().default(false),
@@ -155,6 +158,7 @@ export type ScheduleConfig = z.infer<typeof scheduleConfig>;
 
 export type PageLayout = z.infer<typeof pageLayout>;
 export type GenderFilter = z.infer<typeof genderFilter>;
+export type TimeDisplayMode = z.infer<typeof timeDisplayMode>;
 
 export const TEMPLATE_EXPORT_TYPES = ["BADGE", "CERTIFICATE"] as const;
 

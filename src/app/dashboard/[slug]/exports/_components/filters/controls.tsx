@@ -211,6 +211,11 @@ export const PAGE_LAYOUT_OPTIONS = [
   { value: "CONTINUOUS_GRID" as const, label: "Continuous" },
 ];
 
+export const TIME_DISPLAY_OPTIONS = [
+  { value: "START_AND_END" as const, label: "Start & End Time" },
+  { value: "START_ONLY" as const, label: "Start Time Only" },
+];
+
 export function toggleId(list: string[], id: string, value: boolean): string[] {
   return value ? [...list, id] : list.filter((x) => x !== id);
 }

@@ -104,6 +104,7 @@ export async function generateSchedule(
   return {
     bytes: buildDayWiseSchedulePdf({
       festivalName,
+      timeDisplay: config.timeDisplay,
       includeStage: config.includeStage,
       includeDescription: config.includeDescription,
       includeSpeakers: config.includeSpeakers,

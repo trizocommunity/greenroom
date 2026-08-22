@@ -42,24 +42,30 @@ export function buildSectionedPdf(options: BuildPdfOptions): Buffer {
 
   // ── Title block ──
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text(options.festivalName, pageWidth / 2, 24, { align: "center" });
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "normal");
-  doc.text(options.title, pageWidth / 2, 32, { align: "center" });
-  doc.setFontSize(9);
-  doc.setTextColor(120);
-  doc.text(
-    `Generated ${formatDateTime(serverNow(), { dateStyle: "medium", timeStyle: "short" })} UTC`,
-    pageWidth / 2,
-    38,
-    {
-      align: "center",
-    },
-  );
-  doc.setTextColor(0);
+  doc.setFontSize(22);
+  doc.setTextColor(0, 0, 0);
+  doc.text(options.festivalName, MARGIN, 24);
 
-  let y = 48;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  doc.text(options.title, MARGIN, 32);
+
+  doc.setFontSize(9);
+  doc.text(
+    `Generated: ${formatDateTime(serverNow(), { dateStyle: "medium", timeStyle: "short" })} UTC`,
+    pageWidth - MARGIN,
+    24,
+    { align: "right" },
+  );
+
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN, 36, pageWidth - MARGIN, 36);
+
+  doc.setTextColor(0, 0, 0);
+
+  let y = 46;
 
   if (options.sections.length === 0) {
     doc.setFontSize(11);
@@ -119,24 +125,51 @@ export function buildSectionedPdf(options: BuildPdfOptions): Buffer {
     // Header row
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.setFillColor(240, 240, 240);
-    doc.rect(MARGIN, y - 4, contentWidth, LINE, "F");
+    doc.setFillColor(245, 245, 245);
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.2);
+
+    // Draw header background and borders
+    doc.rect(MARGIN, y - 4, contentWidth, LINE + 1, "FD");
+
     section.columns.forEach((col, i) => {
       doc.text(String(col), colX[i] + 1.5, y);
     });
-    y += LINE;
+    y += LINE + 1;
 
     // Body rows
     doc.setFont("helvetica", "normal");
+
     section.rows.forEach((row) => {
-      ensureSpace(LINE);
-      row.forEach((cell, i) => {
+      // Calculate row height by wrapping text
+      let maxLines = 1;
+      const cellLines = row.map((cell, i) => {
         const text = cell === null || cell === undefined ? "" : String(cell);
         const maxWidth = colWidths[i] - 3;
-        const clipped = doc.splitTextToSize(text, maxWidth)[0] ?? "";
-        doc.text(String(clipped), colX[i] + 1.5, y);
+        const lines = doc.splitTextToSize(text, maxWidth);
+        if (lines.length > maxLines) maxLines = lines.length;
+        return lines as string[];
       });
-      y += LINE;
+
+      // 4mm per additional line of wrapped text
+      const rowHeight = LINE + (maxLines - 1) * 4;
+      ensureSpace(rowHeight);
+
+      row.forEach((_, i) => {
+        const lines = cellLines[i];
+        doc.text(lines, colX[i] + 1.5, y);
+      });
+
+      // Row bottom border
+      doc.setDrawColor(235, 235, 235);
+      doc.line(
+        MARGIN,
+        y - 4 + rowHeight,
+        pageWidth - MARGIN,
+        y - 4 + rowHeight,
+      );
+
+      y += rowHeight;
     });
 
     y += LINE; // gap after section

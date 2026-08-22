@@ -10,7 +10,7 @@ import { DateFilterCombobox } from "@/components/ui/date-filter-combobox";
 import { dateKeyLocal, midnightInTz } from "@/core/datetime";
 import { Label } from "@/components/ui/label";
 import type { ScheduleConfig } from "@/features/exports/schemas/export-config.schema";
-import { ToggleRow } from "./controls";
+import { ToggleRow, SegmentedControl, TIME_DISPLAY_OPTIONS } from "./controls";
 
 interface Props {
   festivalId: string;
@@ -38,12 +38,12 @@ export function ScheduleFilters({ festivalId, value, onChange }: Props) {
 
   const availableDates = useMemo(() => {
     if (!startDate || !endDate) return [];
-    
+
     // We generate all dates from startDate to endDate
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
-    
+
     const dates: { key: string; label: string }[] = [];
     let current = new Date(start);
     while (current <= end) {
@@ -115,6 +115,13 @@ export function ScheduleFilters({ festivalId, value, onChange }: Props) {
       </div>
 
       <div className="space-y-2.5">
+        <SegmentedControl
+          label="Time format"
+          value={value.timeDisplay}
+          options={TIME_DISPLAY_OPTIONS}
+          onChange={(v) => set({ timeDisplay: v })}
+        />
+        <div className="pt-2 border-t" />
         <ToggleRow
           label="Include entry type (programme / session)"
           checked={value.includeEntryType}
