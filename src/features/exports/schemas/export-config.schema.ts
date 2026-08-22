@@ -133,6 +133,7 @@ export const scheduleConfig = z.object({
   includeDescription: z.boolean().default(true),
   includeSpeakers: z.boolean().default(false),
   includeEntryType: z.boolean().default(false),
+  timezoneOffset: z.number().optional(),
 });
 
 export const exportConfigSchema = z.discriminatedUnion("type", [
