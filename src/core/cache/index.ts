@@ -2,7 +2,7 @@ import "server-only";
 import type Redis from "ioredis";
 
 export interface Cache {
-  get<T>(key: string): Promise<T | null>;
+  get<T>(key: string): Promise<T | undefined>;
   set<T>(key: string, value: T, opts: { ttlMs: number }): Promise<void>;
   del(key: string): Promise<void>;
   /**
@@ -27,9 +27,9 @@ export interface Cache {
 export function createCache(deps: { redis: Redis }): Cache {
   const { redis } = deps;
   return {
-    async get<T>(key: string): Promise<T | null> {
+    async get<T>(key: string): Promise<T | undefined> {
       const raw = await redis.get(key);
-      return raw ? (JSON.parse(raw) as T) : null;
+      return raw !== null ? (JSON.parse(raw) as T) : undefined;
     },
     async set<T>(
       key: string,

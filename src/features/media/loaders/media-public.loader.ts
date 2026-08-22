@@ -106,7 +106,7 @@ async function loadPublicMediaPage(
 async function resolveFestivalId(festivalSlug: string): Promise<string | null> {
   const cacheKey = `${keys.slugFestival(festivalSlug)}:id`;
   const cached = await cache.get<string>(cacheKey);
-  if (cached !== null) return cached;
+  if (cached !== undefined) return cached;
 
   const row = await db.query.festival.findFirst({
     where: eq(festivalTable.slug, festivalSlug),
