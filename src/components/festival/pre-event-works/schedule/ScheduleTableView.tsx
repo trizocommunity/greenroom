@@ -13,7 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { ProgrammeTimer } from "@/components/festival/event-works/programme-reporting/ReportingBoardList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -130,6 +130,8 @@ export function isEntryCompleted(entry: EnrichedScheduleEntry): boolean {
   );
 }
 
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+
 export function ScheduleTableView({
   festivalId: _festivalId,
   entries,
@@ -153,11 +155,16 @@ export function ScheduleTableView({
   const [filterStage, setFilterStage] = useState<string>(
     initialStageId ?? "ALL",
   );
+  const [filterStatus, setFilterStatus] = useState<
+    "ALL" | "COMPLETED" | "PENDING"
+  >("ALL");
 
   const [sortField, setSortField] = useState<"schedule" | "name" | "stage">(
     "schedule",
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageSize = 50;
 
   const days = useMemo(() => {
     const map = new Map<string, string>();
@@ -235,6 +242,12 @@ export function ScheduleTableView({
         (e) => e.stageId === filterStage || e.stage?.id === filterStage,
       );
     }
+    if (filterStatus !== "ALL") {
+      result = result.filter((e) => {
+        const completed = isEntryCompleted(e);
+        return filterStatus === "COMPLETED" ? completed : !completed;
+      });
+    }
     return [...result].sort((a, b) => {
       const aDone = isEntryCompleted(a);
       const bDone = isEntryCompleted(b);
@@ -266,9 +279,15 @@ export function ScheduleTableView({
     filterDay,
     filterCategory,
     filterStage,
+    filterStatus,
     sortField,
     sortDir,
   ]);
+
+  // Reset page index when filters change
+  useEffect(() => {
+    setPageIndex(0);
+  }, [searchQuery, filterDay, filterCategory, filterStage, filterStatus]);
 
   const toggleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -288,7 +307,8 @@ export function ScheduleTableView({
     (filterDay.length === 1 ? format(filterDay[0]!, "yyyy-MM-dd") : "ALL") !==
       format(new Date(), "yyyy-MM-dd") ||
     filterCategory !== "ALL" ||
-    (filterStage !== "ALL" && filterStage !== initialStageId);
+    (filterStage !== "ALL" && filterStage !== initialStageId) ||
+    filterStatus !== "ALL";
 
   const filterBar = (
     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 py-4 md:pt-10 mb-4 w-full">
@@ -314,20 +334,20 @@ export function ScheduleTableView({
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 items-center gap-2 lg:gap-3 w-full lg:w-auto lg:justify-end">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-row items-center gap-2 lg:gap-3 w-full lg:w-auto lg:justify-end">
         {days.length > 1 && (
           <DateFilterCombobox
             value={filterDay}
             onChange={setFilterDay}
             availableDates={days}
             placeholder="All days"
-            className="h-9 text-xs"
+            className="h-9 w-full min-w-0 lg:w-auto lg:min-w-[180px] text-xs"
           />
         )}
 
         {categories.length > 0 && (
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="h-9 w-auto text-xs">
+            <SelectTrigger className="h-9 w-full lg:w-auto text-xs">
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
@@ -343,7 +363,7 @@ export function ScheduleTableView({
 
         {!hideStageFilter && stageList.length > 1 && (
           <Select value={filterStage} onValueChange={setFilterStage}>
-            <SelectTrigger className="h-9 w-auto min-w-[120px] text-xs">
+            <SelectTrigger className="h-9 w-full lg:w-auto lg:min-w-[120px] text-xs">
               <SelectValue placeholder="All stages" />
             </SelectTrigger>
             <SelectContent>
@@ -356,6 +376,20 @@ export function ScheduleTableView({
             </SelectContent>
           </Select>
         )}
+
+        <Select
+          value={filterStatus}
+          onValueChange={(val: any) => setFilterStatus(val)}
+        >
+          <SelectTrigger className="h-9 w-full lg:w-auto lg:min-w-[120px] text-xs">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All status</SelectItem>
+            <SelectItem value="COMPLETED">Completed</SelectItem>
+            <SelectItem value="PENDING">Not completed</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
@@ -372,6 +406,12 @@ export function ScheduleTableView({
       </div>
     );
   }
+
+  const pageCount = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice(
+    pageIndex * pageSize,
+    (pageIndex + 1) * pageSize,
+  );
 
   return (
     <div className="space-y-3">
@@ -413,7 +453,7 @@ export function ScheduleTableView({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((entry) => {
+              {paginated.map((entry) => {
                 const typeInfo = getTypeLabel(entry);
                 const participantsLabel = getParticipantsLabel(entry);
                 const [countLine, durationLine] = participantsLabel.split("\n");
@@ -625,7 +665,7 @@ export function ScheduleTableView({
 
       {/* ── Mobile card view ── */}
       <div className="lg:hidden space-y-3">
-        {filtered.map((entry) => {
+        {paginated.map((entry) => {
           const typeInfo = getTypeLabel(entry);
           const participantsLabel = getParticipantsLabel(entry);
           const [countLine, durationLine] = participantsLabel.split("\n");
@@ -789,6 +829,14 @@ export function ScheduleTableView({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <DataTablePagination
+          pageIndex={pageIndex}
+          pageCount={pageCount}
+          onPageChange={setPageIndex}
+        />
       </div>
     </div>
   );

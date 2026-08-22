@@ -20,6 +20,7 @@ import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
 
 type Post = {
   id: string;
+  slug: string | null;
   title: string;
   excerpt: string | null;
   content: string;
@@ -163,9 +164,20 @@ export function PublicNewsView({
                         sizes="(max-width: 768px) 100vw, 700px"
                         className="mb-5 aspect-[16/7] w-full rounded-lg"
                       />
-                      <p className="max-w-2xl whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground">
-                        {post.content}
-                      </p>
+                      <div
+                        className="max-w-2xl text-[15px] leading-relaxed text-muted-foreground prose prose-sm dark:prose-invert"
+                        // biome-ignore lint/security/noDangerouslySetInnerHtml: Content is from rich text editor
+                        dangerouslySetInnerHTML={{ __html: post.content }}
+                      />
+                      <div className="mt-6">
+                        <a
+                          href={`/${festivalSlug}/news/${post.slug || post.id}`}
+                          className="inline-flex items-center text-sm font-medium hover:underline"
+                          style={{ color: accentColor }}
+                        >
+                          Read full article &amp; Share &rarr;
+                        </a>
+                      </div>
                     </div>
                   </motion.div>
                 )}

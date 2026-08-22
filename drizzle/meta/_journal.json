@@ -267,6 +267,13 @@
       "when": 1787152471204,
       "tag": "0037_curly_the_anarchist",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1787409349410,
+      "tag": "0038_blushing_mulholland_black",
+      "breakpoints": true
     }
   ]
 }

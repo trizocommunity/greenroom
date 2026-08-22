@@ -180,7 +180,6 @@ export function HeroSection({
                   </div>
                 ))}
               </dl>
-
             </>
           )}
 

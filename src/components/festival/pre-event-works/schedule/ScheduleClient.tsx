@@ -24,6 +24,7 @@ import {
 import { ClearScheduleDialog } from "@/components/festival/pre-event-works/schedule/ClearScheduleDialog";
 import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
+import { ScheduleConflictsDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleConflictsDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -162,6 +163,7 @@ export function ScheduleClient({
   const [isClearing, setIsClearing] = useState(false);
   const [reportingEntry, setReportingEntry] =
     useState<EnrichedScheduleEntry | null>(null);
+  const [conflictsDrawerOpen, setConflictsDrawerOpen] = useState(false);
 
   /* UC15 — schedule-channel delta. Another admin adding/moving a slot
      pushes here; we re-pull the enriched entries (re-runs the conflict
@@ -214,8 +216,8 @@ export function ScheduleClient({
   }, [festivalId]);
 
   // Conflict count
-  const conflictCount = useMemo(() => {
-    let count = 0;
+  const conflicts = useMemo(() => {
+    const list: Array<[EnrichedScheduleEntry, EnrichedScheduleEntry]> = [];
     const checked = new Set<string>();
     for (const entry of entries) {
       if (!entry.stageId || !entry.endTime) continue;
@@ -229,12 +231,12 @@ export function ScheduleClient({
         const startB = new Date(other.startTime).getTime();
         const endB = new Date(other.endTime).getTime();
         if (startA < endB && startB < endA) {
-          count++;
+          list.push([entry, other]);
           checked.add(pairKey);
         }
       }
     }
-    return count;
+    return list;
   }, [entries]);
 
   const handleCreate = async (data: {
@@ -432,11 +434,16 @@ export function ScheduleClient({
           <h2 className="text-2xl font-bold tracking-tight">Schedule</h2>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {conflictCount > 0 && (
-              <Badge variant="destructive" className="gap-1.5">
+            {conflicts.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setConflictsDrawerOpen(true)}
+                className="gap-1.5 h-7 px-2.5 text-xs rounded-full font-semibold"
+              >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                {conflictCount} Conflict{conflictCount !== 1 ? "s" : ""}
-              </Badge>
+                {conflicts.length} Conflict{conflicts.length !== 1 ? "s" : ""}
+              </Button>
             )}
             {!isReadOnly && (
               <>
@@ -611,6 +618,17 @@ export function ScheduleClient({
         stages={stages}
         onClear={handleClearSchedule}
         isClearing={isClearing}
+      />
+
+      <ScheduleConflictsDrawer
+        open={conflictsDrawerOpen}
+        onOpenChange={setConflictsDrawerOpen}
+        conflicts={conflicts}
+        onEdit={(entry) => {
+          if (isReadOnly) return;
+          setEditEntry(entry);
+        }}
+        isReadOnly={isReadOnly}
       />
     </div>
   );
