@@ -35,7 +35,7 @@ export function ScheduleConflictsDrawer({
 }: ScheduleConflictsDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="flex flex-col max-h-[85vh]">
+      <DrawerContent className="flex flex-col">
         <DrawerHeader className="text-left">
           <DrawerTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
@@ -43,11 +43,12 @@ export function ScheduleConflictsDrawer({
           </DrawerTitle>
           <DrawerDescription>
             The following schedule entries overlap in time on the same stage.
-            Please adjust their timings or assign them to different stages to resolve the conflicts.
+            Please adjust their timings or assign them to different stages to
+            resolve the conflicts.
           </DrawerDescription>
         </DrawerHeader>
 
-        <ScrollArea className="flex-1 p-4 pb-8">
+        <ScrollArea className="flex-1 py-8">
           <div className="space-y-4 max-w-4xl mx-auto w-full">
             {conflicts.map(([entryA, entryB], idx) => (
               <div
@@ -58,14 +59,16 @@ export function ScheduleConflictsDrawer({
                   <AlertTriangle className="h-4 w-4" />
                   Conflict on {entryA.stage?.name || "Stage"}
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Entry A */}
                   <div className="bg-background border rounded p-3 space-y-2">
                     <div className="font-medium">{getEntryLabel(entryA)}</div>
                     <div className="text-sm text-muted-foreground">
                       {format(new Date(entryA.startTime), "MMM d, h:mm a")} —{" "}
-                      {entryA.endTime ? format(new Date(entryA.endTime), "h:mm a") : "—"}
+                      {entryA.endTime
+                        ? format(new Date(entryA.endTime), "h:mm a")
+                        : "—"}
                     </div>
                     {!isReadOnly && (
                       <Button
@@ -88,7 +91,9 @@ export function ScheduleConflictsDrawer({
                     <div className="font-medium">{getEntryLabel(entryB)}</div>
                     <div className="text-sm text-muted-foreground">
                       {format(new Date(entryB.startTime), "MMM d, h:mm a")} —{" "}
-                      {entryB.endTime ? format(new Date(entryB.endTime), "h:mm a") : "—"}
+                      {entryB.endTime
+                        ? format(new Date(entryB.endTime), "h:mm a")
+                        : "—"}
                     </div>
                     {!isReadOnly && (
                       <Button

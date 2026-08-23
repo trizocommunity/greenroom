@@ -1,9 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
-import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
-import { useCallback, useState } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
 import { NewsImage } from "@/components/festival/public/NewsImage";
 import { EmptyState } from "@/components/festival/public/PublicSection";
 import {
@@ -15,7 +14,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cn } from "@/core/utils/cn";
 import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
 
 type Post = {
@@ -56,10 +54,6 @@ export function PublicNewsView({
   linkBase,
   accentColor = "var(--primary)",
 }: PublicNewsViewProps) {
-  const [openId, setOpenId] = useState<string | null>(
-    initialPosts[0]?.id ?? null,
-  );
-
   const {
     items: posts,
     total,
@@ -81,20 +75,15 @@ export function PublicNewsView({
     },
   });
 
-  const toggle = useCallback(
-    (id: string) => setOpenId((current) => (current === id ? null : id)),
-    [],
-  );
-
   if (posts.length === 0) {
     return <EmptyState>No news posts yet.</EmptyState>;
   }
 
   return (
     <>
-      <ol className="divide-y divide-border border-y border-border">
+      <ul className="flex flex-col gap-6 sm:gap-4 sm:divide-y sm:divide-border sm:border-y sm:border-border">
         {posts.map((post, i) => {
-          const isOpen = openId === post.id;
+          const detailUrl = `${linkBase ?? `/${festivalSlug}`}/news/${post.slug || post.id}`;
 
           return (
             <motion.li
@@ -107,87 +96,40 @@ export function PublicNewsView({
                 duration: 0.35,
                 delay: Math.min(i % pageSize, 8) * 0.04,
               }}
+              className="sm:py-4"
             >
-              <button
-                type="button"
-                aria-expanded={isOpen}
-                onClick={() => toggle(post.id)}
-                className="flex w-full items-start gap-4 py-5 text-left"
+              <Link
+                href={detailUrl}
+                className="group flex flex-col sm:flex-row w-full items-start gap-4 text-left transition-colors sm:hover:bg-muted/30 sm:rounded-lg sm:p-2 bg-card sm:bg-transparent rounded-xl border sm:border-none shadow-sm sm:shadow-none overflow-hidden"
               >
-                <NewsImage
-                  src={post.imageUrl}
-                  title={post.title}
-                  accentColor={accentColor}
-                  sizes="64px"
-                  className="h-14 w-14 shrink-0 rounded-md sm:h-16 sm:w-16"
-                />
+                <div className="w-full sm:w-auto overflow-hidden">
+                  <NewsImage
+                    src={post.imageUrl}
+                    title={post.title}
+                    accentColor={accentColor}
+                    sizes="(max-width: 640px) 100vw, 150px"
+                    className="h-48 w-full sm:h-24 sm:w-32 shrink-0 object-cover sm:rounded-md transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
 
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-[15px] font-semibold leading-snug tracking-tight text-heading sm:text-base">
+                <div className="min-w-0 flex-1 w-full p-4 sm:p-0">
+                  <h2 className="text-[17px] font-semibold leading-snug tracking-tight text-heading sm:text-base group-hover:underline decoration-muted-foreground/30 underline-offset-2">
                     {post.title}
                   </h2>
                   {post.publishedAt && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1.5 text-xs text-muted-foreground">
                       {format(new Date(post.publishedAt), "MMMM d, yyyy")}
                     </p>
                   )}
-                  {!isOpen && (
-                    <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                      {post.excerpt || post.content}
-                    </p>
-                  )}
+                  <p className="mt-2.5 sm:mt-1.5 line-clamp-3 sm:line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                    {post.excerpt || post.content.replace(/<[^>]+>/g, '')}
+                  </p>
                 </div>
-
-                <ChevronDown
-                  className={cn(
-                    "mt-1 h-4 w-4 shrink-0 transition-transform duration-300",
-                    isOpen && "rotate-180",
-                  )}
-                  style={{
-                    color: isOpen ? accentColor : "var(--muted-foreground)",
-                  }}
-                />
-              </button>
-
-              <AnimatePresence initial={false}>
-                {isOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className="pb-6 sm:pl-20">
-                      <NewsImage
-                        src={post.imageUrl}
-                        title={post.title}
-                        accentColor={accentColor}
-                        sizes="(max-width: 768px) 100vw, 700px"
-                        className="mb-5 aspect-[16/7] w-full rounded-lg"
-                      />
-                      <div
-                        className="max-w-2xl text-[15px] leading-relaxed text-muted-foreground prose prose-sm dark:prose-invert"
-                        // biome-ignore lint/security/noDangerouslySetInnerHtml: Content is from rich text editor
-                        dangerouslySetInnerHTML={{ __html: post.content }}
-                      />
-                      <div className="mt-6">
-                        <a
-                          href={`${linkBase ?? `/${festivalSlug}`}/news/${post.slug || post.id}`}
-                          className="inline-flex items-center text-sm font-medium hover:underline"
-                          style={{ color: accentColor }}
-                        >
-                          Read full article &amp; Share &rarr;
-                        </a>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              </Link>
             </motion.li>
           );
         })}
-      </ol>
+      </ul>
 
       {Math.ceil(total / pageSize) > 1 && (
         <div className="mt-8 flex justify-center pb-6">

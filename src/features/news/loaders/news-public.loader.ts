@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNotNull } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, or } from "drizzle-orm";
 import { cache } from "@/core/cache/instance";
 import { db } from "@/core/database/client";
 import {
@@ -167,7 +167,7 @@ export async function getPublicNewsPostBySlugString(
   const post = await db.query.festivalNews.findFirst({
     where: and(
       eq(newsTable.festivalId, festival.id),
-      eq(newsTable.slug, newsSlug),
+      or(eq(newsTable.slug, newsSlug), eq(newsTable.id, newsSlug)),
       isNotNull(newsTable.publishedAt),
     ),
     columns: {
