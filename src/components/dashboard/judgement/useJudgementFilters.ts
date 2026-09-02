@@ -83,8 +83,8 @@ export function useJudgementFilters({
   const effectiveStageId = autoLockedStageId ?? selectedStageId;
 
   const [filterScheduleState, setFilterScheduleState] =
-    useState<ScheduleStateFilter>("SCHEDULED");
-  const [filterDate, setFilterDate] = useState<Date[]>([new Date()]);
+    useState<ScheduleStateFilter>("ALL");
+  const [filterDate, setFilterDate] = useState<Date[]>([]);
 
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [filterType, setFilterType] = useState<string>("ALL");

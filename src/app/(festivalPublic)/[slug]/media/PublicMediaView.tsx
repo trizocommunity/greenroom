@@ -20,6 +20,7 @@ import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
 import {
   extractYouTubeId,
   getYouTubeThumbnail,
+  extractInstagramId,
 } from "@/features/media/utils/youtube";
 
 type ImageItem = { id: string; url: string; order: number };
@@ -102,87 +103,110 @@ export function PublicMediaView({
     return () => window.removeEventListener("keydown", onKey);
   }, [lightboxIndex, goPrev, goNext]);
 
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+
   if (images.length === 0 && videos.length === 0) {
     return <EmptyState>Nothing in the media yet.</EmptyState>;
   }
 
+  const allMedia = [
+    ...videos.map(v => ({ ...v, type: "video" as const })),
+    ...images.map(img => ({ ...img, type: "photo" as const })),
+  ];
+
   return (
     <div className="space-y-14">
-      {videos.length > 0 && (
-        <section>
-          <h2 className="mb-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Videos
-          </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {videos.map((video, i) => {
-              const videoId = extractYouTubeId(video.url);
+      <section>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 auto-rows-[180px] sm:auto-rows-[220px] gap-3 grid-flow-row dense">
+          {allMedia.map((media, index) => {
+            if (media.type === "video") {
+              const videoId = extractYouTubeId(media.url);
+              const igId = extractInstagramId(media.url);
               return (
-                <motion.a
-                  key={video.id}
-                  href={video.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <motion.div
+                  key={media.id}
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
-                  transition={{ duration: 0.4, delay: Math.min(i, 6) * 0.05 }}
-                  className="group relative aspect-video overflow-hidden rounded-lg bg-muted"
+                  transition={{ duration: 0.4, delay: Math.min(index, 6) * 0.05 }}
+                  className="group relative col-span-2 row-span-2 overflow-hidden rounded-lg bg-muted"
                 >
-                  {videoId && (
-                    <Image
-                      src={getYouTubeThumbnail(videoId)}
-                      alt=""
-                      fill
-                      sizes="(max-width: 640px) 100vw, 380px"
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
+                  {playingVideoId === media.id ? (
+                    videoId ? (
+                      <iframe
+                        title="YouTube video player"
+                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                        className="absolute inset-0 w-full h-full"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                      />
+                    ) : igId ? (
+                      <iframe
+                        title="Instagram video player"
+                        src={`https://www.instagram.com/p/${igId}/embed`}
+                        className="absolute inset-0 w-full h-full"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                      />
+                    ) : null
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPlayingVideoId(media.id)}
+                      className="absolute inset-0 w-full h-full cursor-pointer focus:outline-none"
+                    >
+                      {videoId ? (
+                        <Image
+                          src={getYouTubeThumbnail(videoId)}
+                          alt=""
+                          fill
+                          sizes="(max-width: 640px) 100vw, 380px"
+                          className="object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                      ) : igId ? (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
+                          <span className="text-white font-semibold text-lg">Instagram Video</span>
+                        </div>
+                      ) : null}
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition-colors group-hover:bg-black/15">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-black transition-transform group-hover:scale-110">
+                          <Play className="ml-0.5 h-4 w-4 fill-current" />
+                        </span>
+                      </span>
+                    </button>
                   )}
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition-colors group-hover:bg-black/15">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-black transition-transform group-hover:scale-110">
-                      <Play className="ml-0.5 h-4 w-4 fill-current" />
-                    </span>
-                  </span>
-                </motion.a>
+                </motion.div>
               );
-            })}
-          </div>
-        </section>
-      )}
-
-      {images.length > 0 && (
-        <section>
-          {videos.length > 0 && (
-            <h2 className="mb-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Photos
-            </h2>
-          )}
-          <div className="columns-2 gap-2.5 sm:columns-3 lg:columns-4 [&>*]:mb-2.5">
-            {images.map((img, index) => (
-              <motion.button
-                key={img.id}
-                type="button"
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{
-                  duration: 0.4,
-                  delay: Math.min(index, 10) * 0.03,
-                }}
-                onClick={() => setLightboxIndex(index)}
-                aria-label={`Open photo ${index + 1}`}
-                className="group relative block w-full overflow-hidden rounded-lg bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              >
-                <Image
-                  src={img.url}
-                  alt=""
-                  width={600}
-                  height={800}
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  className="h-auto w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                />
-              </motion.button>
-            ))}
-          </div>
+            } else {
+              // photo
+              const photoIndex = images.findIndex((i) => i.id === media.id);
+              return (
+                <motion.button
+                  key={media.id}
+                  type="button"
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{
+                    duration: 0.4,
+                    delay: Math.min(index, 10) * 0.03,
+                  }}
+                  onClick={() => setLightboxIndex(photoIndex)}
+                  aria-label={`Open photo`}
+                  className="group relative block w-full h-full col-span-1 row-span-1 overflow-hidden rounded-lg bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  <Image
+                    src={media.url}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                  />
+                </motion.button>
+              );
+            }
+          })}
+        </div>
 
           {Math.ceil(total / pageSize) > 1 && (
             <div className="mt-8 flex justify-center pb-6">
@@ -254,8 +278,6 @@ export function PublicMediaView({
             </div>
           )}
         </section>
-      )}
-
       <Dialog open={lightboxIndex !== null} onOpenChange={() => close()}>
         {/* The built-in close sits on a black backdrop here, so it is forced
             white rather than inheriting the popover foreground. */}

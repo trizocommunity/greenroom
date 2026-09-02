@@ -265,11 +265,11 @@ export function useReportingBoard({
         typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
       return aTeam - bTeam;
     });
+    // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   }, [
     assignmentsWithReported,
     selected?.programme,
     teamLeadsForProgramme,
-    letters,
     session,
   ]);
 

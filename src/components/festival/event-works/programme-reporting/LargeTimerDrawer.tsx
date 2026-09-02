@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ParticipantNameBlock } from "@/components/shared/roster/ParticipantNameBlock";
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
@@ -11,11 +12,6 @@ import {
 import { formatDateTime, parseInstant } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
-import { reportedEntriesFromReportedRows } from "@/features/programmes/domain/reported-entries";
-import {
-  ReportedEntriesPanel,
-  type ReportedEntry,
-} from "./ReportedEntriesPanel";
 import type { ProgrammeHistoryDetail } from "./reporting-status";
 import type { ReportingBoardItem } from "./types";
 
@@ -26,6 +22,7 @@ interface LargeTimerDrawerProps {
   historyDetail: ProgrammeHistoryDetail | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenWorkspace?: () => void;
 }
 
 export function LargeTimerDrawer({
@@ -35,6 +32,7 @@ export function LargeTimerDrawer({
   historyDetail,
   isOpen,
   onOpenChange,
+  onOpenWorkspace,
 }: LargeTimerDrawerProps) {
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
@@ -62,32 +60,23 @@ export function LargeTimerDrawer({
   const s = Math.floor((timeLeft % 60000) / 1000);
   const formatted = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 
-  const reportedEntries = useMemo<ReportedEntry[]>(() => {
-    if (!item?.reportingSession) return [];
-
-    const codesByParticipantId = new Map<string, string>();
-    for (const cl of item.reportingSession.programmeCodeLetters) {
-      for (const rec of cl.programmeCodeLetterRecipients) {
-        codesByParticipantId.set(rec.participantId, cl.code);
-      }
-    }
-
-    return reportedEntriesFromReportedRows({
-      programmeType: item.programme.type,
-      reportedRows: item.reportingSession.programmeReportedParticipants,
-      assignments,
-      codesByParticipantId,
-    });
-  }, [item, assignments]);
-
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
       <DrawerContent className="pb-0">
         <div className="overflow-y-auto pb-8">
-          <DrawerHeader className="text-center">
-            <DrawerTitle className="text-xl">
+          <DrawerHeader className="flex flex-row items-center justify-center gap-4 mt-4 px-6">
+            <DrawerTitle className="text-xl text-center">
               {item?.programme.name}
             </DrawerTitle>
+            {onOpenWorkspace && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={onOpenWorkspace}
+              >
+                Reopen reporting
+              </Button>
+            )}
           </DrawerHeader>
 
           <div className="flex flex-col items-center justify-center p-8 pt-0">
@@ -99,10 +88,6 @@ export function LargeTimerDrawer({
               style={{ fontSize: "6rem", lineHeight: "1" }}
             >
               {isOver ? "00:00" : formatted}
-            </div>
-
-            <div className="mt-8 w-full max-w-md">
-              <ReportedEntriesPanel entries={reportedEntries} />
             </div>
 
             {historyDetail && (

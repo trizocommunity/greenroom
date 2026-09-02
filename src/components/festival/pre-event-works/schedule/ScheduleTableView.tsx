@@ -285,6 +285,7 @@ export function ScheduleTableView({
   ]);
 
   // Reset page index when filters change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset page when filters change
   useEffect(() => {
     setPageIndex(0);
   }, [searchQuery, filterDay, filterCategory, filterStage, filterStatus]);

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ImagePlus,
   Loader2,
+  Play,
   Plus,
   Square,
   Trash2,
@@ -21,6 +22,8 @@ import {
   useCreateMediaVideo,
   useDeleteMediaItem,
   useDeleteMediaVideo,
+  useMedia,
+  useMediaVideos,
 } from "@/api/client/media";
 import { useUnsavedChanges } from "@/components/common/useUnsavedChanges";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
@@ -41,6 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
+  extractInstagramId,
   extractYouTubeId,
   getYouTubeThumbnail,
 } from "@/features/media/utils/youtube";
@@ -66,8 +70,12 @@ export function MediaClient({
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
-  const [images, setImages] = useState<ImageRecord[]>(initialImages);
-  const [videos, setVideos] = useState<VideoRecord[]>(initialVideos);
+  
+  const { data: serverImages } = useMedia(festivalId);
+  const { data: serverVideos } = useMediaVideos(festivalId);
+  
+  const images = serverImages ?? initialImages;
+  const videos = serverVideos ?? initialVideos;
 
   const [photosPageIndex, setPhotosPageIndex] = useState(0);
   const [videosPageIndex, setVideosPageIndex] = useState(0);
@@ -84,6 +92,7 @@ export function MediaClient({
     current: 0,
     total: 0,
   });
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const uploadMutation = useCloudinaryUpload();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -122,9 +131,14 @@ export function MediaClient({
       }
       const previewUrls = imageFiles.map((f) => URL.createObjectURL(f));
       setPendingUpload({ files: imageFiles, previewUrls });
+      setUploadModalTab("photos");
+      setUploadModalOpen(true);
     },
     [],
   );
+
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadModalTab, setUploadModalTab] = useState<"photos" | "videos">("photos");
 
   const closeUploadModal = useCallback(() => {
     if (uploadModalUploading) return;
@@ -134,6 +148,8 @@ export function MediaClient({
       });
     }
     setPendingUpload(null);
+    setUploadModalOpen(false);
+    setVideoUrlInput("");
   }, [uploadModalUploading, pendingUpload]);
 
   const removePendingFile = useCallback((index: number) => {
@@ -151,6 +167,31 @@ export function MediaClient({
   }, []);
 
   const confirmUploadAll = useCallback(async () => {
+    if (uploadModalTab === "videos") {
+      // Handle video upload
+      if (isReadOnly) return;
+      const url = videoUrlInput.trim();
+      if (!url) return;
+      if (!extractYouTubeId(url) && !extractInstagramId(url)) {
+        toast.error("Enter a valid YouTube or Instagram link.");
+        return;
+      }
+      setUploadModalUploading(true);
+      try {
+        await createMediaVideo.mutateAsync({
+          festivalId,
+          data: { festivalId, url },
+        });
+        toast.success("Video added.");
+        closeUploadModal();
+      } catch {
+        // error toast handled by the mutation hook
+      } finally {
+        setUploadModalUploading(false);
+      }
+      return;
+    }
+
     if (!pendingUpload?.files.length || isReadOnly) return;
     if (
       !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
@@ -193,31 +234,25 @@ export function MediaClient({
         toast.success(
           urls.length === 1 ? "Photo added." : `${urls.length} photos added.`,
         );
-        if (pendingUpload?.previewUrls) {
-          pendingUpload.previewUrls.forEach((url) => {
-            URL.revokeObjectURL(url);
-          });
-        }
-        setPendingUpload(null);
-        setUploadModalUploading(false);
-        setDirty(dirtySourceId, false);
       } catch {
-        toast.error("Failed to add photos.");
-        setUploadModalUploading(false);
+        toast.error("Failed to save photos.");
       }
     } catch {
-      toast.error("Upload failed.");
+      toast.error("Failed to upload to Cloudinary.");
+    } finally {
       setUploadModalUploading(false);
+      closeUploadModal();
     }
   }, [
-    closeUploadModal,
-    dirtySourceId,
-    festivalId,
-    isReadOnly,
+    uploadModalTab,
+    videoUrlInput,
     pendingUpload,
-    setDirty,
+    isReadOnly,
+    festivalId,
     uploadMutation,
-    createMediaItem.mutateAsync,
+    createMediaItem,
+    createMediaVideo,
+    closeUploadModal,
   ]);
 
   const handleDelete = useCallback(
@@ -225,7 +260,6 @@ export function MediaClient({
       if (isReadOnly) return;
       try {
         await deleteMediaItem.mutateAsync({ festivalId, imageId: id });
-        setImages((prev) => prev.filter((i) => i.id !== id));
         setSelectedIds((s) => {
           const next = new Set(s);
           next.delete(id);
@@ -263,7 +297,6 @@ export function MediaClient({
           deleteMediaItem.mutateAsync({ festivalId, imageId: id }),
         ),
       );
-      setImages((prev) => prev.filter((i) => !selectedIds.has(i.id)));
       setSelectedIds(new Set());
       toast.success(
         ids.length === 1 ? "Photo removed." : `${ids.length} photos removed.`,
@@ -275,33 +308,11 @@ export function MediaClient({
     }
   }, [festivalId, selectedIds, isReadOnly, deleteMediaItem.mutateAsync]);
 
-  const handleAddVideo = useCallback(async () => {
-    if (isReadOnly) return;
-    const url = videoUrlInput.trim();
-    if (!url) return;
-    if (!extractYouTubeId(url)) {
-      toast.error("Enter a valid YouTube link.");
-      return;
-    }
-    try {
-      const video = await createMediaVideo.mutateAsync({
-        festivalId,
-        data: { festivalId, url },
-      });
-      setVideos((prev) => [...prev, video]);
-      setVideoUrlInput("");
-      toast.success("Video added.");
-    } catch {
-      // error toast handled by the mutation hook
-    }
-  }, [createMediaVideo, festivalId, isReadOnly, videoUrlInput]);
-
   const handleDeleteVideo = useCallback(
     async (videoId: string) => {
       if (isReadOnly) return;
       try {
         await deleteMediaVideo.mutateAsync({ festivalId, videoId });
-        setVideos((prev) => prev.filter((v) => v.id !== videoId));
         toast.success("Video removed.");
       } catch {
         // error toast handled by the mutation hook
@@ -311,33 +322,39 @@ export function MediaClient({
   );
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((s) => {
-      const next = new Set(s);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
   };
-
-  const selectAll = () => {
-    setSelectedIds(new Set(images.map((i) => i.id).filter(Boolean)));
-  };
-
+  const selectAll = () => setSelectedIds(new Set(images.map((i) => i.id)));
   const clearSelection = () => setSelectedIds(new Set());
 
+  const hasSelection = selectedIds.size > 0;
   const selectedCount = selectedIds.size;
-  const hasSelection = selectedCount > 0;
 
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
-  const goPrev = () =>
-    setLightboxIndex((i) =>
-      i === null ? null : i <= 0 ? images.length - 1 : i - 1,
-    );
-  const goNext = () =>
-    setLightboxIndex((i) =>
-      i === null ? null : i >= images.length - 1 ? 0 : i + 1,
-    );
+  const goNext = useCallback(() => {
+    if (lightboxIndex !== null && lightboxIndex < images.length - 1)
+      setLightboxIndex(lightboxIndex + 1);
+  }, [lightboxIndex, images.length]);
+  const goPrev = useCallback(() => {
+    if (lightboxIndex !== null && lightboxIndex > 0)
+      setLightboxIndex(lightboxIndex - 1);
+  }, [lightboxIndex]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "Escape") closeLightbox();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goNext, goPrev]);
 
   useEffect(() => {
     registerDirtySource(dirtySourceId);
@@ -345,7 +362,7 @@ export function MediaClient({
   }, [dirtySourceId, registerDirtySource, unregisterDirtySource]);
 
   useEffect(() => {
-    if (isReadOnly) {
+    if (!pendingUpload?.files.length) {
       setDirty(dirtySourceId, false);
       return;
     }
@@ -356,7 +373,17 @@ export function MediaClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Media</h1>
+        <div className="flex flex-row items-center gap-4">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Media</h1>
+          <Button
+            size="sm"
+            onClick={() => setUploadModalOpen(true)}
+            disabled={isReadOnly}
+          >
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Upload</span>
+          </Button>
+        </div>
         <HowItWorksButton
           title="How Media works"
           description="Photos and YouTube videos appear together on your festival's public media page."
@@ -384,7 +411,6 @@ export function MediaClient({
         </TabsList>
 
         <TabsContent value="photos" className="space-y-6 pt-4">
-          <div className="flex justify-end">
             <input
               ref={fileInputRef}
               type="file"
@@ -393,17 +419,6 @@ export function MediaClient({
               className="hidden"
               onChange={openUploadModal}
             />
-            <Button
-              size="lg"
-              type="button"
-              className="w-full md:w-fit"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isReadOnly}
-            >
-              <ImagePlus className="h-4 w-4 sm:mr-2" />
-              Upload photos
-            </Button>
-          </div>
 
           {hasSelection && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
@@ -449,7 +464,10 @@ export function MediaClient({
               <Button
                 variant="outline"
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  setUploadModalTab("photos");
+                  setUploadModalOpen(true);
+                }}
                 disabled={isReadOnly}
               >
                 Upload photos
@@ -469,7 +487,6 @@ export function MediaClient({
                       key={img.id || img.url}
                       className={cn(
                         "group relative aspect-square rounded-xl overflow-hidden bg-muted border",
-                        index % 5 === 0 && "sm:col-span-2 sm:row-span-2",
                         isSelected && "ring-2 ring-primary ring-offset-2",
                       )}
                     >
@@ -541,42 +558,26 @@ export function MediaClient({
         </TabsContent>
 
         <TabsContent value="videos" className="space-y-6 pt-4">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              value={videoUrlInput}
-              onChange={(e) => setVideoUrlInput(e.target.value)}
-              placeholder="Paste a YouTube link (e.g. https://youtube.com/watch?v=...)"
-              disabled={isReadOnly}
-              className="h-10"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddVideo();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              size="lg"
-              onClick={handleAddVideo}
-              disabled={isReadOnly || createMediaVideo.isPending}
-            >
-              {createMediaVideo.isPending ? (
-                <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4 sm:mr-2" />
-              )}
-              Add video
-            </Button>
-          </div>
+
 
           {videos.length === 0 ? (
             <div className="rounded-xl border border-dashed bg-muted/30 flex flex-col items-center justify-center py-16 px-4 text-center">
               <Youtube className="h-12 w-12 text-muted-foreground mb-3" />
               <p className="text-sm font-medium">No videos yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Add YouTube links to show on your public media page.
+              <p className="text-sm text-muted-foreground mt-1 mb-4">
+                Add YouTube or Instagram links to show on your public media page.
               </p>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  setUploadModalTab("videos");
+                  setUploadModalOpen(true);
+                }}
+                disabled={isReadOnly}
+              >
+                Add video
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -587,33 +588,58 @@ export function MediaClient({
                 )
                 .map((video) => {
                   const videoId = extractYouTubeId(video.url);
+                  const igId = extractInstagramId(video.url);
+                  
                   return (
                     <div
                       key={video.id}
                       className="group relative aspect-video rounded-xl overflow-hidden bg-muted border"
                     >
-                      <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute inset-0"
-                      >
-                        {videoId ? (
-                          <Image
-                            src={getYouTubeThumbnail(videoId)}
-                            alt="YouTube video thumbnail"
-                            fill
-                            className="object-cover transition group-hover:scale-105"
+                      {playingVideoId === video.id ? (
+                        videoId ? (
+                          <iframe
+                            title="YouTube video player"
+                            src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                            className="absolute inset-0 w-full h-full"
+                            allow="autoplay; encrypted-media"
+                            allowFullScreen
                           />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Youtube className="h-8 w-8 text-muted-foreground" />
+                        ) : igId ? (
+                          <iframe
+                            title="Instagram video player"
+                            src={`https://www.instagram.com/p/${igId}/embed`}
+                            className="absolute inset-0 w-full h-full"
+                            allow="autoplay; encrypted-media"
+                            allowFullScreen
+                          />
+                        ) : null
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setPlayingVideoId(video.id)}
+                          className="absolute inset-0 w-full h-full cursor-pointer focus:outline-none"
+                        >
+                          {videoId ? (
+                            <Image
+                              src={getYouTubeThumbnail(videoId)}
+                              alt="YouTube video thumbnail"
+                              fill
+                              className="object-cover transition group-hover:scale-105"
+                            />
+                          ) : igId ? (
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
+                               <span className="text-white font-semibold">Instagram Video</span>
+                            </div>
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Youtube className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition">
+                            <Play className="h-8 w-8 text-white" />
                           </div>
-                        )}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition">
-                          <Youtube className="h-8 w-8 text-white" />
-                        </div>
-                      </a>
+                        </button>
+                      )}
                       <div className="absolute bottom-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition">
                         <DeleteDialog
                           title="Remove video"
@@ -649,90 +675,160 @@ export function MediaClient({
         </TabsContent>
       </Tabs>
 
-      {/* Upload preview modal: list of selected images, then Upload all */}
+      {/* Upload preview modal: tabs for Photo / Video */}
       <Dialog
-        open={!!pendingUpload}
+        open={uploadModalOpen}
         onOpenChange={(open) => !open && closeUploadModal()}
       >
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden gap-4 p-4">
           <DialogHeader className="shrink-0">
-            <DialogTitle>Upload photos</DialogTitle>
+            <DialogTitle>Upload media</DialogTitle>
             <DialogDescription>
-              {pendingUpload
-                ? `${pendingUpload.files.length} photo(s) selected. Review and click Upload all to add them to the media.`
-                : ""}
+              Select media type to upload to your festival's public media.
             </DialogDescription>
           </DialogHeader>
-          {pendingUpload && (
-            <>
-              <div className="relative flex-1 flex flex-col min-h-[200px] max-h-[50vh] overflow-hidden">
-                <ScrollArea className="h-full rounded-lg border p-2">
-                  <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3 pr-2">
-                    {pendingUpload.files.map((file, index) => (
-                      <li
-                        key={index}
-                        className="relative group/item rounded-lg overflow-hidden border bg-muted aspect-square"
-                      >
-                        <Image
-                          src={pendingUpload.previewUrls[index]}
-                          alt="Preview"
-                          fill
-                          className="object-cover"
-                        />
-                        <p className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs px-2 py-1 truncate">
-                          {file.name}
-                        </p>
-                        {!uploadModalUploading && (
-                          <button
-                            type="button"
-                            onClick={() => removePendingFile(index)}
-                            className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/item:opacity-100 transition"
-                            aria-label="Remove"
+
+          <Tabs
+            value={uploadModalTab}
+            onValueChange={(v) => setUploadModalTab(v as "photos" | "videos")}
+            className="flex flex-col overflow-hidden"
+          >
+            <TabsList className="w-full">
+              <TabsTrigger value="photos" className="w-1/2">PHOTO</TabsTrigger>
+              <TabsTrigger value="videos" className="w-1/2">VIDEO</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="photos" className="flex-1 overflow-hidden flex flex-col min-h-[200px] max-h-[50vh] mt-4">
+              {!pendingUpload?.files.length ? (
+                <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center bg-muted/30">
+                  <ImagePlus className="h-10 w-10 text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground mb-4">No photos selected.</p>
+                  <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={isReadOnly}>
+                    Select Photos
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {pendingUpload.files.length} photo(s) selected. Review and click Upload all to add them to the media.
+                  </p>
+                  <div className="relative flex-1 flex flex-col overflow-hidden">
+                    <ScrollArea className="h-full rounded-lg border p-2">
+                      <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3 pr-2">
+                        {pendingUpload.files.map((file, index) => (
+                          <li
+                            key={index}
+                            className="relative group/item rounded-lg overflow-hidden border bg-muted aspect-square"
                           >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </ScrollArea>
-                {uploadModalUploading && (
-                  <div className="absolute inset-0 bg-background/90 rounded-lg flex flex-col items-center justify-center gap-3 z-10">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-sm font-medium">
-                      Uploading {uploadProgress.current} of{" "}
-                      {uploadProgress.total}…
-                    </p>
+                            <Image
+                              src={pendingUpload.previewUrls[index]}
+                              alt="Preview"
+                              fill
+                              className="object-cover"
+                            />
+                            <p className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs px-2 py-1 truncate">
+                              {file.name}
+                            </p>
+                            {!uploadModalUploading && (
+                              <button
+                                type="button"
+                                onClick={() => removePendingFile(index)}
+                                className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover/item:opacity-100 transition"
+                                aria-label="Remove"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </ScrollArea>
+                    {uploadModalUploading && (
+                      <div className="absolute inset-0 bg-background/90 rounded-lg flex flex-col items-center justify-center gap-3 z-10">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        <p className="text-sm font-medium">
+                          Uploading {uploadProgress.current} of {uploadProgress.total}…
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <DialogFooter className="shrink-0 flex-row gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
-                  onClick={closeUploadModal}
-                  disabled={uploadModalUploading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={confirmUploadAll}
-                  disabled={uploadModalUploading}
-                >
-                  {uploadModalUploading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading…
-                    </>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="videos" className="flex-1 overflow-hidden flex flex-col mt-4">
+              <div className="space-y-4">
+                <Input
+                  value={videoUrlInput}
+                  onChange={(e) => setVideoUrlInput(e.target.value)}
+                  placeholder="Paste a YouTube or Instagram link (e.g. https://youtube.com/watch?v=...)"
+                  disabled={isReadOnly || uploadModalUploading}
+                  className="h-10"
+                />
+                <div className="rounded-xl border border-dashed bg-muted/30 flex flex-col items-center justify-center aspect-video overflow-hidden relative">
+                  {videoUrlInput.trim() ? (
+                    extractYouTubeId(videoUrlInput) ? (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${extractYouTubeId(videoUrlInput)}`}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title="Video Preview"
+                      />
+                    ) : extractInstagramId(videoUrlInput) ? (
+                      <iframe
+                        src={`https://www.instagram.com/p/${extractInstagramId(videoUrlInput)}/embed`}
+                        className="w-full h-full"
+                        allowTransparency
+                        allowFullScreen
+                        title="Video Preview"
+                      />
+                    ) : (
+                      <>
+                        <Youtube className="h-12 w-12 text-muted-foreground mb-3" />
+                        <p className="text-sm font-medium text-destructive">Invalid URL format</p>
+                      </>
+                    )
                   ) : (
                     <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload all
+                      <Youtube className="h-12 w-12 text-muted-foreground mb-3" />
+                      <p className="text-sm font-medium">Video preview will appear here</p>
                     </>
                   )}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="shrink-0 flex-row gap-2 sm:gap-0 mt-4">
+            <Button
+              variant="outline"
+              onClick={closeUploadModal}
+              disabled={uploadModalUploading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmUploadAll}
+              disabled={
+                uploadModalUploading ||
+                (uploadModalTab === "photos" && !pendingUpload?.files.length) ||
+                (uploadModalTab === "videos" && !videoUrlInput.trim())
+              }
+            >
+              {uploadModalUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading…
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploadModalTab === "photos" ? "Upload all" : "Add video"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

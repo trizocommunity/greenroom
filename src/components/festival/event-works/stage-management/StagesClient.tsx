@@ -32,7 +32,7 @@ import {
   useStageAssignments,
   useUnassignStageManager,
 } from "@/api/client/stage-assignments";
-import { useDeleteStage } from "@/api/client/stages";
+import { useStages, useDeleteStage } from "@/api/client/stages";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { StageAssignmentToggleDialog } from "@/components/festival/stage-assignment/StageAssignmentToggleDialog";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
@@ -68,9 +68,11 @@ interface StagesClientProps {
 
 export function StagesClient({
   festivalId,
-  stages,
+  stages: initialStages,
   canManageStages,
 }: StagesClientProps) {
+  const { data: serverStages } = useStages(festivalId);
+  const stages = serverStages ?? initialStages;
   const { isReadOnly: isSubscriptionReadOnly } = useFestivalReadOnly();
   const isReadOnly = isSubscriptionReadOnly || !canManageStages;
   const [isDialogOpen, setIsDialogOpen] = useState(false);

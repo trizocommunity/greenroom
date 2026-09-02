@@ -4,9 +4,9 @@ import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ slug: string }> },
+  { params }: { params: Promise<{ festivalId: string }> },
 ) {
-  const { slug } = await params;
+  const { festivalId: slug } = await params;
 
   // Extract custom domain or institution headers if available
   const institutionId = request.headers.get("x-institution-id");

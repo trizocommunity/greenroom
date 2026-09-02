@@ -77,8 +77,8 @@ export function useReportingFilters({
   const [filterType, setFilterType] = useState<ReportingTypeFilter>("ALL");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterScheduleState, setFilterScheduleState] =
-    useState<ScheduleStateFilter>("SCHEDULED");
-  const [filterDate, setFilterDate] = useState<Date[]>([new Date()]);
+    useState<ScheduleStateFilter>("ALL");
+  const [filterDate, setFilterDate] = useState<Date[]>([]);
   const [showEnded, setShowEnded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");

@@ -80,7 +80,7 @@ const handler = createProtectedHandler({
     const folderPath = `greenroom/festivals/${parsed.data.folder}`;
     const signatureString = `folder=${folderPath}&timestamp=${timestamp}${apiSecret}`;
     const signature = crypto
-      .createHash("sha256")
+      .createHash("sha1")
       .update(signatureString)
       .digest("hex");
 
