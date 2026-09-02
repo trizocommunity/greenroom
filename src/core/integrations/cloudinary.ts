@@ -32,7 +32,7 @@ function sign(params: Record<string, string>, apiSecret: string): string {
     .map((k) => `${k}=${params[k]}`)
     .join("&");
   return crypto
-    .createHash("sha256")
+    .createHash("sha1")
     .update(`${sorted}${apiSecret}`)
     .digest("hex");
 }

@@ -105,10 +105,10 @@ describe("formatParticipantLabel", () => {
         chestNumber: null,
         isTeamLeader: true,
       }),
-    ).toBe("Alice and team");
+    ).toBe("Alice and party");
   });
 
-  it("returns 'Team' for group programmes without a display name", () => {
-    expect(formatParticipantLabel("GROUP", undefined)).toBe("Team");
+  it("returns 'Party' for group programmes without a display name", () => {
+    expect(formatParticipantLabel("GROUP", undefined)).toBe("Party");
   });
 });

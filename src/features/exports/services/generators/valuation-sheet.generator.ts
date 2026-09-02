@@ -6,6 +6,7 @@ import {
   category as categoryTable,
   programmeCodeLetter,
   programme as programmeTable,
+  group as groupTable,
 } from "@/core/database/schema";
 import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 import type { ValuationSheetConfig } from "@/features/exports/schemas/export-config.schema";
@@ -29,6 +30,7 @@ interface ValuationRow {
   categoryName: string;
   chestNumber: string;
   name: string;
+  groupName?: string;
 }
 
 export async function generateValuationSheet(
@@ -60,6 +62,7 @@ export async function generateValuationSheet(
     programmeId: string;
     chestNumber: string | null;
     name: string;
+    groupId: string | null;
   }[] = [];
   for (const programmeId of programmeIds) {
     const enrolled =
@@ -71,9 +74,16 @@ export async function generateValuationSheet(
         programmeId,
         chestNumber: row.participant.chestNumber,
         name: row.participant.name,
+        groupId: row.groupId,
       });
     }
   }
+
+  const groups = await db
+    .select({ id: groupTable.id, name: groupTable.name })
+    .from(groupTable)
+    .where(eq(groupTable.festivalId, festivalId));
+  const groupMeta = new Map(groups.map((g) => [g.id, g.name]));
 
   const rows: ValuationRow[] = enrolledRows.map((r) => {
     const meta = progMeta.get(r.programmeId);
@@ -83,6 +93,7 @@ export async function generateValuationSheet(
       categoryName: meta?.categoryName ?? "",
       chestNumber: r.chestNumber ?? "",
       name: r.name,
+      groupName: r.groupId ? (groupMeta.get(r.groupId) ?? "") : "",
     };
   });
 
@@ -104,19 +115,23 @@ export async function generateValuationSheet(
     }
   }
 
-  const columns = ["Chest", "Participant", "Marks", "Grade", "Rank"];
+  const columns = ["Chest", "Participant"];
+  if (config.includeGroup) columns.push("Group");
+  columns.push("Marks", "Grade", "Rank");
 
   if (format === "CSV") {
     const header = ["Competition", "Category", ...columns];
-    const body = rows.map((r) => [
-      r.programmeName,
-      r.categoryName,
-      r.chestNumber,
-      r.name,
-      "",
-      "",
-      "",
-    ]);
+    const body = rows.map((r) => {
+      const rowArr = [
+        r.programmeName,
+        r.categoryName,
+        r.chestNumber,
+        r.name,
+      ];
+      if (config.includeGroup) rowArr.push(r.groupName ?? "");
+      rowArr.push("", "", "");
+      return rowArr;
+    });
     return {
       bytes: buildCsv([header, ...body]),
       fileName: "valuation-sheet.csv",
@@ -137,14 +152,24 @@ export async function generateValuationSheet(
     ([programmeId, progRows]) => {
       const first = progRows[0];
       const code = codeByProgramme.get(programmeId);
+      
+      const columnWeights = [1.2, 3];
+      if (config.includeGroup) columnWeights.push(2.5);
+      columnWeights.push(2, 1.5, 1.2);
+
       return {
         heading: first.programmeName,
         subheading: [first.categoryName, code ? `Code: ${code}` : null]
           .filter(Boolean)
           .join(" · "),
         columns,
-        columnWeights: [1.2, 3, 2, 1.5, 1.2],
-        rows: progRows.map((r) => [r.chestNumber, r.name, "", "", ""]),
+        columnWeights,
+        rows: progRows.map((r) => {
+          const rowArr = [r.chestNumber, r.name];
+          if (config.includeGroup) rowArr.push(r.groupName ?? "");
+          rowArr.push("", "", "");
+          return rowArr;
+        }),
       };
     },
   );

@@ -86,6 +86,7 @@ export const valuationSheetConfig = z.object({
   type: z.literal("VALUATION_SHEET"),
   gender: genderFilter.default("ALL"),
   includeCodeLetters: z.boolean().default(true),
+  includeGroup: z.boolean().default(false),
   categoryIds: idList,
   programmeIds: idList,
   pageLayout: pageLayout.default("SINGLE_PER_PAGE"),

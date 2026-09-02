@@ -212,6 +212,16 @@ export function ProgrammeReportingClient({
         onOpenChange={(open) => {
           if (!open) session.setTimerDrawerEntryId(null);
         }}
+        onOpenWorkspace={() => {
+          const id = session.timerDrawerEntryId;
+          session.setTimerDrawerEntryId(null);
+          if (id) {
+            session.setIsEntrySwitching(true);
+            session.setSelectedEntryId(id);
+            session.setIsReopenConfirmOpen(true);
+            window.setTimeout(() => session.setIsEntrySwitching(false), 300);
+          }
+        }}
       />
     </div>
   );

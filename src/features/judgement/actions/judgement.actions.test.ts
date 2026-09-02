@@ -44,6 +44,10 @@ vi.mock("@/core/auth/stage-portal-session", () => ({
   getStagePortalSessionFromCookie: vi.fn(),
 }));
 
+vi.mock("@/features/programmes/actions/get-assignments.action", () => ({
+  getProgrammeAssignmentsAction: vi.fn(() => Promise.resolve([])),
+}));
+
 vi.mock("@/core/database/client", () => ({
   db: {
     select: vi.fn(() => {
@@ -160,8 +164,15 @@ function stageManagerSession(userId: string) {
   return { userId, role: "USER", expires: new Date() };
 }
 
+import { and, eq, inArray, exists, not, or, sql } from "drizzle-orm";
+import { judgementConfig, programme } from "@/core/database/schema";
+
 function sqlToString(node: unknown): string {
-  if (node == null) return "";
+    if (typeof node === "function") {
+      const ops = { and, eq, inArray, exists, not, or, sql };
+      return sqlToString(node(judgementConfig, ops) || node(programme, ops));
+    }
+    if (node == null) return "";
   if (typeof node === "string" || typeof node === "number") return String(node);
   const obj = node as Record<string, unknown>;
   if (typeof obj.getSQL === "function" && typeof obj.toQuery === "function") {

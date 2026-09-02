@@ -37,6 +37,11 @@ export function ValuationSheetFilters({ festivalId, value, onChange }: Props) {
         checked={value.includeCodeLetters}
         onChange={(v) => set({ includeCodeLetters: v })}
       />
+      <ToggleRow
+        label="Include group / team"
+        checked={value.includeGroup ?? false}
+        onChange={(v) => set({ includeGroup: v })}
+      />
       <CheckList
         label="Categories"
         hint="Leave empty to include all"
