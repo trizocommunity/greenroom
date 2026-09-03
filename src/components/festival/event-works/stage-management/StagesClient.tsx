@@ -15,16 +15,8 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-interface Stage {
-  id: string;
-  name: string;
-  description: string | null;
-  createdByName: string | null;
-  createdByEmail: string | null;
-  isOffStage?: boolean;
-}
-
 import { useState } from "react";
+import type { Stage } from "@/api/contracts/stages";
 import { useMembers } from "@/api/client/members";
 import { useProvisionOffStage } from "@/api/client/server-actions";
 import {
