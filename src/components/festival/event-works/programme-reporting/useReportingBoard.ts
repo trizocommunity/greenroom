@@ -159,6 +159,7 @@ export function useReportingBoard({
       : null;
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   const rosterTableRows = useMemo((): RosterTableRow[] => {
     const programme = selected?.programme;
     if (!programme?.id) return [];
@@ -267,7 +268,6 @@ export function useReportingBoard({
         typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
       return aTeam - bTeam;
     });
-    // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   }, [
     assignmentsWithReported,
     selected?.programme,

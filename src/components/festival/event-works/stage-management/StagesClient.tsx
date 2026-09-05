@@ -13,10 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-
 import { useState } from "react";
-import type { Stage } from "@/api/contracts/stages";
 import { useMembers } from "@/api/client/members";
 import { useProvisionOffStage } from "@/api/client/server-actions";
 import {
@@ -24,7 +21,8 @@ import {
   useStageAssignments,
   useUnassignStageManager,
 } from "@/api/client/stage-assignments";
-import { useStages, useDeleteStage } from "@/api/client/stages";
+import { useDeleteStage, useStages } from "@/api/client/stages";
+import type { Stage } from "@/api/contracts/stages";
 import { HowItWorksButton } from "@/components/dashboard/HowItWorksButton";
 import { StageAssignmentToggleDialog } from "@/components/festival/stage-assignment/StageAssignmentToggleDialog";
 import { StagePortalCredentialDialog } from "@/components/festival/stage-assignment/StagePortalCredentialDialog";
@@ -47,6 +45,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { toast } from "@/lib/toast";
 import { StageDialog } from "./StageDialog";

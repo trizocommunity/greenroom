@@ -70,10 +70,10 @@ export function MediaClient({
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
-  
+
   const { data: serverImages } = useMedia(festivalId);
   const { data: serverVideos } = useMediaVideos(festivalId);
-  
+
   const images = serverImages ?? initialImages;
   const videos = serverVideos ?? initialVideos;
 
@@ -138,7 +138,9 @@ export function MediaClient({
   );
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [uploadModalTab, setUploadModalTab] = useState<"photos" | "videos">("photos");
+  const [uploadModalTab, setUploadModalTab] = useState<"photos" | "videos">(
+    "photos",
+  );
 
   const closeUploadModal = useCallback(() => {
     if (uploadModalUploading) return;
@@ -193,15 +195,6 @@ export function MediaClient({
     }
 
     if (!pendingUpload?.files.length || isReadOnly) return;
-    if (
-      !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
-      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME === "demo"
-    ) {
-      toast.error(
-        "Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_* env.",
-      );
-      return;
-    }
     setUploadModalUploading(true);
     setUploadProgress({ current: 0, total: pendingUpload.files.length });
     const files = pendingUpload.files;
@@ -354,7 +347,7 @@ export function MediaClient({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, closeLightbox]);
 
   useEffect(() => {
     registerDirtySource(dirtySourceId);
@@ -368,13 +361,15 @@ export function MediaClient({
     }
     const hasUnsavedSelection = Boolean(pendingUpload?.files.length);
     setDirty(dirtySourceId, hasUnsavedSelection);
-  }, [dirtySourceId, isReadOnly, pendingUpload?.files.length, setDirty]);
+  }, [dirtySourceId, pendingUpload?.files.length, setDirty]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-row items-center gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Media</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            Media
+          </h1>
           <Button
             size="sm"
             onClick={() => setUploadModalOpen(true)}
@@ -411,14 +406,14 @@ export function MediaClient({
         </TabsList>
 
         <TabsContent value="photos" className="space-y-6 pt-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={openUploadModal}
-            />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={openUploadModal}
+          />
 
           {hasSelection && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm">
@@ -558,14 +553,13 @@ export function MediaClient({
         </TabsContent>
 
         <TabsContent value="videos" className="space-y-6 pt-4">
-
-
           {videos.length === 0 ? (
             <div className="rounded-xl border border-dashed bg-muted/30 flex flex-col items-center justify-center py-16 px-4 text-center">
               <Youtube className="h-12 w-12 text-muted-foreground mb-3" />
               <p className="text-sm font-medium">No videos yet</p>
               <p className="text-sm text-muted-foreground mt-1 mb-4">
-                Add YouTube or Instagram links to show on your public media page.
+                Add YouTube or Instagram links to show on your public media
+                page.
               </p>
               <Button
                 variant="outline"
@@ -589,7 +583,7 @@ export function MediaClient({
                 .map((video) => {
                   const videoId = extractYouTubeId(video.url);
                   const igId = extractInstagramId(video.url);
-                  
+
                   return (
                     <div
                       key={video.id}
@@ -628,7 +622,9 @@ export function MediaClient({
                             />
                           ) : igId ? (
                             <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
-                               <span className="text-white font-semibold">Instagram Video</span>
+                              <span className="text-white font-semibold">
+                                Instagram Video
+                              </span>
                             </div>
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
@@ -694,23 +690,37 @@ export function MediaClient({
             className="flex flex-col overflow-hidden"
           >
             <TabsList className="w-full">
-              <TabsTrigger value="photos" className="w-1/2">PHOTO</TabsTrigger>
-              <TabsTrigger value="videos" className="w-1/2">VIDEO</TabsTrigger>
+              <TabsTrigger value="photos" className="w-1/2">
+                PHOTO
+              </TabsTrigger>
+              <TabsTrigger value="videos" className="w-1/2">
+                VIDEO
+              </TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="photos" className="flex-1 overflow-hidden flex flex-col min-h-[200px] max-h-[50vh] mt-4">
+
+            <TabsContent
+              value="photos"
+              className="flex-1 overflow-hidden flex flex-col min-h-[200px] max-h-[50vh] mt-4"
+            >
               {!pendingUpload?.files.length ? (
                 <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center bg-muted/30">
                   <ImagePlus className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground mb-4">No photos selected.</p>
-                  <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={isReadOnly}>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    No photos selected.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isReadOnly}
+                  >
                     Select Photos
                   </Button>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col overflow-hidden">
                   <p className="text-sm text-muted-foreground mb-2">
-                    {pendingUpload.files.length} photo(s) selected. Review and click Upload all to add them to the media.
+                    {pendingUpload.files.length} photo(s) selected. Review and
+                    click Upload all to add them to the media.
                   </p>
                   <div className="relative flex-1 flex flex-col overflow-hidden">
                     <ScrollArea className="h-full rounded-lg border p-2">
@@ -747,7 +757,8 @@ export function MediaClient({
                       <div className="absolute inset-0 bg-background/90 rounded-lg flex flex-col items-center justify-center gap-3 z-10">
                         <Loader2 className="h-10 w-10 animate-spin text-primary" />
                         <p className="text-sm font-medium">
-                          Uploading {uploadProgress.current} of {uploadProgress.total}…
+                          Uploading {uploadProgress.current} of{" "}
+                          {uploadProgress.total}…
                         </p>
                       </div>
                     )}
@@ -756,7 +767,10 @@ export function MediaClient({
               )}
             </TabsContent>
 
-            <TabsContent value="videos" className="flex-1 overflow-hidden flex flex-col mt-4">
+            <TabsContent
+              value="videos"
+              className="flex-1 overflow-hidden flex flex-col mt-4"
+            >
               <div className="space-y-4">
                 <Input
                   value={videoUrlInput}
@@ -786,13 +800,17 @@ export function MediaClient({
                     ) : (
                       <>
                         <Youtube className="h-12 w-12 text-muted-foreground mb-3" />
-                        <p className="text-sm font-medium text-destructive">Invalid URL format</p>
+                        <p className="text-sm font-medium text-destructive">
+                          Invalid URL format
+                        </p>
                       </>
                     )
                   ) : (
                     <>
                       <Youtube className="h-12 w-12 text-muted-foreground mb-3" />
-                      <p className="text-sm font-medium">Video preview will appear here</p>
+                      <p className="text-sm font-medium">
+                        Video preview will appear here
+                      </p>
                     </>
                   )}
                 </div>

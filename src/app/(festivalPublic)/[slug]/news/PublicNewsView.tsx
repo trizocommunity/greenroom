@@ -122,7 +122,7 @@ export function PublicNewsView({
                     </p>
                   )}
                   <p className="mt-2.5 sm:mt-1.5 line-clamp-3 sm:line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                    {post.excerpt || post.content.replace(/<[^>]+>/g, '')}
+                    {post.excerpt || post.content.replace(/<[^>]+>/g, "")}
                   </p>
                 </div>
               </Link>

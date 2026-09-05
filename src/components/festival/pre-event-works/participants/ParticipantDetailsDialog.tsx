@@ -97,6 +97,7 @@ export function ParticipantDetailsDialog({
 
   const [filterType, setFilterType] = useState<string>("ALL");
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
+  const [filterStageType, setFilterStageType] = useState<string>("ALL");
 
   const assignmentCategories = useMemo(() => {
     const map = new Map<string, string>();
@@ -117,9 +118,14 @@ export function ParticipantDetailsDialog({
         const catId = a.programme?.category?.id;
         if (catId !== filterCategory) return false;
       }
+      if (
+        filterStageType !== "ALL" &&
+        a.programme?.stageType !== filterStageType
+      )
+        return false;
       return true;
     });
-  }, [participantAssignments, filterType, filterCategory]);
+  }, [participantAssignments, filterType, filterCategory, filterStageType]);
 
   async function openTeamModal(assignment: any) {
     if (assignment.programme?.type !== "GROUP") return;
@@ -421,6 +427,15 @@ export function ParticipantDetailsDialog({
                       <option value="ALL">All Types</option>
                       <option value="INDIVIDUAL">Individual</option>
                       <option value="GROUP">Group</option>
+                    </select>
+                    <select
+                      value={filterStageType}
+                      onChange={(e) => setFilterStageType(e.target.value)}
+                      className="h-7 text-xs border rounded-md px-2 py-1 bg-background"
+                    >
+                      <option value="ALL">All Stages</option>
+                      <option value="STAGE">Stage</option>
+                      <option value="NON_STAGE">Non-Stage</option>
                     </select>
                   </div>
                 </div>

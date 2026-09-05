@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Crown, Loader2, Users } from "lucide-react";
+import { Crown, Loader2, Users, X } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,10 +99,12 @@ export function AnnouncerCallListDrawer({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="text-left border-b pb-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <DrawerTitle className="text-xl">{item?.name}</DrawerTitle>
-              <DrawerDescription className="mt-1.5 flex items-center gap-2 text-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <DrawerTitle className="text-xl truncate">
+                {item?.name}
+              </DrawerTitle>
+              <DrawerDescription className="mt-1.5 flex items-center gap-2 text-sm flex-wrap">
                 <Badge variant="secondary" className="font-normal">
                   {item?.type}
                 </Badge>
@@ -115,16 +117,28 @@ export function AnnouncerCallListDrawer({
                 )}
               </DrawerDescription>
             </div>
-            {item?.startedAt && (
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">
-                  Called At
+            <div className="flex items-center gap-3 shrink-0">
+              {item?.startedAt && (
+                <div className="text-right">
+                  <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+                    Called At
+                  </div>
+                  <div className="text-xs font-medium text-foreground">
+                    {format(new Date(item.startedAt), "h:mm a")}
+                  </div>
                 </div>
-                <div className="font-medium text-foreground">
-                  {format(new Date(item.startedAt), "h:mm a")}
-                </div>
-              </div>
-            )}
+              )}
+              <DrawerClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                  aria-label="Close call list"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </DrawerClose>
+            </div>
           </div>
         </DrawerHeader>
 

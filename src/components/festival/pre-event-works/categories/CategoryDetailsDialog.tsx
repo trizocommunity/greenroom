@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, Loader2, Users } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParticipants } from "@/api/client/participants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,29 @@ export function CategoryDetailsDialog({
       ? participants
       : participants.filter((p: any) => p.categoryId === category.id);
 
+  const [filterGroup, setFilterGroup] = useState<string>("ALL");
+
+  const groups = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of filteredParticipants) {
+      const gId = p.group?.id || p.groupId;
+      const gName = p.group?.name;
+      if (gId && gName) {
+        map.set(gId, gName);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredParticipants]);
+
+  const displayedParticipants = useMemo(() => {
+    if (filterGroup === "ALL") return filteredParticipants;
+    return filteredParticipants.filter(
+      (p: any) => p.group?.id === filterGroup || p.groupId === filterGroup,
+    );
+  }, [filteredParticipants, filterGroup]);
+
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? controlledOpen : internalOpen;
@@ -84,15 +107,31 @@ export function CategoryDetailsDialog({
         </DrawerHeader>
 
         <div className="flex-1 flex flex-col gap-4 mt-4 min-h-0 overflow-hidden">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-left shrink-0">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4 shrink-0" />
-              Participants ({filteredParticipants.length})
-            </h4>
-            {category.type === "GENERAL" && (
-              <span className="text-xs text-muted-foreground text-left">
-                Showing all festival participants (General Category)
-              </span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left shrink-0">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <Users className="h-4 w-4 shrink-0" />
+                Participants ({displayedParticipants.length})
+              </h4>
+              {category.type === "GENERAL" && (
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  (General Category)
+                </span>
+              )}
+            </div>
+            {groups.length > 0 && (
+              <select
+                value={filterGroup}
+                onChange={(e) => setFilterGroup(e.target.value)}
+                className="h-7 text-xs border rounded-md px-2 py-0.5 bg-background text-foreground"
+              >
+                <option value="ALL">All Groups</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
             )}
           </div>
 
@@ -105,12 +144,12 @@ export function CategoryDetailsDialog({
               <>
                 {/* Mobile: list of cards */}
                 <div className="block md:hidden divide-y text-left">
-                  {filteredParticipants.length === 0 ? (
+                  {displayedParticipants.length === 0 ? (
                     <div className="py-8 text-muted-foreground text-sm text-left">
                       No participants found.
                     </div>
                   ) : (
-                    filteredParticipants.map((p: any) => (
+                    displayedParticipants.map((p: any) => (
                       <div key={p.id} className="p-3 text-left">
                         <p className="font-medium truncate">{p.name}</p>
                         <p className="text-xs text-muted-foreground mt-0.5 text-left">
@@ -136,7 +175,7 @@ export function CategoryDetailsDialog({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredParticipants.map((p: any) => (
+                      {displayedParticipants.map((p: any) => (
                         <TableRow key={p.id}>
                           <TableCell className="font-medium text-left">
                             {p.name}
@@ -153,7 +192,7 @@ export function CategoryDetailsDialog({
                           )}
                         </TableRow>
                       ))}
-                      {filteredParticipants.length === 0 && (
+                      {displayedParticipants.length === 0 && (
                         <TableRow>
                           <TableCell
                             colSpan={category.type === "GENERAL" ? 4 : 3}

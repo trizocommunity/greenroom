@@ -4,9 +4,9 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   category as categoryTable,
+  group as groupTable,
   programmeCodeLetter,
   programme as programmeTable,
-  group as groupTable,
 } from "@/core/database/schema";
 import { ProgrammeMembershipService } from "@/features/assignments/services/programme-membership.service";
 import type { ValuationSheetConfig } from "@/features/exports/schemas/export-config.schema";
@@ -122,12 +122,7 @@ export async function generateValuationSheet(
   if (format === "CSV") {
     const header = ["Competition", "Category", ...columns];
     const body = rows.map((r) => {
-      const rowArr = [
-        r.programmeName,
-        r.categoryName,
-        r.chestNumber,
-        r.name,
-      ];
+      const rowArr = [r.programmeName, r.categoryName, r.chestNumber, r.name];
       if (config.includeGroup) rowArr.push(r.groupName ?? "");
       rowArr.push("", "", "");
       return rowArr;
@@ -152,7 +147,7 @@ export async function generateValuationSheet(
     ([programmeId, progRows]) => {
       const first = progRows[0];
       const code = codeByProgramme.get(programmeId);
-      
+
       const columnWeights = [1.2, 3];
       if (config.includeGroup) columnWeights.push(2.5);
       columnWeights.push(2, 1.5, 1.2);

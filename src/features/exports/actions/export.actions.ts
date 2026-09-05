@@ -1,7 +1,14 @@
 "use server";
 
+import { format } from "date-fns";
+import { and, eq, isNotNull, or } from "drizzle-orm";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import {
+  programmeReportingSession,
+  scheduleEntry,
+} from "@/core/database/schema";
 import { handleActionError } from "@/core/errors/errors";
 import type { ActionResponse } from "@/core/types/actions";
 import * as ExportRepo from "@/features/exports/repositories/export.repository";
@@ -82,6 +89,65 @@ export async function deleteExportAction(
     await assertFestivalAccess(session, festivalId);
     await ExportRepo.deleteExport(id, festivalId);
     return { success: true, data: { id } };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}
+
+export async function getScheduleExportDatesAction(festivalId: string): Promise<
+  ActionResponse<{
+    scheduledDayKeys: string[];
+    reportingDayKeys: string[];
+  }>
+> {
+  try {
+    const session = await getSession();
+    await assertFestivalAccess(session, festivalId);
+
+    // 1. Scheduled entries
+    const entries = await db.query.scheduleEntry.findMany({
+      where: eq(scheduleEntry.festivalId, festivalId),
+      columns: { startTime: true },
+    });
+
+    const scheduledDayKeys = new Set<string>();
+    for (const e of entries) {
+      if (e.startTime) {
+        scheduledDayKeys.add(format(new Date(e.startTime), "yyyy-MM-dd"));
+      }
+    }
+
+    // 2. Reporting sessions for unscheduled programmes
+    const reportingSessions = await db.query.programmeReportingSession.findMany(
+      {
+        where: and(
+          eq(programmeReportingSession.festivalId, festivalId),
+          or(
+            eq(programmeReportingSession.status, "IN_PROGRESS"),
+            eq(programmeReportingSession.status, "COMPLETED"),
+            eq(programmeReportingSession.status, "CLOSED"),
+            isNotNull(programmeReportingSession.startedAt),
+          ),
+        ),
+        columns: { startedAt: true, createdAt: true },
+      },
+    );
+
+    const reportingDayKeys = new Set<string>();
+    for (const rs of reportingSessions) {
+      const d = rs.startedAt || rs.createdAt;
+      if (d) {
+        reportingDayKeys.add(format(new Date(d), "yyyy-MM-dd"));
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        scheduledDayKeys: Array.from(scheduledDayKeys),
+        reportingDayKeys: Array.from(reportingDayKeys),
+      },
+    };
   } catch (error) {
     return handleActionError(error);
   }

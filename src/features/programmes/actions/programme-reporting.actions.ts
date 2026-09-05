@@ -188,7 +188,11 @@ export async function submitClientSideReportingAction(
   const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
 
   // This single call will save the tiles and optionally complete/close the session
-  await ProgrammeReportingService.submitClientTiles(reportingSessionId, actorName, tiles);
+  await ProgrammeReportingService.submitClientTiles(
+    reportingSessionId,
+    actorName,
+    tiles,
+  );
 
   await createAuditLog({
     action: "ISSUE_CODE_LETTER",

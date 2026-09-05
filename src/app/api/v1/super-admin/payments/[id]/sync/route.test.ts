@@ -56,9 +56,12 @@ describe("POST /api/v1/super-admin/payments/[id]/sync", () => {
   it("returns 401 when unauthenticated", async () => {
     mockGetSession.mockResolvedValue(null);
 
-    const req = new Request("http://localhost/api/v1/super-admin/payments/p1/sync", {
-      method: "POST",
-    });
+    const req = new Request(
+      "http://localhost/api/v1/super-admin/payments/p1/sync",
+      {
+        method: "POST",
+      },
+    );
 
     const res = await POST(req, { params: Promise.resolve({ id: "p1" }) });
     expect(res.status).toBe(401);
@@ -70,9 +73,12 @@ describe("POST /api/v1/super-admin/payments/[id]/sync", () => {
       role: "USER",
     });
 
-    const req = new Request("http://localhost/api/v1/super-admin/payments/p1/sync", {
-      method: "POST",
-    });
+    const req = new Request(
+      "http://localhost/api/v1/super-admin/payments/p1/sync",
+      {
+        method: "POST",
+      },
+    );
 
     const res = await POST(req, { params: Promise.resolve({ id: "p1" }) });
     expect(res.status).toBe(403);
@@ -85,11 +91,16 @@ describe("POST /api/v1/super-admin/payments/[id]/sync", () => {
     });
     mockDbQueryPaymentFindFirst.mockResolvedValue(null);
 
-    const req = new Request("http://localhost/api/v1/super-admin/payments/nonexistent/sync", {
-      method: "POST",
-    });
+    const req = new Request(
+      "http://localhost/api/v1/super-admin/payments/nonexistent/sync",
+      {
+        method: "POST",
+      },
+    );
 
-    const res = await POST(req, { params: Promise.resolve({ id: "nonexistent" }) });
+    const res = await POST(req, {
+      params: Promise.resolve({ id: "nonexistent" }),
+    });
     expect(res.status).toBe(404);
   });
 
@@ -105,9 +116,12 @@ describe("POST /api/v1/super-admin/payments/[id]/sync", () => {
       amount: 1500,
     });
 
-    const req = new Request("http://localhost/api/v1/super-admin/payments/p1/sync", {
-      method: "POST",
-    });
+    const req = new Request(
+      "http://localhost/api/v1/super-admin/payments/p1/sync",
+      {
+        method: "POST",
+      },
+    );
 
     const res = await POST(req, { params: Promise.resolve({ id: "p1" }) });
     expect(res.status).toBe(200);
@@ -131,16 +145,19 @@ describe("POST /api/v1/super-admin/payments/[id]/sync", () => {
     });
 
     mockFetchOrderPayments.mockResolvedValue({
-      items: [
-        { id: "pay_captured_999", status: "captured", amount: 150000 },
-      ],
+      items: [{ id: "pay_captured_999", status: "captured", amount: 150000 }],
     });
 
-    const req = new Request("http://localhost/api/v1/super-admin/payments/p-pending/sync", {
-      method: "POST",
-    });
+    const req = new Request(
+      "http://localhost/api/v1/super-admin/payments/p-pending/sync",
+      {
+        method: "POST",
+      },
+    );
 
-    const res = await POST(req, { params: Promise.resolve({ id: "p-pending" }) });
+    const res = await POST(req, {
+      params: Promise.resolve({ id: "p-pending" }),
+    });
     expect(res.status).toBe(200);
 
     const json = await res.json();
@@ -170,16 +187,19 @@ describe("POST /api/v1/super-admin/payments/[id]/sync", () => {
     });
 
     mockFetchOrderPayments.mockResolvedValue({
-      items: [
-        { id: "pay_failed_111", status: "failed", amount: 150000 },
-      ],
+      items: [{ id: "pay_failed_111", status: "failed", amount: 150000 }],
     });
 
-    const req = new Request("http://localhost/api/v1/super-admin/payments/p-pending/sync", {
-      method: "POST",
-    });
+    const req = new Request(
+      "http://localhost/api/v1/super-admin/payments/p-pending/sync",
+      {
+        method: "POST",
+      },
+    );
 
-    const res = await POST(req, { params: Promise.resolve({ id: "p-pending" }) });
+    const res = await POST(req, {
+      params: Promise.resolve({ id: "p-pending" }),
+    });
     expect(res.status).toBe(200);
 
     const json = await res.json();

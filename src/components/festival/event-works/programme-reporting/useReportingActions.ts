@@ -153,21 +153,23 @@ export function useReportingActions({
     const sid = session.selected?.reportingSession?.id;
     if (!sid) return;
 
-    const reportedRows = derived.rosterTableRows.filter((r: any) => r.isReported);
+    const reportedRows = derived.rosterTableRows.filter(
+      (r: any) => r.isReported,
+    );
     if (reportedRows.length === 0) {
       toast.error("No participants reported present.");
       return;
     }
 
     const letters = Array.from({ length: reportedRows.length }, (_, i) => {
-       let n = i + 1;
-       let s = "";
-       while (n > 0) {
-         const rem = (n - 1) % 26;
-         s = String.fromCharCode(65 + rem) + s;
-         n = Math.floor((n - 1) / 26);
-       }
-       return s;
+      let n = i + 1;
+      let s = "";
+      while (n > 0) {
+        const rem = (n - 1) % 26;
+        s = String.fromCharCode(65 + rem) + s;
+        n = Math.floor((n - 1) / 26);
+      }
+      return s;
     });
 
     for (let i = letters.length - 1; i > 0; i--) {
@@ -183,14 +185,22 @@ export function useReportingActions({
       label: row.nameColumn,
       subLabel: row.groupName ?? null,
       teamLeadName: row.mode === "team" ? (row.teamLeadName ?? null) : null,
-      participantIds: row.mode === "team" ? row.teamParticipantIds : row.participantId ? [row.participantId] : [],
+      participantIds:
+        row.mode === "team"
+          ? row.teamParticipantIds
+          : row.participantId
+            ? [row.participantId]
+            : [],
       participantId: row.mode === "individual" ? row.participantId : null,
       groupId: row.mode === "team" ? row.groupId : null,
       teamNumber: row.mode === "team" ? row.teamNumber : null,
     }));
 
-    session.setScratchTilesBySession(prev => ({ ...prev, [sid]: newTiles }));
-    session.setLocalCheckoutCompletedBySession(prev => ({ ...prev, [sid]: true }));
+    session.setScratchTilesBySession((prev) => ({ ...prev, [sid]: newTiles }));
+    session.setLocalCheckoutCompletedBySession((prev) => ({
+      ...prev,
+      [sid]: true,
+    }));
     toast.success(
       `Checkout complete — ${newTiles.length} code letter${
         newTiles.length === 1 ? "" : "s"
@@ -202,9 +212,11 @@ export function useReportingActions({
     const sid = session.selected?.reportingSession?.id;
     if (!sid) return;
 
-    session.setScratchTilesBySession(prev => {
+    session.setScratchTilesBySession((prev) => {
       const currentTiles = prev[sid] || [];
-      const tileIndex = currentTiles.findIndex(t => t.codeLetterId === codeLetterId);
+      const tileIndex = currentTiles.findIndex(
+        (t) => t.codeLetterId === codeLetterId,
+      );
       if (tileIndex === -1) return prev;
       if (currentTiles[tileIndex]!.revealedAt) return prev; // Already revealed
 
@@ -222,10 +234,10 @@ export function useReportingActions({
     const sid = session.selected?.reportingSession?.id;
     if (!sid) return;
 
-    session.setScratchTilesBySession(prev => {
+    session.setScratchTilesBySession((prev) => {
       const currentTiles = prev[sid] || [];
-      const newTiles = currentTiles.map(t => 
-        t.revealedAt ? t : { ...t, revealedAt: new Date().toISOString() }
+      const newTiles = currentTiles.map((t) =>
+        t.revealedAt ? t : { ...t, revealedAt: new Date().toISOString() },
       );
       return { ...prev, [sid]: newTiles };
     });
@@ -237,7 +249,7 @@ export function useReportingActions({
     if (!sid) return;
 
     const tiles = session.scratchTilesBySession[sid] || [];
-    const submissionTiles = tiles.map(t => ({
+    const submissionTiles = tiles.map((t) => ({
       code: t.code!,
       queuePosition: t.queuePosition,
       participantId: t.participantId ?? null,
@@ -249,7 +261,11 @@ export function useReportingActions({
     setActiveAction("close");
     startTransition(async () => {
       try {
-        const res = await submitClientSideReportingAction(festivalId, sid, submissionTiles);
+        const res = await submitClientSideReportingAction(
+          festivalId,
+          sid,
+          submissionTiles,
+        );
         if (res.success) {
           triggerConfetti([40, 60], [0.8, 1.2]);
           toast.success(

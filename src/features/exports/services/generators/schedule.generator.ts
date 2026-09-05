@@ -1,10 +1,11 @@
 import "server-only";
 
 import { format } from "date-fns";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
+  programmeReportingSession as reportingSessionTable,
   scheduleEntry as scheduleEntryTable,
 } from "@/core/database/schema";
 import { parseInstant } from "@/core/datetime";
@@ -73,6 +74,61 @@ export async function generateSchedule(
     rowsByDay.set(dayKey, list);
   }
 
+  // Also query reporting sessions for unscheduled programmes where reporting happened
+  const reportingSessions = await db.query.programmeReportingSession.findMany({
+    where: and(
+      eq(reportingSessionTable.festivalId, festivalId),
+      or(
+        eq(reportingSessionTable.status, "IN_PROGRESS"),
+        eq(reportingSessionTable.status, "COMPLETED"),
+        eq(reportingSessionTable.status, "CLOSED"),
+        isNotNull(reportingSessionTable.startedAt),
+      ),
+    ),
+    with: {
+      programme: { with: { category: true } },
+      stage: true,
+    },
+  });
+
+  const scheduledProgrammeIds = new Set(
+    entries
+      .filter((e) => e.type === "PROGRAMME" && e.programmeId)
+      .map((e) => e.programmeId!),
+  );
+
+  for (const rs of reportingSessions) {
+    // Skip if already in scheduled entries
+    if (rs.scheduleEntryId || scheduledProgrammeIds.has(rs.programmeId)) {
+      continue;
+    }
+
+    const reportTime = rs.startedAt || rs.createdAt;
+    const startInstant = parseInstant(reportTime);
+    if (!startInstant) continue;
+
+    const dayKey = formatDayKey(startInstant);
+    if (selectedKeys.length > 0 && !selectedKeys.includes(dayKey)) continue;
+
+    const programmeName = rs.programme?.name ?? "—";
+    const categoryName = rs.programme?.category?.name ?? "—";
+
+    const row: DayWiseScheduleRow = {
+      startTime: startInstant,
+      endTime: parseInstant(rs.endedAt),
+      programmeName,
+      categoryName,
+      stageName: rs.stage?.name ?? null,
+      description: null,
+      speakers: null,
+      entryType: "PROGRAMME",
+    };
+
+    const list = rowsByDay.get(dayKey) ?? [];
+    list.push(row);
+    rowsByDay.set(dayKey, list);
+  }
+
   // Preserve the user's selected order. If none selected, sort all days chronologically.
   const orderedKeys =
     selectedKeys.length > 0
@@ -114,7 +170,7 @@ export async function generateSchedule(
     }),
     fileName,
     mimeType: PDF_MIME,
-    itemCount: entries.length,
+    itemCount: days.reduce((sum, d) => sum + d.rows.length, 0),
   };
 }
 

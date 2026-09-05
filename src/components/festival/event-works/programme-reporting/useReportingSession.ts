@@ -60,7 +60,9 @@ export interface ReportingSessionState {
   setScratchTilesBySession: (
     v:
       | Record<string, ScratchTile[]>
-      | ((prev: Record<string, ScratchTile[]>) => Record<string, ScratchTile[]>),
+      | ((
+          prev: Record<string, ScratchTile[]>,
+        ) => Record<string, ScratchTile[]>),
   ) => void;
 
   localCheckoutCompletedBySession: Record<string, boolean>;
@@ -124,7 +126,7 @@ export function useReportingSession({
   const session = selected?.reportingSession ?? null;
   const dbCheckoutCompletedAt = session?.checkoutCompletedAt ?? null;
   const isLocalCheckoutCompleted = session
-    ? localCheckoutCompletedBySession[session.id] ?? false
+    ? (localCheckoutCompletedBySession[session.id] ?? false)
     : false;
 
   // Resume where the session actually is, so a refresh mid-draw doesn't drop
@@ -232,7 +234,10 @@ export function useReportingSession({
     isPreStart,
     isInProgress,
     isClosed,
-    checkoutCompletedAt: dbCheckoutCompletedAt || isLocalCheckoutCompleted ? new Date().toISOString() : null,
+    checkoutCompletedAt:
+      dbCheckoutCompletedAt || isLocalCheckoutCompleted
+        ? new Date().toISOString()
+        : null,
     closeDetail,
   };
 }
