@@ -100,6 +100,7 @@ export const ProgrammeReportingStatus = {
   IN_PROGRESS: "IN_PROGRESS",
   RESET: "RESET",
   CLOSED: "CLOSED",
+  COMPLETED: "COMPLETED",
 } as const;
 export type ProgrammeReportingStatus =
   (typeof ProgrammeReportingStatus)[keyof typeof ProgrammeReportingStatus];

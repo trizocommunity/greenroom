@@ -5,18 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateFilterCombobox } from "@/components/ui/date-filter-combobox";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { ScheduleStateFilter } from "./useJudgementFilters";
 
 /**
- * The sticky row above the programme grid: search + schedule filter + date
- * picker + a button that opens the full FilterSheet for stage/category/type.
+ * The sticky row above the programme grid: search + date picker + a button
+ * that opens the full FilterSheet for stage/category/type.
  *
  * Anything more advanced (stage / category / type) lives in the sheet so the
  * bar stays usable on tablet widths.
@@ -24,8 +16,6 @@ import type { ScheduleStateFilter } from "./useJudgementFilters";
 export function JudgementFiltersBar({
   searchQuery,
   onSearchChange,
-  filterScheduleState,
-  onFilterScheduleStateChange,
   filterDate,
   onFilterDateChange,
   scheduledDates,
@@ -34,8 +24,6 @@ export function JudgementFiltersBar({
 }: {
   searchQuery: string;
   onSearchChange: (v: string) => void;
-  filterScheduleState: ScheduleStateFilter;
-  onFilterScheduleStateChange: (v: ScheduleStateFilter) => void;
   filterDate: Date[];
   onFilterDateChange: (v: Date[]) => void;
   scheduledDates: Array<{ key: string; label: string }>;
@@ -43,8 +31,8 @@ export function JudgementFiltersBar({
   onOpenFilterSheet: () => void;
 }) {
   return (
-    <div className="grid grid-cols-6 sm:grid-cols-4 lg:grid-cols-6 items-center gap-2 pb-5">
-      <div className="col-span-6 sm:col-span-1 lg:col-span-2 xl:col-span-3 relative min-w-[200px] flex-1">
+    <div className="grid grid-cols-4 sm:grid-cols-3 lg:grid-cols-4 items-center gap-2 pb-5">
+      <div className="col-span-4 sm:col-span-1 lg:col-span-2 relative min-w-[200px] flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={searchQuery}
@@ -64,25 +52,7 @@ export function JudgementFiltersBar({
         ) : null}
       </div>
 
-      <div className="col-span-2 sm:col-span-1 ">
-        <Select
-          value={filterScheduleState}
-          onValueChange={(v: string) =>
-            onFilterScheduleStateChange(v as ScheduleStateFilter)
-          }
-        >
-          <SelectTrigger className="h-10 bg-background">
-            <SelectValue placeholder="Schedule" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Schedules</SelectItem>
-            <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-            <SelectItem value="UNSCHEDULED">Unscheduled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="col-span-3 sm:col-span-1 min-w-[130px]">
+      <div className="col-span-2 sm:col-span-1 min-w-[130px]">
         <DateFilterCombobox
           value={filterDate}
           onChange={onFilterDateChange}
@@ -92,7 +62,7 @@ export function JudgementFiltersBar({
         />
       </div>
 
-      <div className="col-span-1 sm:col-span-1">
+      <div className="col-span-1">
         <Button
           type="button"
           variant="outline"

@@ -5,14 +5,10 @@ import { useCallback, useState } from "react";
 import { parseInstant } from "@/core/datetime";
 import type { Programme, ReportingDetails } from "./types";
 
-export type ScheduleStateFilter = "ALL" | "SCHEDULED" | "UNSCHEDULED";
-
 export interface JudgementFiltersState {
-  // top-bar state (search + schedule + date)
+  // top-bar state (search + date)
   searchQuery: string;
   setSearchQuery: (v: string) => void;
-  filterScheduleState: ScheduleStateFilter;
-  setFilterScheduleState: (v: ScheduleStateFilter) => void;
   /**
    * Selected dates for the date filter. Empty array means "All Dates" (no
    * filter); non-empty matches programmes whose schedule day is any of the
@@ -82,8 +78,6 @@ export function useJudgementFilters({
   );
   const effectiveStageId = autoLockedStageId ?? selectedStageId;
 
-  const [filterScheduleState, setFilterScheduleState] =
-    useState<ScheduleStateFilter>("ALL");
   const [filterDate, setFilterDate] = useState<Date[]>([]);
 
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
@@ -115,11 +109,6 @@ export function useJudgementFilters({
 
   const matchesScheduleAndDate = useCallback(
     (details: ReportingDetails | null | undefined) => {
-      if (filterScheduleState === "SCHEDULED" && !details?.scheduleStart)
-        return false;
-      if (filterScheduleState === "UNSCHEDULED" && details?.scheduleStart)
-        return false;
-
       if (filterDate.length > 0 && details?.scheduleStart) {
         const d = parseInstant(details.scheduleStart);
         if (d) {
@@ -132,14 +121,12 @@ export function useJudgementFilters({
       }
       return true;
     },
-    [filterScheduleState, filterDate],
+    [filterDate],
   );
 
   return {
     searchQuery,
     setSearchQuery,
-    filterScheduleState,
-    setFilterScheduleState,
     filterDate,
     setFilterDate,
     selectedStageId,

@@ -38,6 +38,7 @@ export type ReportingStatus =
   | "NOT_STARTED"
   | "IN_PROGRESS"
   | "CLOSED"
+  | "COMPLETED"
   | "RESET";
 
 export type Assignment = {
@@ -555,9 +556,12 @@ export class ReportingSession {
   }
 
   reopen(actorName: string): void {
-    if (!this.state.isLocked || this.state.status !== "CLOSED") {
+    if (
+      !this.state.isLocked ||
+      (this.state.status !== "CLOSED" && this.state.status !== "COMPLETED")
+    ) {
       throw new Error(
-        "Only closed reporting sessions can be reopened destructively.",
+        "Only closed or completed reporting sessions can be reopened destructively.",
       );
     }
 

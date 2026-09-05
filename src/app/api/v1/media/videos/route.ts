@@ -8,7 +8,10 @@ import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { festivalMediaVideo } from "@/core/database/schema";
 import { serverNowIso } from "@/core/datetime/server";
-import { extractYouTubeId, extractInstagramId } from "@/features/media/utils/youtube";
+import {
+  extractInstagramId,
+  extractYouTubeId,
+} from "@/features/media/utils/youtube";
 
 const handler = createProtectedHandler({
   async GET({ user, request }) {
@@ -36,7 +39,10 @@ const handler = createProtectedHandler({
 
     const { festivalId, url } = parsed.data;
     if (!extractYouTubeId(url) && !extractInstagramId(url)) {
-      return badRequest("INVALID_INPUT", "Not a valid YouTube or Instagram link");
+      return badRequest(
+        "INVALID_INPUT",
+        "Not a valid YouTube or Instagram link",
+      );
     }
     await assertFestivalAccess(user, festivalId, { requireWritable: true });
 

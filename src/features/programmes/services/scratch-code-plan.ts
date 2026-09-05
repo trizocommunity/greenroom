@@ -52,6 +52,46 @@ export function sequentialAlphabetCode(indexOneBased: number): string {
 }
 
 /**
+ * Natural comparator for competition code letters.
+ *
+ * Correctly orders sequential alphabet codes (A..Z, then AA..ZZ, etc.),
+ * numeric codes (1, 2, 10), and alphanumeric codes (A1, A2, A10)
+ * rather than naive dictionary sort where "AA" sorts before "B".
+ */
+export function compareCodeLetters(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): number {
+  const strA = (a ?? "").trim();
+  const strB = (b ?? "").trim();
+
+  if (strA === strB) return 0;
+  if (!strA) return -1;
+  if (!strB) return 1;
+
+  // Pure alphabetic codes (e.g. A..Z, then AA..ZZ)
+  const isAlphaOnly = /^[A-Za-z]+$/;
+  if (isAlphaOnly.test(strA) && isAlphaOnly.test(strB)) {
+    if (strA.length !== strB.length) {
+      return strA.length - strB.length;
+    }
+    return strA.localeCompare(strB, undefined, { sensitivity: "base" });
+  }
+
+  // Pure numeric codes (e.g. "1", "2", "10")
+  const isNumOnly = /^\d+$/;
+  if (isNumOnly.test(strA) && isNumOnly.test(strB)) {
+    return Number(strA) - Number(strB);
+  }
+
+  // Mixed alphanumeric with natural sorting (e.g. "A1", "A2", "A10")
+  return strA.localeCompare(strB, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+/**
  * Identity of a scratchable unit. The planner and the read side that turns
  * assignments back into DB rows both build this the same way, so a unit can be
  * matched across the event boundary instead of re-joining on loose columns.

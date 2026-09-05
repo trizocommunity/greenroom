@@ -231,25 +231,16 @@ export function FoodEntryDashboard({
       </Drawer>
 
       <Drawer open={configOpen} onOpenChange={setConfigOpen}>
-        <DrawerContent>
-          <div className="flex flex-col h-full overflow-hidden">
-            <DrawerHeader className="shrink-0 text-left items-start !text-left">
-              <DrawerTitle>Food Sessions Configuration</DrawerTitle>
-              <DrawerDescription>
-                Configure the time windows for each food slot. Active window is
-                determined by the browser&apos;s current time.
-              </DrawerDescription>
-            </DrawerHeader>
-            <FoodEntryConfig
-              festivalId={festivalId}
-              initialSlots={initialData.slots}
-              onSaved={() => {
-                setConfigOpen(false);
-                window.location.reload();
-              }}
-              onCancel={() => setConfigOpen(false)}
-            />
-          </div>
+        <DrawerContent className="max-h-[85vh] sm:max-w-[640px]">
+          <FoodEntryConfig
+            festivalId={festivalId}
+            initialSlots={initialData.slots}
+            onSaved={() => {
+              setConfigOpen(false);
+              window.location.reload();
+            }}
+            onCancel={() => setConfigOpen(false)}
+          />
         </DrawerContent>
       </Drawer>
     </div>

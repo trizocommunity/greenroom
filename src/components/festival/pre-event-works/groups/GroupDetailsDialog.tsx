@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, Loader2, Users } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParticipants } from "@/api/client/participants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,25 @@ export function GroupDetailsDialog({
     (p: Participant) => p.group?.id === group.id || p.groupId === group.id,
   );
 
+  const [filterCategory, setFilterCategory] = useState<string>("ALL");
+
+  const categories = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of groupParticipants) {
+      if (p.category?.name) {
+        map.set(p.category.name, p.category.name);
+      }
+    }
+    return Array.from(map.values()).sort();
+  }, [groupParticipants]);
+
+  const displayedParticipants = useMemo(() => {
+    if (filterCategory === "ALL") return groupParticipants;
+    return groupParticipants.filter(
+      (p: Participant) => p.category?.name === filterCategory,
+    );
+  }, [groupParticipants, filterCategory]);
+
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? controlledOpen : internalOpen;
@@ -107,11 +126,27 @@ export function GroupDetailsDialog({
         </DrawerHeader>
 
         <div className="flex-1 overflow-hidden mt-4 min-h-0">
-          <div className="flex flex-col gap-4 overflow-hidden h-full">
-            <h4 className="font-semibold text-sm flex items-center gap-2">
-              <Users className="h-4 w-4 shrink-0" />
-              Participants ({groupParticipants.length})
-            </h4>
+          <div className="flex flex-col gap-3 overflow-hidden h-full">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                <Users className="h-4 w-4 shrink-0" />
+                Participants ({displayedParticipants.length})
+              </h4>
+              {categories.length > 0 && (
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="h-7 text-xs border rounded-md px-2 py-0.5 bg-background text-foreground"
+                >
+                  <option value="ALL">All Categories</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
 
             <ScrollArea className="flex-1 border rounded-md">
               {isLoading ? (
@@ -122,12 +157,12 @@ export function GroupDetailsDialog({
                 <>
                   {/* Mobile: list of cards */}
                   <div className="block md:hidden divide-y">
-                    {groupParticipants.length === 0 ? (
+                    {displayedParticipants.length === 0 ? (
                       <div className="py-8 text-center text-muted-foreground text-sm">
                         No participants found in this group.
                       </div>
                     ) : (
-                      groupParticipants.map((p: Participant) => (
+                      displayedParticipants.map((p: Participant) => (
                         <div
                           key={p.id}
                           className="p-3 flex items-center justify-between gap-2"
@@ -161,7 +196,7 @@ export function GroupDetailsDialog({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {groupParticipants.map((p: Participant) => (
+                        {displayedParticipants.map((p: Participant) => (
                           <TableRow key={p.id}>
                             <TableCell className="font-medium">
                               {p.chestNumber || "-"}
@@ -185,7 +220,7 @@ export function GroupDetailsDialog({
                             </TableCell>
                           </TableRow>
                         ))}
-                        {groupParticipants.length === 0 && (
+                        {displayedParticipants.length === 0 && (
                           <TableRow>
                             <TableCell
                               colSpan={3}

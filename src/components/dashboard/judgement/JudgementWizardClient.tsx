@@ -348,11 +348,6 @@ export function JudgementWizardClient({
           filters.setSearchQuery(v);
           resetAllPages();
         }}
-        filterScheduleState={filters.filterScheduleState}
-        onFilterScheduleStateChange={(v) => {
-          filters.setFilterScheduleState(v);
-          resetAllPages();
-        }}
         filterDate={filters.filterDate}
         onFilterDateChange={(v) => {
           filters.setFilterDate(v);

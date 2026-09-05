@@ -22,9 +22,9 @@ import {
   useUpdateScheduleItem,
 } from "@/api/client/schedule";
 import { ClearScheduleDialog } from "@/components/festival/pre-event-works/schedule/ClearScheduleDialog";
+import { ScheduleConflictsDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleConflictsDrawer";
 import { ScheduleReportingDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleReportingDrawer";
 import { ScheduleSwapDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleSwapDrawer";
-import { ScheduleConflictsDrawer } from "@/components/festival/pre-event-works/schedule/ScheduleConflictsDrawer";
 import { ScheduleTableView } from "@/components/festival/pre-event-works/schedule/ScheduleTableView";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -55,6 +55,7 @@ import {
   assertProgrammePrePublishing,
   updateProgrammeStatus,
 } from "@/features/programmes/services/programme-status.service";
+import { compareCodeLetters } from "@/features/programmes/services/scratch-code-plan";
 import { requireProgrammeType } from "@/features/programmes/utils/assert-programme-type";
 import { calculatePosition } from "@/features/results/services/results-calculator";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
@@ -507,7 +508,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
 
     reportedEntries.sort((a, b) => {
       if (a.codeLetter && b.codeLetter)
-        return a.codeLetter.localeCompare(b.codeLetter);
+        return compareCodeLetters(a.codeLetter, b.codeLetter);
       if (a.codeLetter) return -1;
       if (b.codeLetter) return 1;
       return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
@@ -527,29 +528,36 @@ export async function getJudgementWizardDataAction(festivalId: string) {
     });
   }
 
+  const mapProgramme = (p: (typeof judgeProgrammes)[number]) => {
+    const reportingDetails = reportingByProgrammeId.get(p.id) ?? null;
+    return {
+      id: p.id,
+      name: p.name,
+      status: p.status,
+      programmeType: p.type,
+      programmeCategory: p.category?.name ?? null,
+      durationMode: p.durationMode,
+      timePerUnitMinutes: p.timePerUnitMinutes,
+      parallelDurationMinutes: p.parallelDurationMinutes,
+      reportingDetails,
+    };
+  };
+
+  /** Sort by latest reporting submission date descending; no-date items sink. */
+  const byLatestReporting = (
+    a: { reportingDetails: { submittedAt?: Date | null } | null },
+    b: { reportingDetails: { submittedAt?: Date | null } | null },
+  ) => {
+    const aTime = a.reportingDetails?.submittedAt?.getTime() ?? 0;
+    const bTime = b.reportingDetails?.submittedAt?.getTime() ?? 0;
+    return bTime - aTime;
+  };
+
   return {
-    judgeProgrammes: judgeProgrammes.map((p) => ({
-      id: p.id,
-      name: p.name,
-      status: p.status,
-      programmeType: p.type,
-      programmeCategory: p.category?.name ?? null,
-      durationMode: p.durationMode,
-      timePerUnitMinutes: p.timePerUnitMinutes,
-      parallelDurationMinutes: p.parallelDurationMinutes,
-      reportingDetails: reportingByProgrammeId.get(p.id) ?? null,
-    })),
-    rejudgeProgrammes: rejudgeProgrammes.map((p) => ({
-      id: p.id,
-      name: p.name,
-      status: p.status,
-      programmeType: p.type,
-      programmeCategory: p.category?.name ?? null,
-      durationMode: p.durationMode,
-      timePerUnitMinutes: p.timePerUnitMinutes,
-      parallelDurationMinutes: p.parallelDurationMinutes,
-      reportingDetails: reportingByProgrammeId.get(p.id) ?? null,
-    })),
+    judgeProgrammes: judgeProgrammes.map(mapProgramme).sort(byLatestReporting),
+    rejudgeProgrammes: rejudgeProgrammes
+      .map(mapProgramme)
+      .sort(byLatestReporting),
     judges,
   };
 }
@@ -1414,8 +1422,9 @@ async function buildLivePayload(
       eq(codeLetterTable.programmeId, config.programmeId),
       eq(codeLetterTable.reportingSessionId, config.reportingSessionId),
     ),
-    orderBy: [asc(codeLetterTable.issuedAt)],
+    orderBy: [asc(codeLetterTable.code)],
   });
+  codeLetters.sort((a, b) => compareCodeLetters(a.code, b.code));
   const existingScores = await db.query.judgementScore.findMany({
     where: eq(judgementScoreTable.configId, config.id),
     columns: {
@@ -2246,7 +2255,7 @@ export async function previewJudgeSubmissionSummaryAction(input: {
     });
   }
 
-  rows.sort((a, b) => a.code.localeCompare(b.code));
+  rows.sort((a, b) => compareCodeLetters(a.code, b.code));
   return { rows };
 }
 

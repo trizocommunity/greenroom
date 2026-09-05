@@ -29,14 +29,15 @@ const handler = createProtectedHandler({
 
     const rateLimit = await checkRateLimit(
       `upload:${user!.userId}`,
-      10,
+      100,
       MS.hour,
     );
     if (!rateLimit.allowed) {
       return tooManyRequests("Upload limit exceeded. Please try again later.");
     }
 
-    const base64Data = parsed.data.file.split(",")[1];
+    const rawFile = parsed.data.file;
+    const base64Data = rawFile.includes(",") ? rawFile.split(",")[1] : rawFile;
     const buffer = Buffer.from(base64Data, "base64");
 
     if (buffer.length > MAX_FILE_SIZE) {
@@ -46,9 +47,22 @@ const handler = createProtectedHandler({
       );
     }
 
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    let cloudName =
+      process.env.CLOUDINARY_CLOUD_NAME ||
+      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    let apiKey = process.env.CLOUDINARY_API_KEY;
+    let apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if ((!cloudName || !apiKey || !apiSecret) && process.env.CLOUDINARY_URL) {
+      try {
+        const parsedUrl = new URL(process.env.CLOUDINARY_URL);
+        apiKey = apiKey || parsedUrl.username;
+        apiSecret = apiSecret || parsedUrl.password;
+        cloudName = cloudName || parsedUrl.hostname;
+      } catch (e) {
+        console.error("Failed to parse CLOUDINARY_URL", e);
+      }
+    }
 
     if (!cloudName || !apiKey || !apiSecret) {
       return badRequest("CONFIG_ERROR", "Upload service not configured");

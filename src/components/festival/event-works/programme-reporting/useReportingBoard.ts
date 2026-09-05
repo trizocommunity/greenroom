@@ -27,6 +27,7 @@ export interface UseReportingBoardArgs {
   assignments: ProgrammeReportingAssignmentRow[];
   selected: ReportingBoardItem | null;
   optimisticReportedBySession: Record<string, Set<string>>;
+  scratchTilesBySession: Record<string, ScratchTile[]>;
   mounted: boolean;
   filterArgs: Parameters<typeof matchesReportingFilters>[1];
 }
@@ -43,6 +44,7 @@ export function useReportingBoard({
   assignments,
   selected,
   optimisticReportedBySession,
+  scratchTilesBySession,
   mounted,
   filterArgs,
 }: UseReportingBoardArgs) {
@@ -157,6 +159,7 @@ export function useReportingBoard({
       : null;
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   const rosterTableRows = useMemo((): RosterTableRow[] => {
     const programme = selected?.programme;
     if (!programme?.id) return [];
@@ -265,7 +268,6 @@ export function useReportingBoard({
         typeof b.teamCell === "number" ? b.teamCell : Number(b.teamCell) || 0;
       return aTeam - bTeam;
     });
-    // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   }, [
     assignmentsWithReported,
     selected?.programme,
@@ -279,7 +281,12 @@ export function useReportingBoard({
   );
 
   const scratchTiles = useMemo<ScratchTile[]>(() => {
-    if (letters.length === 0) return [];
+    if (letters.length === 0) {
+      if (session?.id && scratchTilesBySession[session.id]) {
+        return scratchTilesBySession[session.id];
+      }
+      return [];
+    }
 
     const rowByParticipantId = new Map<string, RosterTableRow>();
     for (const row of rosterTableRows) {
@@ -314,7 +321,7 @@ export function useReportingBoard({
         };
       })
       .sort((a, b) => a.queuePosition - b.queuePosition);
-  }, [letters, rosterTableRows]);
+  }, [letters, rosterTableRows, session?.id, scratchTilesBySession]);
 
   const currentQueuePosition = useMemo(() => {
     const next = scratchTiles.find((t) => !t.revealedAt);

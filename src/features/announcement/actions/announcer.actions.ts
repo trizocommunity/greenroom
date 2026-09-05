@@ -674,3 +674,104 @@ export async function announceStandings(
     return handleActionError(error);
   }
 }
+
+export async function publishAllResultsAction(
+  festivalId: string,
+): Promise<ActionResponse<{ publishedCount: number }>> {
+  try {
+    const actorName = await assertAnnouncerAccess(festivalId);
+    await ensureFestivalWritable(festivalId);
+
+    const unpublished = await db.query.programme.findMany({
+      where: and(
+        eq(programmeTable.festivalId, festivalId),
+        eq(programmeTable.status, "PENDING_PUBLICATION"),
+      ),
+      columns: {
+        id: true,
+        name: true,
+        resultNumber: true,
+      },
+      orderBy: [asc(programmeTable.resultNumber), asc(programmeTable.name)],
+    });
+
+    if (unpublished.length === 0) {
+      return { success: false, error: "No unpublished results to publish." };
+    }
+
+    const maxResult = await db
+      .select({ maxNum: sql<number>`MAX(${programmeTable.resultNumber})` })
+      .from(programmeTable)
+      .where(eq(programmeTable.festivalId, festivalId));
+    let nextNum = (maxResult[0]?.maxNum ?? 0) + 1;
+
+    const session = await getSession();
+    const now = serverNowIso();
+    const email = (session?.email as string) ?? null;
+
+    let publishedCount = 0;
+
+    for (const prog of unpublished) {
+      const resCount = await db
+        .select({ value: count() })
+        .from(resultTable)
+        .where(eq(resultTable.programmeId, prog.id));
+
+      if ((resCount[0]?.value ?? 0) === 0) {
+        continue;
+      }
+
+      let resNumber = prog.resultNumber;
+      if (resNumber == null) {
+        resNumber = nextNum++;
+      }
+
+      await db
+        .update(resultTable)
+        .set({
+          isPublished: true,
+          publishedByEmail: email,
+          publishedByName: actorName,
+          updatedAt: now,
+        })
+        .where(eq(resultTable.programmeId, prog.id));
+
+      await db
+        .update(programmeTable)
+        .set({
+          status: "PUBLISHED",
+          resultNumber: resNumber,
+          publishedAt: now,
+          publishedByEmail: email,
+          publishedByName: actorName,
+          updatedAt: now,
+        })
+        .where(eq(programmeTable.id, prog.id));
+
+      publishedCount++;
+    }
+
+    if (publishedCount === 0) {
+      return {
+        success: false,
+        error: "No programmes with entered results found to publish.",
+      };
+    }
+
+    const slug = await getFestivalSlug(festivalId);
+    if (slug) revalidateAnnouncerPaths(slug);
+
+    await createAuditLog({
+      action: "PUBLISH_RESULTS",
+      targetType: "FESTIVAL",
+      targetId: festivalId,
+      metadata: { festivalId, publishedCount, batch: true },
+    }).catch((err) =>
+      console.error("[AuditLog] PUBLISH_RESULTS batch failed", err),
+    );
+
+    return { success: true, data: { publishedCount } };
+  } catch (error) {
+    return handleActionError(error);
+  }
+}

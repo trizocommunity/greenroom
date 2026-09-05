@@ -69,11 +69,7 @@ export function LargeTimerDrawer({
               {item?.programme.name}
             </DrawerTitle>
             {onOpenWorkspace && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={onOpenWorkspace}
-              >
+              <Button variant="destructive" size="sm" onClick={onOpenWorkspace}>
                 Reopen reporting
               </Button>
             )}

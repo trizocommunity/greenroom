@@ -33,7 +33,7 @@ export function indexReportingSessionsByProgramme<
       latestByProgrammeId.set(session.programmeId, session);
     }
     if (
-      session.status === "CLOSED" &&
+      (session.status === "CLOSED" || session.status === "COMPLETED") &&
       !latestClosedByProgrammeId.has(session.programmeId)
     ) {
       latestClosedByProgrammeId.set(session.programmeId, session);

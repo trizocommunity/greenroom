@@ -18,9 +18,9 @@ import {
 } from "@/components/ui/pagination";
 import { usePublicPages } from "@/features/festivals/hooks/use-public-pages";
 import {
+  extractInstagramId,
   extractYouTubeId,
   getYouTubeThumbnail,
-  extractInstagramId,
 } from "@/features/media/utils/youtube";
 
 type ImageItem = { id: string; url: string; order: number };
@@ -110,8 +110,8 @@ export function PublicMediaView({
   }
 
   const allMedia = [
-    ...videos.map(v => ({ ...v, type: "video" as const })),
-    ...images.map(img => ({ ...img, type: "photo" as const })),
+    ...videos.map((v) => ({ ...v, type: "video" as const })),
+    ...images.map((img) => ({ ...img, type: "photo" as const })),
   ];
 
   return (
@@ -128,7 +128,10 @@ export function PublicMediaView({
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
-                  transition={{ duration: 0.4, delay: Math.min(index, 6) * 0.05 }}
+                  transition={{
+                    duration: 0.4,
+                    delay: Math.min(index, 6) * 0.05,
+                  }}
                   className="group relative col-span-2 row-span-2 overflow-hidden rounded-lg bg-muted"
                 >
                   {playingVideoId === media.id ? (
@@ -165,7 +168,9 @@ export function PublicMediaView({
                         />
                       ) : igId ? (
                         <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600">
-                          <span className="text-white font-semibold text-lg">Instagram Video</span>
+                          <span className="text-white font-semibold text-lg">
+                            Instagram Video
+                          </span>
                         </div>
                       ) : null}
                       <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition-colors group-hover:bg-black/15">
@@ -208,76 +213,76 @@ export function PublicMediaView({
           })}
         </div>
 
-          {Math.ceil(total / pageSize) > 1 && (
-            <div className="mt-8 flex justify-center pb-6">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page > 1) goToPage(page - 1);
-                      }}
-                      className={
-                        page <= 1 ? "pointer-events-none opacity-50" : ""
-                      }
-                    />
-                  </PaginationItem>
-
-                  {[...Array(Math.ceil(total / pageSize))].map((_, i) => {
-                    const targetPage = i + 1;
-                    const totalPages = Math.ceil(total / pageSize);
-
-                    if (
-                      targetPage === 1 ||
-                      targetPage === totalPages ||
-                      (targetPage >= page - 1 && targetPage <= page + 1)
-                    ) {
-                      return (
-                        <PaginationItem key={i}>
-                          <PaginationLink
-                            isActive={page === targetPage}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              goToPage(targetPage);
-                            }}
-                          >
-                            {targetPage}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
+        {Math.ceil(total / pageSize) > 1 && (
+          <div className="mt-8 flex justify-center pb-6">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (page > 1) goToPage(page - 1);
+                    }}
+                    className={
+                      page <= 1 ? "pointer-events-none opacity-50" : ""
                     }
+                  />
+                </PaginationItem>
 
-                    if (targetPage === page - 2 || targetPage === page + 2) {
-                      return (
-                        <PaginationItem key={i}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
+                {[...Array(Math.ceil(total / pageSize))].map((_, i) => {
+                  const targetPage = i + 1;
+                  const totalPages = Math.ceil(total / pageSize);
+
+                  if (
+                    targetPage === 1 ||
+                    targetPage === totalPages ||
+                    (targetPage >= page - 1 && targetPage <= page + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          isActive={page === targetPage}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            goToPage(targetPage);
+                          }}
+                        >
+                          {targetPage}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+
+                  if (targetPage === page - 2 || targetPage === page + 2) {
+                    return (
+                      <PaginationItem key={i}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (page < Math.ceil(total / pageSize))
+                        goToPage(page + 1);
+                    }}
+                    className={
+                      page >= Math.ceil(total / pageSize)
+                        ? "pointer-events-none opacity-50"
+                        : ""
                     }
-
-                    return null;
-                  })}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (page < Math.ceil(total / pageSize))
-                          goToPage(page + 1);
-                      }}
-                      className={
-                        page >= Math.ceil(total / pageSize)
-                          ? "pointer-events-none opacity-50"
-                          : ""
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
-        </section>
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </section>
       <Dialog open={lightboxIndex !== null} onOpenChange={() => close()}>
         {/* The built-in close sits on a black backdrop here, so it is forced
             white rather than inheriting the popover foreground. */}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type CheckoutRow,
+  compareCodeLetters,
   groupIntoUnits,
   planScratchCodes,
   sequentialAlphabetCode,
@@ -37,6 +38,41 @@ describe("sequentialAlphabetCode", () => {
   it("clamps non-positive input to the first code", () => {
     expect(sequentialAlphabetCode(0)).toBe("A");
     expect(sequentialAlphabetCode(-3)).toBe("A");
+  });
+});
+
+describe("compareCodeLetters", () => {
+  it("sorts single-letter codes alphabetically", () => {
+    const list = ["D", "A", "C", "B"];
+    expect(list.sort(compareCodeLetters)).toEqual(["A", "B", "C", "D"]);
+  });
+
+  it("sorts rollover spreadsheet codes (A..Z before AA..ZZ)", () => {
+    const list = ["AA", "B", "Z", "A", "AB", "C", "BA"];
+    expect(list.sort(compareCodeLetters)).toEqual([
+      "A",
+      "B",
+      "C",
+      "Z",
+      "AA",
+      "AB",
+      "BA",
+    ]);
+  });
+
+  it("sorts numeric codes naturally", () => {
+    const list = ["10", "2", "1", "20"];
+    expect(list.sort(compareCodeLetters)).toEqual(["1", "2", "10", "20"]);
+  });
+
+  it("sorts alphanumeric codes naturally", () => {
+    const list = ["A10", "A2", "A1", "B1"];
+    expect(list.sort(compareCodeLetters)).toEqual(["A1", "A2", "A10", "B1"]);
+  });
+
+  it("handles null or undefined cleanly", () => {
+    const list = ["B", null, "A", undefined];
+    expect(list.sort(compareCodeLetters)).toEqual([null, "A", "B", undefined]);
   });
 });
 

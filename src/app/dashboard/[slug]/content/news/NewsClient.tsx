@@ -27,15 +27,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +36,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate, parseInstant } from "@/core/datetime";
@@ -384,7 +383,9 @@ export function NewsClient({
                             <Pencil className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleTogglePublish(post)}>
+                          <DropdownMenuItem
+                            onClick={() => handleTogglePublish(post)}
+                          >
                             {post.publishedAt ? (
                               <>
                                 <EyeOff className="h-4 w-4 mr-2" />
@@ -564,7 +565,9 @@ export function NewsClient({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="news-excerpt">Excerpt (for meta / social)</Label>
+                <Label htmlFor="news-excerpt">
+                  Excerpt (for meta / social)
+                </Label>
                 <Input
                   id="news-excerpt"
                   value={form.excerpt}

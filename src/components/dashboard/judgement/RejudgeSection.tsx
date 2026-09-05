@@ -6,7 +6,7 @@ import { cn } from "@/core/utils/cn";
 import { RejudgeProgrammeCard } from "./RejudgeProgrammeCard";
 import { CalendarSearch, CompactSelect } from "./SectionFilterRow";
 import type { Programme } from "./types";
-import { PAGE_SIZE } from "./types";
+import { REJUDGE_PAGE_SIZE } from "./types";
 import type { JudgementFiltersState } from "./useJudgementFilters";
 
 type RejudgeFiltersSlice = Pick<
@@ -100,7 +100,10 @@ export function RejudgeSection({
           <>
             <div className="space-y-2">
               {programmes
-                .slice(pageIndex * PAGE_SIZE, (pageIndex + 1) * PAGE_SIZE)
+                .slice(
+                  pageIndex * REJUDGE_PAGE_SIZE,
+                  (pageIndex + 1) * REJUDGE_PAGE_SIZE,
+                )
                 .map((p) => (
                   <RejudgeProgrammeCard
                     key={p.id}
@@ -109,10 +112,10 @@ export function RejudgeSection({
                   />
                 ))}
             </div>
-            {programmes.length > PAGE_SIZE && (
+            {programmes.length > REJUDGE_PAGE_SIZE && (
               <DataTablePagination
                 pageIndex={pageIndex}
-                pageCount={Math.ceil(programmes.length / PAGE_SIZE)}
+                pageCount={Math.ceil(programmes.length / REJUDGE_PAGE_SIZE)}
                 onPageChange={onPageChange}
                 className="mt-6"
               />

@@ -310,12 +310,11 @@ export function JudgesClient({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onSelect={() => {
-                          setViewTab("activities");
                           setViewingJudge(j as JudgeRow);
                         }}
                       >
                         <Eye className="h-4 w-4 mr-2" />
-                        Activities
+                        View details
                       </DropdownMenuItem>
                       {!isReadOnly ? (
                         <DropdownMenuItem
@@ -525,58 +524,21 @@ export function JudgesClient({
                 </DrawerDescription>
               </DrawerHeader>
 
-              <Tabs
-                value={viewTab}
-                onValueChange={(value) => setViewTab(value as typeof viewTab)}
-              >
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="activities">
-                    Activities ({viewingJudge.activities.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="programmes">
-                    Programmes ({viewingJudge.programmes.length})
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="activities">
-                  <div className="space-y-2 max-h-72 overflow-auto pr-1">
-                    {viewingJudge.activities.length > 0 ? (
-                      viewingJudge.activities.map((activity) => (
-                        <div
-                          key={activity.configId}
-                          className="rounded-lg border p-3 flex items-center justify-between gap-3"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {activity.programme?.name ?? "Programme"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {activity.stage?.name ?? "No stage"} ·{" "}
-                              {activity.judgingMode}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground">
-                              Judged points: {activity.judgedPointsCount}
-                            </p>
-                            <Badge variant="outline" className="mt-1">
-                              Avg: {activity.averagePoints ?? "-"}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No activities assigned.
-                      </p>
-                    )}
+              <div className="space-y-6 max-h-[70vh] overflow-y-auto px-4 pb-6">
+                {/* Section 1: Assigned Programmes */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      Assigned Programmes
+                    </h4>
+                    <Badge variant="secondary">
+                      {viewingJudge.programmes.length}
+                    </Badge>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="programmes">
-                  <div className="space-y-2 max-h-72 overflow-auto pr-1">
-                    {viewingJudge.programmes.length > 0 ? (
-                      viewingJudge.programmes.map((programme) => {
+                  {viewingJudge.programmes.length > 0 ? (
+                    <div className="space-y-2">
+                      {viewingJudge.programmes.map((programme) => {
                         const programmeActivities =
                           viewingJudge.activities.filter(
                             (activity) =>
@@ -604,9 +566,9 @@ export function JudgesClient({
                         return (
                           <div
                             key={programme.id}
-                            className="rounded-lg border p-3 flex items-center justify-between gap-3"
+                            className="rounded-lg border p-3 flex items-center justify-between gap-3 bg-muted/20"
                           >
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-sm font-medium truncate">
                                 {programme.name}
                               </p>
@@ -614,25 +576,70 @@ export function JudgesClient({
                                 Activities: {programmeActivities.length}
                               </p>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                               <p className="text-xs text-muted-foreground">
                                 Points: {totalPoints}
                               </p>
-                              <Badge variant="outline" className="mt-1">
+                              <Badge variant="outline" className="mt-1 text-xs">
                                 Avg: {programmeAverage ?? "-"}
                               </Badge>
                             </div>
                           </div>
                         );
-                      })
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No programmes assigned.
-                      </p>
-                    )}
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
+                      No programmes assigned.
+                    </p>
+                  )}
+                </div>
+
+                {/* Section 2: Judging Activities */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                      Judging Activities
+                    </h4>
+                    <Badge variant="secondary">
+                      {viewingJudge.activities.length}
+                    </Badge>
                   </div>
-                </TabsContent>
-              </Tabs>
+                  {viewingJudge.activities.length > 0 ? (
+                    <div className="space-y-2">
+                      {viewingJudge.activities.map((activity) => (
+                        <div
+                          key={activity.configId}
+                          className="rounded-lg border p-3 flex items-center justify-between gap-3 bg-muted/20"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {activity.programme?.name ?? "Programme"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {activity.stage?.name ?? "No stage"} ·{" "}
+                              {activity.judgingMode}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-muted-foreground">
+                              Judged points: {activity.judgedPointsCount}
+                            </p>
+                            <Badge variant="outline" className="mt-1 text-xs">
+                              Avg: {activity.averagePoints ?? "-"}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-3 text-center rounded-lg border border-dashed">
+                      No activities assigned.
+                    </p>
+                  )}
+                </div>
+              </div>
             </>
           ) : null}
         </DrawerContent>

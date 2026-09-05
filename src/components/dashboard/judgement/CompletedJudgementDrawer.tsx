@@ -17,6 +17,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Separator } from "@/components/ui/separator";
+import { compareCodeLetters } from "@/features/programmes/services/scratch-code-plan";
 import { formatElapsedClock, toEpochMs } from "./judgement-time";
 import type { JudgedProgrammeCard } from "./types";
 import { judgementStatusLabel } from "./types";
@@ -41,10 +42,7 @@ export function CompletedJudgementDrawer({
   const sortedRows = useMemo(() => {
     if (!detail) return [];
     return [...detail.codeLetterRows].sort((a, b) =>
-      a.code.localeCompare(b.code, undefined, {
-        numeric: true,
-        sensitivity: "base",
-      }),
+      compareCodeLetters(a.code, b.code),
     );
   }, [detail]);
 

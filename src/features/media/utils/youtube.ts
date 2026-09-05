@@ -1,8 +1,7 @@
 const YOUTUBE_ID_PATTERN =
   /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
-const INSTAGRAM_ID_PATTERN =
-  /(?:instagram\.com\/(?:p|reel)\/)([a-zA-Z0-9_-]+)/;
+const INSTAGRAM_ID_PATTERN = /(?:instagram\.com\/(?:p|reel)\/)([a-zA-Z0-9_-]+)/;
 
 export function extractYouTubeId(url: string): string | null {
   const match = url.match(YOUTUBE_ID_PATTERN);

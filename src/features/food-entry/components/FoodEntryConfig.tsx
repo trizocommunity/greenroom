@@ -9,6 +9,11 @@ import { toast } from "sonner";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
   Form,
   FormControl,
   FormField,
@@ -30,6 +35,7 @@ export function FoodEntryConfig({
   festivalId,
   initialSlots,
   onSaved,
+  onCancel,
 }: FoodEntryConfigProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -80,90 +86,18 @@ export function FoodEntryConfig({
   };
 
   return (
-    <div className="space-y-3">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-          {fields.map((field, index) => (
-            <div
-              key={field.id}
-              className="grid grid-cols-12 gap-2 items-end border p-2 rounded-md"
-            >
-              <FormField
-                control={form.control}
-                name={`slots.${index}.name`}
-                render={({ field }) => (
-                  <FormItem className="col-span-12 sm:col-span-5">
-                    <FormControl>
-                      <Input
-                        placeholder="Session name"
-                        className="h-9"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name={`slots.${index}.windowStartMin`}
-                render={({ field }) => (
-                  <FormItem className="col-span-5 sm:col-span-3">
-                    <FormControl>
-                      <Input
-                        type="time"
-                        className="h-9"
-                        value={formatMinToTime(field.value)}
-                        onChange={(e) =>
-                          field.onChange(parseTimeToMin(e.target.value))
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name={`slots.${index}.windowEndMin`}
-                render={({ field }) => (
-                  <FormItem className="col-span-5 sm:col-span-3">
-                    <FormControl>
-                      <Input
-                        type="time"
-                        className="h-9"
-                        value={formatMinToTime(field.value)}
-                        onChange={(e) =>
-                          field.onChange(parseTimeToMin(e.target.value))
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px]" />
-                  </FormItem>
-                )}
-              />
-
-              <div className="col-span-2 sm:col-span-1 flex justify-end">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="h-9 w-9"
-                  onClick={() => remove(index)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-
+    <div className="flex flex-col h-full max-h-[80vh] overflow-hidden">
+      {/* Header: heading only, no description, and the new session button */}
+      <DrawerHeader className="shrink-0 text-left items-start !text-left p-0 pb-3 border-b">
+        <div className="flex items-center justify-between w-full gap-2">
+          <DrawerTitle className="text-lg font-bold">
+            Food Sessions Configuration
+          </DrawerTitle>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-8 text-xs font-medium"
             onClick={() =>
               append({
                 id: crypto.randomUUID(),
@@ -174,21 +108,124 @@ export function FoodEntryConfig({
               })
             }
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Session
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            New Session
           </Button>
+        </div>
+      </DrawerHeader>
 
-          {form.formState.errors.slots?.root?.message && (
-            <p className="text-sm font-medium text-destructive">
-              {form.formState.errors.slots.root.message}
-            </p>
-          )}
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-col flex-1 min-h-0 overflow-hidden"
+        >
+          {/* Scrollable list keeping the old row state */}
+          <div className="flex-1 overflow-y-auto py-3 space-y-3">
+            {fields.map((field, index) => (
+              <div
+                key={field.id}
+                className="grid grid-cols-12 gap-2 items-end border p-2 rounded-md"
+              >
+                <FormField
+                  control={form.control}
+                  name={`slots.${index}.name`}
+                  render={({ field }) => (
+                    <FormItem className="col-span-12 sm:col-span-5">
+                      <FormControl>
+                        <Input
+                          placeholder="Session name"
+                          className="h-9 text-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
 
-          <div className="pt-2 flex justify-end">
-            <Button type="submit" disabled={isPending} className="h-9">
+                <FormField
+                  control={form.control}
+                  name={`slots.${index}.windowStartMin`}
+                  render={({ field }) => (
+                    <FormItem className="col-span-5 sm:col-span-3">
+                      <FormControl>
+                        <Input
+                          type="time"
+                          className="h-9 text-sm"
+                          value={formatMinToTime(field.value)}
+                          onChange={(e) =>
+                            field.onChange(parseTimeToMin(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name={`slots.${index}.windowEndMin`}
+                  render={({ field }) => (
+                    <FormItem className="col-span-5 sm:col-span-3">
+                      <FormControl>
+                        <Input
+                          type="time"
+                          className="h-9 text-sm"
+                          value={formatMinToTime(field.value)}
+                          onChange={(e) =>
+                            field.onChange(parseTimeToMin(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="col-span-2 sm:col-span-1 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={() => remove(index)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {form.formState.errors.slots?.root?.message && (
+              <p className="text-sm font-medium text-destructive">
+                {form.formState.errors.slots.root.message}
+              </p>
+            )}
+          </div>
+
+          {/* Drawer Footer: Save Configuration button */}
+          <DrawerFooter className="border-t pt-3 px-0 flex flex-row items-center justify-end gap-2 shrink-0">
+            {onCancel && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={onCancel}
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isPending}
+              className="h-9 min-w-[140px]"
+            >
               {isPending ? "Saving..." : "Save Configuration"}
             </Button>
-          </div>
+          </DrawerFooter>
         </form>
       </Form>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { Play, Plus } from "lucide-react";
+import { Play, Plus, Search, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -157,19 +158,58 @@ function JudgesSection({
   isAddingJudge: boolean;
   addJudge: () => void;
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredJudges = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return judges;
+    return judges.filter((j) => j.name.toLowerCase().includes(q));
+  }, [judges, searchQuery]);
+
   return (
     <div className="space-y-2">
-      <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-        Judges ({selectedJudgeIds.length} selected)
-      </Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+          Judges ({selectedJudgeIds.length} selected)
+        </Label>
+        {searchQuery && (
+          <span className="text-[11px] text-muted-foreground">
+            {filteredJudges.length} match
+            {filteredJudges.length === 1 ? "" : "es"}
+          </span>
+        )}
+      </div>
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search judges..."
+          className="h-8 pl-8 pr-7 text-xs bg-background"
+        />
+        {searchQuery ? (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+      </div>
+
       <div className="grid max-h-[170px] gap-1.5 overflow-y-auto rounded-md border p-1.5 sm:max-h-[210px]">
-        {judges.map((j) => {
+        {filteredJudges.map((j) => {
           const selected = selectedJudgeIds.includes(j.id);
           return (
             <label
               key={j.id}
-              className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${
-                selected ? "border-purple/60 bg-purple/10" : "bg-background"
+              className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors sm:text-sm cursor-pointer ${
+                selected
+                  ? "border-purple/60 bg-purple/10"
+                  : "bg-background hover:bg-muted/40"
               }`}
             >
               <input
@@ -184,6 +224,10 @@ function JudgesSection({
         {judges.length === 0 ? (
           <p className="px-1 py-1 text-xs text-muted-foreground">
             No judges yet — add one below.
+          </p>
+        ) : filteredJudges.length === 0 ? (
+          <p className="px-1 py-2 text-xs text-center text-muted-foreground">
+            No judges found matching &quot;{searchQuery}&quot;.
           </p>
         ) : null}
       </div>

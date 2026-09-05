@@ -37,6 +37,17 @@ import {
   useState,
   useTransition,
 } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -75,6 +86,7 @@ import {
 import { cn } from "@/core/utils/cn";
 import {
   fetchStandingsAction,
+  publishAllResultsAction,
   publishGeneralStandings,
   publishResult,
   publishStandings,
@@ -549,6 +561,13 @@ export function ResultsConsoleClient({
     });
   }
 
+  const pendingPublishCount = useMemo(() => {
+    return programmes.filter(
+      (p) =>
+        p.status === "PENDING_PUBLICATION" && p.results && p.results.length > 0,
+    ).length;
+  }, [programmes]);
+
   function handlePublish(programmeId: string) {
     startTransition(async () => {
       const res = await publishResult(festivalId, programmeId);
@@ -559,6 +578,22 @@ export function ResultsConsoleClient({
       toast.success("Result published successfully.");
       setActiveProgramme(null);
       bumpOptimisticCount(1);
+      fetchStandings();
+      router.refresh();
+    });
+  }
+
+  function handlePublishAll() {
+    startTransition(async () => {
+      const res = await publishAllResultsAction(festivalId);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(
+        `Successfully published ${res.data?.publishedCount ?? "all"} results!`,
+      );
+      bumpOptimisticCount(res.data?.publishedCount ?? 1);
       fetchStandings();
       router.refresh();
     });
@@ -674,6 +709,56 @@ export function ResultsConsoleClient({
                   {statusCounts["ANNOUNCED"] ?? 0}
                 </span>
               </div>
+
+              {pendingPublishCount > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      className="h-8 px-2.5 text-xs font-medium shrink-0 bg-primary/10 text-primary border-primary/25 hover:bg-primary hover:text-primary-foreground transition-all gap-1.5 rounded-full"
+                    >
+                      <Megaphone className="h-3 w-3" />
+                      <span>Publish All</span>
+                      <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold">
+                        {pendingPublishCount}
+                      </span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Publish All Results?</AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-2 text-left">
+                        <span>
+                          Are you sure you want to publish{" "}
+                          <strong className="text-foreground">
+                            {pendingPublishCount}
+                          </strong>{" "}
+                          submitted programme result
+                          {pendingPublishCount > 1 ? "s" : ""}?
+                        </span>
+                        <span className="block text-xs text-amber-600 dark:text-amber-400 font-medium bg-amber-500/10 p-2.5 rounded-md border border-amber-500/20 mt-2">
+                          Warning: Publishing results makes scores and standings
+                          immediately visible to the public and on live
+                          leaderboards.
+                        </span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handlePublishAll}
+                        disabled={isPending}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        {isPending ? "Publishing..." : "Yes, Publish All"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           </div>
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getUiReportingStatus } from "./reporting-status";
 import type { ScanEntry } from "./ScanResponseFooter";
-import type { ReportingBoardItem, RosterTableRow } from "./types";
+import type { ReportingBoardItem, RosterTableRow, ScratchTile } from "./types";
 
 export type WizardStep = "checkout" | "scratch";
 
@@ -55,6 +55,23 @@ export interface ReportingSessionState {
   historyDetailOpenId: string | null;
   setHistoryDetailOpenId: (v: string | null) => void;
 
+  // client-side scratch state
+  scratchTilesBySession: Record<string, ScratchTile[]>;
+  setScratchTilesBySession: (
+    v:
+      | Record<string, ScratchTile[]>
+      | ((
+          prev: Record<string, ScratchTile[]>,
+        ) => Record<string, ScratchTile[]>),
+  ) => void;
+
+  localCheckoutCompletedBySession: Record<string, boolean>;
+  setLocalCheckoutCompletedBySession: (
+    v:
+      | Record<string, boolean>
+      | ((prev: Record<string, boolean>) => Record<string, boolean>),
+  ) => void;
+
   // timer drawer
   timerDrawerEntryId: string | null;
   setTimerDrawerEntryId: (v: string | null) => void;
@@ -95,6 +112,11 @@ export function useReportingSession({
   const [timerDrawerEntryId, setTimerDrawerEntryId] = useState<string | null>(
     null,
   );
+  const [scratchTilesBySession, setScratchTilesBySession] = useState<
+    Record<string, ScratchTile[]>
+  >({});
+  const [localCheckoutCompletedBySession, setLocalCheckoutCompletedBySession] =
+    useState<Record<string, boolean>>({});
 
   const selected = useMemo(
     () => board.find((item) => item.id === selectedEntryId) ?? null,
@@ -102,13 +124,20 @@ export function useReportingSession({
   );
 
   const session = selected?.reportingSession ?? null;
-  const checkoutCompletedAt = session?.checkoutCompletedAt ?? null;
+  const dbCheckoutCompletedAt = session?.checkoutCompletedAt ?? null;
+  const isLocalCheckoutCompleted = session
+    ? (localCheckoutCompletedBySession[session.id] ?? false)
+    : false;
 
   // Resume where the session actually is, so a refresh mid-draw doesn't drop
   // the stage manager back into checkout.
   useEffect(() => {
-    setWizardStep(checkoutCompletedAt ? "scratch" : "checkout");
-  }, [checkoutCompletedAt]);
+    setWizardStep(
+      dbCheckoutCompletedAt || isLocalCheckoutCompleted
+        ? "scratch"
+        : "checkout",
+    );
+  }, [dbCheckoutCompletedAt, isLocalCheckoutCompleted]);
 
   const sessionStatus = getUiReportingStatus(
     session?.status,
@@ -195,13 +224,20 @@ export function useReportingSession({
     setHistoryDetailOpenId,
     timerDrawerEntryId,
     setTimerDrawerEntryId,
+    scratchTilesBySession,
+    setScratchTilesBySession,
+    localCheckoutCompletedBySession,
+    setLocalCheckoutCompletedBySession,
     sessionStatus,
     isTimedOut,
     isReset,
     isPreStart,
     isInProgress,
     isClosed,
-    checkoutCompletedAt,
+    checkoutCompletedAt:
+      dbCheckoutCompletedAt || isLocalCheckoutCompleted
+        ? new Date().toISOString()
+        : null,
     closeDetail,
   };
 }

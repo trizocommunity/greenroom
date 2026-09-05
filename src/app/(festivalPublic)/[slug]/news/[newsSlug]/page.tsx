@@ -87,7 +87,11 @@ export default async function NewsDetailsPage({ params }: Props) {
 
         {post.imageUrl && (
           <div className="w-full aspect-video relative rounded-xl overflow-hidden mb-10">
-            <NewsImage src={post.imageUrl} title={post.title} accentColor={accentColor} />
+            <NewsImage
+              src={post.imageUrl}
+              title={post.title}
+              accentColor={accentColor}
+            />
           </div>
         )}
 
