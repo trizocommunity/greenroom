@@ -105,7 +105,7 @@ function buildProgrammeReportingSessionStageScope(
         .where(
           and(
             eq(reportingSessionTable.programmeId, programmeTableRef.id),
-            eq(reportingSessionTable.status, "CLOSED"),
+            inArray(reportingSessionTable.status, ["CLOSED", "COMPLETED"]),
             inArray(scheduleEntryTable.stageId, accessibleStageIds),
           ),
         ),
@@ -188,7 +188,10 @@ export async function getJudgementWizardDataAction(festivalId: string) {
                 .where(
                   and(
                     eq(reportingSessionTable.programmeId, programmeTable.id),
-                    eq(reportingSessionTable.status, "CLOSED"),
+                    inArray(reportingSessionTable.status, [
+                      "CLOSED",
+                      "COMPLETED",
+                    ]),
                   ),
                 ),
             ),
@@ -241,7 +244,7 @@ export async function getJudgementWizardDataAction(festivalId: string) {
           where: and(
             eq(reportingSessionTable.festivalId, festivalId),
             inArray(reportingSessionTable.programmeId, programmeIds),
-            eq(reportingSessionTable.status, "CLOSED"),
+            inArray(reportingSessionTable.status, ["CLOSED", "COMPLETED"]),
           ),
           orderBy: [desc(reportingSessionTable.endedAt)],
           with: {
@@ -1095,13 +1098,15 @@ export async function startJudgementAction(input: {
     await db.query.programmeReportingSession.findFirst({
       where: and(
         eq(reportingSessionTable.programmeId, input.programmeId),
-        eq(reportingSessionTable.status, "CLOSED"),
+        inArray(reportingSessionTable.status, ["CLOSED", "COMPLETED"]),
       ),
       orderBy: [desc(reportingSessionTable.endedAt)],
       columns: { id: true, stageId: true },
     });
   if (!latestClosedReportingSession) {
-    throw new AppError("No closed reporting session found for this programme.");
+    throw new AppError(
+      "No closed or completed reporting session found for this programme.",
+    );
   }
 
   const { stageId, autoAssigned } = await resolveStageIdForJudgement(
@@ -1372,7 +1377,12 @@ export type StagePortalLiveConfig = {
   configId: string;
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
-  programme: { id: string; name: string; type: "INDIVIDUAL" | "GROUP" };
+  programme: {
+    id: string;
+    name: string;
+    type: "INDIVIDUAL" | "GROUP";
+    categoryName?: string | null;
+  };
   judges: Array<{ id: string; name: string }>;
   codeLetters: Array<{ id: string; code: string; isAbsent: boolean }>;
   existingScores: Array<{
@@ -1390,7 +1400,10 @@ async function buildLivePayload(
   const config = await db.query.judgementConfig.findFirst({
     where: eq(judgementConfigTable.id, configId),
     with: {
-      programme: { columns: { id: true, name: true, type: true } },
+      programme: {
+        columns: { id: true, name: true, type: true },
+        with: { category: { columns: { name: true } } },
+      },
       judges: { with: { judge: { columns: { id: true, name: true } } } },
     },
   });
@@ -1432,7 +1445,12 @@ async function buildLivePayload(
     configId: config.id,
     scoreLimit: config.scoreLimit,
     judgingMode: (config.judgingMode ?? "GROUP") as "SINGLE" | "GROUP",
-    programme: config.programme,
+    programme: {
+      id: config.programme.id,
+      name: config.programme.name,
+      type: config.programme.type,
+      categoryName: config.programme.category?.name ?? null,
+    },
     judges: config.judges.map((j) => j.judge),
     codeLetters: codeLetters.map((c) => ({
       id: c.id,
@@ -1497,6 +1515,7 @@ export async function getStagePortalBoardAction(day?: string) {
   let programmes: Array<{
     programmeId: string;
     name: string;
+    categoryName: string | null;
     startTime: string;
     portalStatus: StagePortalPortalStatus;
   }>;
@@ -1510,7 +1529,10 @@ export async function getStagePortalBoardAction(day?: string) {
         ),
         columns: { programmeId: true, startedAt: true },
         with: {
-          programme: { columns: { id: true, name: true, status: true } },
+          programme: {
+            columns: { id: true, name: true, status: true },
+            with: { category: { columns: { name: true } } },
+          },
         },
       });
 
@@ -1538,6 +1560,7 @@ export async function getStagePortalBoardAction(day?: string) {
         return {
           programmeId: p.id,
           name: p.name,
+          categoryName: p.category?.name ?? null,
           startTime: s.startedAt ?? "",
           portalStatus,
         };
@@ -1550,7 +1573,10 @@ export async function getStagePortalBoardAction(day?: string) {
       ),
       columns: { programmeId: true, startTime: true },
       with: {
-        programme: { columns: { id: true, name: true, status: true } },
+        programme: {
+          columns: { id: true, name: true, status: true },
+          with: { category: { columns: { name: true } } },
+        },
       },
       orderBy: [asc(scheduleEntryTable.startTime)],
     });
@@ -1577,6 +1603,7 @@ export async function getStagePortalBoardAction(day?: string) {
         return {
           programmeId: p.id,
           name: p.name,
+          categoryName: p.category?.name ?? null,
           startTime: e.startTime,
           portalStatus,
         };

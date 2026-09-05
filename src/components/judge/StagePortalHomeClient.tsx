@@ -61,14 +61,20 @@ function LiveCard({
 
   return (
     <section className="rounded-2xl border border-primary/30 bg-primary/[0.05] p-5">
-      <StatusPill tone="ready" pulse>
-        Live now
-      </StatusPill>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <StatusPill tone="ready" pulse>
+          Live now
+        </StatusPill>
+        {live.programme.categoryName && (
+          <StatusPill tone="muted">{live.programme.categoryName}</StatusPill>
+        )}
+      </div>
 
       <h2 className="mt-4 text-xl font-semibold tracking-tight text-heading sm:text-2xl">
         {live.programme.name}
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
+        {live.programme.categoryName ? `${live.programme.categoryName} · ` : ""}
         {live.codeLetters.length} code letter
         {live.codeLetters.length === 1 ? "" : "s"} ·{" "}
         {live.judgingMode === "GROUP" ? "Group panel" : "Separate judges"}
@@ -281,9 +287,16 @@ export function StagePortalHomeClient() {
                           {timeLabel(p.startTime)}
                         </span>
                       )}
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">
-                        {p.name}
-                      </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-heading">
+                          {p.name}
+                        </span>
+                        {p.categoryName && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {p.categoryName}
+                          </span>
+                        )}
+                      </div>
                       <StatusPill tone={meta.tone} className="shrink-0">
                         {meta.label}
                       </StatusPill>

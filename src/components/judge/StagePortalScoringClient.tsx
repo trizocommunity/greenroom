@@ -72,7 +72,12 @@ export type StagePortalLivePayload = {
   configId: string;
   scoreLimit: number;
   judgingMode: "SINGLE" | "GROUP";
-  programme: { id: string; name: string; type: "INDIVIDUAL" | "GROUP" };
+  programme: {
+    id: string;
+    name: string;
+    type: "INDIVIDUAL" | "GROUP";
+    categoryName?: string | null;
+  };
   judges: Array<{ id: string; name: string }>;
   codeLetters: Array<{ id: string; code: string; isAbsent: boolean }>;
   existingScores: Array<{
@@ -147,6 +152,7 @@ function ScoreField({
   max,
   invalid,
   compact,
+  placeholder,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -154,6 +160,7 @@ function ScoreField({
   max: number;
   invalid?: boolean;
   compact?: boolean;
+  placeholder?: string;
 }) {
   return (
     <Input
@@ -163,6 +170,7 @@ function ScoreField({
       max={max}
       step={0.5}
       value={value}
+      placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-invalid={invalid}
@@ -182,11 +190,13 @@ function ScoreField({
 function SubmissionSummaryView({
   stageName,
   programmeName,
+  categoryName,
   variant,
   onContinue,
 }: {
   stageName: string;
   programmeName: string;
+  categoryName?: string | null;
   variant: "complete" | "partial";
   onContinue: () => void;
 }) {
@@ -200,6 +210,7 @@ function SubmissionSummaryView({
 
       <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {stageName}
+        {categoryName && ` · ${categoryName}`}
       </p>
       <h1 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-heading">
         {programmeName}
@@ -225,6 +236,7 @@ function SubmissionSummaryView({
 function SubmissionReviewView({
   stageName,
   programmeName,
+  categoryName,
   judgingMode,
   judges,
   codeLetters,
@@ -239,6 +251,7 @@ function SubmissionReviewView({
 }: {
   stageName: string;
   programmeName: string;
+  categoryName?: string | null;
   judgingMode: "SINGLE" | "GROUP";
   judges: Array<{ id: string; name: string }>;
   codeLetters: Array<{ id: string; code: string }>;
@@ -263,12 +276,14 @@ function SubmissionReviewView({
     <div className="pb-28">
       <header className="border-b border-border pb-5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          {stageName} · Review
+          {stageName}
+          {categoryName && ` · ${categoryName}`} · Review
         </p>
         <h1 className="mt-1.5 text-balance text-xl font-semibold tracking-tight text-heading sm:text-2xl">
           {programmeName}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
+          {categoryName ? `${categoryName} · ` : ""}
           {judgingMode === "GROUP"
             ? "Full panel — every judge and code letter"
             : `Judge: ${judges[0]?.name ?? ""}`}
@@ -550,13 +565,26 @@ export function StagePortalScoringClient({
       new Set(payload.codeLetters.filter((c) => c.isAbsent).map((c) => c.id)),
   );
 
+  // Code letters sorted A-Z by their code value so the judge sees them in
+  // alphabetical order regardless of the order they were issued.
+  const sortedCodeLetters = useMemo(
+    () =>
+      [...payload.codeLetters].sort((a, b) =>
+        a.code.localeCompare(b.code, undefined, { sensitivity: "base" }),
+      ),
+    [payload.codeLetters],
+  );
+
   // Absent code letters (reported but did not perform) are excluded from every
   // "all filled" / completion / progress check; they still render so a judge
   // can toggle them back.
   const activeCodeLetters = useMemo(
-    () => payload.codeLetters.filter((c) => !absentIds.has(c.id)),
-    [payload.codeLetters, absentIds],
+    () => sortedCodeLetters.filter((c) => !absentIds.has(c.id)),
+    [sortedCodeLetters, absentIds],
   );
+
+  // Placeholder text for every score field e.g. "0–100"
+  const scorePlaceholder = `0–${payload.scoreLimit}`;
 
   const onToggleAbsent = (codeLetterId: string, nextAbsent: boolean) => {
     setAbsentIds((prev) => {
@@ -876,6 +904,7 @@ export function StagePortalScoringClient({
       <SubmissionReviewView
         stageName={stageName}
         programmeName={payload.programme.name}
+        categoryName={payload.programme.categoryName}
         judgingMode={payload.judgingMode}
         judges={reviewJudges}
         codeLetters={activeCodeLetters}
@@ -900,6 +929,7 @@ export function StagePortalScoringClient({
       <SubmissionSummaryView
         stageName={stageName}
         programmeName={payload.programme.name}
+        categoryName={payload.programme.categoryName}
         variant={summaryVariant}
         onContinue={onDone}
       />
@@ -923,6 +953,8 @@ export function StagePortalScoringClient({
           <div className="min-w-0">
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               {stageName}
+              {payload.programme.categoryName &&
+                ` · ${payload.programme.categoryName}`}
             </p>
             <h1 className="mt-0.5 truncate text-lg font-semibold tracking-tight text-heading sm:text-xl">
               {payload.programme.name}
@@ -936,6 +968,11 @@ export function StagePortalScoringClient({
         <Progress value={progressPct} className="mt-2.5 h-1.5" />
 
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {payload.programme.categoryName && (
+            <StatusPill tone="muted">
+              {payload.programme.categoryName}
+            </StatusPill>
+          )}
           <StatusPill tone="ready" icon={ModeIcon}>
             {modeLabel}
           </StatusPill>
@@ -1036,7 +1073,7 @@ export function StagePortalScoringClient({
           /* Two columns from tablet up — one code letter per row wasted most
              of the width on an iPad, which is what judges actually hold. */
           <div className="grid gap-2.5 md:grid-cols-2">
-            {payload.codeLetters.map((c) => {
+            {sortedCodeLetters.map((c) => {
               const isAbsent = absentIds.has(c.id);
               const effectiveJudgeId =
                 payload.judges.length === 1
@@ -1100,6 +1137,7 @@ export function StagePortalScoringClient({
                     <div className="flex w-24 shrink-0 flex-col items-stretch gap-1">
                       <ScoreField
                         value={fieldKey ? (scoresByKey[fieldKey] ?? "") : ""}
+                        placeholder={scorePlaceholder}
                         onChange={(v) => {
                           if (!effectiveJudgeId) return;
                           onScoreFieldChange(
@@ -1129,7 +1167,7 @@ export function StagePortalScoringClient({
           </div>
         ) : (
           <div className="space-y-3">
-            {payload.codeLetters.map((c) => {
+            {sortedCodeLetters.map((c) => {
               const isAbsent = absentIds.has(c.id);
               return (
                 <div
@@ -1183,6 +1221,7 @@ export function StagePortalScoringClient({
                             <ScoreField
                               compact
                               value={scoresByKey[key] ?? ""}
+                              placeholder={scorePlaceholder}
                               onChange={(v) =>
                                 onScoreFieldChange(key, v, payload.scoreLimit)
                               }
