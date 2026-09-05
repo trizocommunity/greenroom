@@ -96,20 +96,54 @@ export type ParticipantLimitCounts = {
   allCount: number;
 };
 
+export type ParticipantProgrammeItem = {
+  programmeId: string;
+  stageType: string;
+  categoryId: string;
+};
+
+/**
+ * Compute counts from a list of assignments, optionally filtered to a specific category.
+ */
+export function computeCountsFromAssignments(
+  participantId: string,
+  assignments: ParticipantProgrammeItem[],
+  targetCategoryId?: string,
+): ParticipantLimitCounts {
+  const filtered = targetCategoryId
+    ? assignments.filter((a) => a.categoryId === targetCategoryId)
+    : assignments;
+
+  const stageCount = filtered.filter((a) => a.stageType === "STAGE").length;
+  const nonStageCount = filtered.filter(
+    (a) => a.stageType === "NON_STAGE",
+  ).length;
+
+  return {
+    participantId,
+    stageCount,
+    nonStageCount,
+    allCount: filtered.length,
+  };
+}
+
 /**
  * Count how many programmes a participant is currently assigned to,
  * broken down by stageType. Excludes CANCELLED programmes.
+ * If targetCategoryId is provided, counts only programmes belonging to that category.
  * Counts both INDIVIDUAL direct assignments and GROUP member assignments.
  */
 export async function getParticipantAssignmentCounts(
   participantId: string,
   festivalId: string,
+  targetCategoryId?: string,
 ): Promise<ParticipantLimitCounts> {
   // INDIVIDUAL assignments where participant is directly assigned
   const individualRows = await db
     .select({
       programmeId: programmeAssignment.programmeId,
       stageType: programmeTable.stageType,
+      categoryId: programmeTable.categoryId,
     })
     .from(programmeAssignment)
     .innerJoin(
@@ -130,6 +164,7 @@ export async function getParticipantAssignmentCounts(
     .select({
       programmeId: programmeAssignment.programmeId,
       stageType: programmeTable.stageType,
+      categoryId: programmeTable.categoryId,
     })
     .from(programmeAssignmentMember)
     .innerJoin(
@@ -159,27 +194,21 @@ export async function getParticipantAssignmentCounts(
   }
 
   const uniqueRows = Array.from(uniqueProgrammes.values());
-
-  const stageCount = uniqueRows.filter((r) => r.stageType === "STAGE").length;
-  const nonStageCount = uniqueRows.filter(
-    (r) => r.stageType === "NON_STAGE",
-  ).length;
-
-  return {
+  return computeCountsFromAssignments(
     participantId,
-    stageCount,
-    nonStageCount,
-    allCount: uniqueRows.length,
-  };
+    uniqueRows,
+    targetCategoryId,
+  );
 }
 
 /**
- * Batch: get counts for multiple participants in one query set.
+ * Batch: get all programme assignments for multiple participants in one query set.
+ * Returns a Map of participantId -> ParticipantProgrammeItem[] (deduplicated by programmeId).
  */
-export async function batchGetParticipantAssignmentCounts(
+export async function batchGetParticipantProgrammeAssignments(
   participantIds: string[],
   festivalId: string,
-): Promise<Map<string, ParticipantLimitCounts>> {
+): Promise<Map<string, ParticipantProgrammeItem[]>> {
   if (participantIds.length === 0) return new Map();
 
   // INDIVIDUAL
@@ -188,6 +217,7 @@ export async function batchGetParticipantAssignmentCounts(
       participantId: programmeAssignment.participantId,
       programmeId: programmeAssignment.programmeId,
       stageType: programmeTable.stageType,
+      categoryId: programmeTable.categoryId,
     })
     .from(programmeAssignment)
     .innerJoin(
@@ -209,6 +239,7 @@ export async function batchGetParticipantAssignmentCounts(
       participantId: programmeAssignmentMember.participantId,
       programmeId: programmeAssignment.programmeId,
       stageType: programmeTable.stageType,
+      categoryId: programmeTable.categoryId,
     })
     .from(programmeAssignmentMember)
     .innerJoin(
@@ -227,36 +258,33 @@ export async function batchGetParticipantAssignmentCounts(
       ),
     );
 
-  const result = new Map<string, ParticipantLimitCounts>();
-  // Store unique programme IDs per participant
-  const participantProgrammes = new Map<string, Set<string>>();
+  const result = new Map<string, ParticipantProgrammeItem[]>();
+  const seenProgrammes = new Map<string, Set<string>>();
 
   for (const id of participantIds) {
-    result.set(id, {
-      participantId: id,
-      stageCount: 0,
-      nonStageCount: 0,
-      allCount: 0,
-    });
-    participantProgrammes.set(id, new Set<string>());
+    result.set(id, []);
+    seenProgrammes.set(id, new Set<string>());
   }
 
   const processRow = (row: {
     participantId: string | null;
     programmeId: string;
     stageType: string;
+    categoryId: string;
   }) => {
     if (!row.participantId) return;
-    const entry = result.get(row.participantId);
-    const seen = participantProgrammes.get(row.participantId);
-    if (!entry || !seen) return;
+    const list = result.get(row.participantId);
+    const seen = seenProgrammes.get(row.participantId);
+    if (!list || !seen) return;
 
     if (seen.has(row.programmeId)) return;
     seen.add(row.programmeId);
 
-    entry.allCount++;
-    if (row.stageType === "STAGE") entry.stageCount++;
-    else if (row.stageType === "NON_STAGE") entry.nonStageCount++;
+    list.push({
+      programmeId: row.programmeId,
+      stageType: row.stageType,
+      categoryId: row.categoryId,
+    });
   };
 
   for (const row of individualRows) {
@@ -265,6 +293,94 @@ export async function batchGetParticipantAssignmentCounts(
 
   for (const row of memberRows) {
     processRow(row);
+  }
+
+  return result;
+}
+
+/**
+ * Get all participant IDs who are assigned to programmes in a specific category.
+ * Used to discover participants with assignments in GENERAL (or specific) categories.
+ */
+export async function getParticipantIdsForCategoryProgrammes(
+  categoryId: string,
+  festivalId: string,
+): Promise<string[]> {
+  const individualRows = await db
+    .select({
+      participantId: programmeAssignment.participantId,
+    })
+    .from(programmeAssignment)
+    .innerJoin(
+      programmeTable,
+      eq(programmeTable.id, programmeAssignment.programmeId),
+    )
+    .where(
+      and(
+        eq(programmeTable.categoryId, categoryId),
+        eq(programmeAssignment.festivalId, festivalId),
+        sql`${programmeTable.status} != 'CANCELLED'`,
+        sql`${programmeAssignment.participantId} IS NOT NULL`,
+      ),
+    );
+
+  const memberRows = await db
+    .select({
+      participantId: programmeAssignmentMember.participantId,
+    })
+    .from(programmeAssignmentMember)
+    .innerJoin(
+      programmeAssignment,
+      eq(programmeAssignment.id, programmeAssignmentMember.assignmentId),
+    )
+    .innerJoin(
+      programmeTable,
+      eq(programmeTable.id, programmeAssignment.programmeId),
+    )
+    .where(
+      and(
+        eq(programmeTable.categoryId, categoryId),
+        eq(programmeAssignmentMember.festivalId, festivalId),
+        sql`${programmeTable.status} != 'CANCELLED'`,
+      ),
+    );
+
+  const idSet = new Set<string>();
+  for (const r of individualRows) {
+    if (r.participantId) idSet.add(r.participantId);
+  }
+  for (const r of memberRows) {
+    if (r.participantId) idSet.add(r.participantId);
+  }
+
+  return Array.from(idSet);
+}
+
+/**
+ * Batch: get counts for multiple participants in one query set,
+ * optionally filtered to a specific category (or per-participant category map).
+ */
+export async function batchGetParticipantAssignmentCounts(
+  participantIds: string[],
+  festivalId: string,
+  targetCategory?: string | Map<string, string>,
+): Promise<Map<string, ParticipantLimitCounts>> {
+  if (participantIds.length === 0) return new Map();
+
+  const assignmentsMap = await batchGetParticipantProgrammeAssignments(
+    participantIds,
+    festivalId,
+  );
+
+  const result = new Map<string, ParticipantLimitCounts>();
+  for (const id of participantIds) {
+    const list = assignmentsMap.get(id) ?? [];
+    const catId =
+      typeof targetCategory === "string"
+        ? targetCategory
+        : targetCategory?.get(id);
+
+    result.set(id, computeCountsFromAssignments(id, list, catId));
   }
 
   return result;

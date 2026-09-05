@@ -317,9 +317,9 @@ export function ParticipantDetailsDialog({
                   limitStatus.maxNonStage !== null ||
                   limitStatus.maxAll !== null) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2">
                       <h4 className="text-sm font-semibold tracking-tight">
-                        Programme Limits
+                        Category Limits ({participant.category?.name ?? "Category"})
                       </h4>
                       {limitStatus?.isOverLimit && (
                         <Badge
@@ -385,6 +385,88 @@ export function ParticipantDetailsDialog({
                             {limitStatus?.allCount} /{" "}
                             {limitStatus?.maxAll ?? "∞"}
                             {limitStatus?.isOverAll && (
+                              <ShieldAlert className="h-3 w-3" />
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              {limitStatus?.generalStatus &&
+                (limitStatus.generalStatus.maxStage !== null ||
+                  limitStatus.generalStatus.maxNonStage !== null ||
+                  limitStatus.generalStatus.maxAll !== null) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold tracking-tight">
+                        General Programme Limits
+                      </h4>
+                      {limitStatus.generalStatus.isOverLimit && (
+                        <Badge
+                          variant="destructive"
+                          className="flex items-center gap-1"
+                        >
+                          <ShieldAlert className="h-3 w-3" />
+                          Limit Exceeded
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-2 border rounded-xl p-4 bg-muted/10">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Stage:</span>
+                          <span
+                            className={
+                              limitStatus.generalStatus.isOverStage
+                                ? "text-destructive font-medium flex items-center gap-1"
+                                : "font-medium"
+                            }
+                          >
+                            {limitStatus.generalStatus.stageCount} /{" "}
+                            {limitStatus.generalStatus.maxStage ?? "∞"}
+                            {limitStatus.generalStatus.isOverStage && (
+                              <ShieldAlert className="h-3 w-3" />
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">
+                            Non-Stage:
+                          </span>
+                          <span
+                            className={
+                              limitStatus.generalStatus.isOverNonStage
+                                ? "text-destructive font-medium flex items-center gap-1"
+                                : "font-medium"
+                            }
+                          >
+                            {limitStatus.generalStatus.nonStageCount} /{" "}
+                            {limitStatus.generalStatus.maxNonStage ?? "∞"}
+                            {limitStatus.generalStatus.isOverNonStage && (
+                              <ShieldAlert className="h-3 w-3" />
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">
+                            All Programmes:
+                          </span>
+                          <span
+                            className={
+                              limitStatus.generalStatus.isOverAll
+                                ? "text-destructive font-medium flex items-center gap-1"
+                                : "font-medium"
+                            }
+                          >
+                            {limitStatus.generalStatus.allCount} /{" "}
+                            {limitStatus.generalStatus.maxAll ?? "∞"}
+                            {limitStatus.generalStatus.isOverAll && (
                               <ShieldAlert className="h-3 w-3" />
                             )}
                           </span>

@@ -88,16 +88,23 @@ export function LimitationPolicyClient({
     mutationFn: async (
       updates: Array<{
         categoryId: string;
+        isActive: boolean;
         maxStage: number | null;
         maxNonStage: number | null;
         maxAll: number | null;
       }>,
     ) => {
-      // Execute all updates sequentially or in parallel
       await Promise.all(
-        updates.map((update) =>
-          upsertCategoryLimitAction(festivalId, update.categoryId, update),
-        ),
+        updates.map((update) => {
+          if (!update.isActive) {
+            return removeCategoryLimitAction(festivalId, update.categoryId);
+          }
+          return upsertCategoryLimitAction(festivalId, update.categoryId, {
+            maxStage: update.maxStage,
+            maxNonStage: update.maxNonStage,
+            maxAll: update.maxAll,
+          });
+        }),
       );
     },
     onSuccess: () => {
@@ -172,24 +179,37 @@ export function LimitationPolicyClient({
               <div className="flex w-full overflow-x-auto md:overflow-visible gap-4 pb-4 pt-1 px-1 snap-x snap-mandatory md:snap-none scroll-smooth max-w-[calc(100vw-2rem)] md:max-w-none md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:flex-none">
                 {categories.map((cat: any) => {
                   const limit = cat.limit;
-                  const hasLimits =
-                    limit &&
-                    (limit.maxStage !== null ||
-                      limit.maxNonStage !== null ||
-                      limit.maxAll !== null);
+                  const hasLimits = Boolean(limit);
                   const hasViolations = cat.violationCounts?.total > 0;
 
                   return (
                     <div
                       key={cat.id}
-                      className="snap-center shrink-0 w-[240px] md:w-auto md:shrink md:flex-none flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden"
+                      onClick={() => {
+                        if (hasViolations) setCategoryFilter(cat.name);
+                      }}
+                      className={`snap-center shrink-0 w-[240px] md:w-auto md:shrink md:flex-none flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden transition-all ${
+                        hasViolations
+                          ? "cursor-pointer hover:border-destructive/40 hover:shadow-md"
+                          : ""
+                      }`}
                     >
                       <div className="bg-muted/30 p-2 border-b flex flex-col justify-center min-h-[48px]">
-                        <div
-                          className="font-semibold text-[13px] truncate"
-                          title={cat.name}
-                        >
-                          {cat.name}
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div
+                            className="font-semibold text-[13px] truncate"
+                            title={cat.name}
+                          >
+                            {cat.name}
+                          </div>
+                          {cat.type === "GENERAL" && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[9px] px-1.5 py-0 h-4 shrink-0 font-normal bg-primary/10 text-primary border-0"
+                            >
+                              General
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-0.5">
                           {hasLimits ? "Limits configured" : "No limits set"}
@@ -596,6 +616,7 @@ function ManageLimitsDrawer({
   onSave: (
     data: Array<{
       categoryId: string;
+      isActive: boolean;
       maxStage: number | null;
       maxNonStage: number | null;
       maxAll: number | null;
@@ -621,14 +642,10 @@ function ManageLimitsDrawer({
     if (open && categories) {
       const initialState: Record<string, any> = {};
       categories.forEach((cat) => {
-        const hasLimits =
-          cat.limit &&
-          (cat.limit.maxStage !== null ||
-            cat.limit.maxNonStage !== null ||
-            cat.limit.maxAll !== null);
+        const hasLimits = Boolean(cat.limit);
 
         initialState[cat.id] = {
-          isActive: !!hasLimits,
+          isActive: hasLimits,
           maxStage: cat.limit?.maxStage?.toString() || "",
           maxNonStage: cat.limit?.maxNonStage?.toString() || "",
           maxAll: cat.limit?.maxAll?.toString() || "",
@@ -660,10 +677,10 @@ function ManageLimitsDrawer({
         [categoryId]: {
           ...prev[categoryId],
           isActive: !isCurrentlyActive,
-          // When turning ON for the first time, default values to "1"
-          maxStage: !isCurrentlyActive ? "1" : prev[categoryId].maxStage,
-          maxNonStage: !isCurrentlyActive ? "1" : prev[categoryId].maxNonStage,
-          maxAll: !isCurrentlyActive ? "1" : prev[categoryId].maxAll,
+          // When turning ON, default values to "" (infinite / unlimited)
+          maxStage: prev[categoryId]?.maxStage || "",
+          maxNonStage: prev[categoryId]?.maxNonStage || "",
+          maxAll: prev[categoryId]?.maxAll || "",
         },
       };
     });
@@ -673,9 +690,10 @@ function ManageLimitsDrawer({
     const updates = categories.map((cat) => {
       const state = limitsState[cat.id];
       if (!state || !state.isActive) {
-        // If inactive, send nulls to clear limits
+        // If inactive, send nulls to clear limits and remove row
         return {
           categoryId: cat.id,
+          isActive: false,
           maxStage: null,
           maxNonStage: null,
           maxAll: null,
@@ -683,6 +701,7 @@ function ManageLimitsDrawer({
       }
       return {
         categoryId: cat.id,
+        isActive: true,
         maxStage: state.maxStage ? parseInt(state.maxStage, 10) : null,
         maxNonStage: state.maxNonStage ? parseInt(state.maxNonStage, 10) : null,
         maxAll: state.maxAll ? parseInt(state.maxAll, 10) : null,
@@ -724,7 +743,17 @@ function ManageLimitsDrawer({
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h4 className="font-semibold text-sm">{cat.name}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-sm">{cat.name}</h4>
+                        {cat.type === "GENERAL" && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] px-1.5 py-0 h-4 font-normal bg-primary/10 text-primary border-0"
+                          >
+                            General
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {state.isActive
                           ? "Limits enforced"

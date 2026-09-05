@@ -202,7 +202,11 @@ export async function getAssignmentsAction(festivalId: string) {
     const pid = a.participant?.id ?? a.participantId;
     const warning =
       pid && limitWarnings ? (limitWarnings.get(pid) ?? null) : null;
-    return { ...a, limitWarning: warning };
+    let contextualWarning = warning;
+    if (a.programme?.category?.type === "GENERAL" && warning?.generalStatus) {
+      contextualWarning = warning.generalStatus;
+    }
+    return { ...a, limitWarning: contextualWarning };
   });
 
   if (actor.type === "user") return withWarnings;
