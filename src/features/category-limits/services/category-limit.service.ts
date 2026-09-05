@@ -11,7 +11,7 @@
  * PRO-tier only: callers must gate on isProTier() before exposing this to users.
  */
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   categoryProgrammeLimit,
@@ -21,11 +21,14 @@ import {
 import { AppError } from "@/core/errors/errors";
 import {
   batchGetParticipantAssignmentCounts,
+  batchGetParticipantProgrammeAssignments,
   type CategoryLimit,
+  computeCountsFromAssignments,
   deleteCategoryLimit,
   findAllLimitsByFestival,
   findLimitByCategoryId,
   getParticipantAssignmentCounts,
+  getParticipantIdsForCategoryProgrammes,
   type UpsertLimitInput,
   upsertCategoryLimit,
 } from "@/features/category-limits/repositories/category-limit.repository";
@@ -36,6 +39,7 @@ export type { CategoryLimit, UpsertLimitInput };
 export type ParticipantLimitStatus = {
   participantId: string;
   categoryId: string;
+  categoryName?: string;
   stageCount: number;
   nonStageCount: number;
   allCount: number;
@@ -46,6 +50,7 @@ export type ParticipantLimitStatus = {
   isOverNonStage: boolean;
   isOverAll: boolean;
   isOverLimit: boolean; // true if any dimension is exceeded
+  generalStatus?: ParticipantLimitStatus | null;
 };
 
 /** Full category row with its optional limit config + violation counts. */
@@ -94,11 +99,14 @@ export const CategoryLimitService = {
 
   /**
    * Compute the limit-warning status for a single participant.
-   * Returns null if the participant's category has no limits configured.
+   * If targetCategoryId is provided, checks against targetCategoryId limits.
+   * Otherwise checks against participant's primary category limit, and attaches
+   * generalStatus if festival has a GENERAL category with configured limits.
    */
   async computeParticipantLimitStatus(
     participantId: string,
     festivalId: string,
+    targetCategoryId?: string,
   ): Promise<ParticipantLimitStatus | null> {
     const participant = await db.query.participant.findFirst({
       where: eq(participantTable.id, participantId),
@@ -106,21 +114,78 @@ export const CategoryLimitService = {
     });
     if (!participant) return null;
 
-    const limit = await findLimitByCategoryId(participant.categoryId);
-    if (!limit) return null; // no limits configured for this category
+    const evalCategoryId = targetCategoryId ?? participant.categoryId;
+    const limit = await findLimitByCategoryId(evalCategoryId);
+
+    // Also check if festival has a GENERAL category with limits (for compound status)
+    let generalStatus: ParticipantLimitStatus | null = null;
+    if (!targetCategoryId) {
+      const generalCategories = await db.query.category.findMany({
+        where: and(
+          eq(categoryTable.festivalId, festivalId),
+          eq(categoryTable.type, "GENERAL"),
+        ),
+        columns: { id: true, name: true },
+      });
+      for (const gCat of generalCategories) {
+        const gLimit = await findLimitByCategoryId(gCat.id);
+        if (gLimit) {
+          const gCounts = await getParticipantAssignmentCounts(
+            participantId,
+            festivalId,
+            gCat.id,
+          );
+          generalStatus = buildLimitStatus(gCat.id, gLimit, gCounts, gCat.name);
+          break;
+        }
+      }
+    }
+
+    if (!limit) {
+      // If primary category has no limits, but general category does, return container with generalStatus
+      if (generalStatus) {
+        const primaryCounts = await getParticipantAssignmentCounts(
+          participantId,
+          festivalId,
+          evalCategoryId,
+        );
+        return {
+          participantId,
+          categoryId: evalCategoryId,
+          stageCount: primaryCounts.stageCount,
+          nonStageCount: primaryCounts.nonStageCount,
+          allCount: primaryCounts.allCount,
+          maxStage: null,
+          maxNonStage: null,
+          maxAll: null,
+          isOverStage: false,
+          isOverNonStage: false,
+          isOverAll: false,
+          isOverLimit: generalStatus.isOverLimit,
+          generalStatus,
+        };
+      }
+      return null;
+    }
 
     const counts = await getParticipantAssignmentCounts(
       participantId,
       festivalId,
+      evalCategoryId,
     );
 
-    return buildLimitStatus(participant.categoryId, limit, counts);
+    const status = buildLimitStatus(evalCategoryId, limit, counts);
+    if (generalStatus) {
+      status.generalStatus = generalStatus;
+      status.isOverLimit = status.isOverLimit || generalStatus.isOverLimit;
+    }
+    return status;
   },
 
   /**
    * Batch compute limit statuses for a list of participants.
-   * Returns a Map<participantId, LimitStatus | null>.
-   * Null means no limits configured for that participant's category.
+   * Scopes primary category checks to programmes matching the participant's category,
+   * and attaches any GENERAL category limit status.
    */
   async batchComputeLimitStatuses(
     participantIds: string[],
@@ -144,8 +209,33 @@ export const CategoryLimitService = {
       limitMap.set(cid, limits[i]);
     });
 
-    // Batch fetch assignment counts for all participants
-    const countMap = await batchGetParticipantAssignmentCounts(
+    // Check if any GENERAL category in festival has limits
+    const generalCategories = await db.query.category.findMany({
+      where: and(
+        eq(categoryTable.festivalId, festivalId),
+        eq(categoryTable.type, "GENERAL"),
+      ),
+      columns: { id: true, name: true },
+    });
+    let generalCatLimit: {
+      catId: string;
+      catName: string;
+      limit: CategoryLimit;
+    } | null = null;
+    for (const gCat of generalCategories) {
+      const gLimit = await findLimitByCategoryId(gCat.id);
+      if (gLimit) {
+        generalCatLimit = {
+          catId: gCat.id,
+          catName: gCat.name,
+          limit: gLimit,
+        };
+        break;
+      }
+    }
+
+    // Batch fetch all assignments for these participants
+    const assignmentsMap = await batchGetParticipantProgrammeAssignments(
       participantIds,
       festivalId,
     );
@@ -153,17 +243,62 @@ export const CategoryLimitService = {
     const result = new Map<string, ParticipantLimitStatus | null>();
     for (const p of participants) {
       const limit = limitMap.get(p.categoryId) ?? null;
+      const assignments = assignmentsMap.get(p.id) ?? [];
+
+      let generalStatus: ParticipantLimitStatus | null = null;
+      if (generalCatLimit) {
+        const gCounts = computeCountsFromAssignments(
+          p.id,
+          assignments,
+          generalCatLimit.catId,
+        );
+        generalStatus = buildLimitStatus(
+          generalCatLimit.catId,
+          generalCatLimit.limit,
+          gCounts,
+          generalCatLimit.catName,
+        );
+      }
+
       if (!limit) {
-        result.set(p.id, null);
+        if (generalStatus) {
+          const primaryCounts = computeCountsFromAssignments(
+            p.id,
+            assignments,
+            p.categoryId,
+          );
+          result.set(p.id, {
+            participantId: p.id,
+            categoryId: p.categoryId,
+            stageCount: primaryCounts.stageCount,
+            nonStageCount: primaryCounts.nonStageCount,
+            allCount: primaryCounts.allCount,
+            maxStage: null,
+            maxNonStage: null,
+            maxAll: null,
+            isOverStage: false,
+            isOverNonStage: false,
+            isOverAll: false,
+            isOverLimit: generalStatus.isOverLimit,
+            generalStatus,
+          });
+        } else {
+          result.set(p.id, null);
+        }
         continue;
       }
-      const counts = countMap.get(p.id) ?? {
-        participantId: p.id,
-        stageCount: 0,
-        nonStageCount: 0,
-        allCount: 0,
-      };
-      result.set(p.id, buildLimitStatus(p.categoryId, limit, counts));
+
+      const counts = computeCountsFromAssignments(
+        p.id,
+        assignments,
+        p.categoryId,
+      );
+      const status = buildLimitStatus(p.categoryId, limit, counts);
+      if (generalStatus) {
+        status.generalStatus = generalStatus;
+        status.isOverLimit = status.isOverLimit || generalStatus.isOverLimit;
+      }
+      result.set(p.id, status);
     }
 
     // Participants not found in DB get null
@@ -177,6 +312,8 @@ export const CategoryLimitService = {
   /**
    * Returns all categories for the festival with their configured limits
    * and live violation counts.
+   * SINGLE categories count programmes belonging to that category for their participants.
+   * GENERAL categories count General programmes across all participating members.
    */
   async getLimitsWithViolationsForFestival(
     festivalId: string,
@@ -198,7 +335,7 @@ export const CategoryLimitService = {
       columns: { id: true, categoryId: true },
     });
 
-    // Group participants by category
+    // Group participants by primary category
     const participantsByCategory = new Map<string, string[]>();
     for (const p of participants) {
       const list = participantsByCategory.get(p.categoryId) ?? [];
@@ -210,24 +347,40 @@ export const CategoryLimitService = {
     const result: CategoryWithLimit[] = [];
     for (const cat of categories) {
       const limit = limitMap.get(cat.id) ?? null;
-      const catParticipantIds = participantsByCategory.get(cat.id) ?? [];
-
       const violationCounts = { stage: 0, nonStage: 0, all: 0, total: 0 };
 
-      if (limit && catParticipantIds.length > 0) {
-        const countMap = await batchGetParticipantAssignmentCounts(
-          catParticipantIds,
-          festivalId,
-        );
-        const participantsOver = new Set<string>();
-        for (const [pid, counts] of countMap.entries()) {
-          const status = buildLimitStatus(cat.id, limit, counts);
-          if (status.isOverStage) violationCounts.stage++;
-          if (status.isOverNonStage) violationCounts.nonStage++;
-          if (status.isOverAll) violationCounts.all++;
-          if (status.isOverLimit) participantsOver.add(pid);
+      if (limit) {
+        let catParticipantIds: string[] = [];
+        if (cat.type === "GENERAL") {
+          catParticipantIds = await getParticipantIdsForCategoryProgrammes(
+            cat.id,
+            festivalId,
+          );
+        } else {
+          catParticipantIds = participantsByCategory.get(cat.id) ?? [];
         }
-        violationCounts.total = participantsOver.size;
+
+        if (catParticipantIds.length > 0) {
+          const assignmentMap = await batchGetParticipantProgrammeAssignments(
+            catParticipantIds,
+            festivalId,
+          );
+          const participantsOver = new Set<string>();
+          for (const pid of catParticipantIds) {
+            const assignments = assignmentMap.get(pid) ?? [];
+            const counts = computeCountsFromAssignments(
+              pid,
+              assignments,
+              cat.id,
+            );
+            const status = buildLimitStatus(cat.id, limit, counts, cat.name);
+            if (status.isOverStage) violationCounts.stage++;
+            if (status.isOverNonStage) violationCounts.nonStage++;
+            if (status.isOverAll) violationCounts.all++;
+            if (status.isOverLimit) participantsOver.add(pid);
+          }
+          violationCounts.total = participantsOver.size;
+        }
       }
 
       result.push({
@@ -267,26 +420,60 @@ export const CategoryLimitService = {
     const limit = await findLimitByCategoryId(categoryId);
     if (!limit) return [];
 
-    const participants = await db.query.participant.findMany({
-      where: (p, { and, eq }) =>
-        and(eq(p.categoryId, categoryId), eq(p.festivalId, festivalId)),
-      columns: {
-        id: true,
-        name: true,
-        chestNumber: true,
-        groupId: true,
-        categoryId: true,
-        dateOfBirth: true,
-      },
-      with: {
-        group: { columns: { id: true, name: true, color: true } },
-        category: { columns: { id: true, name: true } },
-      },
+    const cat = await db.query.category.findFirst({
+      where: and(
+        eq(categoryTable.id, categoryId),
+        eq(categoryTable.festivalId, festivalId),
+      ),
+      columns: { id: true, name: true, type: true },
     });
+    if (!cat) return [];
+
+    let participants: any[] = [];
+    if (cat.type === "GENERAL") {
+      const participantIds = await getParticipantIdsForCategoryProgrammes(
+        categoryId,
+        festivalId,
+      );
+      if (participantIds.length === 0) return [];
+
+      participants = await db.query.participant.findMany({
+        where: (p, { inArray }) => inArray(p.id, participantIds),
+        columns: {
+          id: true,
+          name: true,
+          chestNumber: true,
+          groupId: true,
+          categoryId: true,
+          dateOfBirth: true,
+        },
+        with: {
+          group: { columns: { id: true, name: true, color: true } },
+          category: { columns: { id: true, name: true } },
+        },
+      });
+    } else {
+      participants = await db.query.participant.findMany({
+        where: (p, { and, eq }) =>
+          and(eq(p.categoryId, categoryId), eq(p.festivalId, festivalId)),
+        columns: {
+          id: true,
+          name: true,
+          chestNumber: true,
+          groupId: true,
+          categoryId: true,
+          dateOfBirth: true,
+        },
+        with: {
+          group: { columns: { id: true, name: true, color: true } },
+          category: { columns: { id: true, name: true } },
+        },
+      });
+    }
 
     if (participants.length === 0) return [];
 
-    const countMap = await batchGetParticipantAssignmentCounts(
+    const assignmentMap = await batchGetParticipantProgrammeAssignments(
       participants.map((p) => p.id),
       festivalId,
     );
@@ -306,13 +493,13 @@ export const CategoryLimitService = {
     }> = [];
 
     for (const p of participants) {
-      const counts = countMap.get(p.id) ?? {
-        participantId: p.id,
-        stageCount: 0,
-        nonStageCount: 0,
-        allCount: 0,
-      };
-      const status = buildLimitStatus(categoryId, limit, counts);
+      const assignments = assignmentMap.get(p.id) ?? [];
+      const counts = computeCountsFromAssignments(
+        p.id,
+        assignments,
+        categoryId,
+      );
+      const status = buildLimitStatus(categoryId, limit, counts, cat.name);
       if (status.isOverLimit) {
         violators.push({ participant: p, status });
       }
@@ -393,6 +580,7 @@ function buildLimitStatus(
     nonStageCount: number;
     allCount: number;
   },
+  categoryName?: string,
 ): ParticipantLimitStatus {
   const isOverStage =
     limit.maxStage !== null && counts.stageCount > limit.maxStage;
@@ -403,6 +591,7 @@ function buildLimitStatus(
   return {
     participantId: counts.participantId,
     categoryId,
+    categoryName,
     stageCount: counts.stageCount,
     nonStageCount: counts.nonStageCount,
     allCount: counts.allCount,
@@ -415,3 +604,4 @@ function buildLimitStatus(
     isOverLimit: isOverStage || isOverNonStage || isOverAll,
   };
 }
+

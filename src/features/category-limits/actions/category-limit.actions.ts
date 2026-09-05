@@ -98,6 +98,7 @@ export async function getAllViolatorsAction(festivalId: string) {
 export async function getParticipantLimitStatusAction(
   participantId: string,
   festivalId: string,
+  targetCategoryId?: string,
 ) {
   const session = await getSession();
   if (!session?.userId) throw new AppError("Unauthorized", "UNAUTHORIZED");
@@ -107,5 +108,7 @@ export async function getParticipantLimitStatusAction(
   return CategoryLimitService.computeParticipantLimitStatus(
     participantId,
     festivalId,
+    targetCategoryId,
   );
 }
+
