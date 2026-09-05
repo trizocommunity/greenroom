@@ -11,7 +11,8 @@ export type ReportingUiStatus =
   | "IN_PROGRESS"
   | "RESET"
   | "TIMED_OUT"
-  | "CLOSED";
+  | "CLOSED"
+  | "COMPLETED";
 
 /** User-facing labels: RESET = window stopped without submit; CLOSED = submit & codes issued. */
 export function reportingSessionStatusLabel(status: string): string {
@@ -21,6 +22,7 @@ export function reportingSessionStatusLabel(status: string): string {
     case "TIMED_OUT":
       return "Reporting ended";
     case "CLOSED":
+    case "COMPLETED":
       return "Reporting ended";
     case "IN_PROGRESS":
       return "In progress";

@@ -38,6 +38,7 @@ import {
   submitGroupJudgeScoresAction,
   submitJudgeScoresAction,
 } from "@/features/judgement/actions/judgement.actions";
+import { compareCodeLetters } from "@/features/programmes/services/scratch-code-plan";
 import { toast } from "@/lib/toast";
 
 function AbsentToggle({
@@ -293,75 +294,77 @@ function SubmissionReviewView({
       {/* Two columns from tablet up — a 10-code programme is a lot of
           scrolling on one narrow column. */}
       <div className="mt-5 grid gap-3 md:grid-cols-2">
-        {codeLetters.map((c) => {
-          const policy = policyByCode.get(c.id);
-          const rCount = remarkCount(c.id);
+        {[...codeLetters]
+          .sort((a, b) => compareCodeLetters(a.code, b.code))
+          .map((c) => {
+            const policy = policyByCode.get(c.id);
+            const rCount = remarkCount(c.id);
 
-          return (
-            <div
-              key={c.id}
-              className="flex flex-col gap-3 rounded-2xl border border-border p-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2">
-                  <span className="rounded-lg bg-muted px-2.5 py-1 font-mono text-base font-bold text-heading">
-                    {c.code}
+            return (
+              <div
+                key={c.id}
+                className="flex flex-col gap-3 rounded-2xl border border-border p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2">
+                    <span className="rounded-lg bg-muted px-2.5 py-1 font-mono text-base font-bold text-heading">
+                      {c.code}
+                    </span>
+                    {policy?.grade ? (
+                      <StatusPill tone="live">{policy.grade}</StatusPill>
+                    ) : (
+                      <StatusPill tone="muted">No grade</StatusPill>
+                    )}
                   </span>
-                  {policy?.grade ? (
-                    <StatusPill tone="live">{policy.grade}</StatusPill>
-                  ) : (
-                    <StatusPill tone="muted">No grade</StatusPill>
-                  )}
-                </span>
 
-                <div className="flex items-center gap-3 text-right">
-                  <div>
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Average
-                    </p>
-                    <p className="text-sm font-bold tabular-nums text-primary">
-                      {policy?.points ?? "—"}
-                    </p>
+                  <div className="flex items-center gap-3 text-right">
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Average
+                      </p>
+                      <p className="text-sm font-bold tabular-nums text-primary">
+                        {policy?.points ?? "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {judges.map((j) => (
-                  <span
-                    key={j.id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs"
-                  >
-                    {judges.length > 1 && (
-                      <span className="text-muted-foreground">{j.name}</span>
-                    )}
-                    <span className="font-semibold tabular-nums text-heading">
-                      {scoresByKey[`${j.id}:${c.id}`] ?? "—"}
+                <div className="flex flex-wrap gap-1.5">
+                  {judges.map((j) => (
+                    <span
+                      key={j.id}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs"
+                    >
+                      {judges.length > 1 && (
+                        <span className="text-muted-foreground">{j.name}</span>
+                      )}
+                      <span className="font-semibold tabular-nums text-heading">
+                        {scoresByKey[`${j.id}:${c.id}`] ?? "—"}
+                      </span>
                     </span>
-                  </span>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              <button
-                type="button"
-                onClick={() => setRemarkCodeId(c.id)}
-                className="mt-auto flex w-full items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50"
-              >
-                {rCount > 0 ? (
-                  <MessageSquare className="h-3.5 w-3.5 text-primary" />
-                ) : (
-                  <MessageSquarePlus className="h-3.5 w-3.5" />
-                )}
-                <span className="flex-1">
-                  {rCount > 0
-                    ? `${rCount} remark${rCount === 1 ? "" : "s"}`
-                    : "Add remarks (optional)"}
-                </span>
-                <span className="font-medium text-primary">Edit</span>
-              </button>
-            </div>
-          );
-        })}
+                <button
+                  type="button"
+                  onClick={() => setRemarkCodeId(c.id)}
+                  className="mt-auto flex w-full items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50"
+                >
+                  {rCount > 0 ? (
+                    <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <MessageSquarePlus className="h-3.5 w-3.5" />
+                  )}
+                  <span className="flex-1">
+                    {rCount > 0
+                      ? `${rCount} remark${rCount === 1 ? "" : "s"}`
+                      : "Add remarks (optional)"}
+                  </span>
+                  <span className="font-medium text-primary">Edit</span>
+                </button>
+              </div>
+            );
+          })}
       </div>
 
       <div className="mt-10 overflow-hidden rounded-xl border border-border bg-card">
@@ -389,7 +392,7 @@ function SubmissionReviewView({
           </TableHeader>
           <TableBody>
             {[...codeLetters]
-              .sort((a, b) => a.code.localeCompare(b.code))
+              .sort((a, b) => compareCodeLetters(a.code, b.code))
               .map((c) => {
                 const policy = policyByCode.get(c.id);
 
@@ -566,11 +569,11 @@ export function StagePortalScoringClient({
   );
 
   // Code letters sorted A-Z by their code value so the judge sees them in
-  // alphabetical order regardless of the order they were issued.
+  // natural alphabetical order (A..Z, then AA..ZZ) regardless of the order they were issued.
   const sortedCodeLetters = useMemo(
     () =>
       [...payload.codeLetters].sort((a, b) =>
-        a.code.localeCompare(b.code, undefined, { sensitivity: "base" }),
+        compareCodeLetters(a.code, b.code),
       ),
     [payload.codeLetters],
   );

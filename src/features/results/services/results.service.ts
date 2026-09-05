@@ -36,7 +36,7 @@ export async function enrichProgrammesAssignmentsResultCodeLetters<
     .where(
       and(
         inArray(reportingSessionTable.programmeId, programmeIds),
-        eq(reportingSessionTable.status, "CLOSED"),
+        inArray(reportingSessionTable.status, ["CLOSED", "COMPLETED"]),
       ),
     )
     .orderBy(desc(reportingSessionTable.endedAt));

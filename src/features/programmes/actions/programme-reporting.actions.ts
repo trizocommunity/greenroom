@@ -172,6 +172,40 @@ export async function markProgrammeAssignmentsBulkAction(
   return { success: true };
 }
 
+export async function submitClientSideReportingAction(
+  festivalId: string,
+  reportingSessionId: string,
+  tiles: {
+    code: string;
+    queuePosition: number;
+    participantId: string | null;
+    groupId: string | null;
+    teamNumber: number | null;
+    participantIds: string[];
+  }[],
+) {
+  const stageId = await getStageIdForReportingSession(reportingSessionId);
+  const actorName = await assertStageManagerAccessForStage(festivalId, stageId);
+
+  // This single call will save the tiles and optionally complete/close the session
+  await ProgrammeReportingService.submitClientTiles(reportingSessionId, actorName, tiles);
+
+  await createAuditLog({
+    action: "ISSUE_CODE_LETTER",
+    targetType: "REPORTING_SESSION",
+    targetId: reportingSessionId,
+    metadata: {
+      festivalId,
+      count: tiles.length,
+      revealedAll: true,
+      programmeId: await getProgrammeIdForReportingSession(reportingSessionId),
+    },
+  }).catch((err) => console.error("[AuditLog] ISSUE_CODE_LETTER failed", err));
+
+  await revalidateProgrammeReporting(festivalId, "reporting");
+  return { success: true };
+}
+
 export async function closeProgrammeReportingAction(
   festivalId: string,
   reportingSessionId: string,
@@ -317,7 +351,7 @@ export async function getParticipantOngoingProgrammesAction(
   const sessions = await db.query.programmeReportingSession.findMany({
     where: and(
       inArray(prsTable.programmeId, programmeIds),
-      inArray(prsTable.status, ["IN_PROGRESS", "CLOSED"]),
+      inArray(prsTable.status, ["IN_PROGRESS", "CLOSED", "COMPLETED"]),
     ),
     with: {
       programme: { columns: { id: true, name: true, status: true } },

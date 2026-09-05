@@ -66,6 +66,10 @@ export type ScratchTile = {
   /** GROUP-only: the appointed lead for this team, when there is one. */
   teamLeadName?: string | null;
   participantIds: string[];
+  // Original unit identifiers for submission
+  participantId?: string | null;
+  groupId?: string | null;
+  teamNumber?: number | null;
 };
 
 export type AssignmentWithReported = ProgrammeReportingAssignmentRow & {

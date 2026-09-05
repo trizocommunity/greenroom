@@ -52,7 +52,6 @@ export function ProgrammeReportingClient({
     initialStageId,
   });
   const session = useReportingSession({ board });
-  const actions = useReportingActions({ festivalId, session });
 
   const derived = useReportingBoard({
     festivalId,
@@ -60,6 +59,7 @@ export function ProgrammeReportingClient({
     assignments,
     selected: session.selected,
     optimisticReportedBySession: session.optimisticReportedBySession,
+    scratchTilesBySession: session.scratchTilesBySession,
     mounted,
     filterArgs: {
       filterStatus: filters.filterStatus,
@@ -71,6 +71,12 @@ export function ProgrammeReportingClient({
       searchQuery: filters.searchQuery,
       mounted,
     },
+  });
+
+  const actions = useReportingActions({
+    festivalId,
+    session,
+    derived,
   });
 
   // If the currently-selected entry falls out of the filtered view (e.g. the
@@ -116,7 +122,7 @@ export function ProgrammeReportingClient({
       mounted,
     );
 
-    if (["CLOSED", "TIMED_OUT"].includes(uiStatus)) {
+    if (["CLOSED", "TIMED_OUT", "COMPLETED"].includes(uiStatus)) {
       session.setTimerDrawerEntryId(id);
       return;
     }

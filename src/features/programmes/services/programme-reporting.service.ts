@@ -129,7 +129,7 @@ export const ProgrammeReportingService = {
       await db.query.programmeReportingSession.findFirst({
         where: and(
           eq(prsTable.programmeId, programmeId),
-          eq(prsTable.status, "CLOSED"),
+          inArray(prsTable.status, ["CLOSED", "COMPLETED"]),
         ),
         orderBy: [desc(prsTable.endedAt)],
         columns: { id: true },
@@ -310,8 +310,7 @@ export const ProgrammeReportingService = {
           scheduleEntry,
           reportingSession: sessionPayload,
         };
-      })
-      .filter((item) => item.reportingSession?.status !== "COMPLETED");
+      });
 
     if (accessibleStageIds === "all") {
       return items.sort((a, b) => {
@@ -658,7 +657,10 @@ export const ProgrammeReportingService = {
     });
     if (!dbSession) return;
 
-    if (dbSession.status === "CLOSED" && dbSession.isLocked) {
+    if (
+      (dbSession.status === "CLOSED" || dbSession.status === "COMPLETED") &&
+      dbSession.isLocked
+    ) {
       await this.reopenClosedSession(dbSession.id, "Schedule update", {
         keepProgrammeInResetStatus: false,
       });
@@ -743,6 +745,37 @@ export const ProgrammeReportingService = {
       estimatedEnd,
       estimatedRemainingMinutes,
     };
+  },
+
+  async submitClientTiles(
+    reportingSessionId: string,
+    actorName: string,
+    tiles: Array<{
+      code: string;
+      queuePosition: number;
+      participantId: string | null;
+      groupId: string | null;
+      teamNumber: number | null;
+    }>,
+  ) {
+    const session =
+      await ReportingSessionRepository.loadById(reportingSessionId);
+
+    if (!session.checkoutCompletedAt) {
+      session.completeCheckout(actorName, tiles);
+    }
+    
+    session.close(actorName);
+    
+    const events = await ReportingSessionRepository.save(session);
+    await ReportingEventAdapter.dispatch(events);
+
+    await db
+      .update(codeLetterTable)
+      .set({ revealedAt: serverNowIso(), revealedBy: actorName })
+      .where(eq(codeLetterTable.reportingSessionId, reportingSessionId));
+
+    return { success: true };
   },
 
   /**

@@ -13,6 +13,7 @@ import {
   revealAllRemainingAction,
   revealScratchCodeAction,
   startProgrammeReportingAction,
+  submitClientSideReportingAction,
 } from "@/features/programmes/actions/programme-reporting.actions";
 import { toast } from "@/lib/toast";
 import type { ReportingBoardItem, RosterTableRow } from "./types";
@@ -28,10 +29,13 @@ export type ReportingActiveAction =
   | "complete-checkout"
   | "reveal-all";
 
+import type { useReportingBoard } from "./useReportingBoard";
+
 export interface UseReportingActionsArgs {
   festivalId: string;
   festivalSlug?: string;
   session: ReportingSessionState;
+  derived: ReturnType<typeof useReportingBoard>;
 }
 
 export interface ReportingActions {
@@ -63,6 +67,7 @@ export interface ReportingActions {
 export function useReportingActions({
   festivalId,
   session,
+  derived,
 }: UseReportingActionsArgs): ReportingActions {
   const router = useRouter();
   const pathname = usePathname();
@@ -147,87 +152,82 @@ export function useReportingActions({
   const onCompleteCheckout = () => {
     const sid = session.selected?.reportingSession?.id;
     if (!sid) return;
-    setActiveAction("complete-checkout");
-    startTransition(async () => {
-      try {
-        const res = await completeCheckoutAction(festivalId, sid);
-        if (res.success) {
-          toast.success(
-            `Checkout complete — ${res.data.tileCount} code letter${
-              res.data.tileCount === 1 ? "" : "s"
-            } ready to draw.`,
-          );
-          session.setWizardStep("scratch");
-          refreshBoard();
-        } else {
-          toast.error("Failed to complete checkout");
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to complete checkout",
-        );
-      } finally {
-        setActiveAction(null);
-      }
+
+    const reportedRows = derived.rosterTableRows.filter((r: any) => r.isReported);
+    if (reportedRows.length === 0) {
+      toast.error("No participants reported present.");
+      return;
+    }
+
+    const letters = Array.from({ length: reportedRows.length }, (_, i) => {
+       let n = i + 1;
+       let s = "";
+       while (n > 0) {
+         const rem = (n - 1) % 26;
+         s = String.fromCharCode(65 + rem) + s;
+         n = Math.floor((n - 1) / 26);
+       }
+       return s;
     });
+
+    for (let i = letters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [letters[i], letters[j]] = [letters[j]!, letters[i]!];
+    }
+
+    const newTiles = reportedRows.map((row: any, idx: number) => ({
+      codeLetterId: `local-tile-${idx}`,
+      queuePosition: idx + 1,
+      code: letters[idx]!,
+      revealedAt: null,
+      label: row.nameColumn,
+      subLabel: row.groupName ?? null,
+      teamLeadName: row.mode === "team" ? (row.teamLeadName ?? null) : null,
+      participantIds: row.mode === "team" ? row.teamParticipantIds : row.participantId ? [row.participantId] : [],
+      participantId: row.mode === "individual" ? row.participantId : null,
+      groupId: row.mode === "team" ? row.groupId : null,
+      teamNumber: row.mode === "team" ? row.teamNumber : null,
+    }));
+
+    session.setScratchTilesBySession(prev => ({ ...prev, [sid]: newTiles }));
+    session.setLocalCheckoutCompletedBySession(prev => ({ ...prev, [sid]: true }));
+    toast.success(
+      `Checkout complete — ${newTiles.length} code letter${
+        newTiles.length === 1 ? "" : "s"
+      } ready to draw.`,
+    );
   };
 
   const onScratchTile = (codeLetterId: string) => {
     const sid = session.selected?.reportingSession?.id;
     if (!sid) return;
-    session.setIsRevealing(true);
-    startTransition(async () => {
-      try {
-        const res = await revealScratchCodeAction(
-          festivalId,
-          sid,
-          codeLetterId,
-        );
-        if (res.success) {
-          triggerConfetti([20, 30], [0.6, 1]);
-          toast.success(`Code ${res.data.code}`);
-          refreshBoard();
-        } else {
-          toast.error("Failed to reveal code");
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to reveal code",
-        );
-      } finally {
-        session.setIsRevealing(false);
-      }
+
+    session.setScratchTilesBySession(prev => {
+      const currentTiles = prev[sid] || [];
+      const tileIndex = currentTiles.findIndex(t => t.codeLetterId === codeLetterId);
+      if (tileIndex === -1) return prev;
+      if (currentTiles[tileIndex]!.revealedAt) return prev; // Already revealed
+
+      const newTiles = [...currentTiles];
+      newTiles[tileIndex] = {
+        ...newTiles[tileIndex]!,
+        revealedAt: new Date().toISOString(),
+      };
+      return { ...prev, [sid]: newTiles };
     });
+    triggerConfetti([50, 80], [1.2, 1.8]);
   };
 
   const onRevealAllRemaining = () => {
     const sid = session.selected?.reportingSession?.id;
     if (!sid) return;
-    setActiveAction("reveal-all");
-    startTransition(async () => {
-      try {
-        const res = await revealAllRemainingAction(festivalId, sid);
-        if (res.success) {
-          toast.success(
-            `Revealed ${res.data.revealedCount} remaining code letter${
-              res.data.revealedCount === 1 ? "" : "s"
-            }.`,
-          );
-          refreshBoard();
-        } else {
-          toast.error("Failed to reveal remaining codes");
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to reveal remaining codes",
-        );
-      } finally {
-        setActiveAction(null);
-      }
+
+    session.setScratchTilesBySession(prev => {
+      const currentTiles = prev[sid] || [];
+      const newTiles = currentTiles.map(t => 
+        t.revealedAt ? t : { ...t, revealedAt: new Date().toISOString() }
+      );
+      return { ...prev, [sid]: newTiles };
     });
   };
 
@@ -235,10 +235,21 @@ export function useReportingActions({
     const sid = session.selected?.reportingSession?.id;
     const programmeType = session.selected?.programme?.type;
     if (!sid) return;
+
+    const tiles = session.scratchTilesBySession[sid] || [];
+    const submissionTiles = tiles.map(t => ({
+      code: t.code!,
+      queuePosition: t.queuePosition,
+      participantId: t.participantId ?? null,
+      groupId: t.groupId ?? null,
+      teamNumber: t.teamNumber ?? null,
+      participantIds: t.participantIds,
+    }));
+
     setActiveAction("close");
     startTransition(async () => {
       try {
-        const res = await closeProgrammeReportingAction(festivalId, sid);
+        const res = await submitClientSideReportingAction(festivalId, sid, submissionTiles);
         if (res.success) {
           triggerConfetti([40, 60], [0.8, 1.2]);
           toast.success(

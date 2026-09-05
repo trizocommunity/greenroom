@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
@@ -80,7 +80,7 @@ async function latestClosedReportingSessionId(
   const row = await db.query.programmeReportingSession.findFirst({
     where: and(
       eq(reportingSessionTable.programmeId, programmeId),
-      eq(reportingSessionTable.status, "CLOSED"),
+      inArray(reportingSessionTable.status, ["CLOSED", "COMPLETED"]),
     ),
     orderBy: [desc(reportingSessionTable.endedAt)],
     columns: { id: true },

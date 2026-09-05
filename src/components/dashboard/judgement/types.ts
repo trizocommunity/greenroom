@@ -108,6 +108,7 @@ export type ParticipantsViewState = {
 
 export const POLICY_SCORE_LIMIT = 100;
 export const PAGE_SIZE = 12;
+export const REJUDGE_PAGE_SIZE = 18;
 
 export function judgementStatusLabel(status: ProgrammeJudgementStatus): string {
   switch (status) {

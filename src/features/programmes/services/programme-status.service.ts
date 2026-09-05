@@ -179,13 +179,13 @@ export async function updateProgrammeStatus(
         where: and(
           eq(reportingSessionTable.id, reportingSessionId),
           eq(reportingSessionTable.programmeId, programmeId),
-          eq(reportingSessionTable.status, "CLOSED"),
+          inArray(reportingSessionTable.status, ["CLOSED", "COMPLETED"]),
         ),
       })
     : await exec.query.programmeReportingSession.findFirst({
         where: and(
           eq(reportingSessionTable.programmeId, programmeId),
-          eq(reportingSessionTable.status, "CLOSED"),
+          inArray(reportingSessionTable.status, ["CLOSED", "COMPLETED"]),
         ),
         orderBy: [desc(reportingSessionTable.endedAt)],
       });

@@ -59,4 +59,16 @@ export const RazorpayService = {
 
     return expectedSignature === signature;
   },
+
+  async fetchOrder(orderId: string) {
+    return getRazorpay().orders.fetch(orderId);
+  },
+
+  async fetchOrderPayments(orderId: string) {
+    return getRazorpay().orders.fetchPayments(orderId);
+  },
+
+  async fetchPayment(paymentId: string) {
+    return getRazorpay().payments.fetch(paymentId);
+  },
 };
