@@ -68,7 +68,7 @@ export default async function NewsDetailsPage({ params }: Props) {
       : "var(--primary)";
 
   return (
-    <PublicSection className="max-w-3xl mx-auto py-12 px-4">
+    <PublicSection>
       <Link
         href={`/${slug}/news`}
         className="text-sm hover:underline mb-8 inline-block opacity-70"
@@ -91,6 +91,7 @@ export default async function NewsDetailsPage({ params }: Props) {
               src={post.imageUrl}
               title={post.title}
               accentColor={accentColor}
+              className="h-full w-full"
             />
           </div>
         )}
@@ -126,6 +127,7 @@ export default async function NewsDetailsPage({ params }: Props) {
                       src={relatedPost.imageUrl}
                       title={relatedPost.title}
                       accentColor={accentColor}
+                      className="h-full w-full"
                     />
                   ) : (
                     <div
