@@ -63,6 +63,7 @@ export type ResetTemplateConfig = {
 
 export default function PosterEditorPlayground({
   initialDocument,
+  initialTabLabel,
   templateCode,
   onSaveDraft,
   autosave,
@@ -75,8 +76,12 @@ export default function PosterEditorPlayground({
   resetTemplate,
   saveNowLabel,
   dbTemplates,
+  onCreateTemplate,
+  onRenameTemplate,
+  uploadImage,
 }: {
   initialDocument?: PosterEditorDocument | null;
+  initialTabLabel?: string;
   templateCode?: string;
   onSaveDraft?: (doc: PosterEditorDocument) => void;
   autosave?: PosterEditorAutosaveConfig;
@@ -90,8 +95,15 @@ export default function PosterEditorPlayground({
   /** Custom label for the Save / Save now button */
   saveNowLabel?: string;
   dbTemplates?: any[];
+  onCreateTemplate?: (type: PosterTemplateType, options?: any) => void;
+  onRenameTemplate?: (newLabel: string, doc?: PosterEditorDocument) => void;
+  uploadImage?: (file: File) => Promise<string>;
 } = {}) {
-  const editor = usePosterEditorState({ previewBindings });
+  const editor = usePosterEditorState({
+    previewBindings,
+    initialNavPanel: initialDocument ? "elements" : "templates",
+    uploadImage,
+  });
   const stageRef = useRef<Konva.Stage | null>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
   const [newModalOpen, setNewModalOpen] = useState(false);
@@ -144,8 +156,18 @@ export default function PosterEditorPlayground({
     const loadKey = `${templateCode ?? ""}::${initialDocument.updatedAt}`;
     if (initialLoadKeyRef.current === loadKey) return;
     initialLoadKeyRef.current = loadKey;
-    loadDocument(initialDocument, templateCode);
-  }, [initialDocument, templateCode, loadDocument]);
+    loadDocument(
+      initialDocument,
+      initialTabLabel || initialDocument.templateName || templateCode,
+    );
+  }, [initialDocument, initialTabLabel, templateCode, loadDocument]);
+
+  useEffect(() => {
+    if (!initialDocument && !templateCode) {
+      editor.setNavPanel("templates");
+      setPanelOpen(true);
+    }
+  }, [initialDocument, templateCode, editor.setNavPanel]);
 
   const keyboardRef = useRef<{
     doc: PosterEditorState["doc"];
@@ -204,7 +226,13 @@ export default function PosterEditorPlayground({
       }
       if (meta && e.key === "s") {
         e.preventDefault();
-        h.setSaveModalOpen(true);
+        if (autosave) {
+          void autosaveState.saveNow();
+        } else if (onSaveDraft && doc) {
+          onSaveDraft(doc);
+        } else {
+          h.setSaveModalOpen(true);
+        }
       }
       if (meta && e.key === "c") {
         e.preventDefault();
@@ -246,21 +274,30 @@ export default function PosterEditorPlayground({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [autosave, autosaveState, onSaveDraft, doc]);
 
   const handleTemplatePick = (
     type: PosterTemplateType,
     mode: "blank" | "background" | "teams",
     backgroundImageUrl?: string,
+    width?: number,
+    height?: number,
   ) => {
     if (type === "TEAM_POINTS" && mode === "teams") {
       setTeamModalOpen(true);
       return;
     }
-    startTemplate(type, {
+    const opts = {
       withBackground: mode !== "blank",
       backgroundImageUrl,
-    });
+      width,
+      height,
+    };
+    if (onCreateTemplate) {
+      onCreateTemplate(type, opts);
+    } else {
+      startTemplate(type, opts);
+    }
   };
 
   return (
@@ -277,6 +314,7 @@ export default function PosterEditorPlayground({
             brandHref={sidebarBrandHref}
             brandLabel={sidebarBrandLabel}
             dbTemplates={dbTemplates}
+            onCreateTemplate={onCreateTemplate}
           />
         )}
 
@@ -296,6 +334,13 @@ export default function PosterEditorPlayground({
               onSelect={switchTab}
               onClose={closeTab}
               onNew={() => setNewModalOpen(true)}
+              onRenameTab={(tabId, newLabel) => {
+                editor.renameTab(tabId, newLabel);
+                const updatedDoc = editor.doc
+                  ? { ...editor.doc, templateName: newLabel }
+                  : undefined;
+                onRenameTemplate?.(newLabel, updatedDoc);
+              }}
             />
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {autosave && (
@@ -423,10 +468,11 @@ export default function PosterEditorPlayground({
               <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-muted/30 p-4">
                 <div className="text-center">
                   <h2 className="text-lg font-bold text-foreground">
-                    No template yet
+                    No template selected
                   </h2>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Create your first poster template
+                    Choose a template from the Templates sidebar or create a new
+                    one below
                   </p>
                 </div>
                 <Button size="sm" onClick={() => setNewModalOpen(true)}>
@@ -442,6 +488,7 @@ export default function PosterEditorPlayground({
           open={newModalOpen}
           onOpenChange={setNewModalOpen}
           onPick={handleTemplatePick}
+          uploadImage={editor.uploadImage}
         />
         <TeamCountModal
           open={teamModalOpen}
@@ -451,10 +498,15 @@ export default function PosterEditorPlayground({
             setNewModalOpen(true);
           }}
           onConfirm={(count) => {
-            startTemplate("TEAM_POINTS", {
+            const opts = {
               teamCount: count,
               withBackground: false,
-            });
+            };
+            if (onCreateTemplate) {
+              onCreateTemplate("TEAM_POINTS", opts);
+            } else {
+              startTemplate("TEAM_POINTS", opts);
+            }
           }}
         />
         {doc && templateMeta && (

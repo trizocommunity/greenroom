@@ -47,6 +47,8 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
       gender: "ALL",
       quality: "STANDARD",
       printLayout: "MULTIPLE_PER_PAGE",
+      pageSize: "A4",
+      pageOrientation: "PORTRAIT",
       onlyWithChestNumber: true,
       categoryIds: [],
       teamIds: [],
@@ -58,6 +60,8 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
       templateId: "",
       quality: "STANDARD",
       printLayout: "ONE_PER_PAGE",
+      pageSize: "A4",
+      pageOrientation: "PORTRAIT",
       certificateTypes: ["PARTICIPATION"],
       categoryIds: [],
       programmeIds: [],
@@ -306,7 +310,12 @@ export function NewExportDrawer({
           </div>
           <Button
             onClick={handleExport}
-            disabled={!meta.implemented || createExport.isPending}
+            disabled={
+              !meta.implemented ||
+              createExport.isPending ||
+              ((config?.type === "BADGE" || config?.type === "CERTIFICATE") &&
+                !config.templateId)
+            }
           >
             {createExport.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

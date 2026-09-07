@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCloudinaryUpload } from "@/api/client/upload";
 import type { PosterEditorAutosaveConfig } from "@/components/editor/PosterEditorPlayground";
 import type { PosterTemplateType } from "@/components/editor/poster-editor-config";
 import { createPresetDocument } from "@/components/editor/poster-editor-presets";
@@ -20,9 +21,13 @@ import {
 } from "@/features/posters/actions/poster-template.actions";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 import type { PosterTemplateStatus } from "@/features/posters/types/poster-template.types";
-import { festivalTemplatesPath } from "@/features/posters/utils/poster-routes";
+import {
+  festivalEditorPath,
+  festivalTemplatesPath,
+} from "@/features/posters/utils/poster-routes";
 import {
   defaultCodeForType,
+  suggestNextTemplateCode,
   templateTypeFromCode,
 } from "@/features/posters/utils/template-code";
 import { toast } from "@/lib/toast";
@@ -44,6 +49,7 @@ export function FestivalPosterEditor({
   festivalSlug: string;
   festivalName: string;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const codeParam = searchParams.get("code");
 
@@ -55,6 +61,21 @@ export function FestivalPosterEditor({
     useState<PosterTemplateStatus | null>(null);
 
   const [pending, startTransition] = useTransition();
+  const [ready, setReady] = useState(false);
+
+  const uploadMutation = useCloudinaryUpload();
+
+  const uploadImage = useCallback(
+    async (file: File) => {
+      const result = await uploadMutation.mutateAsync({
+        file,
+        folder: "poster-templates",
+        festivalId,
+      });
+      return result.url;
+    },
+    [uploadMutation, festivalId],
+  );
   const [publishing, setPublishing] = useState(false);
   const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
   const [previewBindings, setPreviewBindings] = useState<PosterBindings | null>(
@@ -75,8 +96,15 @@ export function FestivalPosterEditor({
 
   // Load template from DB
   useEffect(() => {
-    const code = codeParam || defaultCodeForType("RESULT");
+    if (!codeParam) {
+      setTemplateCode("");
+      setInitialDoc(null);
+      setTemplateStatus(null);
+      setReady(true);
+      return;
+    }
 
+    const code = codeParam;
     setTemplateCode(code);
 
     startTransition(async () => {
@@ -86,6 +114,7 @@ export function FestivalPosterEditor({
         setInitialDoc(res.data.konvaJson);
         setTemplateStatus(res.data.status);
         setRecoveryNotice(null);
+        setReady(true);
         return;
       }
 
@@ -105,6 +134,7 @@ export function FestivalPosterEditor({
         setInitialDoc(preset);
         setRecoveryNotice(null);
       }
+      setReady(true);
     });
   }, [codeParam, festivalId]);
 
@@ -125,11 +155,13 @@ export function FestivalPosterEditor({
 
   const saveDraftSilent = useCallback(
     async (doc: PosterEditorDocument): Promise<boolean> => {
+      if (!templateCode) return false;
       const res = await savePosterTemplateDraftAction(
         {
           festivalId,
           code: templateCode,
           document: doc,
+          meta: doc.templateName ? { name: doc.templateName } : undefined,
         },
         festivalSlug,
       );
@@ -153,15 +185,75 @@ export function FestivalPosterEditor({
     [saveDraftSilent, templateCode],
   );
 
-  const autosave: PosterEditorAutosaveConfig = {
-    festivalId,
-    templateCode,
-    saveDraft: saveDraftSilent,
-    debounceMs: 2000,
-  };
+  const handleCreateTemplate = useCallback(
+    (
+      type: PosterTemplateType,
+      options?: {
+        backgroundImageUrl?: string;
+        width?: number;
+        height?: number;
+      },
+    ) => {
+      const existingCodes = dbTemplates.map((t) => t.code);
+      const nextCode = suggestNextTemplateCode(type, existingCodes);
+      const preset = createPresetDocument(type, options ?? {});
+      setTemplateCode(nextCode);
+      setInitialDoc(preset);
+      setTemplateStatus("DRAFT");
+      router.replace(festivalEditorPath(festivalSlug, nextCode));
+    },
+    [dbTemplates, festivalSlug, router],
+  );
+
+  const handleRenameTemplate = useCallback(
+    async (newLabel: string, doc?: PosterEditorDocument) => {
+      if (!templateCode) return;
+      const targetDoc = doc ?? initialDoc;
+      if (!targetDoc) return;
+
+      const updatedDoc: PosterEditorDocument = {
+        ...targetDoc,
+        templateName: newLabel,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setInitialDoc(updatedDoc);
+
+      const res = await savePosterTemplateDraftAction(
+        {
+          festivalId,
+          code: templateCode,
+          document: updatedDoc,
+          meta: { name: newLabel },
+        },
+        festivalSlug,
+      );
+
+      if (res.success) {
+        toast.success(`Template renamed to "${newLabel}"`);
+        const listRes = await listPosterTemplatesAction(festivalId);
+        if (listRes.success) {
+          setDbTemplates(listRes.data);
+        }
+      } else {
+        toast.error(res.error ?? "Failed to save template name");
+      }
+    },
+    [festivalId, festivalSlug, initialDoc, templateCode],
+  );
+
+  const autosave: PosterEditorAutosaveConfig | undefined = templateCode
+    ? {
+        festivalId,
+        templateCode,
+        saveDraft: saveDraftSilent,
+        debounceMs: 2000,
+      }
+    : undefined;
 
   const confirmPublish = useCallback(
     async (doc: PosterEditorDocument): Promise<boolean> => {
+      if (!templateCode) return false;
       setPublishing(true);
       try {
         const saved = await saveDraftSilent(doc);
@@ -190,7 +282,7 @@ export function FestivalPosterEditor({
   );
 
   // ── Render: loading ──────────────────────────────────────────────────────
-  if (!initialDoc) {
+  if (!ready) {
     return (
       <div className="flex h-dvh items-center justify-center">Loading…</div>
     );
@@ -204,6 +296,9 @@ export function FestivalPosterEditor({
   const saveNowLabel =
     templateStatus === "PUBLISHED" ? "Save changes" : undefined;
 
+  const initialTabLabel =
+    initialDoc?.templateName || (templateCode ? templateCode : undefined);
+
   return (
     <div className="flex h-dvh flex-col">
       {recoveryNotice && (
@@ -214,27 +309,39 @@ export function FestivalPosterEditor({
       <div className="min-h-0 flex-1">
         <PosterEditorPlayground
           initialDocument={initialDoc}
+          initialTabLabel={initialTabLabel}
           templateCode={templateCode}
-          onSaveDraft={saveDraftManual}
+          onSaveDraft={templateCode ? saveDraftManual : undefined}
           autosave={autosave}
           previewBindings={previewBindings}
           previewDataHint={previewDataHint}
-          publishTemplate={{
-            templateCode,
-            pending: publishing,
-            onConfirmPublish: confirmPublish,
-          }}
+          publishTemplate={
+            templateCode
+              ? {
+                  templateCode,
+                  pending: publishing,
+                  onConfirmPublish: confirmPublish,
+                }
+              : undefined
+          }
           dbTemplates={dbTemplates}
           sidebarBrandHref={festivalTemplatesPath(festivalSlug)}
           sidebarBrandLabel={festivalName}
-          resetTemplate={{
-            templateCode,
-            onAfterReset: async () => {
-              clearLocalEditorBackup(festivalId, templateCode);
-              await refreshPreviewBindings();
-            },
-          }}
+          resetTemplate={
+            templateCode
+              ? {
+                  templateCode,
+                  onAfterReset: async () => {
+                    clearLocalEditorBackup(festivalId, templateCode);
+                    await refreshPreviewBindings();
+                  },
+                }
+              : undefined
+          }
           saveNowLabel={saveNowLabel}
+          uploadImage={uploadImage}
+          onCreateTemplate={handleCreateTemplate}
+          onRenameTemplate={handleRenameTemplate}
         />
       </div>
     </div>

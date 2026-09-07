@@ -4,8 +4,10 @@ import {
   AlertCircle,
   Award,
   Check,
+  ChevronsUpDown,
   FileText,
   Grid2X2,
+  Loader2,
   Pencil,
   Plus,
   ShieldAlert,
@@ -13,7 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,10 +25,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Sheet,
   SheetContent,
@@ -85,6 +100,17 @@ export function GeneralEntriesClient({
 }) {
   const [isPending, startTransition] = useTransition();
 
+  const [localCategories, setLocalCategories] =
+    useState<Category[]>(categories);
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  const [categoryComboboxOpen, setCategoryComboboxOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = 20;
 
@@ -112,10 +138,16 @@ export function GeneralEntriesClient({
     if (!newCategoryName.trim()) return;
     startTransition(async () => {
       try {
-        await createGeneralEntryCategoryAction({
+        const res = await createGeneralEntryCategoryAction({
           festivalId,
           name: newCategoryName.trim(),
         });
+        if (res?.id) {
+          setLocalCategories((prev) => [
+            { id: res.id, name: newCategoryName.trim() },
+            ...prev,
+          ]);
+        }
         toast.success("Category created successfully");
         setNewCategoryName("");
       } catch (err: any) {
@@ -132,6 +164,11 @@ export function GeneralEntriesClient({
           id,
           name: editingCategoryName.trim(),
         });
+        setLocalCategories((prev) =>
+          prev.map((c) =>
+            c.id === id ? { ...c, name: editingCategoryName.trim() } : c,
+          ),
+        );
         toast.success("Category updated successfully");
         setEditingCategoryId(null);
         setEditingCategoryName("");
@@ -146,6 +183,7 @@ export function GeneralEntriesClient({
       startTransition(async () => {
         try {
           await deleteGeneralEntryCategoryAction(festivalId, id);
+          setLocalCategories((prev) => prev.filter((c) => c.id !== id));
           toast.success("Category deleted");
         } catch (err: any) {
           toast.error(err.message || "Failed to delete category");
@@ -155,10 +193,47 @@ export function GeneralEntriesClient({
     });
   }
 
+  async function handleCreateOrSelectCategory(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const existing = localCategories.find(
+      (c) => c.name.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (existing) {
+      setEntryCategoryId(existing.id);
+      setCategorySearch("");
+      setCategoryComboboxOpen(false);
+      return;
+    }
+
+    setIsCreatingCategory(true);
+    try {
+      const res = await createGeneralEntryCategoryAction({
+        festivalId,
+        name: trimmed,
+      });
+      if (res?.id) {
+        const newCat = { id: res.id, name: trimmed };
+        setLocalCategories((prev) => [newCat, ...prev]);
+        setEntryCategoryId(res.id);
+        toast.success(`Category "${trimmed}" created`);
+      }
+      setCategorySearch("");
+      setCategoryComboboxOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create category");
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  }
+
   function openCreateEntry() {
     setEditingEntry(null);
     setEntryName("");
     setEntryCategoryId("none");
+    setCategorySearch("");
+    setCategoryComboboxOpen(false);
     setEntryType("GENERAL");
     setEntryRemarks("");
     setEntryAwards(groups.map((g) => ({ groupId: g.id, points: "" })));
@@ -169,6 +244,8 @@ export function GeneralEntriesClient({
     setEditingEntry(entry);
     setEntryName(entry.name);
     setEntryCategoryId(entry.categoryId || "none");
+    setCategorySearch("");
+    setCategoryComboboxOpen(false);
     setEntryType(entry.type || "GENERAL");
     setEntryRemarks(entry.remarks || "");
 
@@ -186,13 +263,20 @@ export function GeneralEntriesClient({
     setViewSheetOpen(false); // Close view if open
   }
 
-  function handleSaveEntry() {
+  function handleSaveEntry(publish: boolean) {
     if (!entryName.trim()) return;
     const validAwards = entryAwards
       .filter(
         (a) => a.points.trim() !== "" && !Number.isNaN(parseInt(a.points, 10)),
       )
       .map((a) => ({ groupId: a.groupId, points: parseInt(a.points, 10) }));
+
+    if (publish && validAwards.length === 0) {
+      toast.error(
+        "Please award points to at least one group before publishing.",
+      );
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -209,8 +293,11 @@ export function GeneralEntriesClient({
             type: entryType as "GENERAL" | "PROGRAMME",
             remarks: entryType === "PROGRAMME" ? entryRemarks : null,
             awards: validAwards,
+            publish,
           });
-          toast.success("Entry updated successfully");
+          toast.success(
+            publish ? "Entry updated and published" : "Entry saved as draft",
+          );
         } else {
           await createGeneralEntryAction({
             festivalId,
@@ -224,8 +311,11 @@ export function GeneralEntriesClient({
             type: entryType as "GENERAL" | "PROGRAMME",
             remarks: entryType === "PROGRAMME" ? entryRemarks : null,
             awards: validAwards,
+            publish,
           });
-          toast.success("Entry created successfully");
+          toast.success(
+            publish ? "Entry added and published" : "Entry added as draft",
+          );
         }
         setEntrySheetOpen(false);
       } catch (err: any) {
@@ -276,29 +366,28 @@ export function GeneralEntriesClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            General Entries
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage general point awards for non-stage competitions like March
-            Past, Band, Magazine etc.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
+          General Entries
+        </h1>
+        <div className="flex items-center gap-2 sm:gap-3">
           <Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Grid2X2 className="w-4 h-4" />
-                Browse Categories
+              <Button
+                variant="outline"
+                className="h-9 w-9 sm:w-auto p-0 sm:px-3.5 gap-2"
+                aria-label="Browse Categories"
+                title="Browse Categories"
+              >
+                <Grid2X2 className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Browse Categories</span>
               </Button>
             </SheetTrigger>
-            <SheetContent className="overflow-y-auto sm:max-w-md">
-              <SheetHeader>
+            <SheetContent className="flex flex-col h-full p-0 sm:max-w-md gap-0">
+              <SheetHeader className="p-6 pb-4 border-b shrink-0">
                 <SheetTitle>Categories</SheetTitle>
               </SheetHeader>
-              <div className="py-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="space-y-3">
                   <Label>Create New Category</Label>
                   <div className="flex gap-2">
@@ -319,13 +408,13 @@ export function GeneralEntriesClient({
 
                 <div className="space-y-3">
                   <Label>Existing Categories</Label>
-                  {categories.length === 0 ? (
+                  {localCategories.length === 0 ? (
                     <div className="text-sm text-muted-foreground italic border rounded-md p-4 bg-muted/30">
                       No categories found.
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {categories.map((c) => (
+                      {localCategories.map((c) => (
                         <div
                           key={c.id}
                           className="flex items-center justify-between p-2 border rounded-md bg-card"
@@ -344,7 +433,9 @@ export function GeneralEntriesClient({
                                 size="icon"
                                 variant="ghost"
                                 className="h-8 w-8 text-green-600"
-                                disabled={isPending}
+                                disabled={
+                                  isPending || !editingCategoryName.trim()
+                                }
                                 onClick={() => handleUpdateCategory(c.id)}
                               >
                                 <Check className="w-4 h-4" />
@@ -407,23 +498,23 @@ export function GeneralEntriesClient({
 
           <Button
             onClick={openCreateEntry}
-            className="gap-2"
+            className="h-9 w-9 sm:w-auto p-0 sm:px-3.5 gap-2"
+            aria-label="Add Entry"
+            title="Add Entry"
             disabled={isPending}
           >
-            <Plus className="w-4 h-4" />
-            Add Entry
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Add Entry</span>
           </Button>
         </div>
       </div>
 
       <Sheet open={entrySheetOpen} onOpenChange={setEntrySheetOpen}>
-        <SheetContent className="overflow-y-auto sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>
-              {editingEntry ? "Edit Entry" : "Create Entry"}
-            </SheetTitle>
+        <SheetContent className="flex flex-col h-full p-0 sm:max-w-md gap-0">
+          <SheetHeader className="p-6 pb-4 border-b shrink-0">
+            <SheetTitle>{editingEntry ? "Edit Entry" : "Add Entry"}</SheetTitle>
           </SheetHeader>
-          <div className="py-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
             <div className="space-y-4">
               <div>
                 <Label>Entry Name</Label>
@@ -462,18 +553,133 @@ export function GeneralEntriesClient({
               {entryType === "GENERAL" && (
                 <div>
                   <Label>Category</Label>
-                  <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background mt-1.5"
-                    value={entryCategoryId}
-                    onChange={(e) => setEntryCategoryId(e.target.value)}
+                  <Popover
+                    open={categoryComboboxOpen}
+                    onOpenChange={setCategoryComboboxOpen}
                   >
-                    <option value="none">No Category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={categoryComboboxOpen}
+                        disabled={isPending || isCreatingCategory}
+                        className="w-full justify-between mt-1.5 h-10 px-3 font-normal text-sm"
+                      >
+                        <span className="truncate">
+                          {entryCategoryId === "none" || !entryCategoryId
+                            ? "No Category"
+                            : localCategories.find(
+                                (c) => c.id === entryCategoryId,
+                              )?.name || "Select category"}
+                        </span>
+                        {isCreatingCategory ? (
+                          <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
+                        ) : (
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[--radix-popover-trigger-width] p-0"
+                      align="start"
+                    >
+                      <Command>
+                        <CommandInput
+                          placeholder="Search or type to add category..."
+                          value={categorySearch}
+                          onValueChange={setCategorySearch}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (categorySearch.trim()) {
+                                handleCreateOrSelectCategory(
+                                  categorySearch.trim(),
+                                );
+                              }
+                            }
+                          }}
+                        />
+                        <CommandList>
+                          <CommandEmpty className="p-2 text-center text-sm">
+                            {categorySearch.trim() ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCreateOrSelectCategory(
+                                    categorySearch.trim(),
+                                  )
+                                }
+                                className="w-full flex items-center gap-2 p-2 text-sm text-left hover:bg-muted rounded-sm transition-colors text-primary font-medium"
+                              >
+                                <Plus className="w-4 h-4 shrink-0" />
+                                <span className="truncate">
+                                  Add &ldquo;{categorySearch.trim()}&rdquo;
+                                </span>
+                              </button>
+                            ) : (
+                              "No category found."
+                            )}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              value="none no category"
+                              onSelect={() => {
+                                setEntryCategoryId("none");
+                                setCategorySearch("");
+                                setCategoryComboboxOpen(false);
+                              }}
+                              className="flex items-center justify-between"
+                            >
+                              <span>No Category</span>
+                              {entryCategoryId === "none" && (
+                                <Check className="w-4 h-4 text-primary" />
+                              )}
+                            </CommandItem>
+                            {localCategories.map((c) => (
+                              <CommandItem
+                                key={c.id}
+                                value={c.name}
+                                onSelect={() => {
+                                  setEntryCategoryId(c.id);
+                                  setCategorySearch("");
+                                  setCategoryComboboxOpen(false);
+                                }}
+                                className="flex items-center justify-between"
+                              >
+                                <span className="truncate">{c.name}</span>
+                                {entryCategoryId === c.id && (
+                                  <Check className="w-4 h-4 text-primary" />
+                                )}
+                              </CommandItem>
+                            ))}
+                            {categorySearch.trim() &&
+                              !localCategories.some(
+                                (c) =>
+                                  c.name.toLowerCase() ===
+                                  categorySearch.trim().toLowerCase(),
+                              ) && (
+                                <CommandItem
+                                  value={`add-new-category-${categorySearch.trim()}`}
+                                  onSelect={() =>
+                                    handleCreateOrSelectCategory(
+                                      categorySearch.trim(),
+                                    )
+                                  }
+                                  className="text-primary font-medium flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Plus className="w-4 h-4 shrink-0" />
+                                  <span className="truncate">
+                                    Add &ldquo;{categorySearch.trim()}&rdquo;
+                                  </span>
+                                </CommandItem>
+                              )}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
             </div>
@@ -515,29 +721,55 @@ export function GeneralEntriesClient({
               </div>
             </div>
           </div>
-          <SheetFooter className="mt-2">
+          <SheetFooter className="p-4 sm:p-6 border-t shrink-0 bg-background flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button
+              type="button"
+              variant="outline"
               disabled={isPending || !entryName.trim()}
-              onClick={handleSaveEntry}
-              className="w-full"
+              onClick={() => handleSaveEntry(false)}
+              className="w-full sm:w-auto flex-1"
             >
-              {editingEntry ? "Save Changes" : "Create Entry"}
+              {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Draft
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              disabled={
+                isPending ||
+                !entryName.trim() ||
+                !entryAwards.some(
+                  (a) =>
+                    a.points.trim() !== "" &&
+                    !Number.isNaN(parseInt(a.points, 10)),
+                )
+              }
+              onClick={() => handleSaveEntry(true)}
+              className="w-full sm:w-auto flex-1"
+            >
+              {isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldCheck className="w-4 h-4 mr-2" />
+              )}
+              Publish
             </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
 
       <Sheet open={viewSheetOpen} onOpenChange={setViewSheetOpen}>
-        <SheetContent className="overflow-y-auto sm:max-w-md">
+        <SheetContent className="flex flex-col h-full p-0 sm:max-w-md gap-0">
           {viewEntry && (
             <>
-              <SheetHeader className="pb-4 border-b">
+              <SheetHeader className="p-6 pb-4 border-b shrink-0">
                 <SheetTitle className="text-xl">{viewEntry.name}</SheetTitle>
                 <div className="flex items-center gap-2 mt-2">
                   {viewEntry.type === "GENERAL" && (
                     <Badge variant="outline" className="text-xs font-normal">
-                      {categories.find((c) => c.id === viewEntry.categoryId)
-                        ?.name || "Uncategorized"}
+                      {localCategories.find(
+                        (c) => c.id === viewEntry.categoryId,
+                      )?.name || "Uncategorized"}
                     </Badge>
                   )}
                   <Badge variant="secondary" className="text-xs font-normal">
@@ -561,7 +793,7 @@ export function GeneralEntriesClient({
                 </div>
               </SheetHeader>
 
-              <div className="py-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {viewEntry.type === "PROGRAMME" && viewEntry.remarks && (
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-muted-foreground">
@@ -608,13 +840,11 @@ export function GeneralEntriesClient({
                 </div>
               </div>
 
-              <SheetFooter className="flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0 mt-auto pt-6 border-t">
+              <SheetFooter className="p-4 sm:p-6 border-t shrink-0 bg-background flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto flex-1"
-                  disabled={
-                    isPending || viewEntry.awards.some((a) => a.isPublished)
-                  }
+                  disabled={isPending}
                   onClick={() => openEditEntry(viewEntry)}
                 >
                   <Pencil className="w-4 h-4 mr-2" /> Edit
@@ -677,7 +907,7 @@ export function GeneralEntriesClient({
                     const categoryName =
                       entry.type === "PROGRAMME"
                         ? "Programme"
-                        : categories.find((c) => c.id === entry.categoryId)
+                        : localCategories.find((c) => c.id === entry.categoryId)
                             ?.name || "Uncategorized";
                     const pointsCount = entry.awards.length;
 
@@ -739,7 +969,7 @@ export function GeneralEntriesClient({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              disabled={isPending || isPublished}
+                              disabled={isPending}
                               onClick={() => openEditEntry(entry)}
                             >
                               <Pencil className="w-4 h-4" />
@@ -785,8 +1015,8 @@ export function GeneralEntriesClient({
                 const categoryName =
                   entry.type === "PROGRAMME"
                     ? "Programme"
-                    : categories.find((c) => c.id === entry.categoryId)?.name ||
-                      "Uncategorized";
+                    : localCategories.find((c) => c.id === entry.categoryId)
+                        ?.name || "Uncategorized";
                 const pointsCount = entry.awards.length;
 
                 return (
@@ -857,7 +1087,7 @@ export function GeneralEntriesClient({
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          disabled={isPending || isPublished}
+                          disabled={isPending}
                           onClick={() => openEditEntry(entry)}
                         >
                           <Pencil className="w-3.5 h-3.5" />

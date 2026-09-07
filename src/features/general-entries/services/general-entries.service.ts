@@ -79,6 +79,7 @@ export async function createGeneralEntry(input: {
   awards: { groupId: string; points: number }[];
   createdByName?: string | null;
   createdByEmail?: string | null;
+  publish?: boolean;
 }) {
   const entryId = generateId();
 
@@ -95,11 +96,16 @@ export async function createGeneralEntry(input: {
     });
 
     if (input.awards.length > 0) {
+      const isPub = input.publish ?? false;
       const awardValues = input.awards.map((a) => ({
         id: generateId(),
         generalEntryId: entryId,
         groupId: a.groupId,
         points: a.points,
+        isPublished: isPub,
+        publishedAt: isPub ? currentTimestampSql() : null,
+        publishedByName: isPub ? input.createdByName : null,
+        publishedByEmail: isPub ? input.createdByEmail : null,
       }));
       await tx.insert(generalEntryAward).values(awardValues);
     }
@@ -115,6 +121,9 @@ export async function updateGeneralEntry(input: {
   type?: string;
   remarks?: string | null;
   awards: { groupId: string; points: number }[];
+  publish?: boolean;
+  publishedByName?: string | null;
+  publishedByEmail?: string | null;
 }) {
   await assertNotPublished(input.id);
 
@@ -135,11 +144,16 @@ export async function updateGeneralEntry(input: {
       .where(eq(generalEntryAward.generalEntryId, input.id));
 
     if (input.awards.length > 0) {
+      const isPub = input.publish ?? false;
       const awardValues = input.awards.map((a) => ({
         id: generateId(),
         generalEntryId: input.id,
         groupId: a.groupId,
         points: a.points,
+        isPublished: isPub,
+        publishedAt: isPub ? currentTimestampSql() : null,
+        publishedByName: isPub ? input.publishedByName : null,
+        publishedByEmail: isPub ? input.publishedByEmail : null,
       }));
       await tx.insert(generalEntryAward).values(awardValues);
     }

@@ -29,6 +29,7 @@ export interface PosterTemplateListItem {
   id: string;
   type: PosterTemplateType;
   code: string;
+  name?: string | null;
   status: PosterTemplateStatus;
   width: number;
   height: number;

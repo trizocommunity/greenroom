@@ -7,6 +7,7 @@ import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { user } from "@/core/database/schema";
 import { AppError, ERROR_MESSAGES } from "@/core/errors/errors";
+import { syncFestivalStandingsWithGeneralEntries } from "@/features/announcement/services/team-standings.read-model";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import {
   createGeneralEntryCategorySchema,
@@ -123,14 +124,24 @@ export async function createGeneralEntryAction(
     ...parsed,
     createdByName: dbUser?.name,
     createdByEmail: dbUser?.email,
+    publish: parsed.publish,
   });
 
   await createAuditLog({
     action: "CREATE_GENERAL_ENTRY",
     targetType: "GENERAL_ENTRY",
     targetId: id,
-    metadata: { name: parsed.name },
+    metadata: { name: parsed.name, published: parsed.publish ?? false },
   });
+
+  if (parsed.publish) {
+    await createAuditLog({
+      action: "PUBLISH_GENERAL_ENTRY",
+      targetType: "GENERAL_ENTRY",
+      targetId: id,
+    });
+    revalidatePath(`/dashboard/[slug]/event-works/results`, "page");
+  }
 
   revalidatePath(`/dashboard/[slug]/event-works/general-entries`, "page");
   return { id };
@@ -148,14 +159,40 @@ export async function updateGeneralEntryAction(
     requireWritable: true,
   });
 
-  await updateGeneralEntry(parsed);
+  const dbUser = await db.query.user.findFirst({
+    where: eq(user.id, session.userId),
+    columns: { name: true, email: true },
+  });
+
+  if (parsed.publish !== undefined) {
+    // Unpublish awards first so assertNotPublished passes
+    await setGeneralEntryPublished(parsed.id, false);
+  }
+
+  await updateGeneralEntry({
+    ...parsed,
+    publish: parsed.publish,
+    publishedByName: dbUser?.name,
+    publishedByEmail: dbUser?.email,
+  });
 
   await createAuditLog({
     action: "UPDATE_GENERAL_ENTRY",
     targetType: "GENERAL_ENTRY",
     targetId: parsed.id,
-    metadata: { name: parsed.name },
+    metadata: { name: parsed.name, published: parsed.publish ?? false },
   });
+
+  if (parsed.publish) {
+    await createAuditLog({
+      action: "PUBLISH_GENERAL_ENTRY",
+      targetType: "GENERAL_ENTRY",
+      targetId: parsed.id,
+    });
+    await syncFestivalStandingsWithGeneralEntries(festivalId);
+  } else if (parsed.publish === false) {
+    await syncFestivalStandingsWithGeneralEntries(festivalId);
+  }
 
   revalidatePath(`/dashboard/[slug]/event-works/general-entries`, "page");
 }
@@ -179,6 +216,7 @@ export async function deleteGeneralEntryAction(
     targetId: generalEntryId,
   });
 
+  await syncFestivalStandingsWithGeneralEntries(festivalId);
   revalidatePath(`/dashboard/[slug]/event-works/general-entries`, "page");
 }
 
@@ -206,8 +244,7 @@ export async function publishGeneralEntryAction(
     targetId: generalEntryId,
   });
 
-  revalidatePath(`/dashboard/[slug]/event-works/general-entries`, "page");
-  revalidatePath(`/dashboard/[slug]/event-works/results`, "page");
+  await syncFestivalStandingsWithGeneralEntries(festivalId);
 }
 
 export async function unpublishGeneralEntryAction(
@@ -234,6 +271,5 @@ export async function unpublishGeneralEntryAction(
     targetId: generalEntryId,
   });
 
-  revalidatePath(`/dashboard/[slug]/event-works/general-entries`, "page");
-  revalidatePath(`/dashboard/[slug]/event-works/results`, "page");
+  await syncFestivalStandingsWithGeneralEntries(festivalId);
 }

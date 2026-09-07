@@ -16,6 +16,7 @@ export function EditorSidebar({
   brandHref,
   brandLabel,
   dbTemplates,
+  onCreateTemplate,
 }: {
   editor: PosterEditorState;
   panelOpen: boolean;
@@ -24,6 +25,7 @@ export function EditorSidebar({
   brandHref?: string;
   brandLabel?: string;
   dbTemplates?: any[];
+  onCreateTemplate?: (type: any, options?: any) => void;
 }) {
   const { navPanel, setNavPanel } = editor;
 
@@ -86,6 +88,7 @@ export function EditorSidebar({
               variant="docked"
               onCollapsePanel={() => onPanelOpenChange(false)}
               dbTemplates={dbTemplates}
+              onCreateTemplate={onCreateTemplate}
             />
           )}
         </div>

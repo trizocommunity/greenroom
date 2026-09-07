@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { useCloudinaryUpload } from "@/api/client";
+import { useCloudinaryUpload, useDeleteFile } from "@/api/client";
 import {
   useCreateNews,
   useDeleteNews,
@@ -105,11 +105,24 @@ export function NewsClient({
   const [saving, setSaving] = useState(false);
   const [viewDetailsPost, setViewDetailsPost] = useState<NewsPost | null>(null);
   const uploadMutation = useCloudinaryUpload();
+  const deleteFileMutation = useDeleteFile();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [initialFormSnapshot, setInitialFormSnapshot] = useState(
     JSON.stringify(emptyForm),
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && !saving) {
+      const originalImageUrl = editingId 
+        ? posts.find(p => p.id === editingId)?.imageUrl || ""
+        : "";
+      if (form.imageUrl !== originalImageUrl && form.imageUrl.includes("cloudinary.com")) {
+        deleteFileMutation.mutate({ url: form.imageUrl, festivalId });
+      }
+    }
+    setDialogOpen(open);
+  };
   const hasUnsavedForm =
     dialogOpen && JSON.stringify(form) !== initialFormSnapshot;
 
@@ -539,7 +552,7 @@ export function NewsClient({
         </SheetContent>
       </Sheet>
 
-      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Sheet open={dialogOpen} onOpenChange={handleOpenChange}>
         <SheetContent className="max-w-lg sm:max-w-xl flex flex-col h-full p-0 gap-0">
           <div className="flex-1 overflow-y-auto p-6">
             <SheetHeader>
@@ -644,7 +657,7 @@ export function NewsClient({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setDialogOpen(false)}
+              onClick={() => handleOpenChange(false)}
             >
               Cancel
             </Button>

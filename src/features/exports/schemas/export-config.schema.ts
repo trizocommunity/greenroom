@@ -8,6 +8,8 @@ export const scheduleState = z.enum(["ALL", "SCHEDULED", "UNSCHEDULED"]);
 export const listOrientation = z.enum(["PROGRAMME_WISE", "TEAM_WISE"]);
 export const exportQuality = z.enum(["SCREEN", "STANDARD", "PRINT"]);
 export const printLayout = z.enum(["ONE_PER_PAGE", "MULTIPLE_PER_PAGE"]);
+export const pageSize = z.enum(["A3", "A4", "A5", "LETTER", "LEGAL"]);
+export const pageOrientation = z.enum(["PORTRAIT", "LANDSCAPE"]);
 export const judgeGrouping = z.enum(["JUDGE_WISE", "PROGRAMME_WISE"]);
 
 export const programmeTypeFilter = z.enum(["ALL", "INDIVIDUAL", "GROUP"]);
@@ -98,6 +100,8 @@ export const badgeConfig = z.object({
   gender: genderFilter.default("ALL"),
   quality: exportQuality.default("STANDARD"),
   printLayout: printLayout.default("MULTIPLE_PER_PAGE"),
+  pageSize: pageSize.default("A4"),
+  pageOrientation: pageOrientation.default("PORTRAIT"),
   onlyWithChestNumber: z.boolean().default(true),
   categoryIds: idList,
   teamIds: idList,
@@ -108,6 +112,8 @@ export const certificateConfig = z.object({
   templateId: z.string().min(1),
   quality: exportQuality.default("STANDARD"),
   printLayout: printLayout.default("ONE_PER_PAGE"),
+  pageSize: pageSize.default("A4"),
+  pageOrientation: pageOrientation.default("PORTRAIT"),
   certificateTypes: z
     .array(
       z.enum([
@@ -161,6 +167,8 @@ export type ScheduleConfig = z.infer<typeof scheduleConfig>;
 export type PageLayout = z.infer<typeof pageLayout>;
 export type GenderFilter = z.infer<typeof genderFilter>;
 export type TimeDisplayMode = z.infer<typeof timeDisplayMode>;
+export type PageSize = z.infer<typeof pageSize>;
+export type PageOrientation = z.infer<typeof pageOrientation>;
 
 export const TEMPLATE_EXPORT_TYPES = ["BADGE", "CERTIFICATE"] as const;
 

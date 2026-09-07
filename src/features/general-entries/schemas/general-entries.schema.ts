@@ -22,6 +22,7 @@ export const createGeneralEntrySchema = z.object({
   type: z.enum(["GENERAL", "PROGRAMME"]).default("GENERAL"),
   remarks: z.string().nullable().optional(),
   awards: z.array(generalEntryAwardInputSchema),
+  publish: z.boolean().optional(),
 });
 
 export const updateGeneralEntrySchema = z.object({
@@ -31,4 +32,5 @@ export const updateGeneralEntrySchema = z.object({
   type: z.enum(["GENERAL", "PROGRAMME"]).default("GENERAL"),
   remarks: z.string().nullable().optional(),
   awards: z.array(generalEntryAwardInputSchema),
+  publish: z.boolean().optional(),
 });

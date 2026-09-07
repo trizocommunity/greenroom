@@ -301,7 +301,7 @@ function ProgrammeRow({
             <span className="truncate text-[15px] font-medium text-heading">
               {p.name}
             </span>
-            <ProgrammeStatusBadge status={p.status} />
+            <ProgrammeStatusBadge status={p.status} variant="participant" />
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {p.category?.name ?? "Uncategorised"} ·{" "}
@@ -359,7 +359,7 @@ function ProgrammeDetailsDrawer({
                 <SheetTitle className="min-w-0 flex-1 text-lg font-semibold tracking-tight text-heading">
                   {p.name}
                 </SheetTitle>
-                <ProgrammeStatusBadge status={p.status} />
+                <ProgrammeStatusBadge status={p.status} variant="participant" />
               </div>
               <SheetDescription className="text-xs">
                 {p.category?.name ?? "Uncategorised"} ·{" "}

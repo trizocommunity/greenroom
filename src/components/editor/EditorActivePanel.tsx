@@ -9,11 +9,13 @@ export function EditorActivePanel({
   variant = "docked",
   onCollapsePanel,
   dbTemplates,
+  onCreateTemplate,
 }: {
   editor: PosterEditorState;
   variant?: "docked" | "drawer" | "floating";
   onCollapsePanel?: () => void;
   dbTemplates?: any[];
+  onCreateTemplate?: (type: any, options?: any) => void;
 }) {
   if (editor.navPanel === "templates") {
     return (
@@ -22,6 +24,7 @@ export function EditorActivePanel({
         variant={variant}
         onCollapsePanel={onCollapsePanel}
         dbTemplates={dbTemplates}
+        onCreateTemplate={onCreateTemplate}
       />
     );
   }

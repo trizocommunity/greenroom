@@ -283,12 +283,22 @@ function TemplateCard({
 
       <CardHeader className="pb-2 pt-4">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="font-mono text-base leading-snug tracking-tight">
-            {t.code}
+          <CardTitle className="font-mono text-base leading-snug tracking-tight truncate">
+            {t.konvaJson?.templateName ||
+              (t.meta as { name?: string } | null)?.name ||
+              t.code}
           </CardTitle>
           <TemplateStatusBadge status={t.status} />
         </div>
-        <p className="text-xs text-muted-foreground">{typeLabel}</p>
+        <p className="text-xs text-muted-foreground">
+          {typeLabel}
+          {(t.konvaJson?.templateName ||
+            (t.meta as { name?: string } | null)?.name) &&
+          (t.konvaJson?.templateName ||
+            (t.meta as { name?: string } | null)?.name) !== t.code
+            ? ` • ${t.code}`
+            : ""}
+        </p>
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col pb-4 pt-0">

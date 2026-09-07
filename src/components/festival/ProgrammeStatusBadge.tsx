@@ -44,12 +44,62 @@ const STATUS_STYLES: Record<ProgrammeStatus, string> = {
 interface ProgrammeStatusBadgeProps {
   status: ProgrammeStatus;
   className?: string;
+  variant?: "default" | "participant";
+}
+
+export function getParticipantStatus(status: ProgrammeStatus): {
+  label: string;
+  style: string;
+} {
+  if (status === "CANCELLED") {
+    return {
+      label: "Cancelled",
+      style: "border-transparent bg-destructive/15 text-destructive",
+    };
+  }
+  if (status === "ANNOUNCED") {
+    return {
+      label: "Announced",
+      style: "border-transparent bg-success/15 text-success",
+    };
+  }
+  if (
+    [
+      "REPORTING",
+      "PENDING_JUDGMENT",
+      "JUDGING",
+      "PENDING_PUBLICATION",
+      "PUBLISHED",
+    ].includes(status)
+  ) {
+    return {
+      label: "Ongoing",
+      style: "border-transparent bg-warning/15 text-warning",
+    };
+  }
+  return {
+    label: "Not Started",
+    style: "border-transparent bg-muted text-muted-foreground",
+  };
 }
 
 export function ProgrammeStatusBadge({
   status,
   className,
+  variant = "default",
 }: ProgrammeStatusBadgeProps) {
+  if (variant === "participant") {
+    const { label, style } = getParticipantStatus(status);
+    return (
+      <Badge
+        variant="outline"
+        className={cn("rounded-full", style, className)}
+      >
+        {label}
+      </Badge>
+    );
+  }
+
   const label = STATUS_LABELS[status] ?? status;
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.DRAFT;
   return (

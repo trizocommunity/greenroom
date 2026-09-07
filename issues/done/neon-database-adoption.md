@@ -93,7 +93,7 @@ Neon's `neon-http` driver doesn't support interactive transactions in production
 - Note: prior to integration install, the Neon project already contained 5 preview branches (`preview/develop`, `preview/v1`, `preview/issue-10-...`, `preview/worktree-error-handling-ui`, `preview/fix/remove-unused-ts-rest-react-query`) created by manual `neonctl branches create` calls during earlier work. They were left in place and are now managed by the integration.
 
 ### Phase 5 â€” Production cutover (done 2026-07-31)
-- Production env vars set in Vercel dashboard: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `CRON_SECRET`, `NEXT_PUBLIC_CLOUDINARY_*`, `CLOUDINARY_API_*`. **Sentry deliberately omitted** (see Completion log).
+- Production env vars set in Vercel dashboard: `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `CRON_SECRET`, `CLOUDINARY_URL`. **Sentry deliberately omitted** (see Completion log).
 - Deploy verified: `next build` completes (lazy client passes page-data collection), app loads, runtime connects to Neon `main`.
 - **Smoke testing of the 12 transactional flows deferred** to a separate follow-up (see Completion log). The 12 call sites themselves are unchanged in behaviour; only their lazy construction is new, and unit-level coverage is unchanged.
 

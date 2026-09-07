@@ -49,7 +49,7 @@ pnpm db:stop    # when done
    - `DATABASE_URL` and `DATABASE_URL_UNPOOLED`
    - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`
    - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (if using Google auth)
-   - Whatever you use: `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `CLOUDINARY_*`
+   - Whatever you use: `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `CLOUDINARY_URL`
 3. Install the **Neon → Vercel** integration for isolated preview DB branches.
 4. Push to your default branch — Vercel builds and deploys.
 

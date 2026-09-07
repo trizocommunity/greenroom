@@ -42,7 +42,7 @@ Three files, three purposes:
 - **App** — `NEXT_PUBLIC_APP_URL`.
 - **Payments** — `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`.
 - **Email** — `RESEND_API_KEY` (optional in dev — see fallback below), `EMAIL_FROM`.
-- **Cloudinary** — `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `NEXT_PUBLIC_CLOUDINARY_FESTIVAL_PRESET`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
+- **Cloudinary** — `CLOUDINARY_URL`.
 - **Ops** — `CRON_SECRET`.
 
 ### Why two database URLs
@@ -236,8 +236,7 @@ guard is stricter: it also rejects any URL that contains neither
    - `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (Neon pooled + direct)
    - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` — fresh per env
    - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — if using Google OAuth
-   - `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `NEXT_PUBLIC_CLOUDINARY_*`,
-     `CLOUDINARY_API_*` — anything you actually use
+   - `RAZORPAY_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `CLOUDINARY_URL` — anything you actually use
 
 3. **Install the Neon � Vercel marketplace integration.** After this, every PR
    preview deployment gets an auto-provisioned, auto-torn-down Neon branch

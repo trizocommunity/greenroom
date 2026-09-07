@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
+import {
+  computeGeneralEntryStandings,
+  computeGeneralEntryStandingsWithDetails,
+} from "@/features/general-entries/services/general-entries.standings";
 
 const mockDbSelect = vi.fn();
 vi.mock("@/core/database/client", () => ({
@@ -7,6 +10,11 @@ vi.mock("@/core/database/client", () => ({
     select: (..._args: any[]) => ({
       from: () => ({
         innerJoin: () => ({
+          innerJoin: () => ({
+            leftJoin: () => ({
+              where: (...args: any[]) => mockDbSelect(...args),
+            }),
+          }),
           where: () => ({
             groupBy: (...args: any[]) => mockDbSelect(...args),
           }),
@@ -16,7 +24,7 @@ vi.mock("@/core/database/client", () => ({
   },
 }));
 
-describe("computeGeneralEntryStandings", () => {
+describe("general entries standings services", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -31,6 +39,68 @@ describe("computeGeneralEntryStandings", () => {
     expect(result).toEqual([
       { name: "Group A", points: 50, isGroup: true },
       { name: "Group B", points: 30, isGroup: true },
+    ]);
+  });
+
+  it("should return detailed standings for general entries with breakdown", async () => {
+    mockDbSelect.mockResolvedValue([
+      {
+        awardId: "award-1",
+        groupName: "Group A",
+        points: 20,
+        entryName: "March Past",
+        categoryName: "Discipline",
+      },
+      {
+        awardId: "award-2",
+        groupName: "Group A",
+        points: 15,
+        entryName: "Camp Cleanliness",
+        categoryName: "Hygiene",
+      },
+      {
+        awardId: "award-3",
+        groupName: "Group B",
+        points: -5,
+        entryName: "Late Penalty",
+        categoryName: "Conduct",
+      },
+    ]);
+
+    const result = await computeGeneralEntryStandingsWithDetails("festival-1");
+    expect(result).toEqual([
+      {
+        name: "Group A",
+        points: 35,
+        isGroup: true,
+        entries: [
+          {
+            id: "award-1",
+            name: "March Past",
+            categoryName: "Discipline",
+            points: 20,
+          },
+          {
+            id: "award-2",
+            name: "Camp Cleanliness",
+            categoryName: "Hygiene",
+            points: 15,
+          },
+        ],
+      },
+      {
+        name: "Group B",
+        points: -5,
+        isGroup: true,
+        entries: [
+          {
+            id: "award-3",
+            name: "Late Penalty",
+            categoryName: "Conduct",
+            points: -5,
+          },
+        ],
+      },
     ]);
   });
 });

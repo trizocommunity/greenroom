@@ -144,6 +144,11 @@ export function CheckList({
   );
 }
 
+import { Eye, X } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
+import type { ExportTemplateOption } from "@/features/exports/actions/export-template.actions";
+
 export function TemplatePicker({
   label,
   options,
@@ -151,10 +156,13 @@ export function TemplatePicker({
   onSelect,
 }: {
   label: string;
-  options: { id: string; name: string; width: number; height: number }[];
+  options: ExportTemplateOption[];
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
+  const [previewId, setPreviewId] = React.useState<string | null>(null);
+  const previewOpt = options.find((o) => o.id === previewId);
+
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
@@ -166,25 +174,62 @@ export function TemplatePicker({
       ) : (
         <div className="space-y-1.5 rounded-md border p-2 max-h-44 overflow-y-auto">
           {options.map((opt) => (
-            <button
+            <div
               key={opt.id}
-              type="button"
-              onClick={() => onSelect(opt.id)}
               className={cn(
-                "flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                "flex w-full items-center justify-between rounded-md border text-sm transition-colors overflow-hidden",
                 selectedId === opt.id
                   ? "border-primary bg-primary/10"
                   : "hover:border-primary/40",
               )}
             >
-              <span className="font-medium">{opt.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {opt.width}×{opt.height}
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => onSelect(opt.id)}
+                className="flex-1 px-3 py-2 text-left"
+              >
+                <div className="font-medium">{opt.name}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {opt.width}×{opt.height}
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewId(opt.id)}
+                className="p-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 border-l transition-colors"
+                title="Preview template"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            </div>
           ))}
         </div>
       )}
+
+      {/* Fullscreen Preview Dialog */}
+      <Dialog open={!!previewId} onOpenChange={(open) => !open && setPreviewId(null)}>
+        <DialogContent className="max-w-xl p-0 overflow-hidden">
+          <div className="p-4 border-b">
+            <DialogTitle>Template Preview</DialogTitle>
+          </div>
+          <div className="p-6 bg-muted/10 flex items-center justify-center min-h-[300px]">
+            {previewOpt && (
+              <div className="rounded-md overflow-hidden border shadow-sm bg-background">
+                <PosterExportCanvas
+                  doc={previewOpt.doc}
+                  bindings={{}}
+                  inline
+                  scale={Math.min(
+                    1,
+                    480 / previewOpt.width,
+                    500 / previewOpt.height
+                  )}
+                />
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -198,6 +243,19 @@ export const QUALITY_OPTIONS = [
 export const PRINT_LAYOUT_OPTIONS = [
   { value: "ONE_PER_PAGE" as const, label: "One per page" },
   { value: "MULTIPLE_PER_PAGE" as const, label: "Multiple per page" },
+];
+
+export const PAGE_SIZE_OPTIONS = [
+  { value: "A3" as const, label: "A3" },
+  { value: "A4" as const, label: "A4" },
+  { value: "A5" as const, label: "A5" },
+  { value: "LETTER" as const, label: "Letter" },
+  { value: "LEGAL" as const, label: "Legal" },
+];
+
+export const PAGE_ORIENTATION_OPTIONS = [
+  { value: "PORTRAIT" as const, label: "Vertical" },
+  { value: "LANDSCAPE" as const, label: "Horizontal" },
 ];
 
 export const GENDER_OPTIONS = [

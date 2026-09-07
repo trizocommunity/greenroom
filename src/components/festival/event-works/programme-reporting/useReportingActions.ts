@@ -92,8 +92,28 @@ export function useReportingActions({
     [],
   );
 
+  const clearSessionLocalState = (sessionId: string) => {
+    session.setLocalCheckoutCompletedBySession((prev) => {
+      const next = { ...prev };
+      delete next[sessionId];
+      return next;
+    });
+    session.setScratchTilesBySession((prev) => {
+      const next = { ...prev };
+      delete next[sessionId];
+      return next;
+    });
+    session.setOptimisticReportedBySession((prev) => {
+      const next = { ...prev };
+      delete next[sessionId];
+      return next;
+    });
+    session.setWizardStep("checkout");
+  };
+
   const onStart = () => {
     if (!session.selected) return;
+    const sid = session.selected.reportingSession?.id;
     setActiveAction("start");
     startTransition(async () => {
       const res = await startProgrammeReportingAction(
@@ -101,6 +121,7 @@ export function useReportingActions({
         session.selected!.id,
       );
       if (res.success) {
+        if (sid) clearSessionLocalState(sid);
         toast.success("Reporting started");
         refreshBoard();
       } else toast.error("Failed to start reporting");
@@ -134,6 +155,7 @@ export function useReportingActions({
     startTransition(async () => {
       const res = await resetProgrammeReportingAction(festivalId, sid);
       if (res.success) {
+        clearSessionLocalState(sid);
         const message =
           res.data && typeof res.data === "object" && "message" in res.data
             ? (res.data as { message: string }).message
@@ -220,11 +242,65 @@ export function useReportingActions({
       if (tileIndex === -1) return prev;
       if (currentTiles[tileIndex]!.revealedAt) return prev; // Already revealed
 
+      // Find the participant whose turn it is (lowest unrevealed queuePosition)
+      const unrevealed = currentTiles
+        .filter((t) => !t.revealedAt)
+        .sort((a, b) => a.queuePosition - b.queuePosition);
+      const currentTurnTile = unrevealed[0];
+
       const newTiles = [...currentTiles];
-      newTiles[tileIndex] = {
-        ...newTiles[tileIndex]!,
-        revealedAt: new Date().toISOString(),
-      };
+      const clickedTile = newTiles[tileIndex]!;
+
+      if (
+        currentTurnTile &&
+        currentTurnTile.codeLetterId !== clickedTile.codeLetterId
+      ) {
+        const currentTurnIndex = newTiles.findIndex(
+          (t) => t.codeLetterId === currentTurnTile.codeLetterId,
+        );
+
+        const currentTurnMeta = {
+          label: currentTurnTile.label,
+          subLabel: currentTurnTile.subLabel,
+          teamLeadName: currentTurnTile.teamLeadName,
+          participantIds: currentTurnTile.participantIds,
+          participantId: currentTurnTile.participantId,
+          groupId: currentTurnTile.groupId,
+          teamNumber: currentTurnTile.teamNumber,
+          queuePosition: currentTurnTile.queuePosition,
+        };
+
+        const clickedMeta = {
+          label: clickedTile.label,
+          subLabel: clickedTile.subLabel,
+          teamLeadName: clickedTile.teamLeadName,
+          participantIds: clickedTile.participantIds,
+          participantId: clickedTile.participantId,
+          groupId: clickedTile.groupId,
+          teamNumber: clickedTile.teamNumber,
+          queuePosition: clickedTile.queuePosition,
+        };
+
+        newTiles[tileIndex] = {
+          ...clickedTile,
+          ...currentTurnMeta,
+          revealedAt: new Date().toISOString(),
+        };
+
+        if (currentTurnIndex !== -1) {
+          newTiles[currentTurnIndex] = {
+            ...newTiles[currentTurnIndex]!,
+            ...clickedMeta,
+            revealedAt: null,
+          };
+        }
+      } else {
+        newTiles[tileIndex] = {
+          ...clickedTile,
+          revealedAt: new Date().toISOString(),
+        };
+      }
+
       return { ...prev, [sid]: newTiles };
     });
     triggerConfetti([50, 80], [1.2, 1.8]);
@@ -303,6 +379,7 @@ export function useReportingActions({
       try {
         const res = await reopenProgrammeReportingAction(festivalId, sid);
         if (res.success) {
+          clearSessionLocalState(sid);
           const message =
             res.data && typeof res.data === "object" && "message" in res.data
               ? (res.data as { message: string }).message

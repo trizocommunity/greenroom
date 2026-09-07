@@ -5,6 +5,7 @@ import { Loader2, Megaphone, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { AnnouncerCallListDrawer } from "@/components/dashboard/announcement/AnnouncerCallListDrawer";
+import { StandingsPointsWithOpener } from "@/components/dashboard/standings/StandingsPointsWithOpener";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -184,8 +185,14 @@ export function AnnouncerConsoleClient({
                         <TableCell className="font-medium text-sm py-3">
                           {s.name}
                         </TableCell>
-                        <TableCell className="text-right pr-5 font-mono font-bold text-sm py-3">
-                          {s.points}
+                        <TableCell className="text-right pr-5 font-mono font-bold text-sm py-3 whitespace-nowrap">
+                          <StandingsPointsWithOpener
+                            teamName={s.name}
+                            points={s.points}
+                            programmePoints={s.programmePoints}
+                            generalPoints={s.generalPoints}
+                            generalEntries={s.generalEntries}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -207,7 +214,13 @@ export function AnnouncerConsoleClient({
                       <PlaceLabel rank={s.rank} />
                       <span className="font-medium text-sm">{s.name}</span>
                     </div>
-                    <span className="font-mono font-bold">{s.points}</span>
+                    <StandingsPointsWithOpener
+                      teamName={s.name}
+                      points={s.points}
+                      programmePoints={s.programmePoints}
+                      generalPoints={s.generalPoints}
+                      generalEntries={s.generalEntries}
+                    />
                   </div>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import { db } from "@/core/database/client";
 import {
@@ -31,6 +31,8 @@ export interface TemplateExportPayload {
   height: number;
   quality: "SCREEN" | "STANDARD" | "PRINT";
   printLayout: "ONE_PER_PAGE" | "MULTIPLE_PER_PAGE";
+  pageSize: "A3" | "A4" | "A5" | "LETTER" | "LEGAL";
+  pageOrientation: "PORTRAIT" | "LANDSCAPE";
   items: TemplateExportItem[];
 }
 
@@ -79,6 +81,10 @@ export async function resolveBadgePayload(
   if (config.teamIds.length)
     conditions.push(inArray(participantTable.groupId, config.teamIds));
 
+  // Exclude participants in GENERAL categories — badges are per-participant
+  // and GENERAL categories can pull an unbounded number of rows.
+  conditions.push(ne(categoryTable.type, "GENERAL"));
+
   const rows = await db
     .select({
       name: participantTable.name,
@@ -89,7 +95,7 @@ export async function resolveBadgePayload(
     })
     .from(participantTable)
     .leftJoin(groupTable, eq(participantTable.groupId, groupTable.id))
-    .leftJoin(categoryTable, eq(participantTable.categoryId, categoryTable.id))
+    .innerJoin(categoryTable, eq(participantTable.categoryId, categoryTable.id))
     .where(and(...conditions));
 
   const items: TemplateExportItem[] = rows
@@ -111,6 +117,8 @@ export async function resolveBadgePayload(
     height: doc.height,
     quality: config.quality,
     printLayout: config.printLayout,
+    pageSize: config.pageSize,
+    pageOrientation: config.pageOrientation,
     items,
   };
 }
@@ -134,6 +142,8 @@ export async function resolveCertificatePayload(
     const conditions = [eq(participantTable.festivalId, festivalId)];
     if (config.categoryIds.length)
       conditions.push(inArray(participantTable.categoryId, config.categoryIds));
+    // Exclude GENERAL categories — not meaningful for per-participant certs.
+    conditions.push(ne(categoryTable.type, "GENERAL"));
     const rows = await db
       .select({
         name: participantTable.name,
@@ -142,7 +152,7 @@ export async function resolveCertificatePayload(
       })
       .from(participantTable)
       .leftJoin(groupTable, eq(participantTable.groupId, groupTable.id))
-      .leftJoin(
+      .innerJoin(
         categoryTable,
         eq(participantTable.categoryId, categoryTable.id),
       )
@@ -249,6 +259,8 @@ export async function resolveCertificatePayload(
     height: doc.height,
     quality: config.quality,
     printLayout: config.printLayout,
+    pageSize: config.pageSize,
+    pageOrientation: config.pageOrientation,
     items,
   };
 }

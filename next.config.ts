@@ -55,6 +55,11 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ["pg", "ioredis"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "100mb",
+    },
+  },
 };
 
 export default withSerwist(nextConfig);
