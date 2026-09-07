@@ -69,7 +69,7 @@ export function FestivalPosterEditor({
     async (file: File) => {
       const result = await uploadMutation.mutateAsync({
         file,
-        folder: "poster-templates",
+        folder: "templates",
         festivalId,
       });
       return result.url;

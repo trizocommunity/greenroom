@@ -27,6 +27,12 @@ const Drawer = ({
   const responsiveDirection =
     explicitDirection ?? (isMobile ? "bottom" : "right");
 
+  React.useEffect(() => {
+    if (props.open && typeof document !== "undefined") {
+      (document.activeElement as HTMLElement)?.blur();
+    }
+  }, [props.open]);
+
   return (
     <DrawerDirectionContext.Provider value={responsiveDirection}>
       <DrawerPrimitive.Root

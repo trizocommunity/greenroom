@@ -6,6 +6,7 @@ export const uploadFolderEnum = z.enum([
   "news",
   "media",
   "poster",
+  "templates",
 ]);
 
 export const uploadInput = z.object({

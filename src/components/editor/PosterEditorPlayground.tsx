@@ -475,7 +475,13 @@ export default function PosterEditorPlayground({
                     one below
                   </p>
                 </div>
-                <Button size="sm" onClick={() => setNewModalOpen(true)}>
+                <Button
+                  size="sm"
+                  onClick={(e) => {
+                    e.currentTarget.blur();
+                    setNewModalOpen(true);
+                  }}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   New Template
                 </Button>

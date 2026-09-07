@@ -1,16 +1,18 @@
 import { useMutation } from "@tanstack/react-query";
-import type { UploadInput, UploadResponse } from "@/api/contracts/upload";
+import type {
+  UploadFolder,
+  UploadInput,
+  UploadResponse,
+} from "@/api/contracts/upload";
 import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { toast } from "@/lib/toast";
-
-
 
 export function useCloudinaryUpload() {
   return useMutation<
     UploadResponse,
     Error,
-    { file: File; folder: string; festivalId: string }
+    { file: File; folder: UploadFolder; festivalId: string }
   >({
     mutationFn: async ({ file, folder, festivalId }) => {
       const formData = new FormData();

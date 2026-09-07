@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
+  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
@@ -31,11 +32,11 @@ export function TeamCountModal({
           <DrawerTitle className="font-serif text-xl">
             Team Points Poster
           </DrawerTitle>
+          <DrawerDescription>
+            How many teams should appear on the poster? A row with team name and
+            points will be created for each team.
+          </DrawerDescription>
         </DrawerHeader>
-        <p className="text-sm text-muted-foreground">
-          How many teams should appear on the poster? A row with team name and
-          points will be created for each team.
-        </p>
         <div className="space-y-2">
           <Label htmlFor="team-count" className="text-xs font-bold uppercase">
             Number of teams
