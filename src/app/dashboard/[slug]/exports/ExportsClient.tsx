@@ -22,6 +22,7 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
   const deleteExport = useDeleteExport();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [exportProgress, setExportProgress] = useState<Record<string, { current: number; total: number }>>({});
 
   const handleDelete = async () => {
     if (!confirmId) return;
@@ -86,6 +87,7 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
       ) : (
         <ExportsTable
           exports={exports}
+          progressMap={exportProgress}
           onDelete={(id) => setConfirmId(id)}
           deletingId={deleteExport.isPending ? confirmId : null}
         />
@@ -110,6 +112,9 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
       <ClientTemplateExportRunner
         festivalId={festivalId}
         exports={exports ?? []}
+        onProgress={(id, current, total) => {
+          setExportProgress((prev) => ({ ...prev, [id]: { current, total } }));
+        }}
       />
     </div>
   );
