@@ -43,7 +43,7 @@ function initPdf(payload: TemplateExportPayload) {
   const isLandscape = pageOrientation === "LANDSCAPE";
   const pageW = isLandscape ? base.h : base.w;
   const pageH = isLandscape ? base.w : base.h;
-  const orientation = isLandscape ? "landscape" : "portrait";
+  const orientation = (isLandscape ? "landscape" : "portrait") as "landscape" | "portrait";
   const doc = new jsPDF({ unit: "px", format: [pageW, pageH], orientation });
   return { doc, pageW, pageH, orientation };
 }
