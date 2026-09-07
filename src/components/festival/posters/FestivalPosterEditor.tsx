@@ -8,6 +8,7 @@ import type { PosterEditorAutosaveConfig } from "@/components/editor/PosterEdito
 import type { PosterTemplateType } from "@/components/editor/poster-editor-config";
 import { createPresetDocument } from "@/components/editor/poster-editor-presets";
 import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
+import { sanitizeDocumentForSave } from "@/components/editor/editor-utils";
 import {
   clearLocalEditorBackup,
   readLocalEditorBackup,
@@ -156,12 +157,14 @@ export function FestivalPosterEditor({
   const saveDraftSilent = useCallback(
     async (doc: PosterEditorDocument): Promise<boolean> => {
       if (!templateCode) return false;
+      // Strip blob: URLs so we never persist them to the database.
+      const { doc: safeDoc } = sanitizeDocumentForSave(doc);
       const res = await savePosterTemplateDraftAction(
         {
           festivalId,
           code: templateCode,
-          document: doc,
-          meta: doc.templateName ? { name: doc.templateName } : undefined,
+          document: safeDoc,
+          meta: safeDoc.templateName ? { name: safeDoc.templateName } : undefined,
         },
         festivalSlug,
       );

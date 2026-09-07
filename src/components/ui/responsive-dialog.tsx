@@ -122,37 +122,38 @@ const ResponsiveDialogFooter = ({
   return <AlertDialogFooter className={className} {...props} />;
 };
 
-const ResponsiveDialogTitle = ({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogTitle>) => {
+const ResponsiveDialogTitle = React.forwardRef<
+  React.ElementRef<typeof AlertDialogTitle>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogTitle>
+>(({ className, ...props }, ref) => {
   const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
-    return <DrawerTitle className={className} {...props} />;
+    return <DrawerTitle ref={ref} className={className} {...props} />;
   }
 
-  return <AlertDialogTitle className={className} {...props} />;
-};
+  return <AlertDialogTitle ref={ref} className={className} {...props} />;
+});
+ResponsiveDialogTitle.displayName = "ResponsiveDialogTitle";
 
-const ResponsiveDialogDescription = ({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogDescription>) => {
+const ResponsiveDialogDescription = React.forwardRef<
+  React.ElementRef<typeof AlertDialogDescription>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogDescription>
+>(({ className, ...props }, ref) => {
   const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
-    return <DrawerDescription className={className} {...props} />;
+    return <DrawerDescription ref={ref} className={className} {...props} />;
   }
 
-  return <AlertDialogDescription className={className} {...props} />;
-};
+  return <AlertDialogDescription ref={ref} className={className} {...props} />;
+});
+ResponsiveDialogDescription.displayName = "ResponsiveDialogDescription";
 
-const ResponsiveDialogContent = ({
-  children,
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
+const ResponsiveDialogContent = React.forwardRef<
+  React.ElementRef<typeof AlertDialogContent>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogContent>
+>(({ children, className, ...props }, ref) => {
   const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
@@ -166,16 +167,17 @@ const ResponsiveDialogContent = ({
   }
 
   return (
-    <AlertDialogContent className={className} {...props}>
+    <AlertDialogContent ref={ref} className={className} {...props}>
       {children}
     </AlertDialogContent>
   );
-};
+});
+ResponsiveDialogContent.displayName = "ResponsiveDialogContent";
 
-const ResponsiveDialogAction = ({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogAction>) => {
+const ResponsiveDialogAction = React.forwardRef<
+  React.ElementRef<typeof AlertDialogAction>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogAction>
+>(({ className, ...props }, ref) => {
   const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
@@ -184,24 +186,26 @@ const ResponsiveDialogAction = ({
     // the missing-context crash while keeping identical styling/behavior.
     return (
       <DrawerClose asChild>
-        <Button className={className} {...props} />
+        <Button ref={ref} className={className} {...props} />
       </DrawerClose>
     );
   }
 
-  return <AlertDialogAction className={className} {...props} />;
-};
+  return <AlertDialogAction ref={ref} className={className} {...props} />;
+});
+ResponsiveDialogAction.displayName = "ResponsiveDialogAction";
 
-const ResponsiveDialogCancel = ({
-  className,
-  ...props
-}: React.ComponentProps<typeof AlertDialogCancel>) => {
+const ResponsiveDialogCancel = React.forwardRef<
+  React.ElementRef<typeof AlertDialogCancel>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogCancel>
+>(({ className, ...props }, ref) => {
   const isMobile = React.useContext(ResponsiveDialogMobileContext);
 
   if (isMobile) {
     return (
       <DrawerClose asChild>
         <Button
+          ref={ref}
           variant="outline"
           className={cn("mt-2 sm:mt-0", className)}
           {...props}
@@ -210,8 +214,9 @@ const ResponsiveDialogCancel = ({
     );
   }
 
-  return <AlertDialogCancel className={className} {...props} />;
-};
+  return <AlertDialogCancel ref={ref} className={className} {...props} />;
+});
+ResponsiveDialogCancel.displayName = "ResponsiveDialogCancel";
 
 export {
   ResponsiveDialog,

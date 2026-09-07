@@ -374,7 +374,10 @@ export default function PosterEditorPlayground({
                   size="sm"
                   className="h-7"
                   disabled={publishTemplate.pending}
-                  onClick={() => setPublishOpen(true)}
+                  onClick={(e) => {
+                    e.currentTarget.blur();
+                    setPublishOpen(true);
+                  }}
                 >
                   Publish template
                 </Button>

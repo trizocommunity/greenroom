@@ -167,6 +167,29 @@ export async function savePosterTemplateDraftAction(
     const type = templateTypeFromCode(parsed.code);
     if (!type) return { success: false, error: "Invalid template code" };
     const doc = parsed.document;
+
+    // ── Server-side guard: never persist blob: URLs ──────────────────
+    // blob: URLs are temporary browser pointers that die on refresh.
+    // The client sanitises before sending, but this is defense-in-depth.
+    const isBlobUrl = (u?: string | null) =>
+      typeof u === "string" && u.startsWith("blob:");
+
+    if (doc.background?.imageUrl && isBlobUrl(doc.background.imageUrl)) {
+      doc.background = { ...doc.background, type: "solid", imageUrl: undefined };
+    }
+    if (doc.elements) {
+      doc.elements = doc.elements.filter(
+        (el) => !(el.type === "image" && isBlobUrl(el.imageUrl)),
+      );
+    }
+    if (doc.customFonts) {
+      doc.customFonts = doc.customFonts.filter((f) => !isBlobUrl(f.url));
+    }
+
+    const rawBgUrl = parsed.backgroundUrl ?? doc.background?.imageUrl ?? null;
+    const safeBgUrl = isBlobUrl(rawBgUrl) ? null : rawBgUrl;
+    // ─────────────────────────────────────────────────────────────────
+
     const existing = await PosterTemplateRepo.findByFestivalAndCode(
       parsed.festivalId,
       parsed.code,
@@ -189,7 +212,7 @@ export async function savePosterTemplateDraftAction(
       width: doc.width,
       height: doc.height,
       konvaJson: doc,
-      backgroundUrl: parsed.backgroundUrl ?? doc.background?.imageUrl ?? null,
+      backgroundUrl: safeBgUrl,
       meta,
     });
 

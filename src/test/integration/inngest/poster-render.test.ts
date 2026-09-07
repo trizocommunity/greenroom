@@ -48,8 +48,8 @@ beforeEach(() => {
 
 describe("posterRender", () => {
   it("renders, uploads, and stores the Cloudinary URL on the festival", async () => {
-    const fn = posterRender as unknown as (ctx: unknown) => Promise<unknown>;
-    const result = await fn({
+    const handler = (posterRender as unknown as { fn: (ctx: unknown) => Promise<unknown> }).fn;
+    const result = await handler({
       event: {
         data: {
           renderId: RENDER_ID,
@@ -89,9 +89,9 @@ describe("posterRender", () => {
 
   it("throws NonRetriableError when the event payload is missing required fields", async () => {
     const { NonRetriableError } = await import("inngest");
-    const fn = posterRender as unknown as (ctx: unknown) => Promise<unknown>;
+    const handler = (posterRender as unknown as { fn: (ctx: unknown) => Promise<unknown> }).fn;
     await expect(
-      fn({
+      handler({
         event: { data: { renderId: "r-2", festivalId: "", templateId: "X" } },
         step: makeStep(),
       }),

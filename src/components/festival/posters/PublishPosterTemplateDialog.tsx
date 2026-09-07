@@ -5,9 +5,10 @@ import { useMemo, useRef } from "react";
 import { MOCK_BINDINGS } from "@/components/editor/poster-editor-config";
 import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
-import { Button } from "@/components/ui/button";
 import {
   ResponsiveDialog,
+  ResponsiveDialogAction,
+  ResponsiveDialogCancel,
   ResponsiveDialogContent,
   ResponsiveDialogDescription,
   ResponsiveDialogFooter,
@@ -100,21 +101,18 @@ export function PublishPosterTemplateDialog({
         </p>
 
         <ResponsiveDialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading}
-            onClick={() => onOpenChange(false)}
-          >
+          <ResponsiveDialogCancel disabled={loading}>
             Cancel
-          </Button>
-          <Button
-            type="button"
+          </ResponsiveDialogCancel>
+          <ResponsiveDialogAction
             disabled={loading}
-            onClick={() => void onConfirm()}
+            onClick={(e) => {
+              e.preventDefault();
+              void onConfirm();
+            }}
           >
             {loading ? "Publishing…" : "Confirm publish"}
-          </Button>
+          </ResponsiveDialogAction>
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
