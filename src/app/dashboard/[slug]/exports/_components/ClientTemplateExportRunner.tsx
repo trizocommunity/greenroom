@@ -37,7 +37,7 @@ const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   LEGAL: { w: 612, h: 1008 },
 };
 
-function assemblePdf(images: string[], payload: TemplateExportPayload): string {
+async function assemblePdf(images: string[], payload: TemplateExportPayload): Promise<string> {
   const { width, height, printLayout, pageSize, pageOrientation } = payload;
 
   // Resolve page dimensions, applying orientation swap.
@@ -46,6 +46,17 @@ function assemblePdf(images: string[], payload: TemplateExportPayload): string {
   const pageW = isLandscape ? base.h : base.w;
   const pageH = isLandscape ? base.w : base.h;
   const orientation = isLandscape ? "landscape" : "portrait";
+
+  const getBase64FromDoc = async (doc: jsPDF): Promise<string> => {
+    const blob = doc.output("blob");
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    return dataUrl.split(",")[1];
+  };
 
   if (printLayout === "ONE_PER_PAGE") {
     // Center the item on the chosen page.
@@ -59,7 +70,7 @@ function assemblePdf(images: string[], payload: TemplateExportPayload): string {
       const y = (pageH - renderH) / 2;
       doc.addImage(img, "PNG", x, y, renderW, renderH);
     });
-    return doc.output("datauristring").split(",")[1];
+    return getBase64FromDoc(doc);
   }
 
   // MULTIPLE_PER_PAGE — gapless edge-to-edge tiling.
@@ -90,7 +101,7 @@ function assemblePdf(images: string[], payload: TemplateExportPayload): string {
     const y = marginY + row * cellH;
     doc.addImage(img, "PNG", x, y, cellW, cellH);
   });
-  return doc.output("datauristring").split(",")[1];
+  return getBase64FromDoc(doc);
 }
 
 interface Job {
@@ -178,7 +189,7 @@ export function ClientTemplateExportRunner({ festivalId, exports }: Props) {
 
       // All items captured — assemble and upload.
       try {
-        const base64 = assemblePdf(images, job.payload);
+        const base64 = await assemblePdf(images, job.payload);
         await finalizeTemplateExportAction(festivalId, job.exportId, {
           fileBase64: base64,
           itemCount: images.length,
