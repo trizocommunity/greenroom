@@ -18,6 +18,7 @@ import type { ExportListItem } from "@/features/exports/types/export.types";
 interface Props {
   festivalId: string;
   exports: ExportListItem[];
+  onProgress?: (exportId: string, current: number, total: number) => void;
 }
 
 const QUALITY_RATIO: Record<TemplateExportPayload["quality"], number> = {
@@ -116,7 +117,7 @@ interface Job {
  * item off-screen with the poster Konva canvas, assembles a PDF, and uploads it
  * to finalize the job. Rendering happens one item at a time.
  */
-export function ClientTemplateExportRunner({ festivalId, exports }: Props) {
+export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: Props) {
   const qc = useQueryClient();
   const stageRef = useRef<Konva.Stage | null>(null);
   const handled = useRef<Set<string>>(new Set());
@@ -160,8 +161,9 @@ export function ClientTemplateExportRunner({ festivalId, exports }: Props) {
         return;
       }
       setJob({ exportId: next.id, payload: res.data, index: 0, images: [] });
+      onProgress?.(next.id, 0, res.data.items.length);
     })();
-  }, [exports, job, festivalId, invalidate]);
+  }, [exports, job, festivalId, invalidate, onProgress]);
 
   // Capture the currently-rendered item, then advance or finalize.
   useEffect(() => {
@@ -184,6 +186,7 @@ export function ClientTemplateExportRunner({ festivalId, exports }: Props) {
 
       if (images.length < job.payload.items.length) {
         setJob({ ...job, index: job.index + 1, images });
+        onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
         return;
       }
 
@@ -204,13 +207,14 @@ export function ClientTemplateExportRunner({ festivalId, exports }: Props) {
         setJob(null);
         busy.current = false;
         invalidate();
+        // optionally clear progress here or let the parent clean it up when status != PROCESSING
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [job, festivalId, invalidate]);
+  }, [job, festivalId, invalidate, onProgress]);
 
   if (!job) return null;
   const item = job.payload.items[job.index];

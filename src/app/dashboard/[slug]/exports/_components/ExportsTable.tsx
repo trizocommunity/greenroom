@@ -19,6 +19,7 @@ import { getExportTypeMeta } from "./export-types";
 
 interface ExportsTableProps {
   exports: ExportListItem[];
+  progressMap?: Record<string, { current: number; total: number }>;
   onDelete: (id: string) => void;
   deletingId: string | null;
 }
@@ -65,6 +66,7 @@ function metaLine(itemCount: number | null, bytes: number | null): string {
 
 export function ExportsTable({
   exports,
+  progressMap = {},
   onDelete,
   deletingId,
 }: ExportsTableProps) {
@@ -102,6 +104,8 @@ export function ExportsTable({
             const Icon = meta.icon;
             const firstBadge = e.filterBadges[0];
             const extra = e.filterBadges.length - 1;
+            const prog = progressMap[e.id];
+            
             return (
               <div
                 key={e.id}
@@ -122,7 +126,7 @@ export function ExportsTable({
                     {e.status === "PROCESSING" && (
                       <Badge variant="warning" className="gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        Processing
+                        {prog ? `Processing (${Math.round((prog.current / prog.total) * 100)}%)` : 'Processing'}
                       </Badge>
                     )}
                     {e.status === "FAILED" && (
@@ -223,6 +227,8 @@ export function ExportsTable({
                 const Icon = meta.icon;
                 const firstBadge = e.filterBadges[0];
                 const extra = e.filterBadges.length - 1;
+                const prog = progressMap[e.id];
+                
                 return (
                   <TableRow key={e.id}>
                     <TableCell>
@@ -267,7 +273,7 @@ export function ExportsTable({
                       {e.status === "PROCESSING" && (
                         <Badge variant="warning" className="gap-1">
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          Processing
+                          {prog ? `Processing (${Math.round((prog.current / prog.total) * 100)}%)` : 'Processing'}
                         </Badge>
                       )}
                       {e.status === "FAILED" && (
