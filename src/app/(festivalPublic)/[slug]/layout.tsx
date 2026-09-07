@@ -8,6 +8,8 @@ import { CustomDomainProvider } from "@/components/providers/custom-domain-provi
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
 import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
+import { getFestivalDurationDays } from "@/config/pricing";
+import { MS } from "@/core/datetime/constants";
 
 export async function generateMetadata({
   params,
@@ -34,6 +36,11 @@ export async function generateMetadata({
 
   const logo = branding?.logo || fallbackIcon;
 
+  const customDomain = hdrs.get("x-custom-domain");
+  const canonicalUrl = customDomain
+    ? `https://${customDomain}`
+    : `https://greenroomfestivals.in/${festival.slug}`;
+
   return {
     title: {
       default: festival.name,
@@ -41,6 +48,9 @@ export async function generateMetadata({
     },
     description: festival.tagline || festival.description || undefined,
     manifest: `/api/v1/festivals/${festival.slug}/manifest`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     icons: {
       icon: logo,
       apple: logo,
@@ -49,6 +59,7 @@ export async function generateMetadata({
       title: festival.name,
       description: festival.tagline || festival.description || undefined,
       siteName: festival.name,
+      url: canonicalUrl,
       images: branding?.logo ? [{ url: branding.logo }] : [],
     },
     twitter: {
@@ -99,8 +110,8 @@ export default async function FestivalLayout({
     slug: festival.slug,
     description: festival.description || "",
     tagline: festival.tagline || "",
-    startDate: new Date().toISOString(),
-    endDate: new Date().toISOString(),
+    startDate: festival.createdAt,
+    endDate: festival.expiresAt || new Date(new Date(festival.createdAt).getTime() + getFestivalDurationDays() * MS.day).toISOString(),
     location: festival.orgLocation || "",
     status: festival.status,
     logo: branding?.logo ?? null,
@@ -127,6 +138,13 @@ export default async function FestivalLayout({
     description: festivalData.description || festivalData.tagline,
     startDate: festivalData.startDate,
     endDate: festivalData.endDate,
+    eventStatus: festival.status === "EXPIRED" ? "https://schema.org/EventPostponed" : "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "INR",
+    },
     location: festivalData.location
       ? {
           "@type": "Place",

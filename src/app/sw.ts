@@ -39,7 +39,19 @@ const runtimeCaching = [
       request: Request;
       sameOrigin: boolean;
     }) => sameOrigin && request.mode === "navigate",
-    handler: new NetworkOnly(),
+    handler: async (options: any) => {
+      try {
+        const strategy = new NetworkOnly();
+        return await strategy.handle(options);
+      } catch (error) {
+        // Silently catch the 'no-response' error to prevent console spam
+        // and manually invoke the offline fallback
+        const cache = await caches.open("serwist-precache-v1"); // or default precache
+        const fallback = await cache.match("/offline") || await caches.match("/offline");
+        if (fallback) return fallback;
+        return Response.error();
+      }
+    },
   },
   ...defaultCache.filter((entry) => {
     const handler = entry.handler;
