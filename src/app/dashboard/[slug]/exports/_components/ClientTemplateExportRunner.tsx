@@ -29,7 +29,6 @@ const QUALITY_RATIO: Record<TemplateExportPayload["quality"], number> = {
 
 const TEMPLATE_TYPES = new Set(["BADGE", "CERTIFICATE"]);
 
-/** Page sizes in points (1 pt = 1/72 in), which is jsPDF's native "px" unit. */
 const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   A3: { w: 842, h: 1191 },
   A4: { w: 595, h: 842 },
@@ -38,44 +37,39 @@ const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   LEGAL: { w: 612, h: 1008 },
 };
 
-async function assemblePdf(images: string[], payload: TemplateExportPayload): Promise<string> {
-  const { width, height, printLayout, pageSize, pageOrientation } = payload;
-
-  // Resolve page dimensions, applying orientation swap.
+function initPdf(payload: TemplateExportPayload) {
+  const { pageSize, pageOrientation } = payload;
   const base = PAGE_SIZES[pageSize] ?? PAGE_SIZES.A4;
   const isLandscape = pageOrientation === "LANDSCAPE";
   const pageW = isLandscape ? base.h : base.w;
   const pageH = isLandscape ? base.w : base.h;
-  const orientation = isLandscape ? "landscape" : "portrait";
+  const orientation = (isLandscape ? "landscape" : "portrait") as "landscape" | "portrait";
+  const doc = new jsPDF({ unit: "px", format: [pageW, pageH], orientation });
+  return { doc, pageW, pageH, orientation };
+}
 
-  const getBase64FromDoc = async (doc: jsPDF): Promise<string> => {
-    const blob = doc.output("blob");
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    return dataUrl.split(",")[1];
-  };
+function appendToPdf(
+  doc: jsPDF,
+  imgBase64: string,
+  index: number,
+  payload: TemplateExportPayload,
+  pageContext: { pageW: number; pageH: number; orientation: "landscape" | "portrait" }
+) {
+  const { width, height, printLayout } = payload;
+  const { pageW, pageH, orientation } = pageContext;
 
   if (printLayout === "ONE_PER_PAGE") {
-    // Center the item on the chosen page.
-    const doc = new jsPDF({ unit: "px", format: [pageW, pageH], orientation });
-    images.forEach((img, i) => {
-      if (i > 0) doc.addPage([pageW, pageH], orientation);
-      const scale = Math.min(pageW / width, pageH / height);
-      const renderW = width * scale;
-      const renderH = height * scale;
-      const x = (pageW - renderW) / 2;
-      const y = (pageH - renderH) / 2;
-      doc.addImage(img, "PNG", x, y, renderW, renderH);
-    });
-    return getBase64FromDoc(doc);
+    if (index > 0) doc.addPage([pageW, pageH], orientation);
+    const scale = Math.min(pageW / width, pageH / height);
+    const renderW = width * scale;
+    const renderH = height * scale;
+    const x = (pageW - renderW) / 2;
+    const y = (pageH - renderH) / 2;
+    doc.addImage(imgBase64, "PNG", x, y, renderW, renderH);
+    return;
   }
 
-  // MULTIPLE_PER_PAGE — gapless edge-to-edge tiling.
-  // Compute how many items fit across and down at native size, zero spacing.
+  // MULTIPLE_PER_PAGE
   const itemAspect = height / width;
   const cols = Math.max(1, Math.floor(pageW / width));
   const cellW = pageW / cols;
@@ -83,51 +77,48 @@ async function assemblePdf(images: string[], payload: TemplateExportPayload): Pr
   const rows = Math.max(1, Math.floor(pageH / cellH));
   const perPage = cols * rows;
 
-  // Center the grid on the page: leftover space becomes outer margin.
   const marginX = (pageW - cols * cellW) / 2;
   const marginY = (pageH - rows * cellH) / 2;
 
-  const doc = new jsPDF({
-    unit: "px",
-    format: [pageW, pageH],
-    orientation,
-  });
-
-  images.forEach((img, i) => {
-    const slot = i % perPage;
-    if (i > 0 && slot === 0) doc.addPage([pageW, pageH], orientation);
-    const col = slot % cols;
-    const row = Math.floor(slot / cols);
-    const x = marginX + col * cellW;
-    const y = marginY + row * cellH;
-    doc.addImage(img, "PNG", x, y, cellW, cellH);
-  });
-  return getBase64FromDoc(doc);
+  const slot = index % perPage;
+  if (index > 0 && slot === 0) doc.addPage([pageW, pageH], orientation);
+  
+  const col = slot % cols;
+  const row = Math.floor(slot / cols);
+  const x = marginX + col * cellW;
+  const y = marginY + row * cellH;
+  doc.addImage(imgBase64, "PNG", x, y, cellW, cellH);
 }
 
 interface Job {
   exportId: string;
   payload: TemplateExportPayload;
   index: number;
-  images: string[];
 }
 
-/**
- * Watches the exports list for PROCESSING badge/certificate jobs, renders each
- * item off-screen with the poster Konva canvas, assembles a PDF, and uploads it
- * to finalize the job. Rendering happens one item at a time.
- */
 export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: Props) {
   const qc = useQueryClient();
   const stageRef = useRef<Konva.Stage | null>(null);
   const handled = useRef<Set<string>>(new Set());
   const [job, setJob] = useState<Job | null>(null);
   const busy = useRef(false);
+  const pdfRef = useRef<{ doc: jsPDF; pageW: number; pageH: number; orientation: "landscape" | "portrait" } | null>(null);
 
   const invalidate = useCallback(
     () => qc.invalidateQueries({ queryKey: queryKeys.exports.all(festivalId) }),
     [qc, festivalId],
   );
+
+  // Tab close warning when processing
+  useEffect(() => {
+    if (!job) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [job]);
 
   // Pick up the next unhandled template job.
   useEffect(() => {
@@ -151,52 +142,69 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
         return;
       }
       if (res.data.items.length === 0) {
-        await failTemplateExportAction(
-          festivalId,
-          next.id,
-          "No items matched the selected filters.",
-        );
+        await failTemplateExportAction(festivalId, next.id, "No items matched the selected filters.");
         busy.current = false;
         invalidate();
         return;
       }
-      setJob({ exportId: next.id, payload: res.data, index: 0, images: [] });
+      pdfRef.current = initPdf(res.data);
+      setJob({ exportId: next.id, payload: res.data, index: 0 });
       onProgress?.(next.id, 0, res.data.items.length);
     })();
   }, [exports, job, festivalId, invalidate, onProgress]);
 
   // Capture the currently-rendered item, then advance or finalize.
   useEffect(() => {
-    if (!job) return;
+    const pdfContext = pdfRef.current;
+    if (!job || !pdfContext) return;
+    
     let cancelled = false;
 
     (async () => {
-      // Give fonts and images a moment to load before capturing.
+      // Deterministic wait: wait for all fonts and Konva images to be fully loaded
       if (document.fonts?.ready) await document.fonts.ready;
-      await new Promise((r) => setTimeout(r, 400));
-      if (cancelled) return;
-
+      
       const stage = stageRef.current;
       if (!stage) return;
+      
+      // Wait for any images inside the stage to complete loading
+      await new Promise<void>((resolve) => {
+        const checkImages = () => {
+          const imageNodes = stage.find("Image");
+          const isLoading = imageNodes.some((node: any) => {
+            const img = node.image();
+            return img && !img.complete;
+          });
+          if (!isLoading) resolve();
+          else setTimeout(checkImages, 50);
+        };
+        checkImages();
+      });
+
+      if (cancelled) return;
+
       const dataUrl = stage.toDataURL({
         pixelRatio: QUALITY_RATIO[job.payload.quality],
         mimeType: "image/png",
       });
-      const images = [...job.images, dataUrl];
+      
+      // Stream immediately to jsPDF to keep memory low
+      appendToPdf(pdfContext.doc, dataUrl, job.index, job.payload, pdfContext);
 
-      if (images.length < job.payload.items.length) {
-        setJob({ ...job, index: job.index + 1, images });
+      if (job.index + 1 < job.payload.items.length) {
+        setJob({ ...job, index: job.index + 1 });
         onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
         return;
       }
 
-      // All items captured — assemble and upload.
+      // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
       try {
-        const base64 = await assemblePdf(images, job.payload);
-        await finalizeTemplateExportAction(festivalId, job.exportId, {
-          fileBase64: base64,
-          itemCount: images.length,
-        });
+        const blob = pdfContext.doc.output("blob");
+        const formData = new FormData();
+        formData.append("file", blob, "export.pdf");
+        formData.append("itemCount", String(job.payload.items.length));
+        
+        await finalizeTemplateExportAction(festivalId, job.exportId, formData);
       } catch (err) {
         await failTemplateExportAction(
           festivalId,
@@ -204,10 +212,10 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
           err instanceof Error ? err.message : "Rendering failed.",
         );
       } finally {
+        pdfRef.current = null;
         setJob(null);
         busy.current = false;
         invalidate();
-        // optionally clear progress here or let the parent clean it up when status != PROCESSING
       }
     })();
 

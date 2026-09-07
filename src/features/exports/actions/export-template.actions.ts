@@ -104,7 +104,7 @@ export async function getTemplateExportPayloadAction(
 export async function finalizeTemplateExportAction(
   festivalId: string,
   exportId: string,
-  input: { fileBase64: string; itemCount: number },
+  formData: FormData,
 ): Promise<ActionResponse<{ id: string }>> {
   try {
     const session = await getSession();
@@ -116,7 +116,17 @@ export async function finalizeTemplateExportAction(
       return { success: true, data: { id: exportId } };
     }
 
-    const bytes = Buffer.from(input.fileBase64, "base64");
+    const file = formData.get("file") as File;
+    const itemCount = parseInt(formData.get("itemCount") as string, 10);
+    
+    if (!file) {
+      throw new AppError("No file data received.");
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = Buffer.from(arrayBuffer);
+    const fileBase64 = bytes.toString("base64");
+
     const queuedAtMs = Date.parse(row.queuedAt);
     const completedInMs = Number.isNaN(queuedAtMs)
       ? 0
@@ -124,11 +134,11 @@ export async function finalizeTemplateExportAction(
 
     await ExportRepo.completeExport({
       id: exportId,
-      fileData: input.fileBase64,
+      fileData: fileBase64,
       fileName: `${row.type.toLowerCase()}.pdf`,
       mimeType: "application/pdf",
       fileSizeBytes: bytes.byteLength,
-      itemCount: input.itemCount,
+      itemCount,
       completedInMs,
     });
     return { success: true, data: { id: exportId } };
