@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
+import { sanitizeDocumentForSave } from "@/components/editor/editor-utils";
 import { writeLocalEditorBackup } from "@/components/festival/posters/festival-editor-local-backup";
 
 export type AutosaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -42,7 +43,28 @@ export function usePosterEditorAutosave({
       const doc = latestDocRef.current ?? getDocument();
       if (!doc) return;
 
+      // Always keep the local backup (with blob URLs — they survive within
+      // the same session and are useful for crash recovery).
       writeLocalEditorBackup(festivalId, templateCode, doc);
+
+      // Sanitise blob: URLs before persisting to the server.  If an upload
+      // is still in flight (hasPendingUploads) and this is a debounce-
+      // triggered save, skip — the Cloudinary callback will flip isDirty
+      // again and re-schedule a save with the permanent URL.
+      const { doc: safeDoc, hasPendingUploads } =
+        sanitizeDocumentForSave(doc);
+
+      if (hasPendingUploads && reason === "debounce") {
+        // Re-schedule so we don't silently lose the save entirely.
+        // The upload completion will also trigger a dirty cycle, but this
+        // acts as a safety net.
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          debounceRef.current = null;
+          void flush("debounce");
+        }, debounceMs);
+        return;
+      }
 
       if (savingRef.current) {
         pendingFlushRef.current = true;
@@ -54,7 +76,7 @@ export function usePosterEditorAutosave({
       setErrorMessage(null);
 
       try {
-        const ok = await saveDraft(doc);
+        const ok = await saveDraft(safeDoc);
         if (ok) {
           setLastSavedAt(new Date().toISOString());
           setStatus("saved");
@@ -78,7 +100,7 @@ export function usePosterEditorAutosave({
         }
       }
     },
-    [enabled, festivalId, templateCode, getDocument, onSaved, saveDraft],
+    [enabled, festivalId, templateCode, getDocument, onSaved, saveDraft, debounceMs],
   );
 
   const schedule = useCallback(

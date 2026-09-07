@@ -72,8 +72,8 @@ beforeEach(() => {
 
 describe("exportJob", () => {
   it("loads festival, runs the generator, and writes the export row", async () => {
-    const fn = exportJob as unknown as (ctx: unknown) => Promise<unknown>;
-    const result = await fn({
+    const handler = (exportJob as unknown as { fn: (ctx: unknown) => Promise<unknown> }).fn;
+    const result = await handler({
       event: {
         data: {
           exportId: "exp-1",

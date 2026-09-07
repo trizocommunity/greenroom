@@ -70,3 +70,64 @@ export function extractStyle(el: EditorElement): CopiedElementStyle {
     opacity: el.opacity,
   };
 }
+
+// ─── Blob URL sanitisation ────────────────────────────────────────────────────
+
+/** Returns true for temporary browser-only `blob:` URLs. */
+export function isBlobUrl(url: string | undefined | null): boolean {
+  return typeof url === "string" && url.startsWith("blob:");
+}
+
+export interface SanitiseResult {
+  /** Document with all blob: URLs stripped (safe to persist). */
+  doc: PosterEditorDocument;
+  /** True when at least one blob: URL was found and removed. */
+  hasPendingUploads: boolean;
+}
+
+/**
+ * Strip `blob:` URLs from a document so it is safe to persist.
+ *
+ * Background images revert to a solid-colour fallback; image elements and
+ * custom fonts with blob URLs are removed entirely — they will be re-added
+ * once the Cloudinary upload completes and a permanent URL replaces the blob.
+ */
+export function sanitizeDocumentForSave(
+  doc: PosterEditorDocument,
+): SanitiseResult {
+  let hasPendingUploads = false;
+
+  // Background
+  let background = doc.background;
+  if (background.type === "image" && isBlobUrl(background.imageUrl)) {
+    hasPendingUploads = true;
+    background = { ...background, type: "solid", imageUrl: undefined };
+  }
+
+  // Elements — drop image elements that still have a blob URL
+  const elements = doc.elements.filter((el) => {
+    if (el.type === "image" && isBlobUrl(el.imageUrl)) {
+      hasPendingUploads = true;
+      return false;
+    }
+    return true;
+  });
+
+  // Custom fonts — drop fonts that still have a blob URL
+  const customFonts = doc.customFonts.filter((f) => {
+    if (isBlobUrl(f.url)) {
+      hasPendingUploads = true;
+      return false;
+    }
+    return true;
+  });
+
+  if (!hasPendingUploads) {
+    return { doc, hasPendingUploads: false };
+  }
+
+  return {
+    doc: { ...doc, background, elements, customFonts },
+    hasPendingUploads: true,
+  };
+}
