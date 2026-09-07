@@ -3,7 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import {
   Instrument_Serif,
-  Noto_Sans_Malayalam,
+  Anek_Malayalam,
   Outfit,
 } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
@@ -20,7 +20,7 @@ const outfit = Outfit({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-const malayalam = Noto_Sans_Malayalam({
+const malayalam = Anek_Malayalam({
   subsets: ["malayalam"],
   variable: "--font-malayalam",
   weight: ["400", "500", "600", "700"],
