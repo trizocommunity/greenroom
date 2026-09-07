@@ -161,57 +161,69 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
     let cancelled = false;
 
     (async () => {
-      // Deterministic wait: wait for all fonts and Konva images to be fully loaded
-      if (document.fonts?.ready) await document.fonts.ready;
-      
-      const stage = stageRef.current;
-      if (!stage) return;
-      
-      // Wait for any images inside the stage to complete loading
-      await new Promise<void>((resolve) => {
-        const checkImages = () => {
-          const imageNodes = stage.find("Image");
-          const isLoading = imageNodes.some((node: any) => {
-            const img = node.image();
-            return img && !img.complete;
-          });
-          if (!isLoading) resolve();
-          else setTimeout(checkImages, 50);
-        };
-        checkImages();
-      });
-
-      if (cancelled) return;
-
-      const dataUrl = stage.toDataURL({
-        pixelRatio: QUALITY_RATIO[job.payload.quality],
-        mimeType: "image/png",
-      });
-      
-      // Stream immediately to jsPDF to keep memory low
-      appendToPdf(pdfContext.doc, dataUrl, job.index, job.payload, pdfContext);
-
-      if (job.index + 1 < job.payload.items.length) {
-        setJob({ ...job, index: job.index + 1 });
-        onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
-        return;
-      }
-
-      // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
       try {
+        // Deterministic wait: wait for all fonts and Konva images to be fully loaded
+        if (document.fonts?.ready) await document.fonts.ready;
+        
+        const stage = stageRef.current;
+        if (!stage) return;
+        
+        // Wait for any images inside the stage to complete loading, max 500ms
+        await new Promise<void>((resolve) => {
+          let attempts = 0;
+          const checkImages = () => {
+            attempts++;
+            if (attempts > 10) return resolve(); // strict 500ms cap
+            
+            const imageNodes = stage.find("Image");
+            const isLoading = imageNodes.some((node: any) => {
+              const img = node.image();
+              return img && !img.complete;
+            });
+            if (!isLoading) resolve();
+            else setTimeout(checkImages, 50);
+          };
+          checkImages();
+        });
+
+        // Give React one last moment to mount late elements like QR codes
+        await new Promise((r) => setTimeout(r, 100));
+
+        if (cancelled) return;
+
+        const dataUrl = stage.toDataURL({
+          pixelRatio: QUALITY_RATIO[job.payload.quality],
+          mimeType: "image/png",
+        });
+        
+        // Stream immediately to jsPDF to keep memory low
+        appendToPdf(pdfContext.doc, dataUrl, job.index, job.payload, pdfContext);
+
+        if (job.index + 1 < job.payload.items.length) {
+          setJob({ ...job, index: job.index + 1 });
+          onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
+          return;
+        }
+
+        // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
         const blob = pdfContext.doc.output("blob");
         const formData = new FormData();
         formData.append("file", blob, "export.pdf");
         formData.append("itemCount", String(job.payload.items.length));
         
         await finalizeTemplateExportAction(festivalId, job.exportId, formData);
+        
+        pdfRef.current = null;
+        setJob(null);
+        busy.current = false;
+        invalidate();
       } catch (err) {
+        if (cancelled) return;
         await failTemplateExportAction(
           festivalId,
           job.exportId,
           err instanceof Error ? err.message : "Rendering failed.",
         );
-      } finally {
         pdfRef.current = null;
         setJob(null);
         busy.current = false;
