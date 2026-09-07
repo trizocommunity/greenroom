@@ -6,7 +6,18 @@ import { useIsMobile } from "@/components/common/use-mobile";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/core/utils/cn";
 
-const AlertDialog = AlertDialogPrimitive.Root;
+const AlertDialog = ({
+  ...props
+}: React.ComponentProps<typeof AlertDialogPrimitive.Root>) => {
+  React.useEffect(() => {
+    if (props.open && typeof document !== "undefined") {
+      (document.activeElement as HTMLElement)?.blur();
+    }
+  }, [props.open]);
+
+  return <AlertDialogPrimitive.Root {...props} />;
+};
+AlertDialog.displayName = "AlertDialog";
 
 const AlertDialogTrigger = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Trigger>,
@@ -42,8 +53,9 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => {
+>(({ className, onOpenAutoFocus, ...props }, ref) => {
   const isMobile = useIsMobile();
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
 
   const mobileStyles =
     "fixed bottom-0 inset-x-0 z-50 flex flex-col gap-4 max-h-[85vh] w-full overflow-y-auto p-4 sm:p-6 bg-background border-t border-border/80 shadow-2xl rounded-t-xl rounded-b-none duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom";
@@ -55,8 +67,32 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
-        ref={ref}
+        ref={(node) => {
+          contentRef.current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }}
         className={cn(isMobile ? mobileStyles : desktopStyles, className)}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          if (typeof window !== "undefined") {
+            window.setTimeout(() => {
+              if (
+                contentRef.current &&
+                !contentRef.current.contains(document.activeElement)
+              ) {
+                const focusable = contentRef.current.querySelector<HTMLElement>(
+                  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+                );
+                if (focusable) {
+                  focusable.focus();
+                } else {
+                  contentRef.current.focus();
+                }
+              }
+            }, 0);
+          }
+        }}
         {...props}
       />
     </AlertDialogPortal>

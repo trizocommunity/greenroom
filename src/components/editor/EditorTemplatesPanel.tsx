@@ -368,7 +368,10 @@ export function EditorTemplatesPanel({
                   <Button
                     size="sm"
                     className="w-full"
-                    onClick={() => setSaveModalOpen(true)}
+                    onClick={(e) => {
+                      e.currentTarget.blur();
+                      setSaveModalOpen(true);
+                    }}
                   >
                     Save current draft
                   </Button>
