@@ -172,6 +172,14 @@ export async function savePosterTemplateDraftAction(
       parsed.code,
     );
     const id = existing?.id ?? randomUUID();
+    const existingMeta =
+      (existing?.meta as Record<string, unknown> | null) ?? {};
+    const meta =
+      parsed.meta ??
+      (doc.templateName
+        ? { ...existingMeta, name: doc.templateName }
+        : (existing?.meta ?? null));
+
     await PosterTemplateRepo.upsertTemplate({
       id,
       festivalId: parsed.festivalId,
@@ -182,7 +190,7 @@ export async function savePosterTemplateDraftAction(
       height: doc.height,
       konvaJson: doc,
       backgroundUrl: parsed.backgroundUrl ?? doc.background?.imageUrl ?? null,
-      meta: parsed.meta ?? null,
+      meta,
     });
 
     revalidatePosterPaths(festivalSlug);

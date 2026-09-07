@@ -11,6 +11,10 @@ export function toPosterTemplateListItem(
     id: record.id,
     type: record.type,
     code: record.code,
+    name:
+      (record.meta as { name?: string } | null)?.name ??
+      record.konvaJson?.templateName ??
+      null,
     status: record.status,
     width: record.width,
     height: record.height,

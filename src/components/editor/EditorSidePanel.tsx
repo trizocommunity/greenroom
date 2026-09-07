@@ -274,15 +274,28 @@ export function EditorSidePanel({
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/svg+xml"
                   className="hidden"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const f = e.target.files?.[0];
                     if (f) {
-                      const url = URL.createObjectURL(f);
+                      let url = URL.createObjectURL(f);
                       updateBackground({
                         type: "image",
                         color: doc.background.color,
                         imageUrl: url,
                       });
+
+                      if (editor.uploadImage) {
+                        try {
+                          url = await editor.uploadImage(f);
+                          updateBackground({
+                            type: "image",
+                            color: doc.background.color,
+                            imageUrl: url,
+                          });
+                        } catch (err) {
+                          toast.error("Failed to upload background image");
+                        }
+                      }
                     }
                     e.target.value = "";
                   }}

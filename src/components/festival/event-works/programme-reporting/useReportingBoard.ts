@@ -6,6 +6,7 @@ import type { CompactHistoryItem } from "@/components/dashboard/event-works/Comp
 import { getProgrammeTeamLeadsAction } from "@/features/programme-team-leads/actions/programme-team-lead.actions";
 import type { ProgrammeReportingAssignmentRow } from "@/features/programmes/domain/assignment-row";
 import { getCodeForParticipantFromLetters } from "@/features/programmes/services/programme-reporting-code";
+import { compareCodeLetters } from "@/features/programmes/services/scratch-code-plan";
 import type { ProgrammeHistoryDetail } from "./reporting-status";
 import {
   bucketAssignmentsByTeam,
@@ -145,18 +146,53 @@ export function useReportingBoard({
 
   const session = selected?.reportingSession ?? null;
   const letters = session?.programmeCodeLetters ?? [];
+  const localTiles =
+    (session?.id ? scratchTilesBySession[session.id] : null) ?? [];
 
   function _getIssuedCodeForRow(row: RosterTableRow): string | null {
-    if (row.mode === "team") {
-      for (const sid of row.teamParticipantIds) {
-        const code = getCodeForParticipantFromLetters(letters, sid);
-        if (code) return code;
+    const isClosed =
+      session?.status === "CLOSED" || session?.status === "COMPLETED";
+    const eligibleLetters = isClosed
+      ? letters
+      : letters.filter((l) => Boolean(l.revealedAt));
+
+    if (eligibleLetters.length > 0) {
+      if (row.mode === "team") {
+        for (const sid of row.teamParticipantIds) {
+          const code = getCodeForParticipantFromLetters(eligibleLetters, sid);
+          if (code) return code;
+        }
+        return null;
       }
-      return null;
+      return row.participantId
+        ? getCodeForParticipantFromLetters(eligibleLetters, row.participantId)
+        : null;
     }
-    return row.participantId
-      ? getCodeForParticipantFromLetters(letters, row.participantId)
-      : null;
+
+    if (localTiles.length > 0) {
+      if (row.mode === "team") {
+        const tile = localTiles.find((t) => {
+          if (t.groupId != null && t.teamNumber != null) {
+            return t.groupId === row.groupId && t.teamNumber === row.teamNumber;
+          }
+          return t.participantIds?.some((pid) =>
+            row.teamParticipantIds.includes(pid),
+          );
+        });
+        return tile?.revealedAt && tile.code ? tile.code : null;
+      }
+      const tile = localTiles.find((t) => {
+        if (t.participantId && row.participantId) {
+          return t.participantId === row.participantId;
+        }
+        return row.participantId
+          ? t.participantIds?.includes(row.participantId)
+          : false;
+      });
+      return tile?.revealedAt && tile.code ? tile.code : null;
+    }
+
+    return null;
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
@@ -237,11 +273,11 @@ export function useReportingBoard({
       const codeA = _getIssuedCodeForRow(a);
       const codeB = _getIssuedCodeForRow(b);
 
-      if (codeA && codeB) return codeA.localeCompare(codeB);
+      if (codeA && codeB) return compareCodeLetters(codeA, codeB);
       if (codeA) return -1;
       if (codeB) return 1;
 
-      if (session?.checkoutCompletedAt) {
+      if (session?.checkoutCompletedAt || localTiles.length > 0) {
         // In scratch section, sort by reported order
         const timeA = reportedAtMap.get(a.assignmentId) ?? Infinity;
         const timeB = reportedAtMap.get(b.assignmentId) ?? Infinity;
@@ -258,7 +294,7 @@ export function useReportingBoard({
       const ga = (a.groupName ?? "").localeCompare(
         b.groupName ?? "",
         undefined,
-        { sensitivity: "base" },
+        { sensitivity: "base", numeric: true },
       );
       if (ga !== 0) return ga;
 
@@ -273,6 +309,7 @@ export function useReportingBoard({
     selected?.programme,
     teamLeadsForProgramme,
     session,
+    scratchTilesBySession,
   ]);
 
   const reportedUnitsCount = useMemo(

@@ -40,3 +40,41 @@ export function defaultCodeForType(type: PosterTemplateType): string {
       return "TEAM-MAIN";
   }
 }
+
+export function suggestNextTemplateCode(
+  type: PosterTemplateType,
+  existingCodes: string[] = [],
+): string {
+  const upperExisting = new Set(existingCodes.map((c) => c.toUpperCase()));
+  switch (type) {
+    case "RESULT": {
+      if (!upperExisting.has("RESULT-A")) return "RESULT-A";
+      if (!upperExisting.has("RESULT-B")) return "RESULT-B";
+      return "RESULT-A";
+    }
+    case "CANDIDATE_CARD": {
+      if (!upperExisting.has("CARD-DEFAULT")) return "CARD-DEFAULT";
+      for (let i = 1; i <= 99; i++) {
+        const candidate = `CARD-${String(i).padStart(2, "0")}`;
+        if (!upperExisting.has(candidate)) return candidate;
+      }
+      return `CARD-${Date.now().toString().slice(-4)}`;
+    }
+    case "CERTIFICATE": {
+      if (!upperExisting.has("CERT-DEFAULT")) return "CERT-DEFAULT";
+      for (let i = 1; i <= 99; i++) {
+        const candidate = `CERT-${String(i).padStart(2, "0")}`;
+        if (!upperExisting.has(candidate)) return candidate;
+      }
+      return `CERT-${Date.now().toString().slice(-4)}`;
+    }
+    case "TEAM_POINTS": {
+      if (!upperExisting.has("TEAM-MAIN")) return "TEAM-MAIN";
+      for (let i = 1; i <= 99; i++) {
+        const candidate = `TEAM-${String(i).padStart(2, "0")}`;
+        if (!upperExisting.has(candidate)) return candidate;
+      }
+      return `TEAM-${Date.now().toString().slice(-4)}`;
+    }
+  }
+}

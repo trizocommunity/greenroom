@@ -46,6 +46,13 @@ vi.mock("../services/general-entries.service", () => ({
   setGeneralEntryPublished: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock(
+  "@/features/announcement/services/team-standings.read-model",
+  () => ({
+    syncFestivalStandingsWithGeneralEntries: vi.fn().mockResolvedValue(undefined),
+  }),
+);
+
 describe("general-entries.actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,6 +77,18 @@ describe("general-entries.actions", () => {
     expect(res.id).toBe("entry-1");
   });
 
+  it("createGeneralEntryAction with publish calls service and publishes", async () => {
+    const res = await createGeneralEntryAction({
+      festivalId: "f-1",
+      name: "Entry 1",
+      categoryId: null,
+      type: "GENERAL",
+      awards: [{ groupId: "g-1", points: 10 }],
+      publish: true,
+    });
+    expect(res.id).toBe("entry-1");
+  });
+
   it("updateGeneralEntryAction calls service", async () => {
     await expect(
       updateGeneralEntryAction("f-1", {
@@ -78,6 +97,19 @@ describe("general-entries.actions", () => {
         categoryId: null,
         type: "GENERAL",
         awards: [{ groupId: "g-1", points: 20 }],
+      }),
+    ).resolves.not.toThrow();
+  });
+
+  it("updateGeneralEntryAction with publish calls service", async () => {
+    await expect(
+      updateGeneralEntryAction("f-1", {
+        id: "entry-1",
+        name: "Entry 1 Updated",
+        categoryId: null,
+        type: "GENERAL",
+        awards: [{ groupId: "g-1", points: 20 }],
+        publish: true,
       }),
     ).resolves.not.toThrow();
   });

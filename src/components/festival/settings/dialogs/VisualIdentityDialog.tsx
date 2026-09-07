@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { useCloudinaryUpload } from "@/api/client";
+import { useCloudinaryUpload, useDeleteFile } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -47,6 +47,19 @@ export function VisualIdentityDialog({
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useCloudinaryUpload();
+  const deleteFileMutation = useDeleteFile();
+
+  const handleOpenChange = (isOpen: boolean) => {
+    // If the drawer is closing and the logo has changed to a new Cloudinary URL but wasn't saved,
+    // delete it from Cloudinary to prevent orphaned files.
+    if (!isOpen && !isSaving && logo !== (festival.branding?.logo || "")) {
+      if (logo.includes("cloudinary.com")) {
+        deleteFileMutation.mutate({ url: logo, festivalId: festival.id });
+      }
+      setLogo(festival.branding?.logo || "");
+    }
+    setOpen(isOpen);
+  };
 
   const uploadToCloudinary = async (file: File) => {
     setLogoError(null);

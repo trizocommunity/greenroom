@@ -70,12 +70,22 @@ export function ParticipantNavbar({
       {
         label: "Programmes",
         href: `${linkBase}/assigned-programmes`,
-        badge: assignedProgrammesTopStatus ? (
-          <ProgrammeStatusBadge
-            status={assignedProgrammesTopStatus}
-            className="h-5 px-2"
-          />
-        ) : undefined,
+        badge:
+          assignedProgrammesTopStatus &&
+          [
+            "REPORTING",
+            "PENDING_JUDGMENT",
+            "JUDGING",
+            "PENDING_PUBLICATION",
+            "PUBLISHED",
+            "ANNOUNCED",
+          ].includes(assignedProgrammesTopStatus) ? (
+            <ProgrammeStatusBadge
+              status={assignedProgrammesTopStatus}
+              variant="participant"
+              className="h-5 px-2"
+            />
+          ) : undefined,
       },
       { label: "Participants", href: `${linkBase}/my-group` },
     );

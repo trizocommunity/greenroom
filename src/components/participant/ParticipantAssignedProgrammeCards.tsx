@@ -170,7 +170,7 @@ export function ParticipantAssignedProgrammeCards({
                 {latestSess?.status === "RESET" && (
                   <StatusPill tone="warning">Reporting reset</StatusPill>
                 )}
-                <ProgrammeStatusBadge status={p.status} />
+                <ProgrammeStatusBadge status={p.status} variant="participant" />
               </div>
             </div>
 

@@ -60,17 +60,23 @@ export interface SelectionBounds {
 
 const MAX_HISTORY = 50;
 
-export function usePosterEditorState(options?: {
+export interface UsePosterEditorStateOptions {
   /** Festival editor: real sample data; dev playground uses MOCK_BINDINGS. */
   previewBindings?: PosterBindings | null;
-}) {
+  initialNavPanel?: EditorNavPanel;
+  uploadImage?: (file: File) => Promise<string>;
+}
+
+export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
   const previewBindings = options?.previewBindings ?? null;
   const bindingSource = previewBindings ?? MOCK_BINDINGS;
   const [tabs, setTabs] = useState<EditorDraftTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewMode, setPreviewMode] = useState(true);
-  const [navPanel, setNavPanel] = useState<EditorNavPanel>("elements");
+  const [navPanel, setNavPanel] = useState<EditorNavPanel>(
+    options?.initialNavPanel ?? "elements",
+  );
   const [zoom, setZoom] = useState(0.61);
   const [showRulers, setShowRulers] = useState(true);
   const [snapGuidesEnabled, setSnapGuidesEnabled] = useState(true);
@@ -233,6 +239,23 @@ export function usePosterEditorState(options?: {
     },
     [activeTabId],
   );
+
+  const renameTab = useCallback((tabId: string, newLabel: string) => {
+    setTabs((list) =>
+      list.map((t) => {
+        if (t.id !== tabId) return t;
+        const trimmed = newLabel.trim();
+        return {
+          ...t,
+          label: trimmed,
+          doc: {
+            ...t.doc,
+            templateName: trimmed,
+          },
+        };
+      }),
+    );
+  }, []);
 
   const startTemplate = useCallback(
     (type: PosterTemplateType, options: CreatePresetOptions = {}) => {
@@ -632,39 +655,78 @@ export function usePosterEditorState(options?: {
   );
 
   const addImageFromFile = useCallback(
-    (file: File) => {
-      const url = URL.createObjectURL(file);
-      addElement({
-        type: "image",
-        name: file.name,
-        visible: true,
-        x: 100,
-        y: 100,
-        width: 280,
-        height: 200,
-        imageUrl: url,
-        opacity: 1,
+    async (file: File) => {
+      let url = URL.createObjectURL(file);
+      const isTempUrl = true;
+      const elementId = uuid();
+
+      setDocWithHistory((d) => {
+        const maxZ = d.elements.reduce((m, e) => Math.max(m, e.zIndex), 0);
+        const el: EditorElement = {
+          id: elementId,
+          zIndex: maxZ + 1,
+          type: "image",
+          name: file.name,
+          visible: true,
+          x: 100,
+          y: 100,
+          width: 280,
+          height: 200,
+          imageUrl: url,
+          opacity: 0.5,
+        };
+        return {
+          ...d,
+          updatedAt: new Date().toISOString(),
+          elements: [...d.elements, el],
+        };
       });
+
+      if (options?.uploadImage) {
+        try {
+          url = await options.uploadImage(file);
+          updateElement(elementId, { imageUrl: url, opacity: 1 });
+        } catch (e) {
+          toast.error("Failed to upload image");
+          setDocWithHistory((d) => ({
+            ...d,
+            elements: d.elements.filter((el) => el.id !== elementId),
+          }));
+        }
+      } else {
+        updateElement(elementId, { opacity: 1 });
+      }
     },
-    [addElement],
+    [setDocWithHistory, updateElement, options],
   );
 
   const addCustomFont = useCallback(
-    (file: File) => {
-      const url = URL.createObjectURL(file);
+    async (file: File) => {
+      let url = URL.createObjectURL(file);
       const name = file.name.replace(/\.[^.]+$/, "");
-      setDocWithHistory((d) => {
-        const font: CustomFont = { id: uuid(), name, url };
-        return {
-          ...d,
-          customFonts: [...d.customFonts, font],
-          updatedAt: new Date().toISOString(),
-        };
-      });
-    },
-    [setDocWithHistory],
-  );
+      const fontId = uuid();
 
+      setDocWithHistory((d) => {
+        const font: CustomFont = { id: fontId, name, url };
+        return { ...d, customFonts: [...d.customFonts, font] };
+      });
+
+      if (options?.uploadImage) {
+        try {
+          url = await options.uploadImage(file);
+          setDocWithHistory((d) => ({
+            ...d,
+            customFonts: d.customFonts.map((f) =>
+              f.id === fontId ? { ...f, url } : f,
+            ),
+          }));
+        } catch (e) {
+          toast.error("Failed to upload font");
+        }
+      }
+    },
+    [setDocWithHistory, options],
+  );
   const sortedElements = useMemo(() => {
     if (!doc) return [];
     return [...doc.elements].sort((a, b) => a.zIndex - b.zIndex);
@@ -1023,6 +1085,7 @@ export function usePosterEditorState(options?: {
     selectionBounds,
     setSelectionBounds,
     startTemplate,
+    renameTab,
     loadDocument,
     closeTemplate,
     restoreSavedDraft,
@@ -1048,6 +1111,7 @@ export function usePosterEditorState(options?: {
     redo,
     canUndo,
     canRedo,
+    uploadImage: options?.uploadImage,
     selectSimilar,
     copyFormat,
     applyFormatToSelected,

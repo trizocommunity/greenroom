@@ -71,15 +71,21 @@ export function PublishPosterTemplateDialog({
   previewPlaceholderHint?: string;
 }) {
   const bindings = previewBindings ?? (MOCK_BINDINGS as PosterBindings);
+  const typeDesc =
+    document.templateType === "CANDIDATE_CARD"
+      ? "Preview how the candidate card will look with sample data. Publishing makes this template available in Exports → Badges."
+      : document.templateType === "CERTIFICATE"
+        ? "Preview how the certificate will look with sample data. Publishing makes this template available in Exports → Certificates."
+        : document.templateType === "TEAM_POINTS"
+          ? "Preview how the standings poster will look with sample data. Publishing makes this template available for team standings."
+          : "Preview how the poster will look with sample data. Publishing makes this template available for programmes and results.";
+
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent>
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Publish {templateCode}?</ResponsiveDialogTitle>
-          <ResponsiveDialogDescription>
-            Preview how the poster will look with sample data. Publishing makes
-            this template available for programmes and results.
-          </ResponsiveDialogDescription>
+          <ResponsiveDialogDescription>{typeDesc}</ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
         <PosterTemplatePreview doc={document} bindings={bindings} />

@@ -20,6 +20,7 @@ import {
   type TemplateExportPayload,
 } from "@/features/exports/services/template-payload.service";
 import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
+import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 
 export interface ExportTemplateOption {
   id: string;
@@ -28,6 +29,7 @@ export interface ExportTemplateOption {
   name: string;
   width: number;
   height: number;
+  doc: PosterEditorDocument;
 }
 
 /** Published templates a festival can render badges / certificates from. */
@@ -53,6 +55,7 @@ export async function listExportTemplatesAction(
         name: t.konvaJson.templateName ?? t.code,
         width: t.width,
         height: t.height,
+        doc: t.konvaJson,
       })),
     };
   } catch (error) {

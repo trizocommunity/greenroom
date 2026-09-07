@@ -28,7 +28,10 @@ import {
 } from "@/features/announcement/services/announcer.service";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
-import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
+import {
+  computeGeneralEntryStandings,
+  computeGeneralEntryStandingsWithDetails,
+} from "@/features/general-entries/services/general-entries.standings";
 import { assertProgrammePrePublishing } from "@/features/programmes/services/programme-status.service";
 
 function revalidateAnnouncerPaths(slug: string) {
@@ -498,35 +501,11 @@ export async function publishStandings(
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
 
-    const programmeStandings = await computeStandings(
+    const standings = await computeStandings(
       festivalId,
       "published",
       upToResultNumber,
     );
-    const generalStandings = await computeGeneralEntryStandings(festivalId);
-
-    const mergedMap = new Map<string, TeamStandingRow>();
-    for (const r of programmeStandings) {
-      mergedMap.set(r.name, { ...r });
-    }
-    for (const r of generalStandings) {
-      if (!mergedMap.has(r.name)) {
-        mergedMap.set(r.name, {
-          name: r.name,
-          points: 0,
-          rank: 0,
-          isGroup: true,
-        });
-      }
-      mergedMap.get(r.name)!.points += r.points;
-    }
-
-    const standings = Array.from(mergedMap.values())
-      .sort((a, b) => b.points - a.points)
-      .map((row, index) => ({
-        ...row,
-        rank: index + 1,
-      }));
 
     const highestResult = await db.query.programme.findFirst({
       where: and(
@@ -564,31 +543,7 @@ export async function publishGeneralStandings(
     await assertAnnouncerAccess(festivalId);
     await ensureFestivalWritable(festivalId);
 
-    const programmeStandings = await computeStandings(festivalId, "published");
-    const generalStandings = await computeGeneralEntryStandings(festivalId);
-
-    const mergedMap = new Map<string, TeamStandingRow>();
-    for (const r of programmeStandings) {
-      mergedMap.set(r.name, { ...r });
-    }
-    for (const r of generalStandings) {
-      if (!mergedMap.has(r.name)) {
-        mergedMap.set(r.name, {
-          name: r.name,
-          points: 0,
-          rank: 0,
-          isGroup: true,
-        });
-      }
-      mergedMap.get(r.name)!.points += r.points;
-    }
-
-    const standings = Array.from(mergedMap.values())
-      .sort((a, b) => b.points - a.points)
-      .map((row, index) => ({
-        ...row,
-        rank: index + 1,
-      }));
+    const standings = await computeStandings(festivalId, "published");
 
     const highestResult = await db.query.programme.findFirst({
       where: and(

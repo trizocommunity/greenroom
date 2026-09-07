@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/core/utils/cn";
+import { toast } from "@/lib/toast";
 import { EditorPanelHeader } from "./EditorSidePanel";
 import { editorPanelAside } from "./editor-chrome";
 import type { SavedPosterTemplate } from "./editor-template-storage";
@@ -14,6 +15,7 @@ import {
   type PosterTemplateType,
   TEMPLATE_TYPES,
 } from "./poster-editor-config";
+import { calculateAspectRatioDimensions } from "./poster-editor-presets";
 import { openTemplateBackgroundPicker } from "./template-background-picker";
 import type { PosterEditorState } from "./use-poster-editor-state";
 
@@ -106,8 +108,21 @@ function DbTemplateCard({
             {TEMPLATE_TYPES.find((t) => t.type === item.type)?.emoji ?? "📄"}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold text-sm">{item.code}</p>
+            <p className="truncate font-semibold text-sm">
+              {item.konvaJson?.templateName ||
+                item.name ||
+                (item.meta as { name?: string } | null)?.name ||
+                item.code}
+            </p>
             <p className="text-xs text-muted-foreground">
+              {(item.konvaJson?.templateName ||
+                item.name ||
+                (item.meta as { name?: string } | null)?.name) &&
+              (item.konvaJson?.templateName ||
+                item.name ||
+                (item.meta as { name?: string } | null)?.name) !== item.code
+                ? `${item.code} • `
+                : ""}
               Updated {formatDate(item.updatedAt)}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -140,11 +155,13 @@ export function EditorTemplatesPanel({
   variant = "docked",
   onCollapsePanel,
   dbTemplates,
+  onCreateTemplate,
 }: {
   editor: PosterEditorState;
   variant?: "docked" | "drawer" | "floating";
   onCollapsePanel?: () => void;
   dbTemplates?: any[];
+  onCreateTemplate?: (type: PosterTemplateType, options: any) => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -252,9 +269,13 @@ export function EditorTemplatesPanel({
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() =>
-                      startTemplate(meta.type, { withBackground: false })
-                    }
+                    onClick={() => {
+                      if (onCreateTemplate) {
+                        onCreateTemplate(meta.type, { withBackground: false });
+                      } else {
+                        startTemplate(meta.type, { withBackground: false });
+                      }
+                    }}
                   >
                     <Plus className="mr-1.5 h-4 w-4" />
                     Blank
@@ -264,12 +285,32 @@ export function EditorTemplatesPanel({
                     size="sm"
                     className="flex-1"
                     onClick={() =>
-                      openTemplateBackgroundPicker((url) =>
-                        startTemplate(meta.type, {
+                      openTemplateBackgroundPicker(async (info) => {
+                        let url = info.url;
+                        if (editor.uploadImage) {
+                          try {
+                            url = await editor.uploadImage(info.file);
+                          } catch {
+                            toast.error("Failed to upload background image");
+                          }
+                        }
+                        const dims = calculateAspectRatioDimensions(
+                          meta.type,
+                          info.naturalWidth,
+                          info.naturalHeight,
+                        );
+                        const opts = {
                           withBackground: true,
                           backgroundImageUrl: url,
-                        }),
-                      )
+                          width: dims.width,
+                          height: dims.height,
+                        };
+                        if (onCreateTemplate) {
+                          onCreateTemplate(meta.type, opts);
+                        } else {
+                          startTemplate(meta.type, opts);
+                        }
+                      })
                     }
                   >
                     <Upload className="mr-1.5 h-4 w-4" />

@@ -10,6 +10,7 @@ import {
   tooManyRequests,
 } from "@/api/lib";
 import { TIER_CONFIG } from "@/config/pricing";
+import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { festival } from "@/core/database/schema";
 import { MS, serverNowMs } from "@/core/datetime/server";
@@ -19,8 +20,20 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const handler = createProtectedHandler({
   async POST({ user, request }) {
-    const body = await request.json();
-    const data = body.data ?? body;
+    let data: any;
+    const contentType = request.headers.get("content-type") || "";
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      data = {
+        file: formData.get("file"),
+        folder: formData.get("folder"),
+        festivalId: formData.get("festivalId"),
+      };
+    } else {
+      const body = await request.json();
+      data = body.data ?? body;
+    }
+
     const parsed = uploadInput.safeParse(data);
 
     if (!parsed.success) {
@@ -37,8 +50,22 @@ const handler = createProtectedHandler({
     }
 
     const rawFile = parsed.data.file;
-    const base64Data = rawFile.includes(",") ? rawFile.split(",")[1] : rawFile;
-    const buffer = Buffer.from(base64Data, "base64");
+    let buffer: Buffer;
+    let fileForCloudinary: string | Blob;
+
+    if (rawFile instanceof Blob) {
+      const arrayBuffer = await rawFile.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+      fileForCloudinary = rawFile;
+    } else if (typeof rawFile === "string") {
+      const base64Data = rawFile.includes(",")
+        ? rawFile.split(",")[1]
+        : rawFile;
+      buffer = Buffer.from(base64Data, "base64");
+      fileForCloudinary = rawFile;
+    } else {
+      return badRequest("INVALID_INPUT", "Invalid file format");
+    }
 
     if (buffer.length > MAX_FILE_SIZE) {
       return badRequest(
@@ -47,21 +74,16 @@ const handler = createProtectedHandler({
       );
     }
 
-    let cloudName =
-      process.env.CLOUDINARY_CLOUD_NAME ||
-      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    let apiKey = process.env.CLOUDINARY_API_KEY;
-    let apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-    if ((!cloudName || !apiKey || !apiSecret) && process.env.CLOUDINARY_URL) {
-      try {
-        const parsedUrl = new URL(process.env.CLOUDINARY_URL);
-        apiKey = apiKey || parsedUrl.username;
-        apiSecret = apiSecret || parsedUrl.password;
-        cloudName = cloudName || parsedUrl.hostname;
-      } catch (e) {
-        console.error("Failed to parse CLOUDINARY_URL", e);
-      }
+    let cloudName: string | undefined,
+      apiKey: string | undefined,
+      apiSecret: string | undefined;
+    try {
+      const parsedUrl = new URL(process.env.CLOUDINARY_URL || "");
+      apiKey = parsedUrl.username;
+      apiSecret = parsedUrl.password;
+      cloudName = parsedUrl.hostname;
+    } catch (e) {
+      console.error("Failed to parse CLOUDINARY_URL", e);
     }
 
     if (!cloudName || !apiKey || !apiSecret) {
@@ -99,7 +121,7 @@ const handler = createProtectedHandler({
       .digest("hex");
 
     const formData = new FormData();
-    formData.append("file", parsed.data.file);
+    formData.append("file", fileForCloudinary);
     formData.append("api_key", apiKey);
     formData.append("timestamp", timestamp.toString());
     formData.append("signature", signature);
@@ -137,8 +159,51 @@ const handler = createProtectedHandler({
     });
   },
 
-  async DELETE() {
-    return ok({ success: true, message: "Delete not implemented for uploads" });
+  async DELETE({ request, user }) {
+    const body = await request.json();
+    const data = body.data ?? body;
+    let publicId = data.publicId;
+    const url = data.url;
+    const festivalId = data.festivalId;
+
+    if (!festivalId || typeof festivalId !== "string") {
+      return badRequest("INVALID_INPUT", "festivalId is required");
+    }
+
+    // Import helper
+    const { deleteFile, extractPublicIdFromUrl } = await import(
+      "@/core/integrations/cloudinary"
+    );
+
+    if (!publicId && url && typeof url === "string") {
+      publicId = extractPublicIdFromUrl(url);
+    }
+
+    if (!publicId || typeof publicId !== "string") {
+      return badRequest("INVALID_INPUT", "publicId or valid url is required");
+    }
+
+    // Verify user has access to this festival and can edit it
+    await assertFestivalAccess(user, festivalId, { requireWritable: true });
+
+    try {
+      const { success, bytes } = await deleteFile(publicId);
+
+      if (success && bytes > 0) {
+        // Refund the bytes
+        await db
+          .update(festival)
+          .set({
+            storageUsedBytes: sql`GREATEST(0, ${festival.storageUsedBytes} - ${bytes})`,
+          })
+          .where(eq(festival.id, festivalId));
+      }
+
+      return ok({ success: true });
+    } catch (error) {
+      console.error("Cloudinary delete failed:", error);
+      return badRequest("DELETE_FAILED", "Failed to delete file from storage");
+    }
   },
 });
 

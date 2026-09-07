@@ -693,10 +693,7 @@ All significant mutations are logged to `audit_log`:
 | `RAZORPAY_KEY_SECRET` | For payments | Razorpay secret key |
 | `RESEND_API_KEY` | For email in prod | Resend API key |
 | `EMAIL_FROM` | For email | Verified sender address |
-| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | For image uploads | Cloudinary cloud name |
-| `NEXT_PUBLIC_CLOUDINARY_FESTIVAL_PRESET` | For image uploads | Cloudinary upload preset |
-| `CLOUDINARY_API_KEY` | For image uploads | Cloudinary API key |
-| `CLOUDINARY_API_SECRET` | For image uploads | Cloudinary API secret |
+| `CLOUDINARY_URL` | For image uploads | Cloudinary API URL (format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME) |
 | `CRON_SECRET` | Required in prod | Secret for `/api/v1/cron` Bearer auth |
 
 `JWT_SECRET` is no longer used.

@@ -12,36 +12,42 @@ import {
 } from "@/components/ui/drawer";
 import type { PosterTemplateType } from "./poster-editor-config";
 import { TEMPLATE_TYPES } from "./poster-editor-config";
-
+import { calculateAspectRatioDimensions } from "./poster-editor-presets";
 import { openTemplateBackgroundPicker } from "./template-background-picker";
 
 export function NewTemplateModal({
   open,
-
   onOpenChange,
-
   onPick,
+  uploadImage,
 }: {
   open: boolean;
-
   onOpenChange: (open: boolean) => void;
-
   onPick: (
     type: PosterTemplateType,
-
     mode: "blank" | "background" | "teams",
-
     backgroundImageUrl?: string,
+    width?: number,
+    height?: number,
   ) => void;
+  uploadImage?: (file: File) => Promise<string>;
 }) {
-  const pickWithBackground = (
-    type: PosterTemplateType,
-
-    mode: "background",
-  ) => {
-    openTemplateBackgroundPicker((url) => {
-      onPick(type, mode, url);
-
+  const pickWithBackground = (type: PosterTemplateType, mode: "background") => {
+    openTemplateBackgroundPicker(async (info) => {
+      let url = info.url;
+      if (uploadImage) {
+        try {
+          url = await uploadImage(info.file);
+        } catch {
+          // Add toast if available or ignore, it will fallback to blob
+        }
+      }
+      const dims = calculateAspectRatioDimensions(
+        type,
+        info.naturalWidth,
+        info.naturalHeight,
+      );
+      onPick(type, mode, url, dims.width, dims.height);
       onOpenChange(false);
     });
   };

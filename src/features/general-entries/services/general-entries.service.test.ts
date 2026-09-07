@@ -83,6 +83,19 @@ describe("general-entries.service", () => {
       expect(result).toBeDefined();
       expect(mockDbInsert).toHaveBeenCalledTimes(2); // One for entry, one for awards
     });
+
+    it("should create entry and awards directly published when publish is true", async () => {
+      mockDbInsert.mockResolvedValue({});
+      const result = await createGeneralEntry({
+        festivalId: "f-1",
+        name: "Test Entry Published",
+        categoryId: null,
+        awards: [{ groupId: "g-1", points: 10 }],
+        publish: true,
+      });
+      expect(result).toBeDefined();
+      expect(mockDbInsert).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("updateGeneralEntry", () => {
@@ -97,6 +110,25 @@ describe("general-entries.service", () => {
         name: "Updated Entry",
         categoryId: null,
         awards: [{ groupId: "g-1", points: 20 }],
+      });
+
+      expect(mockDbUpdate).toHaveBeenCalledTimes(1);
+      expect(mockDbDelete).toHaveBeenCalledTimes(1);
+      expect(mockDbInsert).toHaveBeenCalledTimes(1);
+    });
+
+    it("should update entry and publish awards when publish is true", async () => {
+      mockDbSelect.mockResolvedValue([]); // assertNotPublished passes
+      mockDbUpdate.mockResolvedValue({});
+      mockDbDelete.mockResolvedValue({});
+      mockDbInsert.mockResolvedValue({});
+
+      await updateGeneralEntry({
+        id: "entry-1",
+        name: "Updated Entry",
+        categoryId: null,
+        awards: [{ groupId: "g-1", points: 20 }],
+        publish: true,
       });
 
       expect(mockDbUpdate).toHaveBeenCalledTimes(1);

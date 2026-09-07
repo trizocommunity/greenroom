@@ -124,20 +124,6 @@ export function useReportingSession({
   );
 
   const session = selected?.reportingSession ?? null;
-  const dbCheckoutCompletedAt = session?.checkoutCompletedAt ?? null;
-  const isLocalCheckoutCompleted = session
-    ? (localCheckoutCompletedBySession[session.id] ?? false)
-    : false;
-
-  // Resume where the session actually is, so a refresh mid-draw doesn't drop
-  // the stage manager back into checkout.
-  useEffect(() => {
-    setWizardStep(
-      dbCheckoutCompletedAt || isLocalCheckoutCompleted
-        ? "scratch"
-        : "checkout",
-    );
-  }, [dbCheckoutCompletedAt, isLocalCheckoutCompleted]);
 
   const sessionStatus = getUiReportingStatus(
     session?.status,
@@ -153,6 +139,26 @@ export function useReportingSession({
     isTimedOut;
   const isInProgress = sessionStatus === "IN_PROGRESS";
   const isClosed = sessionStatus === "CLOSED";
+
+  const dbCheckoutCompletedAt = session?.checkoutCompletedAt ?? null;
+  const isLocalCheckoutCompleted =
+    session && !isPreStart && !isReset
+      ? (localCheckoutCompletedBySession[session.id] ?? false)
+      : false;
+
+  // Resume where the session actually is, so a refresh mid-draw doesn't drop
+  // the stage manager back into checkout.
+  useEffect(() => {
+    if (isPreStart || isReset) {
+      setWizardStep("checkout");
+      return;
+    }
+    setWizardStep(
+      dbCheckoutCompletedAt || isLocalCheckoutCompleted
+        ? "scratch"
+        : "checkout",
+    );
+  }, [dbCheckoutCompletedAt, isLocalCheckoutCompleted, isPreStart, isReset]);
 
   const pushScanEntry = (result: unknown, fallbackOk: boolean) => {
     const r = (result ?? {}) as {

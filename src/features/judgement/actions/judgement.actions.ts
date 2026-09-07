@@ -60,7 +60,7 @@ import { requireProgrammeType } from "@/features/programmes/utils/assert-program
 import { calculatePosition } from "@/features/results/services/results-calculator";
 import { getFestivalDateKeySet } from "@/features/schedule/utils/festival-schedule-days";
 import { JudgeStageAssignmentService } from "@/features/stages/services/judge-stage-assignment.service";
-import { getOffStageStage } from "@/features/stages/services/off-stage.service";
+import { ensureOffStageStage } from "@/features/stages/services/off-stage.service";
 import { StageAssignmentService } from "@/features/stages/services/stage-assignment.service";
 
 async function allAssignedJudgesHaveCompleteScores(
@@ -954,10 +954,8 @@ export async function getJudgementDashboardDataAction(festivalId: string) {
  *
  * Returns the supplied stageId when the reporting session already has one
  * (a scheduled programme). When it does not (an unscheduled programme),
- * looks up the festival's Off-Stage stage and returns its id — flagging
- * the resolution as auto-assigned so callers can audit it. Throws when
- * the festival has no Off-Stage stage provisioned; the caller surfaces
- * a friendly message to the operator.
+ * automatically ensures the festival's Off-Stage stage is provisioned and
+ * returns its id — flagging the resolution as auto-assigned so callers can audit it.
  */
 async function resolveStageIdForJudgement(
   festivalId: string,
@@ -966,10 +964,10 @@ async function resolveStageIdForJudgement(
   if (currentStageId) {
     return { stageId: currentStageId, autoAssigned: false };
   }
-  const offStage = await getOffStageStage(festivalId);
-  if (!offStage) {
+  const offStage = await ensureOffStageStage(festivalId);
+  if (!offStage?.id) {
     throw new AppError(
-      "This festival has no Off-Stage stage provisioned. Please contact an administrator to set one up.",
+      "This festival has no Off-Stage stage provisioned and it could not be created automatically. Please contact an administrator.",
     );
   }
   return { stageId: offStage.id, autoAssigned: true };

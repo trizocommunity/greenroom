@@ -18,11 +18,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowDownUp,
-  Eye,
   GripVertical,
   Loader2,
   Megaphone,
-  MoreVertical,
   Search,
   Sparkles,
   Trophy,
@@ -37,6 +35,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { StandingsPointsWithOpener } from "@/components/dashboard/standings/StandingsPointsWithOpener";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +52,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Drawer,
   DrawerContent,
   DrawerDescription,
@@ -60,13 +67,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -87,7 +89,6 @@ import { cn } from "@/core/utils/cn";
 import {
   fetchStandingsAction,
   publishAllResultsAction,
-  publishGeneralStandings,
   publishResult,
   publishStandings,
   swapResultNumbers,
@@ -170,15 +171,11 @@ function PlaceLabel({ rank }: { rank: number }) {
 interface SortableProgrammeRowProps {
   p: AnnouncerQueueProgramme;
   setActiveProgramme: (p: AnnouncerQueueProgramme) => void;
-  handleUnpublish: (id: string) => void;
-  canUnpublish: boolean;
 }
 
 function SortableProgrammeRow({
   p,
   setActiveProgramme,
-  handleUnpublish,
-  canUnpublish,
 }: SortableProgrammeRowProps) {
   const {
     attributes,
@@ -203,9 +200,10 @@ function SortableProgrammeRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "hover:bg-muted/50 transition-colors bg-background",
+        "hover:bg-muted/50 transition-colors bg-background cursor-pointer",
         isDragging && "opacity-80 shadow-md relative",
       )}
+      onClick={() => setActiveProgramme(p)}
     >
       <TableCell
         className={cn(
@@ -216,6 +214,7 @@ function SortableProgrammeRow({
         )}
         {...attributes}
         {...listeners}
+        onClick={(e) => e.stopPropagation()}
       >
         <GripVertical className="h-4 w-4 inline-block" />
       </TableCell>
@@ -259,35 +258,6 @@ function SortableProgrammeRow({
           </Badge>
         )}
       </TableCell>
-      <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setActiveProgramme(p)}>
-              <Eye className="h-4 w-4 mr-2" />
-              Open Result
-            </DropdownMenuItem>
-            {canUnpublish &&
-              (p.status === "PUBLISHED" || p.status === "ANNOUNCED") && (
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => handleUnpublish(p.id)}
-                >
-                  <Undo2 className="h-4 w-4 mr-2" />
-                  Unpublish
-                </DropdownMenuItem>
-              )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TableCell>
     </TableRow>
   );
 }
@@ -295,11 +265,12 @@ function SortableProgrammeRow({
 function MobileProgrammeCard({
   p,
   setActiveProgramme,
-  handleUnpublish,
-  canUnpublish,
 }: SortableProgrammeRowProps) {
   return (
-    <Card className="flex flex-col gap-3 p-4 bg-card">
+    <Card
+      className="flex flex-col gap-3 p-4 bg-card cursor-pointer hover:border-primary/40 active:bg-muted/30 transition-colors"
+      onClick={() => setActiveProgramme(p)}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center justify-center rounded-lg bg-violet-500/10 px-2 py-1 font-mono text-xs font-bold text-violet-600 dark:text-violet-400">
@@ -331,33 +302,6 @@ function MobileProgrammeCard({
             </Badge>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 -mr-2 -mt-2 text-muted-foreground"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setActiveProgramme(p)}>
-              <Eye className="h-4 w-4 mr-2" />
-              Open Result
-            </DropdownMenuItem>
-            {canUnpublish &&
-              (p.status === "PUBLISHED" || p.status === "ANNOUNCED") && (
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => handleUnpublish(p.id)}
-                >
-                  <Undo2 className="h-4 w-4 mr-2" />
-                  Unpublish
-                </DropdownMenuItem>
-              )}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
       <div>
         <div className="font-semibold text-sm">{p.name}</div>
@@ -382,16 +326,32 @@ export function ResultsConsoleClient({
     useState<AnnouncerQueueProgramme | null>(null);
 
   // Section 2 filters
-  const [standingsScope, setStandingsScope] = useState<
-    "published" | "all" | "general"
-  >("published");
+  const [standingsScope, setStandingsScope] = useState<"published" | "all">(
+    "published",
+  );
   const [upToResultNumber, setUpToResultNumber] = useState<string>("");
   const [dynamicStandings, setDynamicStandings] =
     useState<TeamStandingRow[]>(liveStandings);
   const [isFetchingStandings, setIsFetchingStandings] = useState(false);
 
   const [swapTarget, setSwapTarget] = useState<string | null>(null);
+  const [isSwapDialogOpen, setIsSwapDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const selectedTargetProgramme = useMemo(() => {
+    if (!swapTarget) return null;
+    return programmes.find((p) => p.id === swapTarget) ?? null;
+  }, [programmes, swapTarget]);
+
+  const eligibleSwapProgrammes = useMemo(() => {
+    if (!activeProgramme) return [];
+    return programmes.filter(
+      (p) =>
+        p.id !== activeProgramme.id &&
+        p.status !== "PUBLISHED" &&
+        p.status !== "ANNOUNCED",
+    );
+  }, [programmes, activeProgramme]);
 
   const [resultsPageIndex, setResultsPageIndex] = useState(0);
   const [standingsPageIndex, setStandingsPageIndex] = useState(0);
@@ -454,14 +414,11 @@ export function ResultsConsoleClient({
   // Reject any typed "0". If empty, let it be temporarily empty until blur or next effect,
   // but practically the effect resets it if empty. Let's just handle changes.
   function handleAfterNumberChange(value: string) {
-    if (value === "0") return;
     lastAutoWrittenRef.current = null;
 
-    // If the user clears the input, reset it immediately to the default count.
+    // If the user clears the input (backspace to empty), set it to "0".
     if (value === "") {
-      const defaultCount = String(publishedResultsCount);
-      lastAutoWrittenRef.current = defaultCount;
-      setUpToResultNumber(defaultCount);
+      setUpToResultNumber("0");
       return;
     }
 
@@ -491,13 +448,14 @@ export function ResultsConsoleClient({
   // Handle dynamic standings fetch
   const fetchStandings = useCallback(async () => {
     setIsFetchingStandings(true);
-    const resultNum = upToResultNumber
-      ? parseInt(upToResultNumber, 10)
-      : undefined;
+    const resultNum =
+      upToResultNumber !== "" && !Number.isNaN(Number(upToResultNumber))
+        ? parseInt(upToResultNumber, 10)
+        : undefined;
     const res = await fetchStandingsAction(
       festivalId,
       standingsScope,
-      Number.isNaN(resultNum!) ? undefined : resultNum,
+      resultNum,
     );
     if (res.success && res.data) {
       setDynamicStandings(res.data);
@@ -613,6 +571,7 @@ export function ResultsConsoleClient({
       }
       toast.success("Result numbers swapped.");
       setSwapTarget(null);
+      setIsSwapDialogOpen(false);
       setActiveProgramme(null);
       router.refresh();
     });
@@ -627,24 +586,10 @@ export function ResultsConsoleClient({
   }
 
   function handlePublishStandings() {
-    if (standingsScope === "general") {
-      startTransition(async () => {
-        const res = await publishGeneralStandings(festivalId);
-        if (!res.success) {
-          toast.error(res.error);
-          return;
-        }
-        toast.success("Standings published live with general entries.");
-        fetchStandings();
-        router.refresh();
-      });
-      return;
-    }
-
     const parsedNum = upToResultNumber ? parseInt(upToResultNumber, 10) : NaN;
-    if (!upToResultNumber || Number.isNaN(parsedNum) || parsedNum <= 0) {
+    if (!upToResultNumber || Number.isNaN(parsedNum) || parsedNum < 0) {
       toast.error(
-        "Enter an After # greater than 0 before sending to the announcer.",
+        "Enter a valid result number before sending to the announcer.",
       );
       return;
     }
@@ -807,9 +752,6 @@ export function ResultsConsoleClient({
                           <TableHead className="w-28 font-semibold text-foreground">
                             Status
                           </TableHead>
-                          <TableHead className="w-16 text-right font-semibold text-foreground">
-                            Actions
-                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -823,8 +765,6 @@ export function ResultsConsoleClient({
                               key={p.id}
                               p={p}
                               setActiveProgramme={setActiveProgramme}
-                              handleUnpublish={handleUnpublish}
-                              canUnpublish={canUnpublish}
                             />
                           ))}
                       </TableBody>
@@ -845,8 +785,6 @@ export function ResultsConsoleClient({
                       key={p.id}
                       p={p}
                       setActiveProgramme={setActiveProgramme}
-                      handleUnpublish={handleUnpublish}
-                      canUnpublish={canUnpublish}
                     />
                   ))}
               </div>
@@ -870,7 +808,7 @@ export function ResultsConsoleClient({
               <div className="relative w-1/3 md:w-24">
                 <Input
                   type="number"
-                  min={1}
+                  min={0}
                   placeholder="After #"
                   className="h-8 pl-3 text-sm font-medium"
                   value={upToResultNumber}
@@ -880,7 +818,7 @@ export function ResultsConsoleClient({
               <Select
                 value={standingsScope}
                 onValueChange={(v) =>
-                  setStandingsScope(v as "published" | "all" | "general")
+                  setStandingsScope(v as "published" | "all")
                 }
               >
                 <SelectTrigger className="h-8 bg-background w-2/3 md:w-fit text-sm font-medium">
@@ -889,7 +827,6 @@ export function ResultsConsoleClient({
                 <SelectContent>
                   <SelectItem value="published">Published Results</SelectItem>
                   <SelectItem value="all">All Results</SelectItem>
-                  <SelectItem value="general">General Entries</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -899,17 +836,15 @@ export function ResultsConsoleClient({
               className="bg-red-600 hover:bg-red-700 w-full md:w-fit text-white shadow-sm h-8"
               disabled={
                 isPending ||
-                (standingsScope !== "general" &&
-                  (!upToResultNumber || parseInt(upToResultNumber, 10) <= 0))
+                !upToResultNumber ||
+                parseInt(upToResultNumber, 10) < 0
               }
               onClick={handlePublishStandings}
             >
               {isPending && (
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
               )}
-              {standingsScope === "general"
-                ? "Publish General"
-                : "Send to Announcer"}
+              Send to Announcer
             </Button>
           </div>
 
@@ -934,7 +869,7 @@ export function ResultsConsoleClient({
                       <TableHead className="font-semibold text-foreground">
                         Team
                       </TableHead>
-                      <TableHead className="w-24 text-right pr-4 font-semibold text-foreground">
+                      <TableHead className="text-right pr-4 font-semibold text-foreground whitespace-nowrap">
                         Points
                       </TableHead>
                     </TableRow>
@@ -959,8 +894,14 @@ export function ResultsConsoleClient({
                           <TableCell className="font-medium text-[15px]">
                             {s.name}
                           </TableCell>
-                          <TableCell className="text-right font-mono font-bold pr-4 text-[15px]">
-                            {s.points}
+                          <TableCell className="text-right font-mono font-bold pr-4 text-[15px] whitespace-nowrap">
+                            <StandingsPointsWithOpener
+                              teamName={s.name}
+                              points={s.points}
+                              programmePoints={s.programmePoints}
+                              generalPoints={s.generalPoints}
+                              generalEntries={s.generalEntries}
+                            />
                           </TableCell>
                         </TableRow>
                       ))}
@@ -987,6 +928,7 @@ export function ResultsConsoleClient({
           if (!open) {
             setActiveProgramme(null);
             setSwapTarget(null);
+            setIsSwapDialogOpen(false);
           }
         }}
       >
@@ -1178,105 +1120,232 @@ export function ResultsConsoleClient({
                   </div>
                 </div>
 
-                {/* Swap result number */}
-                <div className="space-y-3 mt-4 bg-muted/30 py-4 rounded-xl border border-muted">
-                  <p className="text-sm font-semibold flex items-center gap-1.5">
-                    <ArrowDownUp className="h-4 w-4" />
-                    Swap Result Number
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <Select
-                      value={swapTarget ?? ""}
-                      onValueChange={(v) => setSwapTarget(v || null)}
-                      disabled={
-                        activeProgramme.status === "PUBLISHED" ||
-                        activeProgramme.status === "ANNOUNCED"
-                      }
-                    >
-                      <SelectTrigger className="h-9 w-64 text-sm font-medium bg-background">
-                        <SelectValue
-                          placeholder={
-                            activeProgramme.status === "PUBLISHED" ||
-                            activeProgramme.status === "ANNOUNCED"
-                              ? "Swap disabled for published results"
-                              : "Select a result to swap with"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {programmes
-                          .filter(
-                            (p) =>
-                              p.id !== activeProgramme.id &&
-                              p.status !== "PUBLISHED" &&
-                              p.status !== "ANNOUNCED",
-                          )
-                          .map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              #{p.resultNumber} — {p.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      size="sm"
-                      className="h-9 font-medium"
-                      disabled={
-                        !swapTarget ||
-                        isPending ||
-                        activeProgramme.status === "PUBLISHED" ||
-                        activeProgramme.status === "ANNOUNCED"
-                      }
-                      onClick={() =>
-                        swapTarget &&
-                        handleSwapNumbers(activeProgramme.id, swapTarget)
-                      }
-                    >
-                      Swap
-                    </Button>
-                  </div>
-                </div>
+                <DrawerFooter className="mt-4 px-0 pb-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    disabled={
+                      isPending ||
+                      activeProgramme.status === "PUBLISHED" ||
+                      activeProgramme.status === "ANNOUNCED"
+                    }
+                    onClick={() => {
+                      setSwapTarget(null);
+                      setIsSwapDialogOpen(true);
+                    }}
+                    title={
+                      activeProgramme.status === "PUBLISHED" ||
+                      activeProgramme.status === "ANNOUNCED"
+                        ? "Swap disabled for published results"
+                        : undefined
+                    }
+                    className="w-full sm:w-auto font-medium"
+                  >
+                    <ArrowDownUp className="h-4 w-4 mr-2" />
+                    Swap Result #
+                  </Button>
 
-                <DrawerFooter className="mt-4 px-0 pb-0 gap-2">
-                  {activeProgramme.status !== "PUBLISHED" &&
-                    activeProgramme.status !== "ANNOUNCED" && (
-                      <Button
-                        size="lg"
-                        disabled={isPending}
-                        onClick={() => handlePublish(activeProgramme.id)}
-                        // className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {isPending ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                        ) : (
-                          <Megaphone className="h-3.5 w-3.5 mr-1" />
-                        )}
-                        Publish
-                      </Button>
-                    )}
-                  {canUnpublish &&
-                    (activeProgramme.status === "PUBLISHED" ||
-                      activeProgramme.status === "ANNOUNCED") && (
-                      <Button
-                        variant="destructive"
-                        size="lg"
-                        disabled={isPending}
-                        onClick={() => handleUnpublish(activeProgramme.id)}
-                      >
-                        {isPending ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                        ) : (
-                          <Undo2 className="h-3.5 w-3.5 mr-1" />
-                        )}
-                        Unpublish
-                      </Button>
-                    )}
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {activeProgramme.status !== "PUBLISHED" &&
+                      activeProgramme.status !== "ANNOUNCED" && (
+                        <Button
+                          size="lg"
+                          disabled={isPending}
+                          onClick={() => handlePublish(activeProgramme.id)}
+                          className="w-full sm:w-auto"
+                        >
+                          {isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                          ) : (
+                            <Megaphone className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          Publish
+                        </Button>
+                      )}
+                    {canUnpublish &&
+                      (activeProgramme.status === "PUBLISHED" ||
+                        activeProgramme.status === "ANNOUNCED") && (
+                        <Button
+                          variant="destructive"
+                          size="lg"
+                          disabled={isPending}
+                          onClick={() => handleUnpublish(activeProgramme.id)}
+                          className="w-full sm:w-auto"
+                        >
+                          {isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                          ) : (
+                            <Undo2 className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          Unpublish
+                        </Button>
+                      )}
+                  </div>
                 </DrawerFooter>
               </>
             )}
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* Swap Result Number Modal Dialog */}
+      <Dialog
+        open={isSwapDialogOpen}
+        onOpenChange={(open) => {
+          setIsSwapDialogOpen(open);
+          if (!open) setSwapTarget(null);
+        }}
+      >
+        <DialogContent className="z-[70] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowDownUp className="h-5 w-5 text-primary" />
+              Swap Result Number
+            </DialogTitle>
+            <DialogDescription>
+              Exchange the result sequence number between two programmes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {activeProgramme && (
+            <div className="space-y-4 py-2">
+              {/* Selected Current Programme */}
+              <div className="rounded-lg border bg-muted/40 p-3 space-y-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Current Programme
+                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="inline-flex items-center justify-center rounded-md bg-violet-500/10 px-2 py-0.5 font-mono text-xs font-bold text-violet-600 dark:text-violet-400 shrink-0">
+                      {activeProgramme.resultNumber != null
+                        ? `#${activeProgramme.resultNumber}`
+                        : "—"}
+                    </span>
+                    <span className="font-semibold text-sm truncate">
+                      {activeProgramme.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {activeProgramme.categoryName && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {activeProgramme.categoryName}
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="text-[10px]">
+                      {activeProgramme.type}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Swap indicator */}
+              <div className="flex items-center justify-center -my-1">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium border text-muted-foreground">
+                  <ArrowDownUp className="h-3.5 w-3.5 text-primary" />
+                  <span>Swap with</span>
+                </div>
+              </div>
+
+              {/* Target programme selector */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Target Programme
+                </Label>
+                {eligibleSwapProgrammes.length === 0 ? (
+                  <p className="text-xs text-muted-foreground p-3 rounded-md border border-dashed bg-muted/20">
+                    No other unpublished programmes available to swap with.
+                  </p>
+                ) : (
+                  <Select
+                    value={swapTarget ?? ""}
+                    onValueChange={(v) => setSwapTarget(v || null)}
+                  >
+                    <SelectTrigger className="w-full text-sm font-medium bg-background">
+                      <SelectValue placeholder="Select a programme to swap with..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[80] max-h-60">
+                      {eligibleSwapProgrammes.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          #{p.resultNumber} — {p.name}
+                          {p.categoryName ? ` (${p.categoryName})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Preview of Swap Change */}
+              {selectedTargetProgramme && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1.5">
+                  <div className="font-semibold text-foreground flex items-center gap-1">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <span>Preview of Changes</span>
+                  </div>
+                  <div className="space-y-1 text-muted-foreground">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-foreground truncate">
+                        {activeProgramme.name}:
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="font-mono line-through text-muted-foreground">
+                          #{activeProgramme.resultNumber}
+                        </span>
+                        <span>→</span>
+                        <span className="font-mono font-bold text-primary">
+                          #{selectedTargetProgramme.resultNumber}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-foreground truncate">
+                        {selectedTargetProgramme.name}:
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="font-mono line-through text-muted-foreground">
+                          #{selectedTargetProgramme.resultNumber}
+                        </span>
+                        <span>→</span>
+                        <span className="font-mono font-bold text-primary">
+                          #{activeProgramme.resultNumber}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsSwapDialogOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!swapTarget || isPending}
+              onClick={() => {
+                if (activeProgramme && swapTarget) {
+                  handleSwapNumbers(activeProgramme.id, swapTarget);
+                }
+              }}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+              ) : (
+                <ArrowDownUp className="h-4 w-4 mr-1.5" />
+              )}
+              Confirm Swap
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

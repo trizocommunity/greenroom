@@ -28,43 +28,66 @@ const QUALITY_RATIO: Record<TemplateExportPayload["quality"], number> = {
 
 const TEMPLATE_TYPES = new Set(["BADGE", "CERTIFICATE"]);
 
-/** A4 in px @96dpi for the multi-up grid layout. */
-const A4 = { w: 794, h: 1123, margin: 32, gap: 16, cols: 2 };
+/** Page sizes in points (1 pt = 1/72 in), which is jsPDF's native "px" unit. */
+const PAGE_SIZES: Record<string, { w: number; h: number }> = {
+  A3: { w: 842, h: 1191 },
+  A4: { w: 595, h: 842 },
+  A5: { w: 420, h: 595 },
+  LETTER: { w: 612, h: 792 },
+  LEGAL: { w: 612, h: 1008 },
+};
 
 function assemblePdf(images: string[], payload: TemplateExportPayload): string {
-  const { width, height, printLayout } = payload;
+  const { width, height, printLayout, pageSize, pageOrientation } = payload;
+
+  // Resolve page dimensions, applying orientation swap.
+  const base = PAGE_SIZES[pageSize] ?? PAGE_SIZES.A4;
+  const isLandscape = pageOrientation === "LANDSCAPE";
+  const pageW = isLandscape ? base.h : base.w;
+  const pageH = isLandscape ? base.w : base.h;
+  const orientation = isLandscape ? "landscape" : "portrait";
 
   if (printLayout === "ONE_PER_PAGE") {
-    const orientation = width >= height ? "landscape" : "portrait";
-    const doc = new jsPDF({ unit: "px", format: [width, height], orientation });
+    // Center the item on the chosen page.
+    const doc = new jsPDF({ unit: "px", format: [pageW, pageH], orientation });
     images.forEach((img, i) => {
-      if (i > 0) doc.addPage([width, height], orientation);
-      doc.addImage(img, "PNG", 0, 0, width, height);
+      if (i > 0) doc.addPage([pageW, pageH], orientation);
+      const scale = Math.min(pageW / width, pageH / height);
+      const renderW = width * scale;
+      const renderH = height * scale;
+      const x = (pageW - renderW) / 2;
+      const y = (pageH - renderH) / 2;
+      doc.addImage(img, "PNG", x, y, renderW, renderH);
     });
     return doc.output("datauristring").split(",")[1];
   }
 
-  // MULTIPLE_PER_PAGE — grid on A4 portrait.
+  // MULTIPLE_PER_PAGE — gapless edge-to-edge tiling.
+  // Compute how many items fit across and down at native size, zero spacing.
+  const itemAspect = height / width;
+  const cols = Math.max(1, Math.floor(pageW / width));
+  const cellW = pageW / cols;
+  const cellH = cellW * itemAspect;
+  const rows = Math.max(1, Math.floor(pageH / cellH));
+  const perPage = cols * rows;
+
+  // Center the grid on the page: leftover space becomes outer margin.
+  const marginX = (pageW - cols * cellW) / 2;
+  const marginY = (pageH - rows * cellH) / 2;
+
   const doc = new jsPDF({
     unit: "px",
-    format: [A4.w, A4.h],
-    orientation: "portrait",
+    format: [pageW, pageH],
+    orientation,
   });
-  const cellW = (A4.w - A4.margin * 2 - A4.gap * (A4.cols - 1)) / A4.cols;
-  const cellH = cellW * (height / width);
-  const rows = Math.max(
-    1,
-    Math.floor((A4.h - A4.margin * 2 + A4.gap) / (cellH + A4.gap)),
-  );
-  const perPage = A4.cols * rows;
 
   images.forEach((img, i) => {
     const slot = i % perPage;
-    if (i > 0 && slot === 0) doc.addPage([A4.w, A4.h], "portrait");
-    const col = slot % A4.cols;
-    const row = Math.floor(slot / A4.cols);
-    const x = A4.margin + col * (cellW + A4.gap);
-    const y = A4.margin + row * (cellH + A4.gap);
+    if (i > 0 && slot === 0) doc.addPage([pageW, pageH], orientation);
+    const col = slot % cols;
+    const row = Math.floor(slot / cols);
+    const x = marginX + col * cellW;
+    const y = marginY + row * cellH;
     doc.addImage(img, "PNG", x, y, cellW, cellH);
   });
   return doc.output("datauristring").split(",")[1];

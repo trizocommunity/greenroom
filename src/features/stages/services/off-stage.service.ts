@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import {
   stagePortalCredential as credentialTable,
@@ -37,11 +37,23 @@ export async function ensureOffStageStage(
   const existing = await tx.query.stage.findFirst({
     where: and(
       eq(stageTable.festivalId, festivalId),
-      eq(stageTable.isOffStage, true),
+      or(
+        eq(stageTable.isOffStage, true),
+        eq(stageTable.name, OFF_STAGE_NAME),
+      ),
     ),
     columns: { id: true, festivalId: true, name: true, isOffStage: true },
   });
   if (existing) {
+    // If it wasn't flagged isOffStage (e.g. from older migration backfill), update it now
+    if (!existing.isOffStage) {
+      await tx
+        .update(stageTable)
+        .set({ isOffStage: true, updatedAt: serverNowIso() } as any)
+        .where(eq(stageTable.id, existing.id));
+      existing.isOffStage = true;
+    }
+
     // Make sure the portal credential exists too — migration backfills
     // only insert the stage row.
     const credential = await tx.query.stagePortalCredential.findFirst({
@@ -94,7 +106,10 @@ export async function getOffStageStage(
   const row = await tx.query.stage.findFirst({
     where: and(
       eq(stageTable.festivalId, festivalId),
-      eq(stageTable.isOffStage, true),
+      or(
+        eq(stageTable.isOffStage, true),
+        eq(stageTable.name, OFF_STAGE_NAME),
+      ),
     ),
     columns: { id: true, festivalId: true, name: true, isOffStage: true },
   });

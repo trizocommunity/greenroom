@@ -5,6 +5,7 @@ const {
   mockAssertFestivalAccess,
   mockGetStageIdForReportingSession,
   mockAssertStageManagerAccessForStage,
+  mockEnsureOffStageStage,
   mockGetOffStageStage,
   mockReportingSessionFindFirst,
   mockProgrammeFindFirst,
@@ -16,6 +17,7 @@ const {
     mockAssertFestivalAccess: mk(),
     mockGetStageIdForReportingSession: mk(),
     mockAssertStageManagerAccessForStage: mk(),
+    mockEnsureOffStageStage: mk(),
     mockGetOffStageStage: mk(),
     mockReportingSessionFindFirst: mk(),
     mockProgrammeFindFirst: mk(),
@@ -109,6 +111,7 @@ vi.mock("@/features/programmes/actions/reporting-access", () => ({
 }));
 
 vi.mock("@/features/stages/services/off-stage.service", () => ({
+  ensureOffStageStage: (...args: unknown[]) => mockEnsureOffStageStage(...args),
   getOffStageStage: (...args: unknown[]) => mockGetOffStageStage(...args),
 }));
 
@@ -137,6 +140,12 @@ beforeEach(() => {
   mockAssertStageManagerAccessForStage.mockResolvedValue("Owner Name");
   mockCreateAuditLog.mockResolvedValue(undefined);
   mockProgrammeFindFirst.mockResolvedValue({ status: "PENDING_JUDGMENT" });
+  mockEnsureOffStageStage.mockResolvedValue({
+    id: OFF_STAGE_ID,
+    festivalId: FESTIVAL_ID,
+    name: "Off-Stage",
+    isOffStage: true,
+  });
 });
 
 describe("startJudgementAction — off-stage auto-assign", () => {
@@ -145,7 +154,7 @@ describe("startJudgementAction — off-stage auto-assign", () => {
       id: "rs-1",
       stageId: null,
     });
-    mockGetOffStageStage.mockResolvedValue({
+    mockEnsureOffStageStage.mockResolvedValue({
       id: OFF_STAGE_ID,
       festivalId: FESTIVAL_ID,
       name: "Off-Stage",
@@ -187,7 +196,7 @@ describe("startJudgementAction — off-stage auto-assign", () => {
       judgingMode: "GROUP",
     });
 
-    expect(mockGetOffStageStage).not.toHaveBeenCalled();
+    expect(mockEnsureOffStageStage).not.toHaveBeenCalled();
     expect(mockAssertStageManagerAccessForStage).toHaveBeenCalledWith(
       FESTIVAL_ID,
       NORMAL_STAGE_ID,
@@ -204,7 +213,7 @@ describe("startJudgementAction — off-stage auto-assign", () => {
       id: "rs-1",
       stageId: null,
     });
-    mockGetOffStageStage.mockResolvedValue(null);
+    mockEnsureOffStageStage.mockResolvedValue(null);
 
     await expect(
       startJudgementAction({
@@ -226,7 +235,7 @@ describe("restartJudgementAction — off-stage auto-assign", () => {
   it("auto-assigns the off-stage stage when the prior reporting session has no stageId", async () => {
     mockProgrammeFindFirst.mockResolvedValue({ status: "JUDGED" });
     mockGetStageIdForReportingSession.mockResolvedValue(null);
-    mockGetOffStageStage.mockResolvedValue({
+    mockEnsureOffStageStage.mockResolvedValue({
       id: OFF_STAGE_ID,
       festivalId: FESTIVAL_ID,
       name: "Off-Stage",
@@ -282,7 +291,7 @@ describe("restartJudgementAction — off-stage auto-assign", () => {
       programmeId: PROGRAMME_ID,
     });
 
-    expect(mockGetOffStageStage).not.toHaveBeenCalled();
+    expect(mockEnsureOffStageStage).not.toHaveBeenCalled();
     expect(mockAssertStageManagerAccessForStage).toHaveBeenCalledWith(
       FESTIVAL_ID,
       NORMAL_STAGE_ID,

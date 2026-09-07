@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { LiveLinksCard } from "@/components/dashboard/overview/LiveLinksCard";
+import { StandingsPointsWithOpener } from "@/components/dashboard/standings/StandingsPointsWithOpener";
 import {
   Card,
   CardContent,
@@ -236,6 +237,9 @@ export default async function OverviewWidgets({
         rank: idx + 1,
         name: t.name || t.groupName || "Unknown",
         points: t.points || t.totalPoints || 0,
+        programmePoints: t.programmePoints,
+        generalPoints: t.generalPoints,
+        generalEntries: t.generalEntries,
       }))
     : [];
   const topTeams = teamStandingsList.slice(0, 10);
@@ -434,11 +438,15 @@ export default async function OverviewWidgets({
                           {team.name}
                         </span>
                       </div>
-                      <div className="font-semibold text-sm flex items-baseline gap-1">
-                        {team.points}{" "}
-                        <span className="text-xs text-muted-foreground font-normal">
-                          pts
-                        </span>
+                      <div className="font-semibold text-sm flex items-baseline gap-1 shrink-0 whitespace-nowrap">
+                        <StandingsPointsWithOpener
+                          teamName={team.name}
+                          points={team.points}
+                          programmePoints={team.programmePoints}
+                          generalPoints={team.generalPoints}
+                          generalEntries={team.generalEntries}
+                          unit="pts"
+                        />
                       </div>
                     </div>
                   ))

@@ -33,7 +33,7 @@ export interface UseJudgementWizardResult {
   setJudgingMode: (v: "SINGLE" | "GROUP") => void;
   newJudgeName: string;
   setNewJudgeName: (v: string) => void;
-  addJudge: () => void;
+  addJudge: (overrideName?: string) => void;
   isAddingJudge: boolean;
   startJudgement: (programmeId?: string | null) => void;
   hasUnsavedInputs: boolean;
@@ -104,8 +104,8 @@ export function useJudgementWizard({
     );
   };
 
-  const addJudge = () => {
-    const name = newJudgeName.trim();
+  const addJudge = (overrideName?: string) => {
+    const name = (overrideName ?? newJudgeName).trim();
     if (!name) return;
     startAddJudgeTransition(async () => {
       try {

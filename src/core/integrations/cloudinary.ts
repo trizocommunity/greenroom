@@ -19,11 +19,22 @@ function readConfig(): {
   apiKey: string;
   apiSecret: string;
 } | null {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
-  if (!cloudName || !apiKey || !apiSecret) return null;
-  return { cloudName, apiKey, apiSecret };
+  const cloudinaryUrl = process.env.CLOUDINARY_URL;
+  if (!cloudinaryUrl) return null;
+
+  try {
+    // CLOUDINARY_URL format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+    const parsedUrl = new URL(cloudinaryUrl);
+    const apiKey = parsedUrl.username;
+    const apiSecret = parsedUrl.password;
+    const cloudName = parsedUrl.hostname;
+
+    if (!cloudName || !apiKey || !apiSecret) return null;
+    return { cloudName, apiKey, apiSecret };
+  } catch (e) {
+    console.error("Failed to parse CLOUDINARY_URL", e);
+    return null;
+  }
 }
 
 function sign(params: Record<string, string>, apiSecret: string): string {
@@ -183,4 +194,108 @@ function buildEagerString(t: CloudinaryTransformation): string {
   if (t.format) parts.push(`f_${t.format}`);
   if (t.quality) parts.push(`q_${t.quality}`);
   return parts.join(",");
+}
+
+/**
+ * Delete an asset from Cloudinary via the `destroy` endpoint.
+ * First fetches the asset details via Admin API to get its size (in bytes)
+ * so we can accurately refund the festival's storage quota.
+ */
+export async function deleteFile(
+  publicId: string,
+): Promise<{ success: boolean; bytes: number }> {
+  const cfg = readConfig();
+  if (!cfg) throw new CloudinaryConfigError();
+
+  // 1. Fetch asset details to get the size in bytes
+  let bytes = 0;
+  try {
+    const auth = Buffer.from(`${cfg.apiKey}:${cfg.apiSecret}`).toString("base64");
+    // The Admin API endpoint for getting resource details:
+    // GET /resources/image/upload/:public_id
+    // But public_id might contain slashes (like folders), so we encode it? No, in Cloudinary it's just path.
+    // Wait, the documentation says GET /resources/image/upload/:public_id is NOT the right way if there are slashes.
+    // Actually, Admin API is: `GET https://api.cloudinary.com/v1_1/${cfg.cloudName}/resources/image/upload/${encodeURIComponent(publicId)}`
+    // Let's use the explicit details endpoint. Or simply search.
+    // A safer way is `GET /resources/image/upload?public_ids=${publicId}`
+    const detailsRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${cfg.cloudName}/resources/image/upload?public_ids=${encodeURIComponent(publicId)}`,
+      {
+        headers: {
+          Authorization: `Basic ${auth}`,
+        },
+      }
+    );
+
+    if (detailsRes.ok) {
+      const detailsData = (await detailsRes.json()) as {
+        resources: Array<{ bytes: number }>;
+      };
+      if (detailsData.resources && detailsData.resources.length > 0) {
+        bytes = detailsData.resources[0].bytes || 0;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to fetch Cloudinary resource details before delete:", e);
+    // Continue with delete even if we can't get the bytes
+  }
+
+  // 2. Destroy the asset
+  const timestamp = Math.round(serverNowMs() / 1000);
+  const params: Record<string, string> = {
+    public_id: publicId,
+    timestamp: String(timestamp),
+  };
+
+  const signature = sign(params, cfg.apiSecret);
+
+  const formData = new FormData();
+  formData.append("public_id", publicId);
+  formData.append("api_key", cfg.apiKey);
+  formData.append("timestamp", String(timestamp));
+  formData.append("signature", signature);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/destroy`,
+    { method: "POST", body: formData }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Cloudinary destroy failed (${res.status}): ${text}`);
+  }
+
+  const data = (await res.json()) as { result: string };
+  return { success: data.result === "ok", bytes };
+}
+
+/**
+ * Extracts the Cloudinary public_id from a secure_url.
+ * E.g., https://res.cloudinary.com/cloud/image/upload/v1234/folder/file.png -> folder/file
+ */
+export function extractPublicIdFromUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.includes("cloudinary.com")) return null;
+    
+    const parts = parsed.pathname.split("/");
+    const uploadIndex = parts.indexOf("upload");
+    if (uploadIndex === -1) return null;
+    
+    let publicIdParts = parts.slice(uploadIndex + 1);
+    
+    // Remove version tag if present
+    if (publicIdParts[0]?.match(/^v\d+$/)) {
+      publicIdParts = publicIdParts.slice(1);
+    }
+    
+    const fullPath = publicIdParts.join("/");
+    const dotIndex = fullPath.lastIndexOf(".");
+    if (dotIndex !== -1) {
+      return fullPath.substring(0, dotIndex);
+    }
+    return fullPath;
+  } catch {
+    return null;
+  }
 }

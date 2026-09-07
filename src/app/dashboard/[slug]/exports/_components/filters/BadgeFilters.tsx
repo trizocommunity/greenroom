@@ -7,6 +7,8 @@ import type { BadgeConfig } from "@/features/exports/schemas/export-config.schem
 import {
   CheckList,
   GENDER_OPTIONS,
+  PAGE_ORIENTATION_OPTIONS,
+  PAGE_SIZE_OPTIONS,
   PRINT_LAYOUT_OPTIONS,
   QUALITY_OPTIONS,
   SegmentedControl,
@@ -26,6 +28,13 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
   const { data: categories } = useCategories(festivalId);
   const { data: teams } = useGroups(festivalId);
   const set = (patch: Partial<BadgeConfig>) => onChange({ ...value, ...patch });
+
+  // Exclude GENERAL categories — they aggregate many participants and would
+  // produce extremely large exports. Badges are per-participant, so only
+  // SINGLE (competition) categories are relevant.
+  const singleCategories = (categories ?? []).filter(
+    (c) => c.type === "SINGLE",
+  );
 
   return (
     <div className="space-y-5 rounded-lg border p-4">
@@ -53,6 +62,18 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         onChange={(v) => set({ printLayout: v })}
         options={PRINT_LAYOUT_OPTIONS}
       />
+      <SegmentedControl
+        label="Page Size"
+        value={value.pageSize}
+        onChange={(v) => set({ pageSize: v })}
+        options={PAGE_SIZE_OPTIONS}
+      />
+      <SegmentedControl
+        label="Orientation"
+        value={value.pageOrientation}
+        onChange={(v) => set({ pageOrientation: v })}
+        options={PAGE_ORIENTATION_OPTIONS}
+      />
       <ToggleRow
         label="Only participants with chest numbers"
         checked={value.onlyWithChestNumber}
@@ -61,7 +82,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
       <CheckList
         label="Categories"
         hint="Leave empty to include all"
-        options={categories ?? []}
+        options={singleCategories}
         selected={value.categoryIds}
         onToggle={(id, v) =>
           set({ categoryIds: toggleId(value.categoryIds, id, v) })

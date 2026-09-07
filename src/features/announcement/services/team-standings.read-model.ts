@@ -1,4 +1,5 @@
 import { and, eq, or, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { db } from "@/core/database/client";
 import {
   festival as festivalTable,
@@ -8,13 +9,27 @@ import {
   programme as programmeTable,
   result as resultTable,
 } from "@/core/database/schema";
-import { computeGeneralEntryStandings } from "@/features/general-entries/services/general-entries.standings";
+import { serverNowIso } from "@/core/datetime";
+import {
+  computeGeneralEntryStandings,
+  computeGeneralEntryStandingsWithDetails,
+} from "@/features/general-entries/services/general-entries.standings";
+
+export type GeneralEntryStandingDetail = {
+  id?: string;
+  name: string;
+  categoryName?: string | null;
+  points: number;
+};
 
 export type TeamStandingRow = {
   name: string;
   points: number;
   rank: number;
   isGroup?: boolean;
+  programmePoints?: number;
+  generalPoints?: number;
+  generalEntries?: GeneralEntryStandingDetail[];
 };
 
 export async function computeStandings(
@@ -34,9 +49,10 @@ export async function computeStandings(
 
   const publishedFilter =
     scope === "published" ? eq(resultTable.isPublished, true) : undefined;
-  const resultNumberFilter = upToResultNumber
-    ? sql`${programmeTable.resultNumber} <= ${upToResultNumber}`
-    : undefined;
+  const resultNumberFilter =
+    upToResultNumber != null
+      ? sql`${programmeTable.resultNumber} <= ${upToResultNumber}`
+      : undefined;
 
   const [results, groups, generalRows] = await Promise.all([
     db
@@ -79,17 +95,22 @@ export async function computeStandings(
       where: eq(groupTable.festivalId, festivalId),
       columns: { name: true },
     }),
-    computeGeneralEntryStandings(festivalId),
+    computeGeneralEntryStandingsWithDetails(festivalId),
   ]);
 
-  const standings: Record<
-    string,
-    { name: string; points: number; isGroup: boolean }
-  > = {};
+  const standings: Record<string, TeamStandingRow> = {};
   const countedGroupTeams = new Set<string>();
 
   for (const g of groups) {
-    standings[g.name] = { name: g.name, points: 0, isGroup: true };
+    standings[g.name] = {
+      name: g.name,
+      points: 0,
+      rank: 0,
+      isGroup: true,
+      programmePoints: 0,
+      generalPoints: 0,
+      generalEntries: [],
+    };
   }
 
   for (const r of results) {
@@ -103,18 +124,41 @@ export async function computeStandings(
     }
 
     if (!standings[groupName]) {
-      standings[groupName] = { name: groupName, points: 0, isGroup: true };
+      standings[groupName] = {
+        name: groupName,
+        points: 0,
+        rank: 0,
+        isGroup: true,
+        programmePoints: 0,
+        generalPoints: 0,
+        generalEntries: [],
+      };
     }
-    standings[groupName].points += r.awardPoints ?? r.points ?? 0;
+    const pts = r.awardPoints ?? r.points ?? 0;
+    standings[groupName].programmePoints =
+      (standings[groupName].programmePoints ?? 0) + pts;
+    standings[groupName].points += pts;
   }
 
-  // General-entry points are always on once published — merge them into
-  // programme standings so announcer + results views show the true total.
+  // Merge published general entries with details
   for (const g of generalRows) {
     if (!standings[g.name]) {
-      standings[g.name] = { name: g.name, points: 0, isGroup: true };
+      standings[g.name] = {
+        name: g.name,
+        points: 0,
+        rank: 0,
+        isGroup: true,
+        programmePoints: 0,
+        generalPoints: 0,
+        generalEntries: [],
+      };
     }
+    standings[g.name].generalPoints =
+      (standings[g.name].generalPoints ?? 0) + g.points;
     standings[g.name].points += g.points;
+    standings[g.name].generalEntries = (
+      standings[g.name].generalEntries ?? []
+    ).concat(g.entries ?? []);
   }
 
   return Object.values(standings)
@@ -197,4 +241,55 @@ export async function getProgrammeStatusCounts(festivalId: string) {
   }
 
   return counts;
+}
+
+export async function syncFestivalStandingsWithGeneralEntries(
+  festivalId: string,
+) {
+  const fest = await db.query?.festival?.findFirst?.({
+    where: eq(festivalTable.id, festivalId),
+    columns: {
+      teamStandings: true,
+      queuedTeamStandings: true,
+      standingsPublishedAtResultNumber: true,
+      slug: true,
+    },
+  });
+
+  if (!fest) return;
+
+  const now = serverNowIso();
+  const updates: Partial<typeof festivalTable.$inferInsert> = {
+    updatedAt: now,
+  };
+
+  if (fest.teamStandings) {
+    updates.teamStandings = await computeStandings(festivalId, "published");
+  }
+
+  if (fest.queuedTeamStandings) {
+    updates.queuedTeamStandings = await computeStandings(
+      festivalId,
+      "published",
+      fest.standingsPublishedAtResultNumber ?? undefined,
+    );
+  }
+
+  if (updates.teamStandings || updates.queuedTeamStandings) {
+    await db
+      .update(festivalTable)
+      .set(updates)
+      .where(eq(festivalTable.id, festivalId));
+  }
+
+  if (fest.slug) {
+    revalidatePath(`/dashboard/${fest.slug}`);
+    revalidatePath(`/dashboard/${fest.slug}/announcer`);
+    revalidatePath(`/dashboard/${fest.slug}/event-works/announcement`);
+    revalidatePath(`/dashboard/${fest.slug}/event-works/results`);
+    revalidatePath(`/dashboard/${fest.slug}/event-works/general-entries`);
+    revalidatePath(`/dashboard/${fest.slug}/event-works/top-scorers`);
+    revalidatePath(`/${fest.slug}`);
+    revalidatePath(`/${fest.slug}/results`);
+  }
 }

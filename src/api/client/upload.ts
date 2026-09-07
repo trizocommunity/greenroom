@@ -4,14 +4,7 @@ import type { ApiResponse } from "@/lib/api-client";
 import { apiClient, handleApiResponse } from "@/lib/api-client";
 import { toast } from "@/lib/toast";
 
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+
 
 export function useCloudinaryUpload() {
   return useMutation<
@@ -20,12 +13,17 @@ export function useCloudinaryUpload() {
     { file: File; folder: string; festivalId: string }
   >({
     mutationFn: async ({ file, folder, festivalId }) => {
-      const base64Data = await fileToBase64(file);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", folder);
+      formData.append("festivalId", festivalId);
+
       const response = await apiClient.post<ApiResponse<UploadResponse>>(
         "/upload",
+        formData,
         {
-          data: { file: base64Data, folder, festivalId },
-        },
+          headers: { "Content-Type": "multipart/form-data" },
+        }
       );
       return handleApiResponse(response.data);
     },
@@ -51,10 +49,10 @@ export function useUploadFile() {
 }
 
 export function useDeleteFile() {
-  return useMutation<void, Error, { publicId: string }>({
-    mutationFn: async ({ publicId }) => {
+  return useMutation<void, Error, { publicId?: string; url?: string; festivalId: string }>({
+    mutationFn: async ({ publicId, url, festivalId }) => {
       const response = await apiClient.delete<ApiResponse<void>>("/upload", {
-        data: { publicId },
+        data: { publicId, url, festivalId },
       });
       return handleApiResponse(response.data);
     },

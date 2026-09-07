@@ -7,6 +7,8 @@ export interface CreatePresetOptions {
   /** Object URL or data URL for document background image */
   backgroundImageUrl?: string;
   teamCount?: number;
+  width?: number;
+  height?: number;
 }
 
 export type EditorNavPanel =
