@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
+  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
@@ -59,6 +60,9 @@ export function NewTemplateModal({
           <DrawerTitle className="font-serif text-2xl">
             Start a new template
           </DrawerTitle>
+          <DrawerDescription>
+            Choose a preset poster design or upload a custom background.
+          </DrawerDescription>
         </DrawerHeader>
 
         <div className="space-y-4">

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
+  DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
@@ -39,11 +40,11 @@ export function SaveTemplateModal({
           <DrawerTitle className="font-serif text-xl">
             Save template
           </DrawerTitle>
+          <DrawerDescription>
+            Save this {templateLabel} design to your template library. You can
+            reload it from the Templates tab.
+          </DrawerDescription>
         </DrawerHeader>
-        <p className="text-sm text-muted-foreground">
-          Save this {templateLabel} design to your template library. You can
-          reload it from the Templates tab.
-        </p>
         <div className="space-y-2">
           <Label
             htmlFor="template-name"

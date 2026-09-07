@@ -24,14 +24,18 @@ const handler = createProtectedHandler({
     const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
+      const rawFolder = formData.get("folder");
       data = {
         file: formData.get("file"),
-        folder: formData.get("folder"),
+        folder: rawFolder === "poster-templates" ? "templates" : rawFolder,
         festivalId: formData.get("festivalId"),
       };
     } else {
       const body = await request.json();
       data = body.data ?? body;
+      if (data?.folder === "poster-templates") {
+        data = { ...data, folder: "templates" };
+      }
     }
 
     const parsed = uploadInput.safeParse(data);
