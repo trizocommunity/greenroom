@@ -155,7 +155,9 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
 
   // Capture the currently-rendered item, then advance or finalize.
   useEffect(() => {
-    if (!job || !pdfRef.current) return;
+    const pdfContext = pdfRef.current;
+    if (!job || !pdfContext) return;
+    
     let cancelled = false;
 
     (async () => {
@@ -187,7 +189,7 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
       });
       
       // Stream immediately to jsPDF to keep memory low
-      appendToPdf(pdfRef.current.doc, dataUrl, job.index, job.payload, pdfRef.current);
+      appendToPdf(pdfContext.doc, dataUrl, job.index, job.payload, pdfContext);
 
       if (job.index + 1 < job.payload.items.length) {
         setJob({ ...job, index: job.index + 1 });
@@ -197,7 +199,7 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
 
       // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
       try {
-        const blob = pdfRef.current.doc.output("blob");
+        const blob = pdfContext.doc.output("blob");
         const formData = new FormData();
         formData.append("file", blob, "export.pdf");
         formData.append("itemCount", String(job.payload.items.length));
