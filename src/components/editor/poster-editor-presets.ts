@@ -466,13 +466,17 @@ export function createPresetDocument(
       for (let i = 0; i < teamCount; i++) {
         const y = rowStartY + i * rowHeight;
         elements.push(
-          staticText(`Team ${i + 1}`, `Team ${i + 1}`, teamColX, y, 36, {
+          fieldText(`team${i + 1}Name`, teamColX, y, 36, {
+            name: `Team ${i + 1}`,
+            text: `Team ${i + 1}`,
             fill: scheme.bodyFill,
             fontStyle: "bold",
             align: "left",
             width: teamColWidth,
           }),
-          staticText(`Points ${i + 1}`, "0", scoreColX, y, 36, {
+          fieldText(`team${i + 1}Points`, scoreColX, y, 36, {
+            name: `Points ${i + 1}`,
+            text: "0",
             fill: scheme.accentFill,
             fontStyle: "bold",
             align: "right",
