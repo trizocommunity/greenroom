@@ -100,23 +100,11 @@ export async function getTemplateExportPayloadAction(
   }
 }
 
-/** Payload accepted by `finalizeTemplateExportAction`. The client uploads
- * the rendered file directly to Cloudinary (bypassing Vercel's edge body
- * cap — see `sign-upload` route) and posts only the secure URL here. The
- * server fetches the bytes once and stores them inline as base64. */
-export interface FinalizeTemplateExportInput {
-  secureUrl: string;
-  publicId: string;
-  bytes: number;
-  itemCount: number;
-  includeAi: boolean;
-}
-
 /** Store the client-rendered PDF and mark the job COMPLETED. */
 export async function finalizeTemplateExportAction(
   festivalId: string,
   exportId: string,
-  input: FinalizeTemplateExportInput,
+  formData: FormData,
 ): Promise<ActionResponse<{ id: string }>> {
   try {
     const session = await getSession();
@@ -128,24 +116,20 @@ export async function finalizeTemplateExportAction(
       return { success: true, data: { id: exportId } };
     }
 
-    if (!input?.secureUrl || !input.publicId || !input.bytes) {
-      throw new AppError("Missing upload metadata.");
-    }
-
-    const fileRes = await fetch(input.secureUrl);
-    if (!fileRes.ok) {
-      throw new AppError(
-        `Could not retrieve uploaded file from storage (${fileRes.status}).`,
-      );
-    }
-    const arrayBuffer = await fileRes.arrayBuffer();
-    const bytes = Buffer.from(arrayBuffer);
-    const fileBase64 = bytes.toString("base64");
-
+    const file = formData.get("file") as File;
+    const itemCount = parseInt(formData.get("itemCount") as string, 10);
     // `includeAi` is the bundle-as-zip flag, controlled by the user toggle
     // on the badge/certificate filter. The DB `format` column is always
     // "PDF" for template exports (since AI is shipped alongside, not instead).
-    const includeAi = !!input.includeAi;
+    const includeAi = (formData.get("includeAi") as string) === "true";
+
+    if (!file) {
+      throw new AppError("No file data received.");
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = Buffer.from(arrayBuffer);
+    const fileBase64 = bytes.toString("base64");
 
     const fileName = includeAi
       ? `${row.type.toLowerCase()}.zip`
@@ -163,9 +147,8 @@ export async function finalizeTemplateExportAction(
       fileName,
       mimeType,
       fileSizeBytes: bytes.byteLength,
-      itemCount: input.itemCount,
+      itemCount,
       completedInMs,
-      cloudinaryPublicId: input.publicId,
     });
     return { success: true, data: { id: exportId } };
   } catch (error) {

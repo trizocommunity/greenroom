@@ -278,6 +278,102 @@ export function CheckList({
   );
 }
 
+/**
+ * Single-select combobox. Emits the chosen id (or null) instead of a toggle.
+ * `required` adds a red asterisk to the label and dims the trigger when empty
+ * so the disabled-export-button reason stays obvious.
+ */
+export function SingleSelect({
+  label,
+  hint,
+  options,
+  value,
+  onChange,
+  required = false,
+  emptyLabel = "No options found.",
+  placeholder,
+}: {
+  label: string;
+  hint?: string;
+  options: { id: string; name: string }[];
+  value: string | null;
+  onChange: (id: string | null) => void;
+  required?: boolean;
+  emptyLabel?: string;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const selected = value ? options.find((o) => o.id === value) : undefined;
+
+  return (
+    <div className="space-y-2">
+      <Label
+        className={cn(
+          "text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1",
+        )}
+      >
+        {label}
+        {required && (
+          <span className="text-destructive" title="required">
+            *
+          </span>
+        )}
+      </Label>
+      {hint && <p className="text-[10px] text-muted-foreground/80">{hint}</p>}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            aria-invalid={required && !value ? true : undefined}
+            className={cn(
+              "w-full justify-between font-normal",
+              required && !value && "border-destructive/40 text-destructive",
+            )}
+          >
+            {selected
+              ? selected.name
+              : (placeholder ?? `Select ${label.toLowerCase()}...`)}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+          <Command>
+            <CommandInput placeholder={`Search ${label.toLowerCase()}...`} />
+            <CommandList>
+              <CommandEmpty>{emptyLabel}</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const isSelected = option.id === value;
+                  return (
+                    <CommandItem
+                      key={option.id}
+                      value={option.name}
+                      onSelect={() => {
+                        onChange(isSelected ? null : option.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          isSelected ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+                      {option.name}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 import { Eye, X } from "lucide-react";
 import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import {

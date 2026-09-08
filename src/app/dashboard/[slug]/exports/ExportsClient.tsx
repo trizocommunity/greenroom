@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ExportListItem } from "@/features/exports/types/export.types";
 import { toast } from "@/lib/toast";
 
 const ClientTemplateExportRunner = dynamic(
@@ -18,6 +19,7 @@ const ClientTemplateExportRunner = dynamic(
   { ssr: false },
 );
 
+import { ExportDetailDrawer } from "./_components/ExportDetailDrawer";
 import { ExportIssuesBanner } from "./_components/ExportIssuesBanner";
 import { ExportsTable } from "./_components/ExportsTable";
 import { NewExportDrawer } from "./_components/NewExportDrawer";
@@ -32,23 +34,16 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
   const deleteExport = useDeleteExport();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ExportListItem | null>(null);
   const [exportProgress, setExportProgress] = useState<
-    Record<
-      string,
-      { current: number; total: number; phase: "rendering" | "uploading" }
-    >
+    Record<string, { current: number; total: number }>
   >({});
 
   const handleTemplateProgress = useCallback(
-    (
-      id: string,
-      current: number,
-      total: number,
-      phase: "rendering" | "uploading",
-    ) => {
+    (id: string, current: number, total: number) => {
       setExportProgress((prev) => ({
         ...prev,
-        [id]: { current, total, phase },
+        [id]: { current, total },
       }));
     },
     [],
@@ -60,6 +55,7 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
       await deleteExport.mutateAsync({ festivalId, id: confirmId });
       toast.success("Export deleted.");
       setConfirmId(null);
+      if (selectedItem?.id === confirmId) setSelectedItem(null);
     } catch {
       // handled by the hook's onError toast
     }
@@ -123,6 +119,7 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
           progressMap={exportProgress}
           onDelete={(id) => setConfirmId(id)}
           deletingId={deleteExport.isPending ? confirmId : null}
+          onRowClick={(item) => setSelectedItem(item)}
         />
       )}
 
@@ -139,6 +136,12 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
         festivalId={festivalId}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
+      />
+
+      <ExportDetailDrawer
+        open={!!selectedItem}
+        onOpenChange={(open) => !open && setSelectedItem(null)}
+        item={selectedItem}
       />
 
       {/* Off-screen Konva renderer for badge/certificate jobs. */}

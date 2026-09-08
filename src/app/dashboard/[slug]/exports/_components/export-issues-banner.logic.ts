@@ -24,14 +24,11 @@ export interface BannerContent {
 export function summarizeIssue(errorMessage: string | null): string | null {
   const msg = (errorMessage ?? "").toLowerCase();
   if (!msg) return null;
-  if (msg.includes("exceeds the") && msg.includes("mb limit")) {
-    return "Export is too large for the Cloudinary Free tier (10 MB upload cap). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.";
+  if (msg.includes("exceeds the") && msg.includes("vercel hobby")) {
+    return "Export is too large for the Vercel Hobby Server Action body limit (4 MB cap on the Hobby plan). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.";
   }
-  if (
-    msg.includes("10485760") ||
-    (msg.includes("maximum is") && msg.includes("mb"))
-  ) {
-    return "Cloudinary Free tier caps uploads at 10 MB. Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.";
+  if (msg.includes("413") && msg.includes("vercel")) {
+    return "Vercel Hobby Server Action body limit reached (HTTP 413). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.";
   }
   if (msg.includes("timed out") || msg.includes("aborted")) {
     return "Upload to storage timed out. Try a smaller batch or a faster connection.";

@@ -25,12 +25,7 @@ import type { ExportListItem } from "@/features/exports/types/export.types";
 interface Props {
   festivalId: string;
   exports: ExportListItem[];
-  onProgress?: (
-    exportId: string,
-    current: number,
-    total: number,
-    phase: "rendering" | "uploading",
-  ) => void;
+  onProgress?: (exportId: string, current: number, total: number) => void;
 }
 
 // Quality tiers map to a *target printed DPI*, not a fixed pixelRatio. The
@@ -57,13 +52,38 @@ const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
 };
 
 // Hard upper bound on the final PDF size the client will upload. Above this,
-// the export is auto-marked FAILED with an actionable message instead of
-// hitting the Cloudinary upload cap. Cloudinary Free tier caps BOTH
-// `image/upload` AND `raw/upload` at 10,485,760 bytes (10 MB). 9 MiB
-// leaves a small safety margin so borderline sizes don't get rejected
-// upstream. Users with larger templates should either lower Export
-// Quality (PRINT → STANDARD → SCREEN) or split into smaller batches.
-const MAX_BLOB_BYTES = 9 * 1024 * 1024;
+// the export is auto-retried at the next-lower quality (see
+// `nextQualityDown`). If SCREEN still exceeds the cap, the export is
+// marked FAILED with an actionable message instead of hitting the
+// Vercel Hobby edge body limit (~4.5 MB). 4 MiB leaves a small safety
+// margin so borderline sizes don't get rejected with a 413.
+const MAX_BLOB_BYTES = 4 * 1024 * 1024;
+
+// The Vercel Hobby cap only bites in production. Local `next dev` has no
+// edge function in front of the Server Action, so there's no reason to
+// reject (or auto-downgrade) exports that would otherwise render fine.
+// `NEXT_PUBLIC_EXPORT_GUARD_ENABLED=1` re-enables the guard for local
+// smoke-testing of the prod code path.
+const SIZE_GUARD_ENABLED =
+  process.env.NODE_ENV !== "development" ||
+  process.env.NEXT_PUBLIC_EXPORT_GUARD_ENABLED === "1";
+
+// Quality fallback order when a rendered PDF exceeds MAX_BLOB_BYTES.
+// Highest quality first; the runner re-renders at the next entry until
+// it fits under the cap (or exhausts the list, at which point it fails).
+const QUALITY_FALLBACK: TemplateExportPayload["quality"][] = [
+  "PRINT",
+  "STANDARD",
+  "SCREEN",
+];
+
+function nextQualityDown(
+  current: TemplateExportPayload["quality"],
+): TemplateExportPayload["quality"] | null {
+  const idx = QUALITY_FALLBACK.indexOf(current);
+  if (idx === -1 || idx === QUALITY_FALLBACK.length - 1) return null;
+  return QUALITY_FALLBACK[idx + 1];
+}
 
 const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   A3: { w: 842, h: 1191 },
@@ -482,7 +502,7 @@ export function ClientTemplateExportRunner({
         payload: res.data,
         index: 0,
       });
-      onProgress?.(next.id, 0, res.data.items.length, "rendering");
+      onProgress?.(next.id, 0, res.data.items.length);
     })();
   }, [exports, job, festivalId, invalidate, onProgress]);
 
@@ -490,9 +510,6 @@ export function ClientTemplateExportRunner({
   useEffect(() => {
     const pdfContext = pdfRef.current;
     if (!job || !pdfContext) return;
-
-    let cancelled = false;
-    const controller = new AbortController();
 
     (async () => {
       try {
@@ -573,10 +590,6 @@ export function ClientTemplateExportRunner({
         // Give React one last moment to mount late elements like QR codes
         await new Promise((r) => setTimeout(r, 100));
 
-        if (cancelled) {
-          return;
-        }
-
         const qualityTier = job.payload.quality;
         const targetDpi = TARGET_DPI[qualityTier];
         const pixelRatio = computePixelRatio(
@@ -645,21 +658,38 @@ export function ClientTemplateExportRunner({
 
         if (job.index + 1 < job.payload.items.length) {
           setJob({ ...job, index: job.index + 1 });
-          onProgress?.(
-            job.exportId,
-            job.index + 1,
-            job.payload.items.length,
-            "rendering",
-          );
+          onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
           return;
         }
 
-        // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
+        // All items captured — extract Blob and check size. If over the cap,
+        // automatically retry at the next-lower quality (PRINT → STANDARD
+        // → SCREEN) by re-rendering. If even SCREEN exceeds the cap, fail
+        // with an actionable message — user must split into smaller batches.
+        // In dev the guard is off (see SIZE_GUARD_ENABLED) so users can
+        // exercise the full Server Action path with large files locally.
         const pdfBlob = pdfContext.doc.output("blob");
-        if (pdfBlob.size > MAX_BLOB_BYTES) {
+        if (SIZE_GUARD_ENABLED && pdfBlob.size > MAX_BLOB_BYTES) {
+          const nextQuality = nextQualityDown(job.payload.quality);
+          if (nextQuality) {
+            // Re-render at lower quality. Re-init the PDF context (the
+            // existing one already has items appended) and reset index to
+            // 0. The render useEffect re-runs because `job` changed.
+            pdfRef.current = initPdf({
+              ...job.payload,
+              quality: nextQuality,
+            });
+            setJob({
+              ...job,
+              payload: { ...job.payload, quality: nextQuality },
+              index: 0,
+            });
+            onProgress?.(job.exportId, 0, job.payload.items.length);
+            return;
+          }
           const mb = Math.round(pdfBlob.size / (1024 * 1024));
           const maxMb = Math.round(MAX_BLOB_BYTES / (1024 * 1024));
-          const message = `Export is ${mb} MB which exceeds the ${maxMb} MB Cloudinary Free upload limit. Lower Export Quality (PRINT → STANDARD → SCREEN) or split into smaller batches by category or team.`;
+          const message = `Export is ${mb} MB which exceeds the ${maxMb} MB Vercel Hobby Server Action body limit even at SCREEN quality. Please split the export into smaller batches by category or team.`;
           await failTemplateExportAction(festivalId, job.exportId, message);
           pdfRef.current = null;
           setJob(null);
@@ -696,10 +726,24 @@ export function ClientTemplateExportRunner({
             { name: pdfName, data: pdfBytes },
             { name: aiName, data: pdfBytes },
           ]);
-          if (zipBytes.byteLength > MAX_BLOB_BYTES) {
+          if (SIZE_GUARD_ENABLED && zipBytes.byteLength > MAX_BLOB_BYTES) {
+            const nextQuality = nextQualityDown(job.payload.quality);
+            if (nextQuality) {
+              pdfRef.current = initPdf({
+                ...job.payload,
+                quality: nextQuality,
+              });
+              setJob({
+                ...job,
+                payload: { ...job.payload, quality: nextQuality },
+                index: 0,
+              });
+              onProgress?.(job.exportId, 0, job.payload.items.length);
+              return;
+            }
             const mb = Math.round(zipBytes.byteLength / (1024 * 1024));
             const maxMb = Math.round(MAX_BLOB_BYTES / (1024 * 1024));
-            const message = `Export bundle is ${mb} MB which exceeds the ${maxMb} MB Cloudinary Free upload limit. Lower Export Quality (PRINT → STANDARD → SCREEN) or split into smaller batches by category or team.`;
+            const message = `Export bundle is ${mb} MB which exceeds the ${maxMb} MB Vercel Hobby Server Action body limit even at SCREEN quality. Please split the export into smaller batches by category or team.`;
             await failTemplateExportAction(festivalId, job.exportId, message);
             pdfRef.current = null;
             setJob(null);
@@ -716,75 +760,18 @@ export function ClientTemplateExportRunner({
           uploadMime = "application/pdf";
         }
         const uploadBlob = new Blob([uploadBytes], { type: uploadMime });
-        const signRes = await fetch("/api/v1/exports/sign-upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            festivalId,
-            exportId: job.exportId,
-          }),
-        });
-        if (!signRes.ok) {
-          const text = await signRes.text();
-          throw new Error(`Could not sign upload (${signRes.status}): ${text}`);
-        }
-        const signJson = (await signRes.json()) as {
-          success: boolean;
-          data?: {
-            cloudName: string;
-            apiKey: string;
-            timestamp: number;
-            signature: string;
-            folder: string;
-            publicId: string;
-            uploadUrl: string;
-          };
-          error?: { code: string; message: string };
-        };
-        if (!signJson.success || !signJson.data) {
-          throw new Error(signJson.error?.message ?? "Could not sign upload.");
-        }
-        const sig = signJson.data;
+        const formData = new FormData();
+        formData.append("file", uploadBlob, uploadName);
+        formData.append("itemCount", String(job.payload.items.length));
+        formData.append("includeAi", includeAi ? "true" : "false");
 
-        const cloudForm = new FormData();
-        cloudForm.append("file", uploadBlob, uploadName);
-        cloudForm.append("api_key", sig.apiKey);
-        cloudForm.append("timestamp", String(sig.timestamp));
-        cloudForm.append("signature", sig.signature);
-        cloudForm.append("folder", sig.folder);
-        cloudForm.append("public_id", sig.publicId);
-
-        // XHR (not fetch) so we get upload progress events. fetch() exposes
-        // response-stream progress but not request-body progress. AbortController
-        // ties to the runner's `cancelled` flag so navigating away cancels the
-        // in-flight upload cleanly. 5-minute timeout covers Cloudinary Free
-        // throttling on large files; longer than typical 95 MiB upload time
-        // (~1–3 min) but short enough to surface genuine hangs.
-        const cloudJson = await uploadWithProgress({
-          url: sig.uploadUrl,
-          formData: cloudForm,
-          signal: controller.signal,
-          timeoutMs: 5 * 60 * 1000,
-          onProgress: (sent, total) =>
-            onProgress?.(job.exportId, sent, total, "uploading"),
-        });
-
-        await finalizeTemplateExportAction(festivalId, job.exportId, {
-          secureUrl: cloudJson.secure_url,
-          publicId: cloudJson.public_id,
-          bytes: cloudJson.bytes,
-          itemCount: job.payload.items.length,
-          includeAi,
-        });
+        await finalizeTemplateExportAction(festivalId, job.exportId, formData);
 
         pdfRef.current = null;
         setJob(null);
         busy.current = false;
         invalidate();
       } catch (err) {
-        if (cancelled) {
-          return;
-        }
         await failTemplateExportAction(
           festivalId,
           job.exportId,
@@ -797,10 +784,7 @@ export function ClientTemplateExportRunner({
       }
     })();
 
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
+    return () => {};
   }, [job, festivalId, invalidate, onProgress]);
 
   if (!job) return null;
@@ -816,100 +800,6 @@ export function ClientTemplateExportRunner({
       scale={1}
     />
   );
-}
-
-interface UploadWithProgressOpts {
-  url: string;
-  formData: FormData;
-  signal: AbortSignal;
-  timeoutMs: number;
-  onProgress: (sent: number, total: number) => void;
-}
-
-function uploadWithProgress(
-  opts: UploadWithProgressOpts,
-): Promise<{ secure_url: string; public_id: string; bytes: number }> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    let settled = false;
-
-    const settle = (fn: () => void) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      fn();
-    };
-
-    const timeoutId = setTimeout(() => {
-      xhr.abort();
-      settle(() =>
-        reject(
-          new Error(
-            `Upload to storage timed out after ${Math.round(opts.timeoutMs / 60000)} minutes.`,
-          ),
-        ),
-      );
-    }, opts.timeoutMs);
-
-    opts.signal.addEventListener("abort", () => {
-      xhr.abort();
-      settle(() => reject(new DOMException("Upload aborted.", "AbortError")));
-    });
-
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable) {
-        opts.onProgress(e.loaded, e.total);
-      }
-    });
-
-    xhr.addEventListener("load", () => {
-      if (xhr.status < 200 || xhr.status >= 300) {
-        settle(() =>
-          reject(
-            new Error(
-              `Storage upload failed (${xhr.status}): ${xhr.responseText}`,
-            ),
-          ),
-        );
-        return;
-      }
-      try {
-        const data = JSON.parse(xhr.responseText) as {
-          secure_url: string;
-          public_id: string;
-          bytes: number;
-        };
-        settle(() => resolve(data));
-      } catch {
-        settle(() =>
-          reject(
-            new Error(
-              `Storage upload returned an invalid response: ${xhr.responseText.slice(0, 200)}`,
-            ),
-          ),
-        );
-      }
-    });
-
-    xhr.addEventListener("error", () => {
-      settle(() =>
-        reject(
-          new Error(
-            `Network error during upload to storage (status: ${xhr.status})`,
-          ),
-        ),
-      );
-    });
-
-    xhr.addEventListener("abort", () => {
-      // Timeout and external abort both fire this; the first one to settle
-      // wins. If neither settled first, treat as a transport abort.
-      settle(() => reject(new DOMException("Upload aborted.", "AbortError")));
-    });
-
-    xhr.open("POST", opts.url);
-    xhr.send(opts.formData);
-  });
 }
 
 export type { ExportTemplateOption };

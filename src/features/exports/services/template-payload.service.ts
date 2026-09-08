@@ -106,7 +106,14 @@ export async function resolveBadgePayload(
         chestNumber: r.chestNumber ?? "",
         teamName: r.teamName ?? "",
         categoryName: r.categoryName ?? "",
-        qrPayload: r.profileSlug ?? r.chestNumber ?? r.name,
+        // Encode the chest number (not the profile slug) so on-stage
+        // scanners and participant-login flows can read the printed badge.
+        // Every scanner in the codebase (QrScanner,
+        // ParticipantLoginService.requestAccess) looks up by `chestNumber`.
+        // Profile slugs are only meaningful for deep-linking to the public
+        // profile page, which isn't a badge use case. `name` is the final
+        // fallback since `participant.name` is NOT NULL in the schema.
+        qrPayload: r.chestNumber ?? r.name,
       }),
     }));
 

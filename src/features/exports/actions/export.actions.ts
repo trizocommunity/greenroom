@@ -10,7 +10,6 @@ import {
   scheduleEntry,
 } from "@/core/database/schema";
 import { handleActionError } from "@/core/errors/errors";
-import { deleteFile } from "@/core/integrations/cloudinary";
 import type { ActionResponse } from "@/core/types/actions";
 import * as ExportRepo from "@/features/exports/repositories/export.repository";
 import {
@@ -24,9 +23,36 @@ import type {
   ExportListItem,
 } from "@/features/exports/types/export.types";
 
-function toListItem(row: ExportRepo.ExportRowMeta): ExportListItem {
+function toListItem(
+  row: ExportRepo.ExportRowMeta,
+  names: Awaited<ReturnType<typeof ExportRepo.resolveExportNames>>,
+): ExportListItem {
   const parsed = exportConfigSchema.safeParse(row.config);
-  const badges = parsed.success ? buildExportSummary(parsed.data).badges : [];
+  const cfg = parsed.success ? parsed.data : null;
+  const badges = cfg ? buildExportSummary(cfg).badges : [];
+
+  const resolve = (ids: string[] | undefined, map: Map<string, string>) =>
+    (ids ?? [])
+      .map((id) => map.get(id))
+      .filter((n): n is string => typeof n === "string");
+
+  const selectedTeamNames =
+    cfg && "teamIds" in cfg ? resolve(cfg.teamIds, names.teamNamesById) : [];
+  const selectedCategoryNames =
+    cfg && "categoryIds" in cfg
+      ? resolve(cfg.categoryIds, names.categoryNamesById)
+      : [];
+  const selectedProgrammeNames =
+    cfg && "programmeIds" in cfg
+      ? resolve(cfg.programmeIds, names.programmeNamesById)
+      : [];
+  const selectedStageNames =
+    cfg && "stageIds" in cfg ? resolve(cfg.stageIds, names.stageNamesById) : [];
+  const templateName =
+    cfg && "templateId" in cfg && cfg.templateId
+      ? (names.templateNamesById.get(cfg.templateId) ?? null)
+      : null;
+
   return {
     id: row.id,
     type: row.type,
@@ -42,6 +68,12 @@ function toListItem(row: ExportRepo.ExportRowMeta): ExportListItem {
     completedAt: row.completedAt,
     completedInMs: row.completedInMs,
     expiresAt: row.expiresAt,
+    templateName,
+    selectedTeamNames,
+    selectedCategoryNames,
+    selectedProgrammeNames,
+    selectedStageNames,
+    config: cfg,
   };
 }
 
@@ -52,7 +84,8 @@ export async function listExportsAction(
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
     const rows = await ExportRepo.listExportsByFestival(festivalId);
-    return { success: true, data: rows.map(toListItem) };
+    const names = await ExportRepo.resolveExportNames(festivalId, rows);
+    return { success: true, data: rows.map((r) => toListItem(r, names)) };
   } catch (error) {
     return handleActionError(error);
   }
@@ -88,30 +121,7 @@ export async function deleteExportAction(
   try {
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
-
-    // Look up the Cloudinary publicId BEFORE deleting the DB row so we still
-    // have the mapping. Non-template exports have `cloudinaryPublicId = null`
-    // and skip the Cloudinary call.
-    const publicId = await ExportRepo.getExportCloudinaryPublicId(
-      id,
-      festivalId,
-    );
     await ExportRepo.deleteExport(id, festivalId);
-
-    if (publicId) {
-      try {
-        await deleteFile(publicId);
-      } catch (err) {
-        // Don't fail the delete — the daily cron will retry cleanup.
-        console.error(
-          "[deleteExportAction] Cloudinary delete failed",
-          id,
-          publicId,
-          err,
-        );
-      }
-    }
-
     return { success: true, data: { id } };
   } catch (error) {
     return handleActionError(error);

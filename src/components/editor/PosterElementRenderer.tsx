@@ -145,7 +145,17 @@ function QrCodeElement({
       return;
     }
 
-    const textToEncode = displayText || "https://trizocommunity.com";
+    // Skip rendering entirely when the binding is empty. The old fallback
+    // string ("https://trizocommunity.com") was never reachable from the
+    // export path but would silently encode the wrong URL if a template
+    // ever ended up here with no binding — better to omit the QR than to
+    // print a misleading one.
+    if (!displayText) {
+      setQrImage(null);
+      return;
+    }
+
+    const textToEncode = displayText;
     const qw = el.width ?? 160;
     // Guarantee the offscreen render canvas is at least QR_MIN_RENDER_PX
     // even when the element has been shrunk below 48 px. The element still
