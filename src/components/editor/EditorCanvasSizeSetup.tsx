@@ -18,9 +18,9 @@ export function EditorCanvasSizeSetup({
   const { doc, resizeCanvas } = editor;
   const [width, setWidth] = useState(1200);
   const [height, setHeight] = useState(1600);
-  const [unit, setUnit] = useState<CanvasUnit>("px");
-  const [widthInput, setWidthInput] = useState("1200");
-  const [heightInput, setHeightInput] = useState("1600");
+  const [unit, setUnit] = useState<CanvasUnit>("in");
+  const [widthInput, setWidthInput] = useState("12.5");
+  const [heightInput, setHeightInput] = useState("16.67");
   const [lockAspect, setLockAspect] = useState(true);
   const [aspect, setAspect] = useState(1200 / 1600);
 
