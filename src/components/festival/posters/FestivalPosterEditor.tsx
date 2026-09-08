@@ -21,6 +21,7 @@ import {
   unpublishPosterTemplateAction,
   savePosterTemplateDraftAction,
 } from "@/features/posters/actions/poster-template.actions";
+import { getMediaImagesAction } from "@/features/media/actions/media.actions";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 import type { PosterTemplateStatus } from "@/features/posters/types/poster-template.types";
 import {
@@ -86,13 +87,18 @@ export function FestivalPosterEditor({
   const [previewDataHint, setPreviewDataHint] = useState<string | null>(null);
 
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
+  const [festivalImages, setFestivalImages] = useState<{ id: string; url: string }[]>([]);
 
   useEffect(() => {
     startTransition(async () => {
-      const res = await listPosterTemplatesAction(festivalId);
+      const [res, imagesRes] = await Promise.all([
+        listPosterTemplatesAction(festivalId),
+        getMediaImagesAction(festivalId)
+      ]);
       if (res.success) {
         setDbTemplates(res.data);
       }
+      setFestivalImages(imagesRes);
     });
   }, [festivalId]);
 
@@ -342,6 +348,7 @@ export function FestivalPosterEditor({
           autosave={autosave}
           previewBindings={previewBindings}
           previewDataHint={previewDataHint}
+          festivalImages={festivalImages}
           publishTemplate={
             templateCode
               ? {

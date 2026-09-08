@@ -66,6 +66,7 @@ export interface UsePosterEditorStateOptions {
   previewBindings?: PosterBindings | null;
   initialNavPanel?: EditorNavPanel;
   uploadImage?: (file: File) => Promise<string>;
+  festivalImages?: { id: string; url: string }[];
 }
 
 export function usePosterEditorState(options?: UsePosterEditorStateOptions) {

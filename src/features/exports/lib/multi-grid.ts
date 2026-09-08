@@ -53,7 +53,10 @@ export function parseMultiGrid(
  *   portrait A4    → 2 × 2 = 4 per page
  *   tall portrait  → 2 × 4 = 8 per page
  */
-export function autoMultiGrid(pageW: number, pageH: number): {
+export function autoMultiGrid(
+  pageW: number,
+  pageH: number,
+): {
   cols: number;
   rows: number;
 } {
@@ -77,7 +80,7 @@ export interface TemplateExportPayload {
   height: number;
   quality: "SCREEN" | "STANDARD" | "PRINT";
   printLayout: "ONE_PER_PAGE" | "MULTIPLE_PER_PAGE";
-  pageSize: "A3" | "A4";
+  pageSize: "A3" | "A4" | "13X19";
   pageOrientation: "PORTRAIT" | "LANDSCAPE";
   multiGrid: MultiGrid;
   fit: "FIT" | "FILL";

@@ -122,11 +122,7 @@ export function GridPicker({
                 Auto
               </span>
             ) : (
-              <GridSwatch
-                cols={opt.cols}
-                rows={opt.rows}
-                active={selected}
-              />
+              <GridSwatch cols={opt.cols} rows={opt.rows} active={selected} />
             )}
           </button>
         );
@@ -389,11 +385,13 @@ export const PAGE_SIZE_OPTIONS = [
   { value: "A5" as const, label: "A5" },
   { value: "LETTER" as const, label: "Letter" },
   { value: "LEGAL" as const, label: "Legal" },
+  { value: "13X19" as const, label: "13×19" },
 ];
 
 export const BADGE_PAGE_SIZE_OPTIONS = [
   { value: "A3" as const, label: "A3" },
   { value: "A4" as const, label: "A4" },
+  { value: "13X19" as const, label: "13×19" },
 ];
 
 export const CERTIFICATE_PAGE_SIZE_OPTIONS = [
@@ -553,9 +551,7 @@ export function NumberInput({
           </span>
         )}
       </div>
-      {hint && (
-        <p className="text-[10px] text-muted-foreground/80">{hint}</p>
-      )}
+      {hint && <p className="text-[10px] text-muted-foreground/80">{hint}</p>}
     </div>
   );
 }

@@ -8,8 +8,8 @@ export const scheduleState = z.enum(["ALL", "SCHEDULED", "UNSCHEDULED"]);
 export const listOrientation = z.enum(["PROGRAMME_WISE", "TEAM_WISE"]);
 export const exportQuality = z.enum(["SCREEN", "STANDARD", "PRINT"]);
 export const printLayout = z.enum(["ONE_PER_PAGE", "MULTIPLE_PER_PAGE"]);
-export const pageSize = z.enum(["A3", "A4", "A5", "LETTER", "LEGAL"]);
-export const badgePageSize = z.enum(["A3", "A4"]);
+export const pageSize = z.enum(["A3", "A4", "A5", "LETTER", "LEGAL", "13X19"]);
+export const badgePageSize = z.enum(["A3", "A4", "13X19"]);
 export const certificatePageSize = z.enum(["A3", "A4"]);
 export const pageOrientation = z.enum(["PORTRAIT", "LANDSCAPE"]);
 export const exportFit = z.enum(["FIT", "FILL"]);
@@ -142,9 +142,7 @@ export const badgeConfig = z.object({
   gender: genderFilter.default("ALL"),
   quality: exportQuality.default("STANDARD"),
   printLayout: printLayout.default("MULTIPLE_PER_PAGE"),
-  pageSize: badgePageSize
-    .default("A4")
-    .catch("A4" as const),
+  pageSize: badgePageSize.default("A4").catch("A4" as const),
   pageOrientation: pageOrientation.default("PORTRAIT"),
   /**
    * Multi-per-page grid. Only meaningful when `printLayout === "MULTIPLE_PER_PAGE"`.
@@ -167,9 +165,7 @@ export const certificateConfig = z.object({
   templateId: z.string().min(1),
   quality: exportQuality.default("STANDARD"),
   printLayout: printLayout.default("ONE_PER_PAGE"),
-  pageSize: certificatePageSize
-    .default("A4")
-    .catch("A4" as const),
+  pageSize: certificatePageSize.default("A4").catch("A4" as const),
   pageOrientation: pageOrientation.default("PORTRAIT"),
   fit: exportFit.default("FIT"),
   marginMm: z.number().min(0).max(20).default(3),

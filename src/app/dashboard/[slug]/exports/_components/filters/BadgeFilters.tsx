@@ -7,8 +7,8 @@ import type { BadgeConfig } from "@/features/exports/schemas/export-config.schem
 import {
   BADGE_PAGE_SIZE_OPTIONS,
   CheckList,
-  FieldGrid,
   FIT_OPTIONS,
+  FieldGrid,
   GENDER_OPTIONS,
   GridPicker,
   LANDSCAPE_GRID_OPTIONS,
@@ -215,9 +215,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           hint="Empty = all"
           options={teams ?? []}
           selected={value.teamIds}
-          onToggle={(id, v) =>
-            set({ teamIds: toggleId(value.teamIds, id, v) })
-          }
+          onToggle={(id, v) => set({ teamIds: toggleId(value.teamIds, id, v) })}
         />
       </FieldGrid>
     </div>

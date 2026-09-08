@@ -81,6 +81,7 @@ export default function PosterEditorPlayground({
   onCreateTemplate,
   onRenameTemplate,
   uploadImage,
+  festivalImages,
 }: {
   initialDocument?: PosterEditorDocument | null;
   initialTabLabel?: string;
@@ -100,11 +101,13 @@ export default function PosterEditorPlayground({
   onCreateTemplate?: (type: PosterTemplateType, options?: any) => void;
   onRenameTemplate?: (newLabel: string, doc?: PosterEditorDocument) => void;
   uploadImage?: (file: File) => Promise<string>;
+  festivalImages?: { id: string; url: string }[];
 } = {}) {
   const editor = usePosterEditorState({
     previewBindings,
     initialNavPanel: initialDocument ? "elements" : "templates",
     uploadImage,
+    festivalImages,
   });
   const stageRef = useRef<Konva.Stage | null>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);

@@ -311,12 +311,50 @@ export function EditorSidePanel({
                 <button
                   type="button"
                   onClick={() => bgInputRef.current?.click()}
-                  className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border bg-background px-4 py-8 text-sm text-muted-foreground hover:border-primary/40"
+                  className="mb-4 flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border bg-background px-4 py-8 text-sm text-muted-foreground hover:border-primary/40"
                 >
                   <ImageIcon className="h-8 w-8 opacity-50" />
                   Add background
                   <span className="text-xs">PNG, JPG, WebP, SVG</span>
                 </button>
+
+                {editor.festivalImages && editor.festivalImages.length > 0 && (
+                  <div className="mb-4">
+                    <p className="mb-2 text-xs font-semibold">Uploaded Media</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {editor.festivalImages.map((img) => (
+                        <button
+                          key={img.id}
+                          type="button"
+                          title="Set as background"
+                          className="aspect-square w-full overflow-hidden rounded-md border border-border bg-muted transition-transform hover:scale-105 shadow-sm hover:shadow"
+                          onClick={() => {
+                            updateBackground({
+                              type: "image",
+                              color: doc.background.color,
+                              imageUrl: img.url,
+                            });
+                            const image = new window.Image();
+                            image.onload = () => {
+                              if (image.naturalWidth && image.naturalHeight) {
+                                editor.resizeCanvas(image.naturalWidth, image.naturalHeight);
+                              }
+                            };
+                            image.src = img.url;
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={img.url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <p className="mb-2 text-xs font-semibold">Solid color</p>
                   <div className="grid grid-cols-5 gap-2">

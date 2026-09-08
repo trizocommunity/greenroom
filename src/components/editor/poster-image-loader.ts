@@ -17,7 +17,7 @@ export function preloadImage(url?: string): Promise<HTMLImageElement | null> {
   if (!url) return Promise.resolve(null);
 
   const cached = imageCache.get(url);
-  if (cached && cached.complete && cached.naturalWidth > 0) {
+  if (cached?.complete && cached.naturalWidth > 0) {
     return Promise.resolve(cached);
   }
 
@@ -113,7 +113,7 @@ export function useKonvaImage(url?: string): HTMLImageElement | null {
   const [image, setImage] = useState<HTMLImageElement | null>(() => {
     if (!url) return null;
     const hit = imageCache.get(url);
-    if (hit && hit.complete && hit.naturalWidth > 0) return hit;
+    if (hit?.complete && hit.naturalWidth > 0) return hit;
     return null;
   });
 
@@ -124,7 +124,7 @@ export function useKonvaImage(url?: string): HTMLImageElement | null {
     }
 
     const hit = imageCache.get(url);
-    if (hit && hit.complete && hit.naturalWidth > 0) {
+    if (hit?.complete && hit.naturalWidth > 0) {
       setImage(hit);
       return;
     }

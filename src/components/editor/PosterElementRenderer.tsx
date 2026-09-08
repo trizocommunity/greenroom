@@ -14,9 +14,8 @@ import { konvaShadowProps } from "./editor-konva-props";
 import { EDITOR_COLORS } from "./editor-theme";
 import { estimateTextWidth, getEditableText } from "./editor-utils";
 import type { EditorElement } from "./poster-editor-types";
-import type { ElementHoverHandlers } from "./use-canvas-element-hover";
-
 import { useKonvaImage } from "./poster-image-loader";
+import type { ElementHoverHandlers } from "./use-canvas-element-hover";
 
 export type ElementDragHandlers = {
   onDragStart: () => void;
@@ -114,11 +113,7 @@ function ImageElement({
           : undefined
       }
     >
-      <KonvaImage
-        image={image}
-        width={el.width}
-        height={el.height}
-      />
+      <KonvaImage image={image} width={el.width} height={el.height} />
     </Group>
   );
 }
@@ -169,21 +164,27 @@ function QrCodeElement({
       imageOptions: {
         crossOrigin: "anonymous",
         margin: 5,
-        imageSize: 0.4
+        imageSize: 0.4,
       },
     });
 
-    qrCode.getRawData("png").then((buffer) => {
-      if (!buffer) return;
-      const blob = buffer instanceof Blob ? buffer : new Blob([buffer as BlobPart], { type: "image/png" });
-      const url = URL.createObjectURL(blob);
-      const img = new window.Image();
-      img.onload = () => {
-        setQrImage(img);
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
-    }).catch(console.error);
+    qrCode
+      .getRawData("png")
+      .then((buffer) => {
+        if (!buffer) return;
+        const blob =
+          buffer instanceof Blob
+            ? buffer
+            : new Blob([buffer as BlobPart], { type: "image/png" });
+        const url = URL.createObjectURL(blob);
+        const img = new window.Image();
+        img.onload = () => {
+          setQrImage(img);
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      })
+      .catch(console.error);
   }, [
     displayText,
     previewMode,
@@ -193,7 +194,7 @@ function QrCodeElement({
     el.qrDotsStyle,
     el.qrCornersStyle,
     el.qrCornersDotStyle,
-    el.qrLogoUrl
+    el.qrLogoUrl,
   ]);
 
   const qw = el.width ?? 160;

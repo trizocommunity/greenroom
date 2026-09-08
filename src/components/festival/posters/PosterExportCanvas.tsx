@@ -16,13 +16,12 @@ import type {
   EditorElement,
   PosterEditorDocument,
 } from "@/components/editor/poster-editor-types";
+import { useKonvaImage } from "@/components/editor/poster-image-loader";
 import {
   documentWithBindings,
   type PosterBindings,
   resolveBindingText,
 } from "@/features/posters/services/poster-bindings.service";
-
-import { useKonvaImage } from "@/components/editor/poster-image-loader";
 
 // ─── Element renderers ────────────────────────────────────────────────────────
 

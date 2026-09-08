@@ -5,20 +5,20 @@ import jsPDF from "jspdf";
 import type Konva from "konva";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { queryKeys } from "@/api/client/_query-keys";
-import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import { preloadDocImages } from "@/components/editor/poster-image-loader";
+import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import {
   type ExportTemplateOption,
   failTemplateExportAction,
   finalizeTemplateExportAction,
   getTemplateExportPayloadAction,
 } from "@/features/exports/actions/export-template.actions";
-import { isTemplateExport } from "@/features/exports/schemas/export-config.schema";
 import {
   autoMultiGrid,
   parseMultiGrid,
   type TemplateExportPayload,
 } from "@/features/exports/lib/multi-grid";
+import { isTemplateExport } from "@/features/exports/schemas/export-config.schema";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 
 interface Props {
@@ -62,6 +62,7 @@ const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   A5: { w: 420, h: 595 },
   LETTER: { w: 612, h: 792 },
   LEGAL: { w: 612, h: 1008 },
+  "13X19": { w: 936, h: 1368 },
 };
 
 function pageDims(payload: TemplateExportPayload): {
@@ -176,6 +177,7 @@ async function cropViaCanvas(
   srcY: number,
   srcCropW: number,
   srcCropH: number,
+  quality = 0.94,
 ): Promise<string | null> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image();
@@ -211,11 +213,11 @@ async function cropViaCanvas(
   if ("convertToBlob" in canvas) {
     const blob = await (canvas as unknown as OffscreenCanvas).convertToBlob({
       type: "image/jpeg",
-      quality: 0.92,
+      quality,
     });
     return await blobToDataUrl(blob);
   }
-  return (canvas as HTMLCanvasElement).toDataURL("image/jpeg", 0.92);
+  return (canvas as HTMLCanvasElement).toDataURL("image/jpeg", quality);
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -270,14 +272,7 @@ function appendToPdf(
       const scale = Math.min(availW / width, availH / height);
       const renderW = width * scale;
       const renderH = height * scale;
-      doc.addImage(
-        imgBase64,
-        format,
-        margin,
-        margin,
-        renderW,
-        renderH,
-      );
+      doc.addImage(imgBase64, format, margin, margin, renderW, renderH);
     }
 
     if (drawCropMarks) drawTrimMarks(doc, pageW, pageH, bleedMm);
@@ -420,7 +415,7 @@ export function ClientTemplateExportRunner({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [job]);
 
-// Pick up the next unhandled template job.
+  // Pick up the next unhandled template job.
   useEffect(() => {
     if (job || busy.current) return;
     const next = exports.find(
@@ -465,6 +460,7 @@ export function ClientTemplateExportRunner({
         invalidate();
         return;
       }
+      await preloadDocImages(res.data.doc);
       pdfRef.current = initPdf(res.data);
       setJob({ exportId: next.id, payload: res.data, index: 0 });
       console.info("[gr-debug][exports][runner][start]", {
@@ -513,19 +509,32 @@ export function ClientTemplateExportRunner({
           return;
         }
 
-        // Wait for any images inside the stage to complete loading, max 500ms
+        // Wait for any images inside the stage to complete loading and decoding
         await new Promise<void>((resolve) => {
           let attempts = 0;
           const checkImages = () => {
             attempts++;
-            if (attempts > 10) return resolve(); // strict 500ms cap
-
             const imageNodes = stage.find("Image");
+            const hasExpectedImages =
+              (job.payload.doc.elements || []).some(
+                (e) =>
+                  (e.type === "image" && e.imageUrl) ||
+                  (e.type === "qr" && e.qrLogoUrl),
+              ) ||
+              (job.payload.doc.background?.type === "image" &&
+                job.payload.doc.background?.imageUrl);
+
+            if (hasExpectedImages && imageNodes.length === 0 && attempts < 25) {
+              setTimeout(checkImages, 50);
+              return;
+            }
+
             const isLoading = imageNodes.some((node: any) => {
               const img = node.image();
-              return img && !img.complete;
+              return !img || !img.complete || img.naturalWidth === 0;
             });
-            if (!isLoading) resolve();
+
+            if (!isLoading || attempts > 30) resolve();
             else setTimeout(checkImages, 50);
           };
           checkImages();
@@ -580,6 +589,7 @@ export function ClientTemplateExportRunner({
             (job.payload.height - srcCropH) / 2,
             srcCropW,
             srcCropH,
+            JPEG_QUALITY[qualityTier],
           );
           if (cropped) dataUrl = cropped;
         }
