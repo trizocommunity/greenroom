@@ -78,6 +78,8 @@ const NO_DRAG_HANDLERS: ElementDragHandlers = {
   onDragEnd: () => {},
 };
 
+import { useKonvaImage } from "./poster-image-loader";
+
 function BackgroundImage({
   url,
   width,
@@ -87,13 +89,7 @@ function BackgroundImage({
   width: number;
   height: number;
 }) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-  useEffect(() => {
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => setImage(img);
-    img.src = url;
-  }, [url]);
+  const image = useKonvaImage(url);
   if (!image) return null;
   return <KonvaImage image={image} x={0} y={0} width={width} height={height} />;
 }
@@ -753,7 +749,18 @@ export function PosterEditorCanvas({
           onTap={interactive ? handleStageClick : undefined}
           onMouseLeave={interactive ? clearHover : undefined}
         >
-          <Layer>
+          <Layer
+            imageSmoothingEnabled
+            ref={(layer) => {
+              if (layer) {
+                const ctx = (layer as any).getCanvas()?.getContext()?._context;
+                if (ctx) {
+                  ctx.imageSmoothingEnabled = true;
+                  ctx.imageSmoothingQuality = "high";
+                }
+              }
+            }}
+          >
             <Group
               clipX={0}
               clipY={0}

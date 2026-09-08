@@ -11,8 +11,10 @@ import {
   FIT_OPTIONS,
   GENDER_OPTIONS,
   GridPicker,
+  LANDSCAPE_GRID_OPTIONS,
   NumberInput,
   PAGE_ORIENTATION_OPTIONS,
+  PORTRAIT_GRID_OPTIONS,
   PRINT_LAYOUT_OPTIONS,
   QUALITY_OPTIONS,
   SectionLabel,
@@ -26,6 +28,18 @@ interface Props {
   festivalId: string;
   value: BadgeConfig;
   onChange: (value: BadgeConfig) => void;
+}
+
+function isGridCompatible(
+  grid: string,
+  orientation: "PORTRAIT" | "LANDSCAPE",
+): boolean {
+  if (grid === "AUTO") return true;
+  const options =
+    orientation === "LANDSCAPE"
+      ? LANDSCAPE_GRID_OPTIONS
+      : PORTRAIT_GRID_OPTIONS;
+  return options.some((opt) => opt.value === grid);
 }
 
 export function BadgeFilters({ festivalId, value, onChange }: Props) {
@@ -47,7 +61,22 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         label="Template"
         options={templates ?? []}
         selectedId={value.templateId}
-        onSelect={(id) => set({ templateId: id })}
+        onSelect={(id) => {
+          const selectedTpl = (templates ?? []).find((t) => t.id === id);
+          if (selectedTpl && !value.templateId) {
+            const tplOrientation =
+              selectedTpl.width > selectedTpl.height ? "LANDSCAPE" : "PORTRAIT";
+            if (tplOrientation !== value.pageOrientation) {
+              set({
+                templateId: id,
+                pageOrientation: tplOrientation,
+                multiGrid: "AUTO",
+              });
+              return;
+            }
+          }
+          set({ templateId: id });
+        }}
       />
 
       <FieldGrid cols={2}>
@@ -75,7 +104,12 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         <SegmentedControl
           label="Orientation"
           value={value.pageOrientation}
-          onChange={(v) => set({ pageOrientation: v })}
+          onChange={(v) => {
+            const nextGrid = isGridCompatible(value.multiGrid, v)
+              ? value.multiGrid
+              : "AUTO";
+            set({ pageOrientation: v, multiGrid: nextGrid });
+          }}
           options={PAGE_ORIENTATION_OPTIONS}
         />
       </FieldGrid>
@@ -111,6 +145,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
             <SectionLabel>Per-page grid (cols × rows)</SectionLabel>
             <GridPicker
               value={value.multiGrid}
+              orientation={value.pageOrientation}
               onChange={(v) =>
                 set({ multiGrid: v as BadgeConfig["multiGrid"] })
               }

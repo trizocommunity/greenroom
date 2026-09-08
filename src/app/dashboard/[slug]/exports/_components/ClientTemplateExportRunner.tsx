@@ -6,6 +6,7 @@ import type Konva from "konva";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { queryKeys } from "@/api/client/_query-keys";
 import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
+import { preloadDocImages } from "@/components/editor/poster-image-loader";
 import {
   type ExportTemplateOption,
   failTemplateExportAction,
@@ -34,8 +35,8 @@ interface Props {
 // a real effect. PNG transparency isn't needed on paper, so all tiers ship
 // JPEG.
 const TARGET_DPI: Record<TemplateExportPayload["quality"], number> = {
-  SCREEN: 96,
-  STANDARD: 200,
+  SCREEN: 150,
+  STANDARD: 240,
   PRINT: 300,
 };
 
@@ -44,9 +45,9 @@ const TARGET_DPI: Record<TemplateExportPayload["quality"], number> = {
 const MAX_PIXEL_RATIO = 8;
 
 const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
-  SCREEN: 0.78,
-  STANDARD: 0.85,
-  PRINT: 0.88,
+  SCREEN: 0.88,
+  STANDARD: 0.94,
+  PRINT: 0.98,
 };
 
 // Hard upper bound on the final PDF size the client will upload. Above this,

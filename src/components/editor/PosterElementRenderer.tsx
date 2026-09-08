@@ -16,6 +16,8 @@ import { estimateTextWidth, getEditableText } from "./editor-utils";
 import type { EditorElement } from "./poster-editor-types";
 import type { ElementHoverHandlers } from "./use-canvas-element-hover";
 
+import { useKonvaImage } from "./poster-image-loader";
+
 export type ElementDragHandlers = {
   onDragStart: () => void;
   onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void;
@@ -48,17 +50,37 @@ function ImageElement({
   PosterElementRendererProps,
   "interactive" | "previewMode" | "displayText"
 >) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const image = useKonvaImage(el.imageUrl);
 
-  useEffect(() => {
-    if (!el.imageUrl) return;
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => setImage(img);
-    img.src = el.imageUrl;
-  }, [el.imageUrl]);
-
-  if (!image) return null;
+  if (!image) {
+    return (
+      <Group
+        id={el.id}
+        x={el.x}
+        y={el.y}
+        width={el.width}
+        height={el.height}
+        rotation={el.rotation ?? 0}
+        scaleX={el.scaleX ?? 1}
+        scaleY={el.scaleY ?? 1}
+        opacity={nodeOpacity}
+        draggable={draggable}
+        onClick={onSelect}
+        onTap={onSelect}
+        onMouseEnter={hoverHandlers.onMouseEnter}
+        onMouseLeave={hoverHandlers.onMouseLeave}
+      >
+        <Rect
+          width={el.width ?? 100}
+          height={el.height ?? 80}
+          fill="rgba(100, 116, 139, 0.08)"
+          stroke="rgba(100, 116, 139, 0.25)"
+          strokeWidth={1}
+          dash={[4, 4]}
+        />
+      </Group>
+    );
+  }
 
   return (
     <Group
