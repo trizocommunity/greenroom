@@ -16,29 +16,12 @@ import type {
   EditorElement,
   PosterEditorDocument,
 } from "@/components/editor/poster-editor-types";
+import { useKonvaImage } from "@/components/editor/poster-image-loader";
 import {
   documentWithBindings,
   type PosterBindings,
   resolveBindingText,
 } from "@/features/posters/services/poster-bindings.service";
-
-// ─── Image loader hook ────────────────────────────────────────────────────────
-
-function useImage(url?: string) {
-  const [img, setImg] = useState<HTMLImageElement | null>(null);
-  useEffect(() => {
-    if (!url) {
-      setImg(null);
-      return;
-    }
-    const image = new window.Image();
-    image.crossOrigin = "anonymous";
-    image.onload = () => setImg(image);
-    image.onerror = () => setImg(null);
-    image.src = url;
-  }, [url]);
-  return img;
-}
 
 // ─── Element renderers ────────────────────────────────────────────────────────
 
@@ -113,7 +96,9 @@ function ExportBackground({
 
 export function exportStagePng(stage: Konva.Stage | null, filename: string) {
   if (!stage) return;
-  const uri = stage.toDataURL({ pixelRatio: 2 });
+  const currentScale = stage.scaleX() || 1;
+  const pixelRatio = Math.max(2, 2 / currentScale);
+  const uri = stage.toDataURL({ pixelRatio });
   const a = document.createElement("a");
   a.href = uri;
   a.download = filename;
@@ -126,7 +111,7 @@ export function PosterExportCanvas({
   doc,
   bindings,
   stageRef,
-  scale = 0.35,
+  scale,
   inline = false,
 }: {
   doc: PosterEditorDocument;
@@ -136,6 +121,8 @@ export function PosterExportCanvas({
   /** Render in normal layout (e.g. publish preview dialog) instead of off-screen. */
   inline?: boolean;
 }) {
+  const effectiveScale = scale ?? (inline ? 0.35 : 1);
+
   // Apply bindings (text substitution) — textCase is handled per-element in ExportTextElement
   const boundDoc = useMemo(
     () => documentWithBindings(doc, bindings, true),
@@ -160,7 +147,7 @@ export function PosterExportCanvas({
     }
   }, [boundDoc.elements]);
 
-  const bgImage = useImage(
+  const bgImage = useKonvaImage(
     boundDoc.background.type === "image"
       ? boundDoc.background.imageUrl
       : undefined,
@@ -180,12 +167,23 @@ export function PosterExportCanvas({
     >
       <Stage
         ref={stageRef}
-        width={boundDoc.width * scale}
-        height={boundDoc.height * scale}
-        scaleX={scale}
-        scaleY={scale}
+        width={boundDoc.width * effectiveScale}
+        height={boundDoc.height * effectiveScale}
+        scaleX={effectiveScale}
+        scaleY={effectiveScale}
       >
-        <Layer>
+        <Layer
+          imageSmoothingEnabled
+          ref={(layer) => {
+            if (layer) {
+              const ctx = (layer as any).getCanvas()?.getContext()?._context;
+              if (ctx) {
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = "high";
+              }
+            }
+          }}
+        >
           {/* Clip everything to canvas bounds */}
           <Group
             clipX={0}

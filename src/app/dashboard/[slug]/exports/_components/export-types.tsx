@@ -20,7 +20,16 @@ export interface ExportTypeMeta {
   icon: LucideIcon;
   /** Generators land incrementally; only implemented types can be queued. */
   implemented: boolean;
-  formats: ("PDF" | "CSV")[];
+  /**
+   * Output formats offered for this export type.
+   *
+   * Template exports (BADGE / CERTIFICATE) additionally expose an
+   * "Include editable illustration" toggle in their filter panel. When
+   * on, the renderer zips the printable PDF together with a vector `.ai`
+   * source that can be opened in Adobe Illustrator; when off, it ships
+   * the PDF on its own.
+   */
+  formats: ("PDF" | "CSV" | "AI")[];
 }
 
 export const EXPORT_TYPES: ExportTypeMeta[] = [
@@ -67,7 +76,8 @@ export const EXPORT_TYPES: ExportTypeMeta[] = [
   {
     id: "BADGE",
     title: "Badge",
-    description: "Participant ID cards with chest numbers, team and category.",
+    description:
+      "Participant ID cards with chest numbers, team and category. Toggle “Include editable illustration” to also receive the .ai source inside the download.",
     icon: BadgeCheck,
     implemented: true,
     formats: ["PDF"],
@@ -75,7 +85,8 @@ export const EXPORT_TYPES: ExportTypeMeta[] = [
   {
     id: "CERTIFICATE",
     title: "Certificate",
-    description: "Participation and placement certificates.",
+    description:
+      "Participation and placement certificates. Toggle “Include editable illustration” to also receive the .ai source inside the download.",
     icon: Award,
     implemented: true,
     formats: ["PDF"],

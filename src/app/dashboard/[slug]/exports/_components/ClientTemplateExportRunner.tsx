@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import type Konva from "konva";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { queryKeys } from "@/api/client/_query-keys";
+import { preloadDocImages } from "@/components/editor/poster-image-loader";
 import { PosterExportCanvas } from "@/components/festival/posters/PosterExportCanvas";
 import {
   type ExportTemplateOption,
@@ -12,12 +13,13 @@ import {
   finalizeTemplateExportAction,
   getTemplateExportPayloadAction,
 } from "@/features/exports/actions/export-template.actions";
-import { isTemplateExport } from "@/features/exports/schemas/export-config.schema";
 import {
   autoMultiGrid,
   parseMultiGrid,
   type TemplateExportPayload,
 } from "@/features/exports/lib/multi-grid";
+import { buildZip } from "@/features/exports/lib/zip";
+import { isTemplateExport } from "@/features/exports/schemas/export-config.schema";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 
 interface Props {
@@ -34,8 +36,8 @@ interface Props {
 // a real effect. PNG transparency isn't needed on paper, so all tiers ship
 // JPEG.
 const TARGET_DPI: Record<TemplateExportPayload["quality"], number> = {
-  SCREEN: 96,
-  STANDARD: 200,
+  SCREEN: 150,
+  STANDARD: 240,
   PRINT: 300,
 };
 
@@ -44,9 +46,9 @@ const TARGET_DPI: Record<TemplateExportPayload["quality"], number> = {
 const MAX_PIXEL_RATIO = 8;
 
 const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
-  SCREEN: 0.78,
-  STANDARD: 0.85,
-  PRINT: 0.88,
+  SCREEN: 0.88,
+  STANDARD: 0.94,
+  PRINT: 0.98,
 };
 
 // Hard upper bound on the final PDF size the client will upload. Above this,
@@ -61,6 +63,7 @@ const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   A5: { w: 420, h: 595 },
   LETTER: { w: 612, h: 792 },
   LEGAL: { w: 612, h: 1008 },
+  "13X19": { w: 936, h: 1368 },
 };
 
 function pageDims(payload: TemplateExportPayload): {
@@ -99,10 +102,12 @@ function resolveMultiGrid(
   multiGrid: TemplateExportPayload["multiGrid"],
   pageW: number,
   pageH: number,
+  docW?: number,
+  docH?: number,
 ): { cols: number; rows: number } {
   const explicit = parseMultiGrid(multiGrid);
   if (explicit) return explicit;
-  return autoMultiGrid(pageW, pageH);
+  return autoMultiGrid(pageW, pageH, docW, docH);
 }
 
 /**
@@ -141,7 +146,13 @@ function computePixelRatio(
   } else {
     // Must match appendToPdf's MULTIPLE_PER_PAGE resolution so the raster
     // targets the actual placed cell size.
-    const { cols, rows } = resolveMultiGrid(multiGrid, pageW, pageH);
+    const { cols, rows } = resolveMultiGrid(
+      multiGrid,
+      pageW,
+      pageH,
+      docW,
+      docH,
+    );
     cellW = (pageW - 2 * mmToPx(3)) / cols;
     cellH = (pageH - 2 * mmToPx(3)) / rows;
   }
@@ -175,6 +186,7 @@ async function cropViaCanvas(
   srcY: number,
   srcCropW: number,
   srcCropH: number,
+  quality = 0.94,
 ): Promise<string | null> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image();
@@ -210,11 +222,11 @@ async function cropViaCanvas(
   if ("convertToBlob" in canvas) {
     const blob = await (canvas as unknown as OffscreenCanvas).convertToBlob({
       type: "image/jpeg",
-      quality: 0.92,
+      quality,
     });
     return await blobToDataUrl(blob);
   }
-  return (canvas as HTMLCanvasElement).toDataURL("image/jpeg", 0.92);
+  return (canvas as HTMLCanvasElement).toDataURL("image/jpeg", quality);
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -263,20 +275,15 @@ function appendToPdf(
       // can place the result at full page size with no further math here.
       doc.addImage(imgBase64, format, 0, 0, pageW, pageH);
     } else {
-      // FIT: shrink-to-fit inside margin, top-left aligned, never upscales.
+      // FIT: shrink-to-fit inside margin, centered on page.
       const availW = pageW - 2 * margin;
       const availH = pageH - 2 * margin;
       const scale = Math.min(availW / width, availH / height);
       const renderW = width * scale;
       const renderH = height * scale;
-      doc.addImage(
-        imgBase64,
-        format,
-        margin,
-        margin,
-        renderW,
-        renderH,
-      );
+      const tileX = margin + (availW - renderW) / 2;
+      const tileY = margin + (availH - renderH) / 2;
+      doc.addImage(imgBase64, format, tileX, tileY, renderW, renderH);
     }
 
     if (drawCropMarks) drawTrimMarks(doc, pageW, pageH, bleedMm);
@@ -284,27 +291,35 @@ function appendToPdf(
   }
 
   // ── MULTIPLE_PER_PAGE (BADGE only) ─────────────────────────────────────
-  // The doc is scaled DOWN to fit a sticker-sheet-style grid. Doc aspect is
+  // The doc is scaled to fit a sticker-sheet-style grid. Doc aspect is
   // preserved; cell count follows the user-selected `multiGrid` preset, or
   // the orientation-driven heuristic when `multiGrid === "AUTO"`.
-  //   AUTO landscape → 4 × 2 = 8 per page
-  //   AUTO portrait  → 2 × 2 = 4 per page
-  //   "NxM"          → explicit cols × rows
-  // The doc never upscales (preserves "no upscaling" policy).
+  // Items are auto-aligned and centered within each cell.
   const { cols: colsW, rows: colsH } = resolveMultiGrid(
     multiGrid,
     pageW,
     pageH,
+    width,
+    height,
   );
   const availW = pageW - 2 * margin;
   const availH = pageH - 2 * margin;
   const cellW = (availW - (colsW - 1) * gutter) / colsW;
   const cellH = (availH - (colsH - 1) * gutter) / colsH;
-  const scale = Math.min(cellW / width, cellH / height, 1);
-  const itemW = width * scale;
-  const itemH = height * scale;
-  const perPage = colsW * colsH;
 
+  let itemW: number;
+  let itemH: number;
+  if (fit === "FILL") {
+    itemW = cellW;
+    itemH = cellH;
+  } else {
+    // FIT: scale proportionally to fit inside cell, auto-aligned & centered
+    const scale = Math.min(cellW / width, cellH / height);
+    itemW = width * scale;
+    itemH = height * scale;
+  }
+
+  const perPage = colsW * colsH;
   const slot = index % perPage;
   if (index > 0 && slot === 0) doc.addPage([pageW, pageH], orientation);
 
@@ -315,7 +330,7 @@ function appendToPdf(
   doc.addImage(imgBase64, format, tileX, tileY, itemW, itemH);
 
   if (drawCropMarks && slot === 0) {
-    drawGridTrimMarks(doc, margin, margin, availW, availH, colsW, colsH);
+    drawGridTrimMarks(doc, margin, margin, cellW, cellH, gutter, colsW, colsH);
   }
 }
 
@@ -342,25 +357,42 @@ function drawTrimMarks(
   }
 }
 
-/** Draw trim cross for each tile top-left in a multi-up grid. */
+/** Draw trim ticks for each cell in a multi-up grid, honoring cell size and gutter. */
 function drawGridTrimMarks(
   doc: jsPDF,
   originX: number,
   originY: number,
-  totalW: number,
-  totalH: number,
+  cellW: number,
+  cellH: number,
+  gutter: number,
   cols: number,
   rows: number,
 ) {
   const len = mmToPx(3);
   const w = 0.4;
   doc.setLineWidth(w);
-  for (let r = 0; r <= rows; r++) {
-    const y = originY + (r * totalH) / rows;
-    for (let c = 0; c <= cols; c++) {
-      const x = originX + (c * totalW) / cols;
-      doc.line(x - len, y, x + len, y);
-      doc.line(x, y - len, x, y + len);
+  for (let r = 0; r < rows; r++) {
+    const yTop = originY + r * (cellH + gutter);
+    const yBottom = yTop + cellH;
+    for (let c = 0; c < cols; c++) {
+      const xLeft = originX + c * (cellW + gutter);
+      const xRight = xLeft + cellW;
+
+      // Top-left corner
+      doc.line(xLeft - len, yTop, xLeft, yTop);
+      doc.line(xLeft, yTop - len, xLeft, yTop);
+
+      // Top-right corner
+      doc.line(xRight, yTop, xRight + len, yTop);
+      doc.line(xRight, yTop - len, xRight, yTop);
+
+      // Bottom-left corner
+      doc.line(xLeft - len, yBottom, xLeft, yBottom);
+      doc.line(xLeft, yBottom, xLeft, yBottom + len);
+
+      // Bottom-right corner
+      doc.line(xRight, yBottom, xRight + len, yBottom);
+      doc.line(xRight, yBottom, xRight, yBottom + len);
     }
   }
 }
@@ -419,7 +451,7 @@ export function ClientTemplateExportRunner({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [job]);
 
-// Pick up the next unhandled template job.
+  // Pick up the next unhandled template job.
   useEffect(() => {
     if (job || busy.current) return;
     const next = exports.find(
@@ -464,8 +496,13 @@ export function ClientTemplateExportRunner({
         invalidate();
         return;
       }
+      await preloadDocImages(res.data.doc);
       pdfRef.current = initPdf(res.data);
-      setJob({ exportId: next.id, payload: res.data, index: 0 });
+      setJob({
+        exportId: next.id,
+        payload: res.data,
+        index: 0,
+      });
       console.info("[gr-debug][exports][runner][start]", {
         festivalId,
         exportId: next.id,
@@ -476,6 +513,7 @@ export function ClientTemplateExportRunner({
         orientation: res.data.pageOrientation,
         layout: res.data.printLayout,
         quality: res.data.quality,
+        includeAi: res.data.includeAi,
         targetDpi: TARGET_DPI[res.data.quality],
         pageW: pdfRef.current.pageW,
         pageH: pdfRef.current.pageH,
@@ -512,19 +550,32 @@ export function ClientTemplateExportRunner({
           return;
         }
 
-        // Wait for any images inside the stage to complete loading, max 500ms
+        // Wait for any images inside the stage to complete loading and decoding
         await new Promise<void>((resolve) => {
           let attempts = 0;
           const checkImages = () => {
             attempts++;
-            if (attempts > 10) return resolve(); // strict 500ms cap
-
             const imageNodes = stage.find("Image");
+            const hasExpectedImages =
+              (job.payload.doc.elements || []).some(
+                (e) =>
+                  (e.type === "image" && e.imageUrl) ||
+                  (e.type === "qr" && e.qrLogoUrl),
+              ) ||
+              (job.payload.doc.background?.type === "image" &&
+                job.payload.doc.background?.imageUrl);
+
+            if (hasExpectedImages && imageNodes.length === 0 && attempts < 25) {
+              setTimeout(checkImages, 50);
+              return;
+            }
+
             const isLoading = imageNodes.some((node: any) => {
               const img = node.image();
-              return img && !img.complete;
+              return !img || !img.complete || img.naturalWidth === 0;
             });
-            if (!isLoading) resolve();
+
+            if (!isLoading || attempts > 30) resolve();
             else setTimeout(checkImages, 50);
           };
           checkImages();
@@ -559,19 +610,33 @@ export function ClientTemplateExportRunner({
           mimeType: "image/jpeg",
           quality: JPEG_QUALITY[qualityTier],
         });
-        // For FILL on ONE_PER_PAGE, cover-crop the source before placing so
+        // For FILL, cover-crop the source before placing so
         // jsPDF never has to upscale or distort. Konva 7/8 don't expose a
         // crop rect on toDataURL here, so we paint through an OffscreenCanvas.
-        if (
-          job.payload.printLayout === "ONE_PER_PAGE" &&
-          job.payload.fit === "FILL"
-        ) {
+        if (job.payload.fit === "FILL") {
+          let targetW = pdfContext.pageW;
+          let targetH = pdfContext.pageH;
+          if (job.payload.printLayout === "MULTIPLE_PER_PAGE") {
+            const { cols, rows } = resolveMultiGrid(
+              job.payload.multiGrid,
+              pdfContext.pageW,
+              pdfContext.pageH,
+              job.payload.width,
+              job.payload.height,
+            );
+            const margin = mmToPx(job.payload.marginMm);
+            const gutter = mmToPx(job.payload.gutterMm);
+            targetW =
+              (pdfContext.pageW - 2 * margin - (cols - 1) * gutter) / cols;
+            targetH =
+              (pdfContext.pageH - 2 * margin - (rows - 1) * gutter) / rows;
+          }
           const s = Math.max(
-            pdfContext.pageW / job.payload.width,
-            pdfContext.pageH / job.payload.height,
+            targetW / job.payload.width,
+            targetH / job.payload.height,
           );
-          const srcCropW = pdfContext.pageW / s;
-          const srcCropH = pdfContext.pageH / s;
+          const srcCropW = targetW / s;
+          const srcCropH = targetH / s;
           const cropped = await cropViaCanvas(
             dataUrl,
             pixelRatio,
@@ -579,6 +644,7 @@ export function ClientTemplateExportRunner({
             (job.payload.height - srcCropH) / 2,
             srcCropW,
             srcCropH,
+            JPEG_QUALITY[qualityTier],
           );
           if (cropped) dataUrl = cropped;
         }
@@ -618,14 +684,14 @@ export function ClientTemplateExportRunner({
         }
 
         // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
-        const blob = pdfContext.doc.output("blob");
-        if (blob.size > MAX_BLOB_BYTES) {
-          const mb = Math.round(blob.size / (1024 * 1024));
+        const pdfBlob = pdfContext.doc.output("blob");
+        if (pdfBlob.size > MAX_BLOB_BYTES) {
+          const mb = Math.round(pdfBlob.size / (1024 * 1024));
           const message = `Export is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
           console.error("[gr-debug][exports][runner][blob-too-large]", {
             festivalId,
             exportId: job.exportId,
-            bytes: blob.size,
+            bytes: pdfBlob.size,
             max: MAX_BLOB_BYTES,
           });
           await failTemplateExportAction(festivalId, job.exportId, message);
@@ -635,15 +701,72 @@ export function ClientTemplateExportRunner({
           invalidate();
           return;
         }
+        const pdfBytes: Uint8Array<ArrayBuffer> = new Uint8Array(
+          await pdfBlob.arrayBuffer(),
+        );
+        // The .ai (Adobe Illustrator) bundle pairs the printable PDF with
+        // a same-content `.ai` file. Modern Illustrator (CC 2017+) opens
+        // PDF-compatible files, so the user can edit the template source
+        // and re-save as a native .ai if needed. We bundle both into a
+        // single .zip so the user gets one download. The toggle is on
+        // the export config (`includeAi`); the format is always PDF.
+        const includeAi = job.payload.includeAi;
+        const baseName = job.payload.doc.templateName ?? "export";
+        const safeBase = baseName
+          .toLowerCase()
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 48) || "export";
+        const pdfName = `${safeBase}.pdf`;
+        const aiName = `${safeBase}.ai`;
+        let uploadBytes: Uint8Array<ArrayBuffer>;
+        let uploadName: string;
+        let uploadMime: string;
+        if (includeAi) {
+          const zipBytes = buildZip([
+            { name: pdfName, data: pdfBytes },
+            { name: aiName, data: pdfBytes },
+          ]);
+          if (zipBytes.byteLength > MAX_BLOB_BYTES) {
+            const mb = Math.round(zipBytes.byteLength / (1024 * 1024));
+            const message = `Export bundle is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
+            console.error("[gr-debug][exports][runner][zip-too-large]", {
+              festivalId,
+              exportId: job.exportId,
+              bytes: zipBytes.byteLength,
+              max: MAX_BLOB_BYTES,
+            });
+            await failTemplateExportAction(festivalId, job.exportId, message);
+            pdfRef.current = null;
+            setJob(null);
+            busy.current = false;
+            invalidate();
+            return;
+          }
+          uploadBytes = zipBytes;
+          uploadName = `${safeBase}.zip`;
+          uploadMime = "application/zip";
+        } else {
+          uploadBytes = pdfBytes;
+          uploadName = `${safeBase}.pdf`;
+          uploadMime = "application/pdf";
+        }
+        const uploadBlob = new Blob([uploadBytes], { type: uploadMime });
         const formData = new FormData();
-        formData.append("file", blob, "export.pdf");
+        formData.append("file", uploadBlob, uploadName);
         formData.append("itemCount", String(job.payload.items.length));
+        formData.append("includeAi", includeAi ? "true" : "false");
 
         console.info("[gr-debug][exports][runner][finalize-sending]", {
           festivalId,
           exportId: job.exportId,
           itemCount: job.payload.items.length,
-          bytes: blob.size,
+          bytes: uploadBytes.byteLength,
+          includeAi,
+          fileName: uploadName,
+          mime: uploadMime,
         });
         await finalizeTemplateExportAction(festivalId, job.exportId, formData);
         console.info("[gr-debug][exports][runner][finalize-ok]", {

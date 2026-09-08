@@ -56,6 +56,7 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
       bleedMm: 0,
       drawCropMarks: false,
       onlyWithChestNumber: true,
+      includeAi: false,
       categoryIds: [],
       teamIds: [],
     };
@@ -73,6 +74,7 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
       gutterMm: 3,
       bleedMm: 0,
       drawCropMarks: false,
+      includeAi: false,
       certificateTypes: ["PARTICIPATION"],
       categoryIds: [],
       programmeIds: [],
@@ -298,7 +300,7 @@ export function NewExportDrawer({
 
         <DrawerFooter className="flex items-center flex-row justify-end">
           <div className="flex items-center gap-1 rounded-md border p-0.5">
-            {(["PDF", "CSV"] as ExportFormat[]).map((f) => {
+            {(meta.formats as ExportFormat[]).map((f) => {
               const enabled = meta.formats.includes(f);
               return (
                 <button

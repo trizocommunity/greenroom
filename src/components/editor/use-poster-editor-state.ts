@@ -66,6 +66,7 @@ export interface UsePosterEditorStateOptions {
   previewBindings?: PosterBindings | null;
   initialNavPanel?: EditorNavPanel;
   uploadImage?: (file: File) => Promise<string>;
+  festivalImages?: { id: string; url: string }[];
 }
 
 export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
@@ -1142,6 +1143,7 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
     flipSelected,
     reorderSelected,
     nudgeSelected,
+    festivalImages: options?.festivalImages ?? [],
   };
 }
 

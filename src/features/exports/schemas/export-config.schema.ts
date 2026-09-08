@@ -8,8 +8,8 @@ export const scheduleState = z.enum(["ALL", "SCHEDULED", "UNSCHEDULED"]);
 export const listOrientation = z.enum(["PROGRAMME_WISE", "TEAM_WISE"]);
 export const exportQuality = z.enum(["SCREEN", "STANDARD", "PRINT"]);
 export const printLayout = z.enum(["ONE_PER_PAGE", "MULTIPLE_PER_PAGE"]);
-export const pageSize = z.enum(["A3", "A4", "A5", "LETTER", "LEGAL"]);
-export const badgePageSize = z.enum(["A3", "A4"]);
+export const pageSize = z.enum(["A3", "A4", "A5", "LETTER", "LEGAL", "13X19"]);
+export const badgePageSize = z.enum(["A3", "A4", "13X19"]);
 export const certificatePageSize = z.enum(["A3", "A4"]);
 export const pageOrientation = z.enum(["PORTRAIT", "LANDSCAPE"]);
 export const exportFit = z.enum(["FIT", "FILL"]);
@@ -25,21 +25,32 @@ export const multiGrid = z.enum([
   "1x4",
   "1x5",
   "1x6",
+  "2x1",
   "2x2",
   "2x3",
   "2x4",
   "2x5",
   "2x6",
+  "3x1",
   "3x2",
   "3x3",
   "3x4",
   "3x5",
   "3x6",
+  "4x1",
   "4x2",
   "4x3",
   "4x4",
   "4x5",
   "4x6",
+  "5x1",
+  "5x2",
+  "5x3",
+  "5x4",
+  "6x1",
+  "6x2",
+  "6x3",
+  "6x4",
 ]);
 export const judgeGrouping = z.enum(["JUDGE_WISE", "PROGRAMME_WISE"]);
 
@@ -131,9 +142,7 @@ export const badgeConfig = z.object({
   gender: genderFilter.default("ALL"),
   quality: exportQuality.default("STANDARD"),
   printLayout: printLayout.default("MULTIPLE_PER_PAGE"),
-  pageSize: badgePageSize
-    .default("A4")
-    .catch("A4" as const),
+  pageSize: badgePageSize.default("A4").catch("A4" as const),
   pageOrientation: pageOrientation.default("PORTRAIT"),
   /**
    * Multi-per-page grid. Only meaningful when `printLayout === "MULTIPLE_PER_PAGE"`.
@@ -147,6 +156,12 @@ export const badgeConfig = z.object({
   bleedMm: z.number().min(0).max(6).default(0),
   drawCropMarks: z.boolean().default(false),
   onlyWithChestNumber: z.boolean().default(true),
+  /**
+   * Bundle the printable PDF with an editable `.ai` (Adobe Illustrator)
+   * source inside a single `.zip`. When `false`, the export ships as a
+   * standalone PDF (no zip wrapper).
+   */
+  includeAi: z.boolean().default(false),
   categoryIds: idList,
   teamIds: idList,
 });
@@ -156,9 +171,7 @@ export const certificateConfig = z.object({
   templateId: z.string().min(1),
   quality: exportQuality.default("STANDARD"),
   printLayout: printLayout.default("ONE_PER_PAGE"),
-  pageSize: certificatePageSize
-    .default("A4")
-    .catch("A4" as const),
+  pageSize: certificatePageSize.default("A4").catch("A4" as const),
   pageOrientation: pageOrientation.default("PORTRAIT"),
   fit: exportFit.default("FIT"),
   marginMm: z.number().min(0).max(20).default(3),
@@ -177,6 +190,12 @@ export const certificateConfig = z.object({
       ]),
     )
     .default(["PARTICIPATION"]),
+  /**
+   * Bundle the printable PDF with an editable `.ai` (Adobe Illustrator)
+   * source inside a single `.zip`. When `false`, the export ships as a
+   * standalone PDF (no zip wrapper).
+   */
+  includeAi: z.boolean().default(false),
   categoryIds: idList,
   programmeIds: idList,
 });

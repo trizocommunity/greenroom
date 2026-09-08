@@ -7,12 +7,14 @@ import type { BadgeConfig } from "@/features/exports/schemas/export-config.schem
 import {
   BADGE_PAGE_SIZE_OPTIONS,
   CheckList,
-  FieldGrid,
   FIT_OPTIONS,
+  FieldGrid,
   GENDER_OPTIONS,
   GridPicker,
+  LANDSCAPE_GRID_OPTIONS,
   NumberInput,
   PAGE_ORIENTATION_OPTIONS,
+  PORTRAIT_GRID_OPTIONS,
   PRINT_LAYOUT_OPTIONS,
   QUALITY_OPTIONS,
   SectionLabel,
@@ -26,6 +28,18 @@ interface Props {
   festivalId: string;
   value: BadgeConfig;
   onChange: (value: BadgeConfig) => void;
+}
+
+function isGridCompatible(
+  grid: string,
+  orientation: "PORTRAIT" | "LANDSCAPE",
+): boolean {
+  if (grid === "AUTO") return true;
+  const options =
+    orientation === "LANDSCAPE"
+      ? LANDSCAPE_GRID_OPTIONS
+      : PORTRAIT_GRID_OPTIONS;
+  return options.some((opt) => opt.value === grid);
 }
 
 export function BadgeFilters({ festivalId, value, onChange }: Props) {
@@ -47,7 +61,22 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         label="Template"
         options={templates ?? []}
         selectedId={value.templateId}
-        onSelect={(id) => set({ templateId: id })}
+        onSelect={(id) => {
+          const selectedTpl = (templates ?? []).find((t) => t.id === id);
+          if (selectedTpl && !value.templateId) {
+            const tplOrientation =
+              selectedTpl.width > selectedTpl.height ? "LANDSCAPE" : "PORTRAIT";
+            if (tplOrientation !== value.pageOrientation) {
+              set({
+                templateId: id,
+                pageOrientation: tplOrientation,
+                multiGrid: "AUTO",
+              });
+              return;
+            }
+          }
+          set({ templateId: id });
+        }}
       />
 
       <FieldGrid cols={2}>
@@ -75,7 +104,12 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         <SegmentedControl
           label="Orientation"
           value={value.pageOrientation}
-          onChange={(v) => set({ pageOrientation: v })}
+          onChange={(v) => {
+            const nextGrid = isGridCompatible(value.multiGrid, v)
+              ? value.multiGrid
+              : "AUTO";
+            set({ pageOrientation: v, multiGrid: nextGrid });
+          }}
           options={PAGE_ORIENTATION_OPTIONS}
         />
       </FieldGrid>
@@ -90,6 +124,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           />
           <NumberInput
             label="Margin"
+            hint="Sheet edge padding"
             value={value.marginMm}
             min={0}
             max={20}
@@ -98,6 +133,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           />
           <NumberInput
             label="Bleed"
+            hint="Cutting overlap border"
             value={value.bleedMm}
             min={0}
             max={6}
@@ -111,6 +147,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
             <SectionLabel>Per-page grid (cols × rows)</SectionLabel>
             <GridPicker
               value={value.multiGrid}
+              orientation={value.pageOrientation}
               onChange={(v) =>
                 set({ multiGrid: v as BadgeConfig["multiGrid"] })
               }
@@ -119,6 +156,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           <FieldGrid cols={3}>
             <NumberInput
               label="Margin"
+              hint="Sheet edge padding"
               value={value.marginMm}
               min={0}
               max={20}
@@ -127,6 +165,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
             />
             <NumberInput
               label="Gutter"
+              hint="Spacing between badges"
               value={value.gutterMm}
               min={0}
               max={20}
@@ -135,6 +174,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
             />
             <NumberInput
               label="Bleed"
+              hint="Cutting overlap border"
               value={value.bleedMm}
               min={0}
               max={6}
@@ -158,6 +198,13 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         />
       </FieldGrid>
 
+      <ToggleRow
+        label="Include editable illustration"
+        hint="Bundle the PDF with an editable .ai source inside a single .zip download."
+        checked={value.includeAi}
+        onChange={(v) => set({ includeAi: v })}
+      />
+
       <SegmentedControl
         label="Gender"
         value={value.gender}
@@ -180,9 +227,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           hint="Empty = all"
           options={teams ?? []}
           selected={value.teamIds}
-          onToggle={(id, v) =>
-            set({ teamIds: toggleId(value.teamIds, id, v) })
-          }
+          onToggle={(id, v) => set({ teamIds: toggleId(value.teamIds, id, v) })}
         />
       </FieldGrid>
     </div>

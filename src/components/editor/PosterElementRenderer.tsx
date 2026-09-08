@@ -14,6 +14,7 @@ import { konvaShadowProps } from "./editor-konva-props";
 import { EDITOR_COLORS } from "./editor-theme";
 import { estimateTextWidth, getEditableText } from "./editor-utils";
 import type { EditorElement } from "./poster-editor-types";
+import { useKonvaImage } from "./poster-image-loader";
 import type { ElementHoverHandlers } from "./use-canvas-element-hover";
 
 export type ElementDragHandlers = {
@@ -48,17 +49,37 @@ function ImageElement({
   PosterElementRendererProps,
   "interactive" | "previewMode" | "displayText"
 >) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const image = useKonvaImage(el.imageUrl);
 
-  useEffect(() => {
-    if (!el.imageUrl) return;
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => setImage(img);
-    img.src = el.imageUrl;
-  }, [el.imageUrl]);
-
-  if (!image) return null;
+  if (!image) {
+    return (
+      <Group
+        id={el.id}
+        x={el.x}
+        y={el.y}
+        width={el.width}
+        height={el.height}
+        rotation={el.rotation ?? 0}
+        scaleX={el.scaleX ?? 1}
+        scaleY={el.scaleY ?? 1}
+        opacity={nodeOpacity}
+        draggable={draggable}
+        onClick={onSelect}
+        onTap={onSelect}
+        onMouseEnter={hoverHandlers.onMouseEnter}
+        onMouseLeave={hoverHandlers.onMouseLeave}
+      >
+        <Rect
+          width={el.width ?? 100}
+          height={el.height ?? 80}
+          fill="rgba(100, 116, 139, 0.08)"
+          stroke="rgba(100, 116, 139, 0.25)"
+          strokeWidth={1}
+          dash={[4, 4]}
+        />
+      </Group>
+    );
+  }
 
   return (
     <Group
@@ -92,11 +113,7 @@ function ImageElement({
           : undefined
       }
     >
-      <KonvaImage
-        image={image}
-        width={el.width}
-        height={el.height}
-      />
+      <KonvaImage image={image} width={el.width} height={el.height} />
     </Group>
   );
 }
@@ -147,21 +164,27 @@ function QrCodeElement({
       imageOptions: {
         crossOrigin: "anonymous",
         margin: 5,
-        imageSize: 0.4
+        imageSize: 0.4,
       },
     });
 
-    qrCode.getRawData("png").then((buffer) => {
-      if (!buffer) return;
-      const blob = buffer instanceof Blob ? buffer : new Blob([buffer as BlobPart], { type: "image/png" });
-      const url = URL.createObjectURL(blob);
-      const img = new window.Image();
-      img.onload = () => {
-        setQrImage(img);
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
-    }).catch(console.error);
+    qrCode
+      .getRawData("png")
+      .then((buffer) => {
+        if (!buffer) return;
+        const blob =
+          buffer instanceof Blob
+            ? buffer
+            : new Blob([buffer as BlobPart], { type: "image/png" });
+        const url = URL.createObjectURL(blob);
+        const img = new window.Image();
+        img.onload = () => {
+          setQrImage(img);
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      })
+      .catch(console.error);
   }, [
     displayText,
     previewMode,
@@ -171,7 +194,7 @@ function QrCodeElement({
     el.qrDotsStyle,
     el.qrCornersStyle,
     el.qrCornersDotStyle,
-    el.qrLogoUrl
+    el.qrLogoUrl,
   ]);
 
   const qw = el.width ?? 160;

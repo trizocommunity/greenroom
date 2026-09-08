@@ -83,44 +83,61 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
  */
 export function GridPicker({
   value,
+  orientation = "PORTRAIT",
   onChange,
 }: {
   value: string;
+  orientation?: "PORTRAIT" | "LANDSCAPE";
   onChange: (v: string) => void;
 }) {
+  const options =
+    orientation === "LANDSCAPE"
+      ? LANDSCAPE_GRID_OPTIONS
+      : PORTRAIT_GRID_OPTIONS;
+
   return (
-    <div className="grid grid-cols-7 gap-1.5">
-      {MULTI_GRID_OPTIONS.map((opt) => {
+    <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5">
+      {options.map((opt) => {
         const selected = opt.value === value;
         return (
           <button
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
-            title={opt.label}
+            title={
+              opt.value === "AUTO"
+                ? "Auto (orientation-driven)"
+                : `${opt.cols} cols × ${opt.rows} rows (${opt.cols * opt.rows} per page)`
+            }
             className={cn(
-              "flex aspect-square items-center justify-center rounded-md border transition-all overflow-hidden",
+              "flex flex-col aspect-square items-center justify-between p-1 rounded-md border transition-all overflow-hidden",
               selected
                 ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                 : "bg-background hover:border-primary/40 hover:shadow-sm",
             )}
           >
-            {opt.value === "AUTO" ? (
-              <span
-                className={cn(
-                  "text-[10px] font-semibold tracking-tight",
-                  selected ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                Auto
-              </span>
-            ) : (
-              <GridSwatch
-                cols={opt.cols}
-                rows={opt.rows}
-                active={selected}
-              />
-            )}
+            <div className="flex flex-1 w-full items-center justify-center overflow-hidden">
+              {opt.value === "AUTO" ? (
+                <span
+                  className={cn(
+                    "text-[10px] font-semibold tracking-tight",
+                    selected ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  Auto
+                </span>
+              ) : (
+                <GridSwatch cols={opt.cols} rows={opt.rows} active={selected} />
+              )}
+            </div>
+            <span
+              className={cn(
+                "text-[9px] tabular-nums font-medium",
+                selected ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              {opt.label}
+            </span>
           </button>
         );
       })}
@@ -137,11 +154,10 @@ function GridSwatch({
   rows: number;
   active: boolean;
 }) {
-  const cells = Array.from({ length: cols * rows });
   return (
     <div
-      className="flex h-full w-full flex-col gap-[1.5px] p-1"
-      style={{ aspectRatio: `${cols} / ${rows}` }}
+      className="flex h-full w-full flex-col gap-[1.5px] p-1 justify-center"
+      style={{ aspectRatio: `${Math.max(1, cols)} / ${Math.max(1, rows)}` }}
     >
       {Array.from({ length: rows }).map((_, r) => (
         <div key={r} className="flex flex-1 gap-[1.5px]">
@@ -149,7 +165,7 @@ function GridSwatch({
             <span
               key={c}
               className={cn(
-                "flex-1 rounded-[1px] border",
+                "flex-1 rounded-[1px] border min-w-0 min-h-0",
                 active
                   ? "border-primary/40 bg-primary/30"
                   : "border-muted-foreground/30 bg-muted-foreground/15",
@@ -158,7 +174,6 @@ function GridSwatch({
           ))}
         </div>
       ))}
-      {cells.length === 0 && null}
     </div>
   );
 }
@@ -384,11 +399,13 @@ export const PAGE_SIZE_OPTIONS = [
   { value: "A5" as const, label: "A5" },
   { value: "LETTER" as const, label: "Letter" },
   { value: "LEGAL" as const, label: "Legal" },
+  { value: "13X19" as const, label: "13×19" },
 ];
 
 export const BADGE_PAGE_SIZE_OPTIONS = [
   { value: "A3" as const, label: "A3" },
   { value: "A4" as const, label: "A4" },
+  { value: "13X19" as const, label: "13×19" },
 ];
 
 export const CERTIFICATE_PAGE_SIZE_OPTIONS = [
@@ -402,33 +419,39 @@ export const FIT_OPTIONS = [
 ];
 
 /**
- * Multi-per-page grid presets. AUTO means "let the runner decide based on
- * page orientation" (portrait → 2×2, landscape → 4×2). Anything else is
- * explicit "COLSxROWS". The drawer's GridPicker shows a tiny visual swatch
- * for each preset.
+ * Multi-per-page grid presets filtered by page orientation.
+ * Portrait page -> grids optimized for tall aspect ratios (cols <= rows).
+ * Landscape page -> grids optimized for wide aspect ratios (cols >= rows).
  */
-export const MULTI_GRID_OPTIONS = [
+export const PORTRAIT_GRID_OPTIONS = [
   { value: "AUTO", cols: 0, rows: 0, label: "Auto" },
   { value: "1x2", cols: 1, rows: 2, label: "1×2" },
-  { value: "1x3", cols: 1, rows: 3, label: "1×3" },
-  { value: "1x4", cols: 1, rows: 4, label: "1×4" },
-  { value: "1x5", cols: 1, rows: 5, label: "1×5" },
-  { value: "1x6", cols: 1, rows: 6, label: "1×6" },
   { value: "2x2", cols: 2, rows: 2, label: "2×2" },
   { value: "2x3", cols: 2, rows: 3, label: "2×3" },
   { value: "2x4", cols: 2, rows: 4, label: "2×4" },
   { value: "2x5", cols: 2, rows: 5, label: "2×5" },
-  { value: "2x6", cols: 2, rows: 6, label: "2×6" },
-  { value: "3x2", cols: 3, rows: 2, label: "3×2" },
   { value: "3x3", cols: 3, rows: 3, label: "3×3" },
   { value: "3x4", cols: 3, rows: 4, label: "3×4" },
   { value: "3x5", cols: 3, rows: 5, label: "3×5" },
-  { value: "3x6", cols: 3, rows: 6, label: "3×6" },
+] as const;
+
+export const LANDSCAPE_GRID_OPTIONS = [
+  { value: "AUTO", cols: 0, rows: 0, label: "Auto" },
+  { value: "2x1", cols: 2, rows: 1, label: "2×1" },
+  { value: "2x2", cols: 2, rows: 2, label: "2×2" },
+  { value: "3x2", cols: 3, rows: 2, label: "3×2" },
   { value: "4x2", cols: 4, rows: 2, label: "4×2" },
+  { value: "5x2", cols: 5, rows: 2, label: "5×2" },
+  { value: "3x3", cols: 3, rows: 3, label: "3×3" },
   { value: "4x3", cols: 4, rows: 3, label: "4×3" },
-  { value: "4x4", cols: 4, rows: 4, label: "4×4" },
-  { value: "4x5", cols: 4, rows: 5, label: "4×5" },
-  { value: "4x6", cols: 4, rows: 6, label: "4×6" },
+  { value: "5x3", cols: 5, rows: 3, label: "5×3" },
+] as const;
+
+export const MULTI_GRID_OPTIONS = [
+  ...PORTRAIT_GRID_OPTIONS,
+  ...LANDSCAPE_GRID_OPTIONS.filter(
+    (l) => !PORTRAIT_GRID_OPTIONS.some((p) => p.value === l.value),
+  ),
 ] as const;
 
 export const PAGE_ORIENTATION_OPTIONS = [
@@ -518,9 +541,7 @@ export function NumberInput({
           </span>
         )}
       </div>
-      {hint && (
-        <p className="text-[10px] text-muted-foreground/80">{hint}</p>
-      )}
+      {hint && <p className="text-[10px] text-muted-foreground/80">{hint}</p>}
     </div>
   );
 }

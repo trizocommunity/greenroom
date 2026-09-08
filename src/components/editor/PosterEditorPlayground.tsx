@@ -53,6 +53,8 @@ export type PublishTemplateConfig = {
   templateCode: string;
   onConfirmPublish: (doc: PosterEditorDocument) => Promise<boolean>;
   pending?: boolean;
+  isPublished?: boolean;
+  onConfirmUnpublish?: () => Promise<boolean>;
 };
 
 export type ResetTemplateConfig = {
@@ -79,6 +81,9 @@ export default function PosterEditorPlayground({
   onCreateTemplate,
   onRenameTemplate,
   uploadImage,
+  festivalImages,
+  festivalId,
+  onMediaChanged,
 }: {
   initialDocument?: PosterEditorDocument | null;
   initialTabLabel?: string;
@@ -98,11 +103,15 @@ export default function PosterEditorPlayground({
   onCreateTemplate?: (type: PosterTemplateType, options?: any) => void;
   onRenameTemplate?: (newLabel: string, doc?: PosterEditorDocument) => void;
   uploadImage?: (file: File) => Promise<string>;
+  festivalImages?: { id: string; url: string }[];
+  festivalId?: string;
+  onMediaChanged?: () => void | Promise<void>;
 } = {}) {
   const editor = usePosterEditorState({
     previewBindings,
     initialNavPanel: initialDocument ? "elements" : "templates",
     uploadImage,
+    festivalImages,
   });
   const stageRef = useRef<Konva.Stage | null>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
@@ -334,6 +343,8 @@ export default function PosterEditorPlayground({
             brandLabel={sidebarBrandLabel}
             dbTemplates={dbTemplates}
             onCreateTemplate={onCreateTemplate}
+            festivalId={festivalId}
+            onMediaChanged={onMediaChanged}
           />
         )}
 
@@ -387,7 +398,7 @@ export default function PosterEditorPlayground({
                 previewDataHint={previewDataHint}
                 resetTemplate={resetTemplate}
               />
-              {publishTemplate && doc && (
+              {publishTemplate && doc && !publishTemplate.isPublished && (
                 <Button
                   type="button"
                   size="sm"
@@ -399,6 +410,23 @@ export default function PosterEditorPlayground({
                   }}
                 >
                   Publish template
+                </Button>
+              )}
+              {publishTemplate && doc && publishTemplate.isPublished && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  disabled={publishTemplate.pending}
+                  onClick={async (e) => {
+                    e.currentTarget.blur();
+                    if (publishTemplate.onConfirmUnpublish) {
+                      await publishTemplate.onConfirmUnpublish();
+                    }
+                  }}
+                >
+                  Unpublish
                 </Button>
               )}
               {headerEnd}

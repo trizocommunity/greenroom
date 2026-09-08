@@ -18,8 +18,10 @@ import {
   getPosterTemplateAction,
   listPosterTemplatesAction,
   publishPosterTemplateAction,
+  unpublishPosterTemplateAction,
   savePosterTemplateDraftAction,
 } from "@/features/posters/actions/poster-template.actions";
+import { getMediaImagesAction } from "@/features/media/actions/media.actions";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 import type { PosterTemplateStatus } from "@/features/posters/types/poster-template.types";
 import {
@@ -85,13 +87,23 @@ export function FestivalPosterEditor({
   const [previewDataHint, setPreviewDataHint] = useState<string | null>(null);
 
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
+  const [festivalImages, setFestivalImages] = useState<{ id: string; url: string }[]>([]);
+
+  const refreshFestivalImages = useCallback(async () => {
+    const images = await getMediaImagesAction(festivalId);
+    setFestivalImages(images);
+  }, [festivalId]);
 
   useEffect(() => {
     startTransition(async () => {
-      const res = await listPosterTemplatesAction(festivalId);
+      const [res, imagesRes] = await Promise.all([
+        listPosterTemplatesAction(festivalId),
+        getMediaImagesAction(festivalId)
+      ]);
       if (res.success) {
         setDbTemplates(res.data);
       }
+      setFestivalImages(imagesRes);
     });
   }, [festivalId]);
 
@@ -286,6 +298,27 @@ export function FestivalPosterEditor({
     [festivalId, festivalSlug, saveDraftSilent, templateCode],
   );
 
+  const confirmUnpublish = useCallback(async (): Promise<boolean> => {
+    if (!templateCode) return false;
+    setPublishing(true);
+    try {
+      const res = await unpublishPosterTemplateAction(
+        festivalId,
+        templateCode,
+        festivalSlug,
+      );
+      if (res.success) {
+        toast.success(`Unpublished ${templateCode}`);
+        setTemplateStatus("DRAFT");
+        return true;
+      }
+      toast.error(res.error);
+      return false;
+    } finally {
+      setPublishing(false);
+    }
+  }, [festivalId, festivalSlug, templateCode]);
+
   // ── Render: loading ──────────────────────────────────────────────────────
   if (!ready) {
     return (
@@ -320,18 +353,23 @@ export function FestivalPosterEditor({
           autosave={autosave}
           previewBindings={previewBindings}
           previewDataHint={previewDataHint}
+          festivalImages={festivalImages}
           publishTemplate={
             templateCode
               ? {
                   templateCode,
                   pending: publishing,
+                  isPublished: templateStatus === "PUBLISHED",
                   onConfirmPublish: confirmPublish,
+                  onConfirmUnpublish: confirmUnpublish,
                 }
               : undefined
           }
           dbTemplates={dbTemplates}
           sidebarBrandHref={festivalTemplatesPath(festivalSlug)}
           sidebarBrandLabel={festivalName}
+          festivalId={festivalId}
+          onMediaChanged={refreshFestivalImages}
           resetTemplate={
             templateCode
               ? {

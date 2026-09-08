@@ -114,6 +114,13 @@ export function CertificateFilters({ festivalId, value, onChange }: Props) {
         onChange={(v) => set({ drawCropMarks: v })}
       />
 
+      <ToggleRow
+        label="Include editable illustration"
+        hint="Bundle the PDF with an editable .ai source inside a single .zip download."
+        checked={value.includeAi}
+        onChange={(v) => set({ includeAi: v })}
+      />
+
       <CheckList
         label="Certificate Types"
         options={CERT_TYPE_OPTIONS}
