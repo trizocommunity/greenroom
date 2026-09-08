@@ -47,7 +47,8 @@ const runtimeCaching = [
         // Silently catch the 'no-response' error to prevent console spam
         // and manually invoke the offline fallback
         const cache = await caches.open("serwist-precache-v1"); // or default precache
-        const fallback = await cache.match("/offline") || await caches.match("/offline");
+        const fallback =
+          (await cache.match("/offline")) || (await caches.match("/offline"));
         if (fallback) return fallback;
         return Response.error();
       }

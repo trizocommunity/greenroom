@@ -4,11 +4,11 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useCloudinaryUpload } from "@/api/client/upload";
+import { sanitizeDocumentForSave } from "@/components/editor/editor-utils";
 import type { PosterEditorAutosaveConfig } from "@/components/editor/PosterEditorPlayground";
 import type { PosterTemplateType } from "@/components/editor/poster-editor-config";
 import { createPresetDocument } from "@/components/editor/poster-editor-presets";
 import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
-import { sanitizeDocumentForSave } from "@/components/editor/editor-utils";
 import {
   clearLocalEditorBackup,
   readLocalEditorBackup,
@@ -164,7 +164,9 @@ export function FestivalPosterEditor({
           festivalId,
           code: templateCode,
           document: safeDoc,
-          meta: safeDoc.templateName ? { name: safeDoc.templateName } : undefined,
+          meta: safeDoc.templateName
+            ? { name: safeDoc.templateName }
+            : undefined,
         },
         festivalSlug,
       );

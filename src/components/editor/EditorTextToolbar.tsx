@@ -295,7 +295,7 @@ export function EditorTextToolbar({
             <PopoverContent className="w-52 p-3" align="start">
               <div className="space-y-2">
                 <div>
-                  <Label className="text-xs">Line height</Label>
+                  <Label className="text-xs">Leading</Label>
                   <Input
                     type="number"
                     className="mt-1 h-7 text-xs"
@@ -303,15 +303,16 @@ export function EditorTextToolbar({
                     max={3}
                     step={0.05}
                     value={el.lineHeight ?? 1.2}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
                       updateElement(el.id, {
-                        lineHeight: Number(e.target.value),
-                      })
-                    }
+                        lineHeight: Math.max(0.1, v),
+                      });
+                    }}
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Letter spacing (px)</Label>
+                  <Label className="text-xs">Tracking (px)</Label>
                   <Input
                     type="number"
                     className="mt-1 h-7 text-xs"

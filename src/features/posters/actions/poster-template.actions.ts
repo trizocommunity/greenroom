@@ -175,7 +175,11 @@ export async function savePosterTemplateDraftAction(
       typeof u === "string" && u.startsWith("blob:");
 
     if (doc.background?.imageUrl && isBlobUrl(doc.background.imageUrl)) {
-      doc.background = { ...doc.background, type: "solid", imageUrl: undefined };
+      doc.background = {
+        ...doc.background,
+        type: "solid",
+        imageUrl: undefined,
+      };
     }
     if (doc.elements) {
       doc.elements = doc.elements.filter(

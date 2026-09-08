@@ -41,6 +41,7 @@ import {
   FEST_ADMIN_FIELDS,
   MOCK_BINDINGS,
   type PosterTemplateType,
+  resolveFestAdminFieldValue,
   TEMPLATE_TYPES,
 } from "./poster-editor-config";
 import { createPresetDocument } from "./poster-editor-presets";
@@ -562,7 +563,7 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
       if (!doc) return;
       const field = FEST_ADMIN_FIELDS.find((f) => f.key === bindingKey);
       if (!field) return;
-      const preview = bindingSource[bindingKey] ?? field.preview;
+      const preview = resolveFestAdminFieldValue(bindingKey, bindingSource);
       addElement({
         type: bindingKey === "qrCode" ? "qr" : "text",
         name: field.label,
@@ -583,7 +584,7 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
         opacity: 1,
       });
     },
-    [addElement, doc],
+    [addElement, bindingSource, doc],
   );
 
   const addShape = useCallback(
@@ -739,7 +740,7 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
       if (!el.text && !el.bindingKey) return "";
       let text = el.text ?? "";
       if (previewMode && el.bindingKey) {
-        text = bindingSource[el.bindingKey] ?? el.text ?? "";
+        text = resolveFestAdminFieldValue(el.bindingKey, bindingSource);
       }
       return applyTextCase(text, el.textCase);
     },

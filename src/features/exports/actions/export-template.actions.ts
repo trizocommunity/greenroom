@@ -1,6 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
@@ -20,7 +21,6 @@ import {
   type TemplateExportPayload,
 } from "@/features/exports/services/template-payload.service";
 import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
-import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 
 export interface ExportTemplateOption {
   id: string;
@@ -82,17 +82,40 @@ export async function getTemplateExportPayloadAction(
     const festivalName = festival?.name ?? "";
 
     const config = exportConfigSchema.parse(row.config);
+    console.info("[gr-debug][exports][payload-action][start]", {
+      festivalId,
+      exportId,
+      type: config.type,
+      status: row.status,
+    });
     if (config.type === "BADGE") {
-      return {
-        success: true,
-        data: await resolveBadgePayload(festivalId, config, festivalName),
-      };
+      const data = await resolveBadgePayload(festivalId, config, festivalName);
+      console.info("[gr-debug][exports][payload-action][ok][BADGE]", {
+        festivalId,
+        exportId,
+        items: data.items.length,
+        width: data.width,
+        height: data.height,
+      });
+      return { success: true, data };
     }
     if (config.type === "CERTIFICATE") {
-      return {
-        success: true,
-        data: await resolveCertificatePayload(festivalId, config, festivalName),
-      };
+      const data = await resolveCertificatePayload(
+        festivalId,
+        config,
+        festivalName,
+      );
+      console.info(
+        "[gr-debug][exports][payload-action][ok][CERTIFICATE]",
+        {
+          festivalId,
+          exportId,
+          items: data.items.length,
+          width: data.width,
+          height: data.height,
+        },
+      );
+      return { success: true, data };
     }
     throw new AppError("This export is not a template export.");
   } catch (error) {
@@ -116,9 +139,9 @@ export async function finalizeTemplateExportAction(
       return { success: true, data: { id: exportId } };
     }
 
-    const file = formData.get("file") as File;
+const file = formData.get("file") as File;
     const itemCount = parseInt(formData.get("itemCount") as string, 10);
-    
+
     if (!file) {
       throw new AppError("No file data received.");
     }
@@ -132,6 +155,14 @@ export async function finalizeTemplateExportAction(
       ? 0
       : Math.max(0, serverNowMs() - queuedAtMs);
 
+    console.info("[gr-debug][exports][finalize]", {
+      festivalId,
+      exportId,
+      type: row.type,
+      itemCount,
+      bytes: bytes.byteLength,
+      completedInMs,
+    });
     await ExportRepo.completeExport({
       id: exportId,
       fileData: fileBase64,
@@ -156,6 +187,7 @@ export async function failTemplateExportAction(
   try {
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
+    console.warn("[gr-debug][exports][fail]", { festivalId, exportId, message });
     await ExportRepo.failExport(exportId, message);
     return { success: true, data: { id: exportId } };
   } catch (error) {

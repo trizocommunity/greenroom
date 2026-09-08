@@ -3,8 +3,31 @@ import {
   calculateAspectRatioDimensions,
   createPresetDocument,
 } from "./poster-editor-presets";
+import { resolveFestAdminFieldValue } from "./poster-editor-config";
 
 describe("poster-editor-presets", () => {
+  describe("resolveFestAdminFieldValue", () => {
+    it("uses live preview data when present", () => {
+      expect(
+        resolveFestAdminFieldValue("categoryName", {
+          categoryName: "High School",
+        }),
+      ).toBe("High School");
+    });
+
+    it("falls back to the configured field preview for empty live data", () => {
+      expect(
+        resolveFestAdminFieldValue("categoryName", { categoryName: "" }),
+      ).toBe("Category A");
+    });
+
+    it("falls back to the configured field preview for whitespace-only data", () => {
+      expect(
+        resolveFestAdminFieldValue("categoryName", { categoryName: "  " }),
+      ).toBe("Category A");
+    });
+  });
+
   describe("calculateAspectRatioDimensions", () => {
     it("preserves 16:9 ratio for certificate", () => {
       const dims = calculateAspectRatioDimensions("CERTIFICATE", 1920, 1080);

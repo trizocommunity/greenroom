@@ -1,6 +1,14 @@
 "use client";
 
-import { Check, ChevronsUpDown, Loader2, Play, Plus, User, X } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Loader2,
+  Play,
+  Plus,
+  User,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -204,7 +212,8 @@ function JudgesAndModeSection({
         {/* Judges Combobox column */}
         <div className="space-y-1.5 min-w-0">
           <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Judges{selectedJudgeIds.length > 0 ? ` (${selectedJudgeIds.length})` : ""}
+            Judges
+            {selectedJudgeIds.length > 0 ? ` (${selectedJudgeIds.length})` : ""}
           </Label>
 
           <Popover open={open} onOpenChange={setOpen}>

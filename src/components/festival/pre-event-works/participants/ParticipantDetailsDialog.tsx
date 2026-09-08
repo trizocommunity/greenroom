@@ -319,7 +319,8 @@ export function ParticipantDetailsDialog({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <h4 className="text-sm font-semibold tracking-tight">
-                        Category Limits ({participant.category?.name ?? "Category"})
+                        Category Limits (
+                        {participant.category?.name ?? "Category"})
                       </h4>
                       {limitStatus?.isOverLimit && (
                         <Badge

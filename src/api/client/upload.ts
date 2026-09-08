@@ -25,7 +25,7 @@ export function useCloudinaryUpload() {
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
-        }
+        },
       );
       return handleApiResponse(response.data);
     },
@@ -51,7 +51,11 @@ export function useUploadFile() {
 }
 
 export function useDeleteFile() {
-  return useMutation<void, Error, { publicId?: string; url?: string; festivalId: string }>({
+  return useMutation<
+    void,
+    Error,
+    { publicId?: string; url?: string; festivalId: string }
+  >({
     mutationFn: async ({ publicId, url, festivalId }) => {
       const response = await apiClient.delete<ApiResponse<void>>("/upload", {
         data: { publicId, url, festivalId },

@@ -12,7 +12,12 @@ import {
   finalizeTemplateExportAction,
   getTemplateExportPayloadAction,
 } from "@/features/exports/actions/export-template.actions";
-import type { TemplateExportPayload } from "@/features/exports/services/template-payload.service";
+import { isTemplateExport } from "@/features/exports/schemas/export-config.schema";
+import {
+  autoMultiGrid,
+  parseMultiGrid,
+  type TemplateExportPayload,
+} from "@/features/exports/lib/multi-grid";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 
 interface Props {
@@ -21,13 +26,34 @@ interface Props {
   onProgress?: (exportId: string, current: number, total: number) => void;
 }
 
-const QUALITY_RATIO: Record<TemplateExportPayload["quality"], number> = {
-  SCREEN: 1,
-  STANDARD: 2,
-  PRINT: 3,
+// Quality tiers map to a *target printed DPI*, not a fixed pixelRatio. The
+// on-paper DPI is dictated by the page dimensions (jsPDF "px" ≈ 72 DPI), so
+// a fixed pixelRatio would either over-rasterise small pages or — as before
+// — leave a 300 DPI export indistinguishable from a 96 DPI one. We compute
+// the source raster per (doc, page, target) so SCREEN/STANDARD/PRINT have
+// a real effect. PNG transparency isn't needed on paper, so all tiers ship
+// JPEG.
+const TARGET_DPI: Record<TemplateExportPayload["quality"], number> = {
+  SCREEN: 96,
+  STANDARD: 200,
+  PRINT: 300,
 };
 
-const TEMPLATE_TYPES = new Set(["BADGE", "CERTIFICATE"]);
+// Hard upper bound so a 300 DPI export of a giant template on Letter paper
+// can't OOM the renderer. ~16× source pixels is plenty for print sharpness.
+const MAX_PIXEL_RATIO = 8;
+
+const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
+  SCREEN: 0.78,
+  STANDARD: 0.85,
+  PRINT: 0.88,
+};
+
+// Hard upper bound on the final PDF size the client will upload. Above this,
+// the export is auto-marked FAILED with an actionable message instead of
+// hitting the proxy body cap and surfacing "Unexpected end of form".
+// 100 MB covers ~150 items at PRINT 300 DPI on solid backgrounds.
+const MAX_BLOB_BYTES = 100 * 1024 * 1024;
 
 const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   A3: { w: 842, h: 1191 },
@@ -37,15 +63,167 @@ const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   LEGAL: { w: 612, h: 1008 },
 };
 
-function initPdf(payload: TemplateExportPayload) {
-  const { pageSize, pageOrientation } = payload;
-  const base = PAGE_SIZES[pageSize] ?? PAGE_SIZES.A4;
-  const isLandscape = pageOrientation === "LANDSCAPE";
+function pageDims(payload: TemplateExportPayload): {
+  pageW: number;
+  pageH: number;
+  orientation: "landscape" | "portrait";
+} {
+  const base = PAGE_SIZES[payload.pageSize] ?? PAGE_SIZES.A4;
+  const isLandscape = payload.pageOrientation === "LANDSCAPE";
   const pageW = isLandscape ? base.h : base.w;
   const pageH = isLandscape ? base.w : base.h;
-  const orientation = (isLandscape ? "landscape" : "portrait") as "landscape" | "portrait";
+  return {
+    pageW,
+    pageH,
+    orientation: isLandscape ? "landscape" : "portrait",
+  };
+}
+
+function initPdf(payload: TemplateExportPayload) {
+  const { pageW, pageH, orientation } = pageDims(payload);
   const doc = new jsPDF({ unit: "px", format: [pageW, pageH], orientation });
   return { doc, pageW, pageH, orientation };
+}
+
+/** Convert millimetres to jsPDF "px" (≈ 1/72 inch). */
+function mmToPx(mm: number): number {
+  return (mm * 72) / 25.4;
+}
+
+/**
+ * Resolve the effective cols × rows for a MULTIPLE_PER_PAGE export. Honors
+ * an explicit "COLSxROWS" preset; falls back to the orientation-driven
+ * heuristic when the user picks "AUTO".
+ */
+function resolveMultiGrid(
+  multiGrid: TemplateExportPayload["multiGrid"],
+  pageW: number,
+  pageH: number,
+): { cols: number; rows: number } {
+  const explicit = parseMultiGrid(multiGrid);
+  if (explicit) return explicit;
+  return autoMultiGrid(pageW, pageH);
+}
+
+/**
+ * Compute the source `pixelRatio` so each item lands at `targetDpi` on paper.
+ *
+ * Derivation: a jsPDF stage at unit "px" prints at ≈ 72 DPI. After fitting,
+ * an item on paper occupies `cellW` px (in inches: cellW / 72). The source
+ * raster is `docW × pixelRatio` px. Printed DPI = pixelRatio × docW / cellIn.
+ * Solving for the bound: pixelRatio = targetDpi × cellIn / docW. We take the
+ * max across both axes and both axes layouts (ONE_PER_PAGE and MULTIPLE)
+ * since both must hit DPI, then cap.
+ */
+function computePixelRatio(
+  docW: number,
+  docH: number,
+  pageW: number,
+  pageH: number,
+  printLayout: TemplateExportPayload["printLayout"],
+  fit: TemplateExportPayload["fit"],
+  multiGrid: TemplateExportPayload["multiGrid"],
+  targetDpi: number,
+): number {
+  let cellW: number;
+  let cellH: number;
+  if (printLayout === "ONE_PER_PAGE") {
+    if (fit === "FILL") {
+      // Cover the entire page edge-to-edge; printed cell is the page itself.
+      cellW = pageW;
+      cellH = pageH;
+    } else {
+      // FIT: contain within page, aspect preserved.
+      const s = Math.min(pageW / docW, pageH / docH);
+      cellW = docW * s;
+      cellH = docH * s;
+    }
+  } else {
+    // Must match appendToPdf's MULTIPLE_PER_PAGE resolution so the raster
+    // targets the actual placed cell size.
+    const { cols, rows } = resolveMultiGrid(multiGrid, pageW, pageH);
+    cellW = (pageW - 2 * mmToPx(3)) / cols;
+    cellH = (pageH - 2 * mmToPx(3)) / rows;
+  }
+  const cellWIn = cellW / 72;
+  const cellHIn = cellH / 72;
+  const needW = (targetDpi * cellWIn) / docW;
+  const needH = (targetDpi * cellHIn) / docH;
+  return Math.min(MAX_PIXEL_RATIO, Math.max(1, Math.max(needW, needH)));
+}
+
+async function waitForStage(
+  stageRef: React.MutableRefObject<Konva.Stage | null>,
+): Promise<Konva.Stage | null> {
+  for (let i = 0; i < 20; i++) {
+    const stage = stageRef.current;
+    if (stage) return stage;
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+  }
+  return stageRef.current;
+}
+
+/**
+ * Crop a data-URL image to the requested source rect, returning a JPEG
+ * data-URL of just that rect. Used by FILL to avoid Konva's missing crop
+ * support on toDataURL.
+ */
+async function cropViaCanvas(
+  srcDataUrl: string,
+  pixelRatio: number,
+  srcX: number,
+  srcY: number,
+  srcCropW: number,
+  srcCropH: number,
+): Promise<string | null> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.crossOrigin = "anonymous";
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = srcDataUrl;
+  });
+  const outW = Math.round(srcCropW * pixelRatio);
+  const outH = Math.round(srcCropH * pixelRatio);
+  const canvas =
+    typeof OffscreenCanvas !== "undefined"
+      ? (new OffscreenCanvas(outW, outH) as unknown as HTMLCanvasElement)
+      : Object.assign(document.createElement("canvas"), {
+          width: outW,
+          height: outH,
+        });
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(
+    img,
+    srcX * pixelRatio,
+    srcY * pixelRatio,
+    srcCropW * pixelRatio,
+    srcCropH * pixelRatio,
+    0,
+    0,
+    outW,
+    outH,
+  );
+  if ("convertToBlob" in canvas) {
+    const blob = await (canvas as unknown as OffscreenCanvas).convertToBlob({
+      type: "image/jpeg",
+      quality: 0.92,
+    });
+    return await blobToDataUrl(blob);
+  }
+  return (canvas as HTMLCanvasElement).toDataURL("image/jpeg", 0.92);
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 function appendToPdf(
@@ -53,41 +231,138 @@ function appendToPdf(
   imgBase64: string,
   index: number,
   payload: TemplateExportPayload,
-  pageContext: { pageW: number; pageH: number; orientation: "landscape" | "portrait" }
+  pageContext: {
+    pageW: number;
+    pageH: number;
+    orientation: "landscape" | "portrait";
+  },
+  format: "PNG" | "JPEG" = "JPEG",
 ) {
-  const { width, height, printLayout } = payload;
+  const {
+    width,
+    height,
+    printLayout,
+    fit,
+    multiGrid,
+    marginMm,
+    gutterMm,
+    bleedMm,
+    drawCropMarks,
+  } = payload;
   const { pageW, pageH, orientation } = pageContext;
+  const margin = mmToPx(marginMm);
+  const gutter = mmToPx(gutterMm);
 
+  // ── ONE_PER_PAGE ────────────────────────────────────────────────────────
   if (printLayout === "ONE_PER_PAGE") {
     if (index > 0) doc.addPage([pageW, pageH], orientation);
-    const scale = Math.min(pageW / width, pageH / height);
-    const renderW = width * scale;
-    const renderH = height * scale;
-    const x = (pageW - renderW) / 2;
-    const y = (pageH - renderH) / 2;
-    doc.addImage(imgBase64, "PNG", x, y, renderW, renderH);
+
+    if (fit === "FILL") {
+      // Cover: aspect-preserve, centre-crop the source onto the page. The
+      // render effect pre-crops via Konva's clip params on toDataURL so we
+      // can place the result at full page size with no further math here.
+      doc.addImage(imgBase64, format, 0, 0, pageW, pageH);
+    } else {
+      // FIT: shrink-to-fit inside margin, top-left aligned, never upscales.
+      const availW = pageW - 2 * margin;
+      const availH = pageH - 2 * margin;
+      const scale = Math.min(availW / width, availH / height);
+      const renderW = width * scale;
+      const renderH = height * scale;
+      doc.addImage(
+        imgBase64,
+        format,
+        margin,
+        margin,
+        renderW,
+        renderH,
+      );
+    }
+
+    if (drawCropMarks) drawTrimMarks(doc, pageW, pageH, bleedMm);
     return;
   }
 
-  // MULTIPLE_PER_PAGE
-  const itemAspect = height / width;
-  const cols = Math.max(1, Math.floor(pageW / width));
-  const cellW = pageW / cols;
-  const cellH = cellW * itemAspect;
-  const rows = Math.max(1, Math.floor(pageH / cellH));
-  const perPage = cols * rows;
-
-  const marginX = (pageW - cols * cellW) / 2;
-  const marginY = (pageH - rows * cellH) / 2;
+  // ── MULTIPLE_PER_PAGE (BADGE only) ─────────────────────────────────────
+  // The doc is scaled DOWN to fit a sticker-sheet-style grid. Doc aspect is
+  // preserved; cell count follows the user-selected `multiGrid` preset, or
+  // the orientation-driven heuristic when `multiGrid === "AUTO"`.
+  //   AUTO landscape → 4 × 2 = 8 per page
+  //   AUTO portrait  → 2 × 2 = 4 per page
+  //   "NxM"          → explicit cols × rows
+  // The doc never upscales (preserves "no upscaling" policy).
+  const { cols: colsW, rows: colsH } = resolveMultiGrid(
+    multiGrid,
+    pageW,
+    pageH,
+  );
+  const availW = pageW - 2 * margin;
+  const availH = pageH - 2 * margin;
+  const cellW = (availW - (colsW - 1) * gutter) / colsW;
+  const cellH = (availH - (colsH - 1) * gutter) / colsH;
+  const scale = Math.min(cellW / width, cellH / height, 1);
+  const itemW = width * scale;
+  const itemH = height * scale;
+  const perPage = colsW * colsH;
 
   const slot = index % perPage;
   if (index > 0 && slot === 0) doc.addPage([pageW, pageH], orientation);
-  
-  const col = slot % cols;
-  const row = Math.floor(slot / cols);
-  const x = marginX + col * cellW;
-  const y = marginY + row * cellH;
-  doc.addImage(imgBase64, "PNG", x, y, cellW, cellH);
+
+  const col = slot % colsW;
+  const row = Math.floor(slot / colsW);
+  const tileX = margin + col * (cellW + gutter) + (cellW - itemW) / 2;
+  const tileY = margin + row * (cellH + gutter) + (cellH - itemH) / 2;
+  doc.addImage(imgBase64, format, tileX, tileY, itemW, itemH);
+
+  if (drawCropMarks && slot === 0) {
+    drawGridTrimMarks(doc, margin, margin, availW, availH, colsW, colsH);
+  }
+}
+
+/** Draw a single cross at each trim corner for ONE_PER_PAGE. */
+function drawTrimMarks(
+  doc: jsPDF,
+  pageW: number,
+  pageH: number,
+  _bleedMm: number,
+) {
+  const len = mmToPx(5); // 5 mm tick
+  const w = 0.5; // px stroke
+  const inset = mmToPx(3); // tick sits this far inside the trim
+  const corners = [
+    [inset, inset],
+    [pageW - inset, inset],
+    [inset, pageH - inset],
+    [pageW - inset, pageH - inset],
+  ];
+  for (const [cx, cy] of corners) {
+    doc.setLineWidth(w);
+    doc.line(cx - len, cy, cx + len, cy);
+    doc.line(cx, cy - len, cx, cy + len);
+  }
+}
+
+/** Draw trim cross for each tile top-left in a multi-up grid. */
+function drawGridTrimMarks(
+  doc: jsPDF,
+  originX: number,
+  originY: number,
+  totalW: number,
+  totalH: number,
+  cols: number,
+  rows: number,
+) {
+  const len = mmToPx(3);
+  const w = 0.4;
+  doc.setLineWidth(w);
+  for (let r = 0; r <= rows; r++) {
+    const y = originY + (r * totalH) / rows;
+    for (let c = 0; c <= cols; c++) {
+      const x = originX + (c * totalW) / cols;
+      doc.line(x - len, y, x + len, y);
+      doc.line(x, y - len, x, y + len);
+    }
+  }
 }
 
 interface Job {
@@ -96,18 +371,42 @@ interface Job {
   index: number;
 }
 
-export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: Props) {
+export function ClientTemplateExportRunner({
+  festivalId,
+  exports,
+  onProgress,
+}: Props) {
   const qc = useQueryClient();
   const stageRef = useRef<Konva.Stage | null>(null);
   const handled = useRef<Set<string>>(new Set());
   const [job, setJob] = useState<Job | null>(null);
   const busy = useRef(false);
-  const pdfRef = useRef<{ doc: jsPDF; pageW: number; pageH: number; orientation: "landscape" | "portrait" } | null>(null);
+  const pdfRef = useRef<{
+    doc: jsPDF;
+    pageW: number;
+    pageH: number;
+    orientation: "landscape" | "portrait";
+  } | null>(null);
 
   const invalidate = useCallback(
     () => qc.invalidateQueries({ queryKey: queryKeys.exports.all(festivalId) }),
     [qc, festivalId],
   );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot mount/unmount trace; the runner state lives in refs and the effects below.
+  useEffect(() => {
+    console.info("[gr-debug][exports][runner][mount]", {
+      festivalId,
+      exportsCount: exports.length,
+      processingCount: exports.filter((e) => e.status === "PROCESSING").length,
+    });
+    return () => {
+      console.info("[gr-debug][exports][runner][unmount]", {
+        festivalId,
+        activeJob: handled.current.size,
+      });
+    };
+  }, []);
 
   // Tab close warning when processing
   useEffect(() => {
@@ -120,35 +419,67 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [job]);
 
-  // Pick up the next unhandled template job.
+// Pick up the next unhandled template job.
   useEffect(() => {
     if (job || busy.current) return;
     const next = exports.find(
       (e) =>
         e.status === "PROCESSING" &&
-        TEMPLATE_TYPES.has(e.type) &&
+        isTemplateExport(e.type) &&
         !handled.current.has(e.id),
     );
     if (!next) return;
 
     busy.current = true;
     handled.current.add(next.id);
+    console.info("[gr-debug][exports][runner][pick]", {
+      festivalId,
+      exportId: next.id,
+      type: next.type,
+    });
     (async () => {
       const res = await getTemplateExportPayloadAction(festivalId, next.id);
       if (!res.success) {
+        console.error("[gr-debug][exports][runner][pick-failed]", {
+          festivalId,
+          exportId: next.id,
+          error: res.error,
+        });
         await failTemplateExportAction(festivalId, next.id, res.error);
         busy.current = false;
         invalidate();
         return;
       }
       if (res.data.items.length === 0) {
-        await failTemplateExportAction(festivalId, next.id, "No items matched the selected filters.");
+        console.warn("[gr-debug][exports][runner][empty]", {
+          festivalId,
+          exportId: next.id,
+        });
+        await failTemplateExportAction(
+          festivalId,
+          next.id,
+          "No items matched the selected filters.",
+        );
         busy.current = false;
         invalidate();
         return;
       }
       pdfRef.current = initPdf(res.data);
       setJob({ exportId: next.id, payload: res.data, index: 0 });
+      console.info("[gr-debug][exports][runner][start]", {
+        festivalId,
+        exportId: next.id,
+        items: res.data.items.length,
+        width: res.data.width,
+        height: res.data.height,
+        pageSize: res.data.pageSize,
+        orientation: res.data.pageOrientation,
+        layout: res.data.printLayout,
+        quality: res.data.quality,
+        targetDpi: TARGET_DPI[res.data.quality],
+        pageW: pdfRef.current.pageW,
+        pageH: pdfRef.current.pageH,
+      });
       onProgress?.(next.id, 0, res.data.items.length);
     })();
   }, [exports, job, festivalId, invalidate, onProgress]);
@@ -157,24 +488,37 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
   useEffect(() => {
     const pdfContext = pdfRef.current;
     if (!job || !pdfContext) return;
-    
+
     let cancelled = false;
+    console.info("[gr-debug][exports][runner][render-start]", {
+      festivalId,
+      exportId: job.exportId,
+      index: job.index,
+      total: job.payload.items.length,
+    });
 
     (async () => {
       try {
         // Deterministic wait: wait for all fonts and Konva images to be fully loaded
         if (document.fonts?.ready) await document.fonts.ready;
-        
-        const stage = stageRef.current;
-        if (!stage) return;
-        
+
+        const stage = await waitForStage(stageRef);
+        if (!stage) {
+          console.error("[gr-debug][exports][runner][no-stage]", {
+            festivalId,
+            exportId: job.exportId,
+            index: job.index,
+          });
+          return;
+        }
+
         // Wait for any images inside the stage to complete loading, max 500ms
         await new Promise<void>((resolve) => {
           let attempts = 0;
           const checkImages = () => {
             attempts++;
             if (attempts > 10) return resolve(); // strict 500ms cap
-            
+
             const imageNodes = stage.find("Image");
             const isLoading = imageNodes.some((node: any) => {
               const img = node.image();
@@ -189,17 +533,85 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
         // Give React one last moment to mount late elements like QR codes
         await new Promise((r) => setTimeout(r, 100));
 
-        if (cancelled) return;
+        if (cancelled) {
+          console.warn("[gr-debug][exports][runner][cancelled-mid]", {
+            festivalId,
+            exportId: job.exportId,
+            index: job.index,
+          });
+          return;
+        }
 
-        const dataUrl = stage.toDataURL({
-          pixelRatio: QUALITY_RATIO[job.payload.quality],
-          mimeType: "image/png",
+        const qualityTier = job.payload.quality;
+        const targetDpi = TARGET_DPI[qualityTier];
+        const pixelRatio = computePixelRatio(
+          job.payload.width,
+          job.payload.height,
+          pdfContext.pageW,
+          pdfContext.pageH,
+          job.payload.printLayout,
+          job.payload.fit,
+          job.payload.multiGrid,
+          targetDpi,
+        );
+        let dataUrl = stage.toDataURL({
+          pixelRatio,
+          mimeType: "image/jpeg",
+          quality: JPEG_QUALITY[qualityTier],
         });
-        
+        // For FILL on ONE_PER_PAGE, cover-crop the source before placing so
+        // jsPDF never has to upscale or distort. Konva 7/8 don't expose a
+        // crop rect on toDataURL here, so we paint through an OffscreenCanvas.
+        if (
+          job.payload.printLayout === "ONE_PER_PAGE" &&
+          job.payload.fit === "FILL"
+        ) {
+          const s = Math.max(
+            pdfContext.pageW / job.payload.width,
+            pdfContext.pageH / job.payload.height,
+          );
+          const srcCropW = pdfContext.pageW / s;
+          const srcCropH = pdfContext.pageH / s;
+          const cropped = await cropViaCanvas(
+            dataUrl,
+            pixelRatio,
+            (job.payload.width - srcCropW) / 2,
+            (job.payload.height - srcCropH) / 2,
+            srcCropW,
+            srcCropH,
+          );
+          if (cropped) dataUrl = cropped;
+        }
+        const format: "PNG" | "JPEG" = "JPEG";
+        console.info("[gr-debug][exports][runner][rendered-item]", {
+          festivalId,
+          exportId: job.exportId,
+          index: job.index,
+          format,
+          qualityTier,
+          targetDpi,
+          pixelRatio: Number(pixelRatio.toFixed(3)),
+          dataUrlLen: dataUrl.length,
+        });
+
         // Stream immediately to jsPDF to keep memory low
-        appendToPdf(pdfContext.doc, dataUrl, job.index, job.payload, pdfContext);
+        appendToPdf(
+          pdfContext.doc,
+          dataUrl,
+          job.index,
+          job.payload,
+          pdfContext,
+          format,
+        );
 
         if (job.index + 1 < job.payload.items.length) {
+          console.info("[gr-debug][exports][runner][advance]", {
+            festivalId,
+            exportId: job.exportId,
+            from: job.index,
+            to: job.index + 1,
+            total: job.payload.items.length,
+          });
           setJob({ ...job, index: job.index + 1 });
           onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
           return;
@@ -207,18 +619,57 @@ export function ClientTemplateExportRunner({ festivalId, exports, onProgress }: 
 
         // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
         const blob = pdfContext.doc.output("blob");
+        if (blob.size > MAX_BLOB_BYTES) {
+          const mb = Math.round(blob.size / (1024 * 1024));
+          const message = `Export is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
+          console.error("[gr-debug][exports][runner][blob-too-large]", {
+            festivalId,
+            exportId: job.exportId,
+            bytes: blob.size,
+            max: MAX_BLOB_BYTES,
+          });
+          await failTemplateExportAction(festivalId, job.exportId, message);
+          pdfRef.current = null;
+          setJob(null);
+          busy.current = false;
+          invalidate();
+          return;
+        }
         const formData = new FormData();
         formData.append("file", blob, "export.pdf");
         formData.append("itemCount", String(job.payload.items.length));
-        
+
+        console.info("[gr-debug][exports][runner][finalize-sending]", {
+          festivalId,
+          exportId: job.exportId,
+          itemCount: job.payload.items.length,
+          bytes: blob.size,
+        });
         await finalizeTemplateExportAction(festivalId, job.exportId, formData);
-        
+        console.info("[gr-debug][exports][runner][finalize-ok]", {
+          festivalId,
+          exportId: job.exportId,
+        });
+
         pdfRef.current = null;
         setJob(null);
         busy.current = false;
         invalidate();
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled) {
+          console.warn("[gr-debug][exports][runner][cancelled-err]", {
+            festivalId,
+            exportId: job.exportId,
+            index: job.index,
+          });
+          return;
+        }
+        console.error("[gr-debug][exports][runner][item-failed]", {
+          festivalId,
+          exportId: job.exportId,
+          index: job.index,
+          error: err instanceof Error ? err.message : String(err),
+        });
         await failTemplateExportAction(
           festivalId,
           job.exportId,

@@ -1,5 +1,5 @@
 import type Konva from "konva";
-import QRCode from "qrcode";
+import QRCodeStyling from "qr-code-styling";
 import { useEffect, useState } from "react";
 import {
   Circle,
@@ -61,9 +61,8 @@ function ImageElement({
   if (!image) return null;
 
   return (
-    <KonvaImage
+    <Group
       id={el.id}
-      image={image}
       x={el.x}
       y={el.y}
       width={el.width}
@@ -83,7 +82,22 @@ function ImageElement({
         dragHandlers.onDragEnd(e);
         onBoundsChange?.();
       }}
-    />
+      clipFunc={
+        el.cornerRadius && el.width && el.height
+          ? (ctx) => {
+              ctx.beginPath();
+              ctx.roundRect(0, 0, el.width!, el.height!, el.cornerRadius!);
+              ctx.closePath();
+            }
+          : undefined
+      }
+    >
+      <KonvaImage
+        image={image}
+        width={el.width}
+        height={el.height}
+      />
+    </Group>
   );
 }
 
@@ -105,21 +119,60 @@ function QrCodeElement({
       return;
     }
 
-    // In preview mode, generate real QR code
-    // The text content should be evaluated (displayText)
     const textToEncode = displayText || "https://trizocommunity.com";
+    const qw = el.width ?? 160;
 
-    QRCode.toDataURL(textToEncode, {
-      margin: 1,
-      color: { dark: "#000000", light: "#ffffff" },
-    })
-      .then((url) => {
-        const img = new window.Image();
-        img.onload = () => setQrImage(img);
-        img.src = url;
-      })
-      .catch((err) => console.error("Failed to generate QR code", err));
-  }, [displayText, previewMode]);
+    const qrCode = new QRCodeStyling({
+      width: qw * 2, // render at 2x resolution
+      height: qw * 2,
+      data: textToEncode,
+      margin: 0,
+      qrOptions: { errorCorrectionLevel: "H" },
+      dotsOptions: {
+        color: el.fill ?? "#000000",
+        type: el.qrDotsStyle ?? "square",
+      },
+      backgroundOptions: {
+        color: "transparent",
+      },
+      cornersSquareOptions: {
+        color: el.stroke ?? el.fill ?? "#000000",
+        type: el.qrCornersStyle ?? "square",
+      },
+      cornersDotOptions: {
+        color: el.stroke ?? el.fill ?? "#000000",
+        type: el.qrCornersDotStyle ?? "square",
+      },
+      image: el.qrLogoUrl,
+      imageOptions: {
+        crossOrigin: "anonymous",
+        margin: 5,
+        imageSize: 0.4
+      },
+    });
+
+    qrCode.getRawData("png").then((buffer) => {
+      if (!buffer) return;
+      const blob = buffer instanceof Blob ? buffer : new Blob([buffer as BlobPart], { type: "image/png" });
+      const url = URL.createObjectURL(blob);
+      const img = new window.Image();
+      img.onload = () => {
+        setQrImage(img);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }).catch(console.error);
+  }, [
+    displayText,
+    previewMode,
+    el.width,
+    el.fill,
+    el.stroke,
+    el.qrDotsStyle,
+    el.qrCornersStyle,
+    el.qrCornersDotStyle,
+    el.qrLogoUrl
+  ]);
 
   const qw = el.width ?? 160;
   const qh = el.height ?? 160;

@@ -5,11 +5,11 @@ import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { CustomDomainProvider } from "@/components/providers/custom-domain-provider";
+import { getFestivalDurationDays } from "@/config/pricing";
+import { MS } from "@/core/datetime/constants";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
 import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
-import { getFestivalDurationDays } from "@/config/pricing";
-import { MS } from "@/core/datetime/constants";
 
 export async function generateMetadata({
   params,
@@ -111,7 +111,12 @@ export default async function FestivalLayout({
     description: festival.description || "",
     tagline: festival.tagline || "",
     startDate: festival.createdAt,
-    endDate: festival.expiresAt || new Date(new Date(festival.createdAt).getTime() + getFestivalDurationDays() * MS.day).toISOString(),
+    endDate:
+      festival.expiresAt ||
+      new Date(
+        new Date(festival.createdAt).getTime() +
+          getFestivalDurationDays() * MS.day,
+      ).toISOString(),
     location: festival.orgLocation || "",
     status: festival.status,
     logo: branding?.logo ?? null,
@@ -138,7 +143,10 @@ export default async function FestivalLayout({
     description: festivalData.description || festivalData.tagline,
     startDate: festivalData.startDate,
     endDate: festivalData.endDate,
-    eventStatus: festival.status === "EXPIRED" ? "https://schema.org/EventPostponed" : "https://schema.org/EventScheduled",
+    eventStatus:
+      festival.status === "EXPIRED"
+        ? "https://schema.org/EventPostponed"
+        : "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     offers: {
       "@type": "Offer",

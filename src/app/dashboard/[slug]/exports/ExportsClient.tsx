@@ -1,7 +1,7 @@
 "use client";
 
 import { FileDown, Plus } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useDeleteExport, useExports } from "@/api/client/exports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +22,16 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
   const deleteExport = useDeleteExport();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [exportProgress, setExportProgress] = useState<Record<string, { current: number; total: number }>>({});
+  const [exportProgress, setExportProgress] = useState<
+    Record<string, { current: number; total: number }>
+  >({});
+
+  const handleTemplateProgress = useCallback(
+    (id: string, current: number, total: number) => {
+      setExportProgress((prev) => ({ ...prev, [id]: { current, total } }));
+    },
+    [],
+  );
 
   const handleDelete = async () => {
     if (!confirmId) return;
@@ -112,9 +121,7 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
       <ClientTemplateExportRunner
         festivalId={festivalId}
         exports={exports ?? []}
-        onProgress={(id, current, total) => {
-          setExportProgress((prev) => ({ ...prev, [id]: { current, total } }));
-        }}
+        onProgress={handleTemplateProgress}
       />
     </div>
   );

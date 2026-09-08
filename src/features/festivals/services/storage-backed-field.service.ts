@@ -48,7 +48,7 @@ export const StorageBackedFieldService = {
       operation,
       tx,
     });
-    
+
     StorageBackedFieldService._cleanupRemovedUrls(remove);
     return result;
   },
@@ -59,11 +59,13 @@ export const StorageBackedFieldService = {
    */
   _cleanupRemovedUrls(remove: Array<string | null | undefined>) {
     if (!remove || remove.length === 0) return;
-    
+
     // We execute this in the background without blocking the response
     Promise.resolve().then(async () => {
       try {
-        const { deleteFile, extractPublicIdFromUrl } = await import("@/core/integrations/cloudinary");
+        const { deleteFile, extractPublicIdFromUrl } = await import(
+          "@/core/integrations/cloudinary"
+        );
         for (const url of remove) {
           if (!url) continue;
           const publicId = extractPublicIdFromUrl(url);

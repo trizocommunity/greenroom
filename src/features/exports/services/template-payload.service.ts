@@ -15,26 +15,27 @@ import type {
   BadgeConfig,
   CertificateConfig,
 } from "@/features/exports/schemas/export-config.schema";
+import {
+  autoMultiGrid,
+  type MultiGrid,
+  type TemplateExportItem,
+  type TemplateExportPayload,
+} from "@/features/exports/lib/multi-grid";
 import * as PosterTemplateRepo from "@/features/posters/repositories/poster-template.repository";
 import {
   buildCandidateCardBindings,
-  type PosterBindings,
 } from "@/features/posters/services/poster-bindings.service";
+import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 
-export interface TemplateExportItem {
-  bindings: PosterBindings;
-}
-
-export interface TemplateExportPayload {
-  doc: PosterEditorDocument;
-  width: number;
-  height: number;
-  quality: "SCREEN" | "STANDARD" | "PRINT";
-  printLayout: "ONE_PER_PAGE" | "MULTIPLE_PER_PAGE";
-  pageSize: "A3" | "A4" | "A5" | "LETTER" | "LEGAL";
-  pageOrientation: "PORTRAIT" | "LANDSCAPE";
-  items: TemplateExportItem[];
-}
+// Re-export shared symbols so server-only callers don't have to know about
+// the lib split. Client components should import from @/features/exports/lib/multi-grid.
+export {
+  autoMultiGrid,
+  parseMultiGrid,
+  type MultiGrid,
+  type TemplateExportItem,
+  type TemplateExportPayload,
+} from "@/features/exports/lib/multi-grid";
 
 async function loadTemplateDoc(
   festivalId: string,
@@ -72,6 +73,22 @@ export async function resolveBadgePayload(
   festivalName: string,
 ): Promise<TemplateExportPayload> {
   const doc = await loadTemplateDoc(festivalId, config.templateId);
+  console.info("[gr-debug][exports][payload][BADGE]", {
+    festivalId,
+    templateId: config.templateId,
+    docLoaded: !!doc,
+    docWidth: doc?.width,
+    docHeight: doc?.height,
+    filters: {
+      gender: config.gender,
+      onlyWithChestNumber: config.onlyWithChestNumber,
+      categories: config.categoryIds.length,
+      teams: config.teamIds.length,
+      quality: config.quality,
+      pageSize: config.pageSize,
+      orientation: config.pageOrientation,
+    },
+  });
 
   const conditions = [eq(participantTable.festivalId, festivalId)];
   if (config.gender !== "ALL")
@@ -98,6 +115,12 @@ export async function resolveBadgePayload(
     .innerJoin(categoryTable, eq(participantTable.categoryId, categoryTable.id))
     .where(and(...conditions));
 
+  console.info("[gr-debug][exports][payload][BADGE] rows fetched", {
+    festivalId,
+    templateId: config.templateId,
+    rawRows: rows.length,
+  });
+
   const items: TemplateExportItem[] = rows
     .filter((r) => (config.onlyWithChestNumber ? !!r.chestNumber : true))
     .map((r) => ({
@@ -119,6 +142,12 @@ export async function resolveBadgePayload(
     printLayout: config.printLayout,
     pageSize: config.pageSize,
     pageOrientation: config.pageOrientation,
+    multiGrid: config.multiGrid,
+    fit: config.fit,
+    marginMm: config.marginMm,
+    gutterMm: config.gutterMm,
+    bleedMm: config.bleedMm,
+    drawCropMarks: config.drawCropMarks,
     items,
   };
 }
@@ -129,6 +158,21 @@ export async function resolveCertificatePayload(
   festivalName: string,
 ): Promise<TemplateExportPayload> {
   const doc = await loadTemplateDoc(festivalId, config.templateId);
+  console.info("[gr-debug][exports][payload][CERTIFICATE]", {
+    festivalId,
+    templateId: config.templateId,
+    docLoaded: !!doc,
+    docWidth: doc?.width,
+    docHeight: doc?.height,
+    certificateTypes: config.certificateTypes,
+    filters: {
+      categories: config.categoryIds.length,
+      programmes: config.programmeIds.length,
+      quality: config.quality,
+      pageSize: config.pageSize,
+      orientation: config.pageOrientation,
+    },
+  });
   const items: TemplateExportItem[] = [];
   const types = new Set(config.certificateTypes);
 
@@ -258,9 +302,17 @@ export async function resolveCertificatePayload(
     width: doc.width,
     height: doc.height,
     quality: config.quality,
-    printLayout: config.printLayout,
+    printLayout: "ONE_PER_PAGE",
     pageSize: config.pageSize,
     pageOrientation: config.pageOrientation,
+    // Certificates only render ONE_PER_PAGE — multiGrid is unused but kept
+    // for payload-shape uniformity.
+    multiGrid: "AUTO",
+    fit: config.fit,
+    marginMm: config.marginMm,
+    gutterMm: config.gutterMm,
+    bleedMm: config.bleedMm,
+    drawCropMarks: config.drawCropMarks,
     items,
   };
 }
