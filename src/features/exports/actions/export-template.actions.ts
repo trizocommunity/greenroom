@@ -139,8 +139,12 @@ export async function finalizeTemplateExportAction(
       return { success: true, data: { id: exportId } };
     }
 
-const file = formData.get("file") as File;
+    const file = formData.get("file") as File;
     const itemCount = parseInt(formData.get("itemCount") as string, 10);
+    // `includeAi` is the bundle-as-zip flag, controlled by the user toggle
+    // on the badge/certificate filter. The DB `format` column is always
+    // "PDF" for template exports (since AI is shipped alongside, not instead).
+    const includeAi = (formData.get("includeAi") as string) === "true";
 
     if (!file) {
       throw new AppError("No file data received.");
@@ -149,6 +153,11 @@ const file = formData.get("file") as File;
     const arrayBuffer = await file.arrayBuffer();
     const bytes = Buffer.from(arrayBuffer);
     const fileBase64 = bytes.toString("base64");
+
+    const fileName = includeAi
+      ? `${row.type.toLowerCase()}.zip`
+      : `${row.type.toLowerCase()}.pdf`;
+    const mimeType = includeAi ? "application/zip" : "application/pdf";
 
     const queuedAtMs = Date.parse(row.queuedAt);
     const completedInMs = Number.isNaN(queuedAtMs)
@@ -159,6 +168,7 @@ const file = formData.get("file") as File;
       festivalId,
       exportId,
       type: row.type,
+      includeAi,
       itemCount,
       bytes: bytes.byteLength,
       completedInMs,
@@ -166,8 +176,8 @@ const file = formData.get("file") as File;
     await ExportRepo.completeExport({
       id: exportId,
       fileData: fileBase64,
-      fileName: `${row.type.toLowerCase()}.pdf`,
-      mimeType: "application/pdf",
+      fileName,
+      mimeType,
       fileSizeBytes: bytes.byteLength,
       itemCount,
       completedInMs,

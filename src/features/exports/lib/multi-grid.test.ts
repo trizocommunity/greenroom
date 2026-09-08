@@ -56,11 +56,35 @@ describe("multi-grid presets", () => {
     }
   });
 
-  it("has exactly 21 options for both portrait and landscape palettes", () => {
-    expect(PORTRAIT_GRID_OPTIONS).toHaveLength(21);
-    expect(LANDSCAPE_GRID_OPTIONS).toHaveLength(21);
+  it("has exactly 9 curated options for both portrait and landscape palettes", () => {
+    expect(PORTRAIT_GRID_OPTIONS).toHaveLength(9);
+    expect(LANDSCAPE_GRID_OPTIONS).toHaveLength(9);
     expect(PORTRAIT_GRID_OPTIONS[0].value).toBe("AUTO");
     expect(LANDSCAPE_GRID_OPTIONS[0].value).toBe("AUTO");
+  });
+
+  it("calculates auto grid considering template document aspect ratio", () => {
+    // Wide badge (1050x600, aspect 1.75) on Portrait A4 (595x842).
+    // 2x5 cells (≈ 289×165) hit the doc aspect almost exactly, so the
+    // badge fits each cell with virtually no wasted edge space.
+    expect(autoMultiGrid(595, 842, 1050, 600)).toEqual({ cols: 2, rows: 5 });
+
+    // Tall badge (600x1050, aspect 0.57) on Portrait A4 (595x842).
+    // 2x2 and 3x3 are both aspect 0.70; the smaller count wins the tie.
+    expect(autoMultiGrid(595, 842, 600, 1050)).toEqual({ cols: 2, rows: 2 });
+
+    // Wide badge (1050x600) on Landscape A4 (842x595). 2x2 and 3x3 are
+    // tied at aspect 1.43 (closest to the wide doc's 1.75); 2x2 wins.
+    expect(autoMultiGrid(842, 595, 1050, 600)).toEqual({ cols: 2, rows: 2 });
+
+    // Square doc (600x600) on Portrait A4 — the cell aspect closest to
+    // 1.0 is 2x3 (≈ 1.05). 3x4 (≈ 0.93) is the runner-up.
+    expect(autoMultiGrid(595, 842, 600, 600)).toEqual({ cols: 2, rows: 3 });
+
+    // Square doc on Landscape A4 — the cell aspect closest to 1.0 is
+    // 3x2 (≈ 0.95). 2x3 is not in the landscape palette; 4x3 (≈ 1.07)
+    // is the runner-up.
+    expect(autoMultiGrid(842, 595, 600, 600)).toEqual({ cols: 3, rows: 2 });
   });
 });
 

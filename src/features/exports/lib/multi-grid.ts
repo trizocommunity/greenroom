@@ -46,12 +46,61 @@ export function parseMultiGrid(
   return { cols: c, rows: r };
 }
 
+/** Convert millimetres to jsPDF "px" (≈ 1/72 inch). */
+function mmToPx(mm: number): number {
+  return (mm * 72) / 25.4;
+}
+
 /**
- * Orientation-aware default grid when the user picks "AUTO":
- *   landscape page → 4 × 2 = 8 per page
- *   square-ish     → 3 × 3 = 9 per page
- *   portrait A4    → 2 × 2 = 4 per page
- *   tall portrait  → 2 × 4 = 8 per page
+ * Tolerance for treating two log-aspect diffs as "the same" for tie-break
+ * purposes. Necessary because the cell-aspect ratio is a product of
+ * floating-point divisions, so two candidates that are mathematically
+ * equivalent (e.g. 2×2 vs 3×3 on a square page) can differ at the 16th
+ * decimal place.
+ */
+const ASPECT_TIE_EPSILON = 1e-9;
+
+/**
+ * Curated candidate grids for AUTO. The runner always renders through one
+ * of these pairs, so the heuristic only needs to pick from this set.
+ * Portrait page → portrait-leaning grids (cols ≤ rows) so cells stay tall.
+ * Landscape page → landscape-leaning grids (cols ≥ rows) so cells stay wide.
+ */
+const PORTRAIT_AUTO_CANDIDATES: ReadonlyArray<{ cols: number; rows: number }> =
+  [
+    { cols: 1, rows: 2 },
+    { cols: 2, rows: 2 },
+    { cols: 2, rows: 3 },
+    { cols: 2, rows: 4 },
+    { cols: 2, rows: 5 },
+    { cols: 3, rows: 3 },
+    { cols: 3, rows: 4 },
+    { cols: 3, rows: 5 },
+  ];
+
+const LANDSCAPE_AUTO_CANDIDATES: ReadonlyArray<{ cols: number; rows: number }> =
+  [
+    { cols: 2, rows: 1 },
+    { cols: 2, rows: 2 },
+    { cols: 3, rows: 2 },
+    { cols: 4, rows: 2 },
+    { cols: 5, rows: 2 },
+    { cols: 3, rows: 3 },
+    { cols: 4, rows: 3 },
+    { cols: 5, rows: 3 },
+  ];
+
+/**
+ * Orientation-aware default grid when the user picks "AUTO". When the
+ * template document size is known, the heuristic picks the candidate whose
+ * cell aspect most closely matches the doc's aspect so items don't get
+ * stretched or waste space in the cell. The diff metric is the absolute
+ * log-ratio of cellAspect to docAspect (multiplicative — same penalty for
+ * "half as wide" and "twice as wide"). Ties break to the lower cell count
+ * so each item still prints large enough to read.
+ *
+ * Without a doc size, falls back to a page-aspect heuristic that picks a
+ * reasonable density.
  */
 export function autoMultiGrid(
   pageW: number,
@@ -62,30 +111,47 @@ export function autoMultiGrid(
   cols: number;
   rows: number;
 } {
-  const pageAspect = pageW / pageH;
-  const isPageLandscape = pageAspect >= 1.0;
-
   if (docW && docH && docW > 0 && docH > 0) {
     const docAspect = docW / docH;
-    const isDocLandscape = docAspect >= 1.15;
+    const pageAspect = pageW / pageH;
+    const isPageLandscape = pageAspect >= 1.0;
+    const candidates = isPageLandscape
+      ? LANDSCAPE_AUTO_CANDIDATES
+      : PORTRAIT_AUTO_CANDIDATES;
 
-    if (isPageLandscape) {
-      // Wide sheet (e.g. A4 landscape, 13x19 landscape)
-      if (isDocLandscape) {
-        return pageAspect > 1.5 ? { cols: 4, rows: 2 } : { cols: 3, rows: 2 };
+    // Honour the 3mm sheet margin that the runner's MULTIPLE_PER_PAGE
+    // branch applies for AUTO. Gutter is intentionally omitted here — the
+    // choice of grid should not depend on the runtime `gutterMm`, and the
+    // pixel-level offset is the runner's job.
+    const marginPx = mmToPx(3);
+    const usableW = Math.max(1, pageW - 2 * marginPx);
+    const usableH = Math.max(1, pageH - 2 * marginPx);
+
+    let bestCols = candidates[0].cols;
+    let bestRows = candidates[0].rows;
+    let bestDiff = Number.POSITIVE_INFINITY;
+    let bestCount = Number.POSITIVE_INFINITY;
+    for (const c of candidates) {
+      const cellW = usableW / c.cols;
+      const cellH = usableH / c.rows;
+      const cellAspect = cellW / cellH;
+      const diff = Math.abs(Math.log(cellAspect / docAspect));
+      const count = c.cols * c.rows;
+      if (
+        diff < bestDiff - ASPECT_TIE_EPSILON ||
+        (Math.abs(diff - bestDiff) < ASPECT_TIE_EPSILON && count < bestCount)
+      ) {
+        bestDiff = diff;
+        bestCount = count;
+        bestCols = c.cols;
+        bestRows = c.rows;
       }
-      return { cols: 4, rows: 2 };
     }
-
-    // Portrait sheet (e.g. A4 portrait, 13x19 portrait)
-    if (isDocLandscape) {
-      // Wide template on portrait sheet: 2 columns × 4 rows provides wide cells
-      return pageAspect < 0.6 ? { cols: 2, rows: 5 } : { cols: 2, rows: 4 };
-    }
-    return pageAspect < 0.6 ? { cols: 2, rows: 3 } : { cols: 2, rows: 2 };
+    return { cols: bestCols, rows: bestRows };
   }
 
-  // Pure page-aspect fallback
+  // Pure page-aspect fallback (no doc info).
+  const pageAspect = pageW / pageH;
   if (pageAspect > 1.4) return { cols: 4, rows: 2 };
   if (pageAspect > 1.0) return { cols: 3, rows: 3 };
   if (pageAspect > 0.6) return { cols: 2, rows: 2 };
@@ -113,5 +179,12 @@ export interface TemplateExportPayload {
   gutterMm: number;
   bleedMm: number;
   drawCropMarks: boolean;
+  /**
+   * When `true`, the runner packages the printable PDF together with a
+   * same-content `.ai` (Adobe Illustrator) source inside a single `.zip`
+   * so the user can download both from one file. When `false`, the
+   * runner ships the PDF on its own.
+   */
+  includeAi: boolean;
   items: TemplateExportItem[];
 }

@@ -10,12 +10,16 @@ export function EditorActivePanel({
   onCollapsePanel,
   dbTemplates,
   onCreateTemplate,
+  festivalId,
+  onMediaChanged,
 }: {
   editor: PosterEditorState;
   variant?: "docked" | "drawer" | "floating";
   onCollapsePanel?: () => void;
   dbTemplates?: any[];
   onCreateTemplate?: (type: any, options?: any) => void;
+  festivalId?: string;
+  onMediaChanged?: () => void | Promise<void>;
 }) {
   if (editor.navPanel === "templates") {
     return (
@@ -33,6 +37,8 @@ export function EditorActivePanel({
       editor={editor}
       variant={variant}
       onCollapsePanel={onCollapsePanel}
+      festivalId={festivalId}
+      onMediaChanged={onMediaChanged}
     />
   );
 }

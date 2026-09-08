@@ -89,6 +89,11 @@ export function FestivalPosterEditor({
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
   const [festivalImages, setFestivalImages] = useState<{ id: string; url: string }[]>([]);
 
+  const refreshFestivalImages = useCallback(async () => {
+    const images = await getMediaImagesAction(festivalId);
+    setFestivalImages(images);
+  }, [festivalId]);
+
   useEffect(() => {
     startTransition(async () => {
       const [res, imagesRes] = await Promise.all([
@@ -363,6 +368,8 @@ export function FestivalPosterEditor({
           dbTemplates={dbTemplates}
           sidebarBrandHref={festivalTemplatesPath(festivalSlug)}
           sidebarBrandLabel={festivalName}
+          festivalId={festivalId}
+          onMediaChanged={refreshFestivalImages}
           resetTemplate={
             templateCode
               ? {

@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Download, Loader2, Trash2, XCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -70,29 +70,8 @@ export function ExportsTable({
   onDelete,
   deletingId,
 }: ExportsTableProps) {
-  // Auto-download a job once it transitions from PROCESSING to COMPLETED
-  // within this session (does not re-download pre-existing completed rows).
-  const seenProcessing = useRef<Set<string>>(new Set());
-  const autoDownloaded = useRef<Set<string>>(new Set());
-
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = 15;
-
-  useEffect(() => {
-    for (const e of exports) {
-      if (e.status === "PROCESSING") {
-        seenProcessing.current.add(e.id);
-      }
-      if (
-        e.status === "COMPLETED" &&
-        seenProcessing.current.has(e.id) &&
-        !autoDownloaded.current.has(e.id)
-      ) {
-        autoDownloaded.current.add(e.id);
-        triggerDownload(e.id, e.fileName);
-      }
-    }
-  }, [exports]);
 
   return (
     <>

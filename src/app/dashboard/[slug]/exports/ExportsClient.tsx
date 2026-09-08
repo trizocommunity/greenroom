@@ -57,8 +57,8 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
             Exports
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Files are processed in the background, auto-downloaded when ready,
-            and expire after 2 days.
+            Files are processed in the background and expire after 2 days.
+            Use the download button on a row to save the file.
           </p>
         </div>
         <Button onClick={() => setDrawerOpen(true)} className="shrink-0">

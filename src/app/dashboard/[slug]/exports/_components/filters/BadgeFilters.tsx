@@ -198,6 +198,13 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         />
       </FieldGrid>
 
+      <ToggleRow
+        label="Include editable illustration"
+        hint="Bundle the PDF with an editable .ai source inside a single .zip download."
+        checked={value.includeAi}
+        onChange={(v) => set({ includeAi: v })}
+      />
+
       <SegmentedControl
         label="Gender"
         value={value.gender}

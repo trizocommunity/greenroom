@@ -18,6 +18,7 @@ import {
   parseMultiGrid,
   type TemplateExportPayload,
 } from "@/features/exports/lib/multi-grid";
+import { buildZip } from "@/features/exports/lib/zip";
 import { isTemplateExport } from "@/features/exports/schemas/export-config.schema";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 
@@ -497,7 +498,11 @@ export function ClientTemplateExportRunner({
       }
       await preloadDocImages(res.data.doc);
       pdfRef.current = initPdf(res.data);
-      setJob({ exportId: next.id, payload: res.data, index: 0 });
+      setJob({
+        exportId: next.id,
+        payload: res.data,
+        index: 0,
+      });
       console.info("[gr-debug][exports][runner][start]", {
         festivalId,
         exportId: next.id,
@@ -508,6 +513,7 @@ export function ClientTemplateExportRunner({
         orientation: res.data.pageOrientation,
         layout: res.data.printLayout,
         quality: res.data.quality,
+        includeAi: res.data.includeAi,
         targetDpi: TARGET_DPI[res.data.quality],
         pageW: pdfRef.current.pageW,
         pageH: pdfRef.current.pageH,
@@ -604,19 +610,33 @@ export function ClientTemplateExportRunner({
           mimeType: "image/jpeg",
           quality: JPEG_QUALITY[qualityTier],
         });
-        // For FILL on ONE_PER_PAGE, cover-crop the source before placing so
+        // For FILL, cover-crop the source before placing so
         // jsPDF never has to upscale or distort. Konva 7/8 don't expose a
         // crop rect on toDataURL here, so we paint through an OffscreenCanvas.
-        if (
-          job.payload.printLayout === "ONE_PER_PAGE" &&
-          job.payload.fit === "FILL"
-        ) {
+        if (job.payload.fit === "FILL") {
+          let targetW = pdfContext.pageW;
+          let targetH = pdfContext.pageH;
+          if (job.payload.printLayout === "MULTIPLE_PER_PAGE") {
+            const { cols, rows } = resolveMultiGrid(
+              job.payload.multiGrid,
+              pdfContext.pageW,
+              pdfContext.pageH,
+              job.payload.width,
+              job.payload.height,
+            );
+            const margin = mmToPx(job.payload.marginMm);
+            const gutter = mmToPx(job.payload.gutterMm);
+            targetW =
+              (pdfContext.pageW - 2 * margin - (cols - 1) * gutter) / cols;
+            targetH =
+              (pdfContext.pageH - 2 * margin - (rows - 1) * gutter) / rows;
+          }
           const s = Math.max(
-            pdfContext.pageW / job.payload.width,
-            pdfContext.pageH / job.payload.height,
+            targetW / job.payload.width,
+            targetH / job.payload.height,
           );
-          const srcCropW = pdfContext.pageW / s;
-          const srcCropH = pdfContext.pageH / s;
+          const srcCropW = targetW / s;
+          const srcCropH = targetH / s;
           const cropped = await cropViaCanvas(
             dataUrl,
             pixelRatio,
@@ -664,14 +684,14 @@ export function ClientTemplateExportRunner({
         }
 
         // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
-        const blob = pdfContext.doc.output("blob");
-        if (blob.size > MAX_BLOB_BYTES) {
-          const mb = Math.round(blob.size / (1024 * 1024));
+        const pdfBlob = pdfContext.doc.output("blob");
+        if (pdfBlob.size > MAX_BLOB_BYTES) {
+          const mb = Math.round(pdfBlob.size / (1024 * 1024));
           const message = `Export is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
           console.error("[gr-debug][exports][runner][blob-too-large]", {
             festivalId,
             exportId: job.exportId,
-            bytes: blob.size,
+            bytes: pdfBlob.size,
             max: MAX_BLOB_BYTES,
           });
           await failTemplateExportAction(festivalId, job.exportId, message);
@@ -681,15 +701,72 @@ export function ClientTemplateExportRunner({
           invalidate();
           return;
         }
+        const pdfBytes: Uint8Array<ArrayBuffer> = new Uint8Array(
+          await pdfBlob.arrayBuffer(),
+        );
+        // The .ai (Adobe Illustrator) bundle pairs the printable PDF with
+        // a same-content `.ai` file. Modern Illustrator (CC 2017+) opens
+        // PDF-compatible files, so the user can edit the template source
+        // and re-save as a native .ai if needed. We bundle both into a
+        // single .zip so the user gets one download. The toggle is on
+        // the export config (`includeAi`); the format is always PDF.
+        const includeAi = job.payload.includeAi;
+        const baseName = job.payload.doc.templateName ?? "export";
+        const safeBase = baseName
+          .toLowerCase()
+          .normalize("NFKD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 48) || "export";
+        const pdfName = `${safeBase}.pdf`;
+        const aiName = `${safeBase}.ai`;
+        let uploadBytes: Uint8Array<ArrayBuffer>;
+        let uploadName: string;
+        let uploadMime: string;
+        if (includeAi) {
+          const zipBytes = buildZip([
+            { name: pdfName, data: pdfBytes },
+            { name: aiName, data: pdfBytes },
+          ]);
+          if (zipBytes.byteLength > MAX_BLOB_BYTES) {
+            const mb = Math.round(zipBytes.byteLength / (1024 * 1024));
+            const message = `Export bundle is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
+            console.error("[gr-debug][exports][runner][zip-too-large]", {
+              festivalId,
+              exportId: job.exportId,
+              bytes: zipBytes.byteLength,
+              max: MAX_BLOB_BYTES,
+            });
+            await failTemplateExportAction(festivalId, job.exportId, message);
+            pdfRef.current = null;
+            setJob(null);
+            busy.current = false;
+            invalidate();
+            return;
+          }
+          uploadBytes = zipBytes;
+          uploadName = `${safeBase}.zip`;
+          uploadMime = "application/zip";
+        } else {
+          uploadBytes = pdfBytes;
+          uploadName = `${safeBase}.pdf`;
+          uploadMime = "application/pdf";
+        }
+        const uploadBlob = new Blob([uploadBytes], { type: uploadMime });
         const formData = new FormData();
-        formData.append("file", blob, "export.pdf");
+        formData.append("file", uploadBlob, uploadName);
         formData.append("itemCount", String(job.payload.items.length));
+        formData.append("includeAi", includeAi ? "true" : "false");
 
         console.info("[gr-debug][exports][runner][finalize-sending]", {
           festivalId,
           exportId: job.exportId,
           itemCount: job.payload.items.length,
-          bytes: blob.size,
+          bytes: uploadBytes.byteLength,
+          includeAi,
+          fileName: uploadName,
+          mime: uploadMime,
         });
         await finalizeTemplateExportAction(festivalId, job.exportId, formData);
         console.info("[gr-debug][exports][runner][finalize-ok]", {

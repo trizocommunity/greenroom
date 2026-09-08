@@ -156,6 +156,12 @@ export const badgeConfig = z.object({
   bleedMm: z.number().min(0).max(6).default(0),
   drawCropMarks: z.boolean().default(false),
   onlyWithChestNumber: z.boolean().default(true),
+  /**
+   * Bundle the printable PDF with an editable `.ai` (Adobe Illustrator)
+   * source inside a single `.zip`. When `false`, the export ships as a
+   * standalone PDF (no zip wrapper).
+   */
+  includeAi: z.boolean().default(false),
   categoryIds: idList,
   teamIds: idList,
 });
@@ -184,6 +190,12 @@ export const certificateConfig = z.object({
       ]),
     )
     .default(["PARTICIPATION"]),
+  /**
+   * Bundle the printable PDF with an editable `.ai` (Adobe Illustrator)
+   * source inside a single `.zip`. When `false`, the export ships as a
+   * standalone PDF (no zip wrapper).
+   */
+  includeAi: z.boolean().default(false),
   categoryIds: idList,
   programmeIds: idList,
 });

@@ -82,6 +82,8 @@ export default function PosterEditorPlayground({
   onRenameTemplate,
   uploadImage,
   festivalImages,
+  festivalId,
+  onMediaChanged,
 }: {
   initialDocument?: PosterEditorDocument | null;
   initialTabLabel?: string;
@@ -102,6 +104,8 @@ export default function PosterEditorPlayground({
   onRenameTemplate?: (newLabel: string, doc?: PosterEditorDocument) => void;
   uploadImage?: (file: File) => Promise<string>;
   festivalImages?: { id: string; url: string }[];
+  festivalId?: string;
+  onMediaChanged?: () => void | Promise<void>;
 } = {}) {
   const editor = usePosterEditorState({
     previewBindings,
@@ -339,6 +343,8 @@ export default function PosterEditorPlayground({
             brandLabel={sidebarBrandLabel}
             dbTemplates={dbTemplates}
             onCreateTemplate={onCreateTemplate}
+            festivalId={festivalId}
+            onMediaChanged={onMediaChanged}
           />
         )}
 

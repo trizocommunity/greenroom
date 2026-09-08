@@ -17,6 +17,8 @@ export function EditorSidebar({
   brandLabel,
   dbTemplates,
   onCreateTemplate,
+  festivalId,
+  onMediaChanged,
 }: {
   editor: PosterEditorState;
   panelOpen: boolean;
@@ -26,6 +28,8 @@ export function EditorSidebar({
   brandLabel?: string;
   dbTemplates?: any[];
   onCreateTemplate?: (type: any, options?: any) => void;
+  festivalId?: string;
+  onMediaChanged?: () => void | Promise<void>;
 }) {
   const { navPanel, setNavPanel } = editor;
 
@@ -89,6 +93,8 @@ export function EditorSidebar({
               onCollapsePanel={() => onPanelOpenChange(false)}
               dbTemplates={dbTemplates}
               onCreateTemplate={onCreateTemplate}
+              festivalId={festivalId}
+              onMediaChanged={onMediaChanged}
             />
           )}
         </div>

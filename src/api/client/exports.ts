@@ -94,7 +94,7 @@ export function useExportBlob({
   enabled,
 }: {
   exportId: string | null;
-  format: "PDF" | "CSV";
+  format: "PDF" | "CSV" | "AI";
   enabled: boolean;
 }) {
   return useQuery<Blob | null>({

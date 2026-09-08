@@ -155,7 +155,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-outfit), sans-serif;
+  font-family: var(--font-outfit), var(--font-malayalam), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

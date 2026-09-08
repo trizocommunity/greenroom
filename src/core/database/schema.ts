@@ -149,7 +149,7 @@ export const exportType = pgEnum("ExportType", [
   "CERTIFICATE",
   "SCHEDULE",
 ]);
-export const exportFormat = pgEnum("ExportFormat", ["PDF", "CSV"]);
+export const exportFormat = pgEnum("ExportFormat", ["PDF", "CSV", "AI"]);
 export const exportStatus = pgEnum("ExportStatus", [
   "PROCESSING",
   "COMPLETED",

@@ -11,7 +11,7 @@ export type ExportType =
   | "CERTIFICATE"
   | "SCHEDULE";
 
-export type ExportFormat = "PDF" | "CSV";
+export type ExportFormat = "PDF" | "CSV" | "AI";
 export type ExportStatus = "PROCESSING" | "COMPLETED" | "FAILED";
 
 export type FestivalExportRow = InferSelectModel<typeof festivalExport>;
