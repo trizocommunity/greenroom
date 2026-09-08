@@ -210,7 +210,9 @@ export async function deleteFile(
   // 1. Fetch asset details to get the size in bytes
   let bytes = 0;
   try {
-    const auth = Buffer.from(`${cfg.apiKey}:${cfg.apiSecret}`).toString("base64");
+    const auth = Buffer.from(`${cfg.apiKey}:${cfg.apiSecret}`).toString(
+      "base64",
+    );
     // The Admin API endpoint for getting resource details:
     // GET /resources/image/upload/:public_id
     // But public_id might contain slashes (like folders), so we encode it? No, in Cloudinary it's just path.
@@ -224,7 +226,7 @@ export async function deleteFile(
         headers: {
           Authorization: `Basic ${auth}`,
         },
-      }
+      },
     );
 
     if (detailsRes.ok) {
@@ -236,7 +238,10 @@ export async function deleteFile(
       }
     }
   } catch (e) {
-    console.error("Failed to fetch Cloudinary resource details before delete:", e);
+    console.error(
+      "Failed to fetch Cloudinary resource details before delete:",
+      e,
+    );
     // Continue with delete even if we can't get the bytes
   }
 
@@ -257,7 +262,7 @@ export async function deleteFile(
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/destroy`,
-    { method: "POST", body: formData }
+    { method: "POST", body: formData },
   );
 
   if (!res.ok) {
@@ -277,18 +282,18 @@ export function extractPublicIdFromUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
     if (!parsed.hostname.includes("cloudinary.com")) return null;
-    
+
     const parts = parsed.pathname.split("/");
     const uploadIndex = parts.indexOf("upload");
     if (uploadIndex === -1) return null;
-    
+
     let publicIdParts = parts.slice(uploadIndex + 1);
-    
+
     // Remove version tag if present
     if (publicIdParts[0]?.match(/^v\d+$/)) {
       publicIdParts = publicIdParts.slice(1);
     }
-    
+
     const fullPath = publicIdParts.join("/");
     const dotIndex = fullPath.lastIndexOf(".");
     if (dotIndex !== -1) {

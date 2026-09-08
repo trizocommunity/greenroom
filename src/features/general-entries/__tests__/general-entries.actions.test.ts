@@ -46,12 +46,9 @@ vi.mock("../services/general-entries.service", () => ({
   setGeneralEntryPublished: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock(
-  "@/features/announcement/services/team-standings.read-model",
-  () => ({
-    syncFestivalStandingsWithGeneralEntries: vi.fn().mockResolvedValue(undefined),
-  }),
-);
+vi.mock("@/features/announcement/services/team-standings.read-model", () => ({
+  syncFestivalStandingsWithGeneralEntries: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe("general-entries.actions", () => {
   beforeEach(() => {

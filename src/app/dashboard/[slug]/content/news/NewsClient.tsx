@@ -114,10 +114,13 @@ export function NewsClient({
 
   const handleOpenChange = (open: boolean) => {
     if (!open && !saving) {
-      const originalImageUrl = editingId 
-        ? posts.find(p => p.id === editingId)?.imageUrl || ""
+      const originalImageUrl = editingId
+        ? posts.find((p) => p.id === editingId)?.imageUrl || ""
         : "";
-      if (form.imageUrl !== originalImageUrl && form.imageUrl.includes("cloudinary.com")) {
+      if (
+        form.imageUrl !== originalImageUrl &&
+        form.imageUrl.includes("cloudinary.com")
+      ) {
         deleteFileMutation.mutate({ url: form.imageUrl, festivalId });
       }
     }

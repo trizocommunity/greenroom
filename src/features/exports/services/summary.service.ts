@@ -94,17 +94,25 @@ export function buildExportSummary(config: ExportConfig): ExportSummary {
       if (config.programmeIds.length)
         badges.push(`${config.programmeIds.length} competitions`);
       break;
-    case "BADGE":
+    case "BADGE": {
       summary = "Participant badges";
       badges.push(`Gender: ${genderLabel(config.gender)}`);
       badges.push(`Quality: ${config.quality.toLowerCase()}`);
+      badges.push(
+        config.printLayout === "ONE_PER_PAGE"
+          ? `Layout: one-per-page · ${config.fit.toLowerCase()}`
+          : `Layout: multi-up · ${config.marginMm}mm mar · ${config.gutterMm}mm gut`,
+      );
       if (config.teamIds.length) badges.push(`${config.teamIds.length} teams`);
       break;
-    case "CERTIFICATE":
+    }
+    case "CERTIFICATE": {
       summary = "Certificates";
       badges.push(`Quality: ${config.quality.toLowerCase()}`);
+      badges.push(`Fit: ${config.fit.toLowerCase()} · ${config.marginMm}mm margin`);
       badges.push(`${config.certificateTypes.length} types`);
       break;
+    }
     case "SCHEDULE": {
       summary = "Schedule";
       const selected = config.days.length;

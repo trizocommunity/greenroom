@@ -57,8 +57,19 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pg", "ioredis"],
   experimental: {
     serverActions: {
-      bodySizeLimit: "100mb",
+      bodySizeLimit: "250mb",
     },
+    // Template exports (Badge / Certificate) push a single multipart upload
+    // containing the rendered PDF back to a server action. Without raising
+    // this above 10 MB, Next.js truncates the body at the middleware clone
+    // and the route handler sees a partial multipart form — surfaced in the
+    // server log as "Unexpected end of form" and on the client as a
+    // permanently PROCESSING row that flips to FAILED.
+    //
+    // 250 MB covers ~200 items at PRINT (300 DPI) on A3 landscape; well
+    // below the 1.5 GB Vercel function memory limit so it doesn't risk OOM
+    // on a single concurrent export.
+    proxyClientMaxBodySize: "250mb",
   },
 };
 

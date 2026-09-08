@@ -91,10 +91,7 @@ export function ProgrammeStatusBadge({
   if (variant === "participant") {
     const { label, style } = getParticipantStatus(status);
     return (
-      <Badge
-        variant="outline"
-        className={cn("rounded-full", style, className)}
-      >
+      <Badge variant="outline" className={cn("rounded-full", style, className)}>
         {label}
       </Badge>
     );

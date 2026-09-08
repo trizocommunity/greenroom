@@ -9,7 +9,38 @@ export const listOrientation = z.enum(["PROGRAMME_WISE", "TEAM_WISE"]);
 export const exportQuality = z.enum(["SCREEN", "STANDARD", "PRINT"]);
 export const printLayout = z.enum(["ONE_PER_PAGE", "MULTIPLE_PER_PAGE"]);
 export const pageSize = z.enum(["A3", "A4", "A5", "LETTER", "LEGAL"]);
+export const badgePageSize = z.enum(["A3", "A4"]);
+export const certificatePageSize = z.enum(["A3", "A4"]);
 export const pageOrientation = z.enum(["PORTRAIT", "LANDSCAPE"]);
+export const exportFit = z.enum(["FIT", "FILL"]);
+/**
+ * Multi-per-page grid preset. "AUTO" picks a layout from page orientation
+ * (portrait → 2×2 = 4 per page; landscape → 4×2 = 8 per page). Anything else
+ * uses the explicit "COLSxROWS" pair as cols × rows on the page.
+ */
+export const multiGrid = z.enum([
+  "AUTO",
+  "1x2",
+  "1x3",
+  "1x4",
+  "1x5",
+  "1x6",
+  "2x2",
+  "2x3",
+  "2x4",
+  "2x5",
+  "2x6",
+  "3x2",
+  "3x3",
+  "3x4",
+  "3x5",
+  "3x6",
+  "4x2",
+  "4x3",
+  "4x4",
+  "4x5",
+  "4x6",
+]);
 export const judgeGrouping = z.enum(["JUDGE_WISE", "PROGRAMME_WISE"]);
 
 export const programmeTypeFilter = z.enum(["ALL", "INDIVIDUAL", "GROUP"]);
@@ -100,8 +131,21 @@ export const badgeConfig = z.object({
   gender: genderFilter.default("ALL"),
   quality: exportQuality.default("STANDARD"),
   printLayout: printLayout.default("MULTIPLE_PER_PAGE"),
-  pageSize: pageSize.default("A4"),
+  pageSize: badgePageSize
+    .default("A4")
+    .catch("A4" as const),
   pageOrientation: pageOrientation.default("PORTRAIT"),
+  /**
+   * Multi-per-page grid. Only meaningful when `printLayout === "MULTIPLE_PER_PAGE"`.
+   * "AUTO" = orientation-driven default (4 in portrait, 8 in landscape).
+   * Other values are explicit "COLSxROWS" — e.g. "2x4" means 2 columns × 4 rows.
+   */
+  multiGrid: multiGrid.default("AUTO"),
+  fit: exportFit.default("FIT"),
+  marginMm: z.number().min(0).max(20).default(3),
+  gutterMm: z.number().min(0).max(20).default(3),
+  bleedMm: z.number().min(0).max(6).default(0),
+  drawCropMarks: z.boolean().default(false),
   onlyWithChestNumber: z.boolean().default(true),
   categoryIds: idList,
   teamIds: idList,
@@ -112,8 +156,15 @@ export const certificateConfig = z.object({
   templateId: z.string().min(1),
   quality: exportQuality.default("STANDARD"),
   printLayout: printLayout.default("ONE_PER_PAGE"),
-  pageSize: pageSize.default("A4"),
+  pageSize: certificatePageSize
+    .default("A4")
+    .catch("A4" as const),
   pageOrientation: pageOrientation.default("PORTRAIT"),
+  fit: exportFit.default("FIT"),
+  marginMm: z.number().min(0).max(20).default(3),
+  gutterMm: z.number().min(0).max(20).default(3),
+  bleedMm: z.number().min(0).max(6).default(0),
+  drawCropMarks: z.boolean().default(false),
   certificateTypes: z
     .array(
       z.enum([

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import { sanitizeDocumentForSave } from "@/components/editor/editor-utils";
+import type { PosterEditorDocument } from "@/components/editor/poster-editor-types";
 import { writeLocalEditorBackup } from "@/components/festival/posters/festival-editor-local-backup";
 
 export type AutosaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -51,8 +51,7 @@ export function usePosterEditorAutosave({
       // is still in flight (hasPendingUploads) and this is a debounce-
       // triggered save, skip — the Cloudinary callback will flip isDirty
       // again and re-schedule a save with the permanent URL.
-      const { doc: safeDoc, hasPendingUploads } =
-        sanitizeDocumentForSave(doc);
+      const { doc: safeDoc, hasPendingUploads } = sanitizeDocumentForSave(doc);
 
       if (hasPendingUploads && reason === "debounce") {
         // Re-schedule so we don't silently lose the save entirely.
@@ -100,7 +99,15 @@ export function usePosterEditorAutosave({
         }
       }
     },
-    [enabled, festivalId, templateCode, getDocument, onSaved, saveDraft, debounceMs],
+    [
+      enabled,
+      festivalId,
+      templateCode,
+      getDocument,
+      onSaved,
+      saveDraft,
+      debounceMs,
+    ],
   );
 
   const schedule = useCallback(

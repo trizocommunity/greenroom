@@ -14,9 +14,9 @@ vi.mock("@/features/notifications/services/notification.service", () => ({
 
 vi.mock("./code-letter-adapter.service", () => ({
   CodeLetterAdapter: {
-    listRevealedCodes: vi.fn().mockResolvedValue([
-      { participantId: "part-1", code: "A" },
-    ]),
+    listRevealedCodes: vi
+      .fn()
+      .mockResolvedValue([{ participantId: "part-1", code: "A" }]),
     onReportingReset: vi.fn().mockResolvedValue(undefined),
     onReportingReopened: vi.fn().mockResolvedValue(undefined),
     onCheckoutCompleted: vi.fn().mockResolvedValue(undefined),

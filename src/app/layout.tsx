@@ -1,11 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import {
-  Instrument_Serif,
-  Anek_Malayalam,
-  Outfit,
-} from "next/font/google";
+import { Anek_Malayalam, Instrument_Serif, Outfit } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
 import { GlobalErrorRegion } from "@/components/errors";
 import QueryProvider from "@/components/providers/QueryProvider";

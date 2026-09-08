@@ -70,7 +70,9 @@ const AlertDialogContent = React.forwardRef<
         ref={(node) => {
           contentRef.current = node;
           if (typeof ref === "function") ref(node);
-          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          else if (ref)
+            (ref as React.MutableRefObject<HTMLDivElement | null>).current =
+              node;
         }}
         className={cn(isMobile ? mobileStyles : desktopStyles, className)}
         onOpenAutoFocus={(event) => {

@@ -37,10 +37,7 @@ export async function ensureOffStageStage(
   const existing = await tx.query.stage.findFirst({
     where: and(
       eq(stageTable.festivalId, festivalId),
-      or(
-        eq(stageTable.isOffStage, true),
-        eq(stageTable.name, OFF_STAGE_NAME),
-      ),
+      or(eq(stageTable.isOffStage, true), eq(stageTable.name, OFF_STAGE_NAME)),
     ),
     columns: { id: true, festivalId: true, name: true, isOffStage: true },
   });
@@ -106,10 +103,7 @@ export async function getOffStageStage(
   const row = await tx.query.stage.findFirst({
     where: and(
       eq(stageTable.festivalId, festivalId),
-      or(
-        eq(stageTable.isOffStage, true),
-        eq(stageTable.name, OFF_STAGE_NAME),
-      ),
+      or(eq(stageTable.isOffStage, true), eq(stageTable.name, OFF_STAGE_NAME)),
     ),
     columns: { id: true, festivalId: true, name: true, isOffStage: true },
   });

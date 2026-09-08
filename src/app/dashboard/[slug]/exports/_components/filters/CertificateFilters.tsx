@@ -5,13 +5,16 @@ import { useExportTemplates } from "@/api/client/exports";
 import { useProgrammes } from "@/api/client/programmes";
 import type { CertificateConfig } from "@/features/exports/schemas/export-config.schema";
 import {
+  CERTIFICATE_PAGE_SIZE_OPTIONS,
   CheckList,
+  FieldGrid,
+  FIT_OPTIONS,
+  NumberInput,
   PAGE_ORIENTATION_OPTIONS,
-  PAGE_SIZE_OPTIONS,
-  PRINT_LAYOUT_OPTIONS,
   QUALITY_OPTIONS,
   SegmentedControl,
   TemplatePicker,
+  ToggleRow,
   toggleId,
 } from "./controls";
 
@@ -46,37 +49,71 @@ export function CertificateFilters({ festivalId, value, onChange }: Props) {
   );
 
   return (
-    <div className="space-y-5 rounded-lg border p-4">
+    <div className="space-y-3 rounded-lg border p-4">
       <TemplatePicker
         label="Template"
         options={templates ?? []}
         selectedId={value.templateId}
         onSelect={(id) => set({ templateId: id })}
       />
-      <SegmentedControl
-        label="Export Quality"
-        value={value.quality}
-        onChange={(v) => set({ quality: v })}
-        options={QUALITY_OPTIONS}
+
+      <FieldGrid cols={2}>
+        <SegmentedControl
+          label="Export Quality"
+          value={value.quality}
+          onChange={(v) => set({ quality: v })}
+          options={QUALITY_OPTIONS}
+        />
+        {/* Certificates always render ONE_PER_PAGE — no layout picker. */}
+        <div /> {/* spacer to preserve 2-col grid */}
+      </FieldGrid>
+
+      <FieldGrid cols={2}>
+        <SegmentedControl
+          label="Page Size"
+          value={value.pageSize}
+          onChange={(v) => set({ pageSize: v })}
+          options={CERTIFICATE_PAGE_SIZE_OPTIONS}
+        />
+        <SegmentedControl
+          label="Orientation"
+          value={value.pageOrientation}
+          onChange={(v) => set({ pageOrientation: v })}
+          options={PAGE_ORIENTATION_OPTIONS}
+        />
+      </FieldGrid>
+
+      <FieldGrid cols={3}>
+        <SegmentedControl
+          label="Fit"
+          value={value.fit}
+          onChange={(v) => set({ fit: v })}
+          options={FIT_OPTIONS}
+        />
+        <NumberInput
+          label="Margin"
+          hint="mm"
+          value={value.marginMm}
+          min={0}
+          max={20}
+          onChange={(v) => set({ marginMm: v })}
+        />
+        <NumberInput
+          label="Bleed"
+          hint="mm"
+          value={value.bleedMm}
+          min={0}
+          max={6}
+          onChange={(v) => set({ bleedMm: v })}
+        />
+      </FieldGrid>
+
+      <ToggleRow
+        label="Crop marks"
+        checked={value.drawCropMarks}
+        onChange={(v) => set({ drawCropMarks: v })}
       />
-      <SegmentedControl
-        label="Print Layout"
-        value={value.printLayout}
-        onChange={(v) => set({ printLayout: v })}
-        options={PRINT_LAYOUT_OPTIONS}
-      />
-      <SegmentedControl
-        label="Page Size"
-        value={value.pageSize}
-        onChange={(v) => set({ pageSize: v })}
-        options={PAGE_SIZE_OPTIONS}
-      />
-      <SegmentedControl
-        label="Orientation"
-        value={value.pageOrientation}
-        onChange={(v) => set({ pageOrientation: v })}
-        options={PAGE_ORIENTATION_OPTIONS}
-      />
+
       <CheckList
         label="Certificate Types"
         options={CERT_TYPE_OPTIONS}
@@ -91,24 +128,27 @@ export function CertificateFilters({ festivalId, value, onChange }: Props) {
           })
         }
       />
-      <CheckList
-        label="Categories"
-        hint="Leave empty to include all"
-        options={singleCategories}
-        selected={value.categoryIds}
-        onToggle={(id, v) =>
-          set({ categoryIds: toggleId(value.categoryIds, id, v) })
-        }
-      />
-      <CheckList
-        label="Programmes"
-        hint="Leave empty to include all"
-        options={programmes ?? []}
-        selected={value.programmeIds}
-        onToggle={(id, v) =>
-          set({ programmeIds: toggleId(value.programmeIds, id, v) })
-        }
-      />
+
+      <FieldGrid cols={2}>
+        <CheckList
+          label="Categories"
+          hint="Empty = all"
+          options={singleCategories}
+          selected={value.categoryIds}
+          onToggle={(id, v) =>
+            set({ categoryIds: toggleId(value.categoryIds, id, v) })
+          }
+        />
+        <CheckList
+          label="Programmes"
+          hint="Empty = all"
+          options={programmes ?? []}
+          selected={value.programmeIds}
+          onToggle={(id, v) =>
+            set({ programmeIds: toggleId(value.programmeIds, id, v) })
+          }
+        />
+      </FieldGrid>
     </div>
   );
 }
