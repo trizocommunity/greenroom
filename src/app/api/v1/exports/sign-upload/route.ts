@@ -1,11 +1,11 @@
 import "server-only";
-import crypto from "crypto";
 import { eq } from "drizzle-orm";
 import { badRequest, createProtectedHandler, ok } from "@/api/lib";
 import { assertFestivalAccess } from "@/core/auth/assert-festival-access";
 import { db } from "@/core/database/client";
 import { festivalExport } from "@/core/database/schema";
 import { serverNowMs } from "@/core/datetime/server";
+import { signCloudinaryUpload } from "./sign-cloudinary-upload";
 
 interface SignUploadInput {
   exportId: string;
@@ -73,33 +73,16 @@ const handler = createProtectedHandler({
       return badRequest("CONFIG_ERROR", "Upload service is not configured.");
     }
 
-    const publicId = exportId;
-    const timestamp = Math.round(serverNowMs() / 1000);
-
-    const params: Record<string, string> = {
-      folder: FOLDER,
-      public_id: publicId,
-      timestamp: String(timestamp),
-    };
-
-    const sorted = Object.keys(params)
-      .sort()
-      .map((k) => `${k}=${params[k]}`)
-      .join("&");
-    const signature = crypto
-      .createHash("sha1")
-      .update(`${sorted}${apiSecret}`)
-      .digest("hex");
-
-    return ok({
-      cloudName,
-      apiKey,
-      timestamp,
-      signature,
-      folder: FOLDER,
-      publicId,
-      uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
-    });
+    return ok(
+      signCloudinaryUpload({
+        cloudName,
+        apiKey,
+        apiSecret,
+        folder: FOLDER,
+        publicId: exportId,
+        timestamp: Math.round(serverNowMs() / 1000),
+      }),
+    );
   },
 });
 

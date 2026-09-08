@@ -184,7 +184,9 @@ export function EditorPropertiesPanel({
                   label="Leading"
                   value={finiteNumber(selectedElement.lineHeight, 1.2)}
                   onChange={(v) =>
-                    updateElement(selectedElement.id, { lineHeight: Math.max(0.1, v) })
+                    updateElement(selectedElement.id, {
+                      lineHeight: Math.max(0.1, v),
+                    })
                   }
                   min={0.8}
                   max={3}
@@ -578,7 +580,9 @@ export function EditorPropertiesPanel({
               onChange={(e) => {
                 const v = Number(e.target.value);
                 if (Number.isFinite(v))
-                  updateElement(selectedElement.id, { lineHeight: Math.max(0.1, v) });
+                  updateElement(selectedElement.id, {
+                    lineHeight: Math.max(0.1, v),
+                  });
               }}
             />
           </div>

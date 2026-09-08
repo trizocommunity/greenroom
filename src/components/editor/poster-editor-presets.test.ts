@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { resolveFestAdminFieldValue } from "./poster-editor-config";
 import {
   calculateAspectRatioDimensions,
   createPresetDocument,
 } from "./poster-editor-presets";
-import { resolveFestAdminFieldValue } from "./poster-editor-config";
 
 describe("poster-editor-presets", () => {
   describe("resolveFestAdminFieldValue", () => {

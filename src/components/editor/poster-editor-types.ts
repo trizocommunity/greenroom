@@ -42,9 +42,15 @@ export interface EditorElement {
   locked?: boolean;
   imageUrl?: string;
   zIndex: number;
-  
+
   // QR Code modern styling
-  qrDotsStyle?: "square" | "dots" | "rounded" | "extra-rounded" | "classy" | "classy-rounded";
+  qrDotsStyle?:
+    | "square"
+    | "dots"
+    | "rounded"
+    | "extra-rounded"
+    | "classy"
+    | "classy-rounded";
   qrCornersStyle?: "square" | "dot" | "extra-rounded";
   qrCornersDotStyle?: "square" | "dot";
   qrLogoUrl?: string;

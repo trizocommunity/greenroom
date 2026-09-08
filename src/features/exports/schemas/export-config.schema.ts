@@ -47,10 +47,13 @@ export const multiGrid = z.enum([
   "5x2",
   "5x3",
   "5x4",
+  "5x5",
+  "5x6",
   "6x1",
   "6x2",
   "6x3",
   "6x4",
+  "6x5",
 ]);
 export const judgeGrouping = z.enum(["JUDGE_WISE", "PROGRAMME_WISE"]);
 

@@ -7,8 +7,8 @@ import type { CertificateConfig } from "@/features/exports/schemas/export-config
 import {
   CERTIFICATE_PAGE_SIZE_OPTIONS,
   CheckList,
-  FieldGrid,
   FIT_OPTIONS,
+  FieldGrid,
   NumberInput,
   PAGE_ORIENTATION_OPTIONS,
   QUALITY_OPTIONS,
@@ -36,7 +36,11 @@ const CERT_TYPE_OPTIONS: { id: CertType; name: string }[] = [
 ];
 
 export function CertificateFilters({ festivalId, value, onChange }: Props) {
-  const { data: templates } = useExportTemplates(festivalId, "CERTIFICATE");
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+    isError: templatesError,
+  } = useExportTemplates(festivalId, "CERTIFICATE");
   const { data: categories } = useCategories(festivalId);
   const { data: programmes } = useProgrammes(festivalId);
   const set = (patch: Partial<CertificateConfig>) =>
@@ -54,6 +58,10 @@ export function CertificateFilters({ festivalId, value, onChange }: Props) {
         label="Template"
         options={templates ?? []}
         selectedId={value.templateId}
+        loading={templatesLoading}
+        errorMessage={
+          templatesError ? "Couldn't load templates. Try again." : undefined
+        }
         onSelect={(id) => set({ templateId: id })}
       />
 

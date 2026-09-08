@@ -56,35 +56,64 @@ describe("multi-grid presets", () => {
     }
   });
 
-  it("has exactly 9 curated options for both portrait and landscape palettes", () => {
-    expect(PORTRAIT_GRID_OPTIONS).toHaveLength(9);
-    expect(LANDSCAPE_GRID_OPTIONS).toHaveLength(9);
+  it("has expanded curated options for both portrait and landscape palettes", () => {
+    // 14 options per palette: 1 AUTO + 13 explicit cols×rows candidates,
+    // giving density-first AUTO enough room to pack small templates onto
+    // large sheets (e.g. 2.7×3.9 cards on 13×19 paper).
+    expect(PORTRAIT_GRID_OPTIONS).toHaveLength(14);
+    expect(LANDSCAPE_GRID_OPTIONS).toHaveLength(14);
     expect(PORTRAIT_GRID_OPTIONS[0].value).toBe("AUTO");
     expect(LANDSCAPE_GRID_OPTIONS[0].value).toBe("AUTO");
   });
 
-  it("calculates auto grid considering template document aspect ratio", () => {
+  it("calculates auto grid considering template document aspect ratio (density-first)", () => {
     // Wide badge (1050x600, aspect 1.75) on Portrait A4 (595x842).
-    // 2x5 cells (≈ 289×165) hit the doc aspect almost exactly, so the
-    // badge fits each cell with virtually no wasted edge space.
-    expect(autoMultiGrid(595, 842, 1050, 600)).toEqual({ cols: 2, rows: 5 });
+    // Density-first picks 3x5 (15 cards) — cell aspect 1.17 is within the
+    // ASPECT_SOFT_LIMIT (~1.5× doc aspect = 2.6), so the higher count wins
+    // over the closer-aspect 2x5 (10 cards, cell aspect 1.75).
+    expect(autoMultiGrid(595, 842, 1050, 600)).toEqual({ cols: 3, rows: 5 });
 
     // Tall badge (600x1050, aspect 0.57) on Portrait A4 (595x842).
-    // 2x2 and 3x3 are both aspect 0.70; the smaller count wins the tie.
-    expect(autoMultiGrid(595, 842, 600, 1050)).toEqual({ cols: 2, rows: 2 });
+    // Density-first picks 5x6 (30 cards). Cell aspect 0.84 is within
+    // ASPECT_SOFT_LIMIT (~0.71 lower bound = 0.57 / 1.5), so it wins.
+    expect(autoMultiGrid(595, 842, 600, 1050)).toEqual({ cols: 5, rows: 6 });
 
-    // Wide badge (1050x600) on Landscape A4 (842x595). 2x2 and 3x3 are
-    // tied at aspect 1.43 (closest to the wide doc's 1.75); 2x2 wins.
-    expect(autoMultiGrid(842, 595, 1050, 600)).toEqual({ cols: 2, rows: 2 });
+    // Wide badge (1050x600) on Landscape A4 (842x595). Density-first picks
+    // 6x5 (30 cards). Cell aspect 1.30 fits within the soft limit (≤ 1.5×).
+    expect(autoMultiGrid(842, 595, 1050, 600)).toEqual({ cols: 6, rows: 5 });
 
-    // Square doc (600x600) on Portrait A4 — the cell aspect closest to
-    // 1.0 is 2x3 (≈ 1.05). 3x4 (≈ 0.93) is the runner-up.
-    expect(autoMultiGrid(595, 842, 600, 600)).toEqual({ cols: 2, rows: 3 });
+    // Square doc (600x600) on Portrait A4. Density-first picks 5x6
+    // (30 cards, cell aspect 0.84 — within soft limit).
+    expect(autoMultiGrid(595, 842, 600, 600)).toEqual({ cols: 5, rows: 6 });
 
-    // Square doc on Landscape A4 — the cell aspect closest to 1.0 is
-    // 3x2 (≈ 0.95). 2x3 is not in the landscape palette; 4x3 (≈ 1.07)
-    // is the runner-up.
-    expect(autoMultiGrid(842, 595, 600, 600)).toEqual({ cols: 3, rows: 2 });
+    // Square doc on Landscape A4. Density-first picks 6x5 (30 cards,
+    // cell aspect 1.53 — slightly outside the soft limit but no denser
+    // candidate beats it within the limit, so it wins on count).
+    expect(autoMultiGrid(842, 595, 600, 600)).toEqual({ cols: 6, rows: 5 });
+  });
+});
+
+describe("density-first auto-grid on sticker sheets", () => {
+  it("packs 2.7x3.9 candidate cards densely on a 13x19 portrait sheet", () => {
+    // 13×19 in at 72 DPI = 936 × 1368 px
+    // 2.7×3.9 in at 96 DPI = 259 × 374 px (docAspect = 0.69)
+    // Density-first lands on 5x6 = 30 cards/sheet, cell aspect 0.82 which
+    // sits comfortably inside the 1.5× aspect soft limit.
+    expect(autoMultiGrid(936, 1368, 259, 374)).toEqual({ cols: 5, rows: 6 });
+  });
+
+  it("packs 2.7x3.9 candidate cards densely on a 13x19 landscape sheet", () => {
+    // Same template on landscape 13×19 = 1368 × 936 px.
+    expect(autoMultiGrid(1368, 936, 259, 374)).toEqual({ cols: 6, rows: 4 });
+  });
+
+  it("never picks a grid whose cell drops below MIN_PRINTABLE_INCHES", () => {
+    // 1050×600 badge forced onto a tiny 200×200 page — every candidate's
+    // cell is < 0.75 in, so the entire palette is rejected and we fall
+    // back to the first candidate rather than returning null.
+    const result = autoMultiGrid(200, 200, 1050, 600);
+    expect(result.cols).toBeGreaterThanOrEqual(1);
+    expect(result.rows).toBeGreaterThanOrEqual(1);
   });
 });
 

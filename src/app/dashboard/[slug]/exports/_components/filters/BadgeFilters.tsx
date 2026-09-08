@@ -43,7 +43,11 @@ function isGridCompatible(
 }
 
 export function BadgeFilters({ festivalId, value, onChange }: Props) {
-  const { data: templates } = useExportTemplates(festivalId, "BADGE");
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+    isError: templatesError,
+  } = useExportTemplates(festivalId, "BADGE");
   const { data: categories } = useCategories(festivalId);
   const { data: teams } = useGroups(festivalId);
   const set = (patch: Partial<BadgeConfig>) => onChange({ ...value, ...patch });
@@ -61,6 +65,10 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         label="Template"
         options={templates ?? []}
         selectedId={value.templateId}
+        loading={templatesLoading}
+        errorMessage={
+          templatesError ? "Couldn't load templates. Try again." : undefined
+        }
         onSelect={(id) => {
           const selectedTpl = (templates ?? []).find((t) => t.id === id);
           if (selectedTpl && !value.templateId) {

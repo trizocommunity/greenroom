@@ -43,7 +43,9 @@ export function resolveFestAdminFieldValue(
 ): string {
   const value = bindings[bindingKey];
   if (value?.trim()) return value;
-  return FEST_ADMIN_FIELDS.find((field) => field.key === bindingKey)?.preview ?? "";
+  return (
+    FEST_ADMIN_FIELDS.find((field) => field.key === bindingKey)?.preview ?? ""
+  );
 }
 
 export interface TemplateTypeMeta {

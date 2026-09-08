@@ -33,12 +33,23 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [exportProgress, setExportProgress] = useState<
-    Record<string, { current: number; total: number }>
+    Record<
+      string,
+      { current: number; total: number; phase: "rendering" | "uploading" }
+    >
   >({});
 
   const handleTemplateProgress = useCallback(
-    (id: string, current: number, total: number) => {
-      setExportProgress((prev) => ({ ...prev, [id]: { current, total } }));
+    (
+      id: string,
+      current: number,
+      total: number,
+      phase: "rendering" | "uploading",
+    ) => {
+      setExportProgress((prev) => ({
+        ...prev,
+        [id]: { current, total, phase },
+      }));
     },
     [],
   );
@@ -65,7 +76,7 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
             Exports
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Files are processed in the background and expire after 2 days. Use
+            Files are processed in the background and expire after 1 day. Use
             the download button on a row to save the file.
           </p>
         </div>
