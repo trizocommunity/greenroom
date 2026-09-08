@@ -83,23 +83,9 @@ export async function createAndRunExport(
 
   // Template exports stay PROCESSING; the client renders and finalizes them.
   if (isTemplateExport(request.config.type)) {
-    console.info("[gr-debug][exports][create]", {
-      festivalId: request.festivalId,
-      exportId: row.id,
-      type: request.config.type,
-      format: request.format,
-      branch: "TEMPLATE",
-    });
     return { id: row.id, status: "PROCESSING" };
   }
 
-  console.info("[gr-debug][exports][create]", {
-    festivalId: request.festivalId,
-    exportId: row.id,
-    type: request.config.type,
-    format: request.format,
-    branch: "INGEST",
-  });
   await inngest.send({
     name: "export.requested",
     data: {

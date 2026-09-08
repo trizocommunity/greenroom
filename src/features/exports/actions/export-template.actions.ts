@@ -82,21 +82,8 @@ export async function getTemplateExportPayloadAction(
     const festivalName = festival?.name ?? "";
 
     const config = exportConfigSchema.parse(row.config);
-    console.info("[gr-debug][exports][payload-action][start]", {
-      festivalId,
-      exportId,
-      type: config.type,
-      status: row.status,
-    });
     if (config.type === "BADGE") {
       const data = await resolveBadgePayload(festivalId, config, festivalName);
-      console.info("[gr-debug][exports][payload-action][ok][BADGE]", {
-        festivalId,
-        exportId,
-        items: data.items.length,
-        width: data.width,
-        height: data.height,
-      });
       return { success: true, data };
     }
     if (config.type === "CERTIFICATE") {
@@ -104,16 +91,6 @@ export async function getTemplateExportPayloadAction(
         festivalId,
         config,
         festivalName,
-      );
-      console.info(
-        "[gr-debug][exports][payload-action][ok][CERTIFICATE]",
-        {
-          festivalId,
-          exportId,
-          items: data.items.length,
-          width: data.width,
-          height: data.height,
-        },
       );
       return { success: true, data };
     }
@@ -123,11 +100,23 @@ export async function getTemplateExportPayloadAction(
   }
 }
 
+/** Payload accepted by `finalizeTemplateExportAction`. The client uploads
+ * the rendered file directly to Cloudinary (bypassing Vercel's edge body
+ * cap — see `sign-upload` route) and posts only the secure URL here. The
+ * server fetches the bytes once and stores them inline as base64. */
+export interface FinalizeTemplateExportInput {
+  secureUrl: string;
+  publicId: string;
+  bytes: number;
+  itemCount: number;
+  includeAi: boolean;
+}
+
 /** Store the client-rendered PDF and mark the job COMPLETED. */
 export async function finalizeTemplateExportAction(
   festivalId: string,
   exportId: string,
-  formData: FormData,
+  input: FinalizeTemplateExportInput,
 ): Promise<ActionResponse<{ id: string }>> {
   try {
     const session = await getSession();
@@ -139,20 +128,24 @@ export async function finalizeTemplateExportAction(
       return { success: true, data: { id: exportId } };
     }
 
-    const file = formData.get("file") as File;
-    const itemCount = parseInt(formData.get("itemCount") as string, 10);
+    if (!input?.secureUrl || !input.publicId || !input.bytes) {
+      throw new AppError("Missing upload metadata.");
+    }
+
+    const fileRes = await fetch(input.secureUrl);
+    if (!fileRes.ok) {
+      throw new AppError(
+        `Could not retrieve uploaded file from storage (${fileRes.status}).`,
+      );
+    }
+    const arrayBuffer = await fileRes.arrayBuffer();
+    const bytes = Buffer.from(arrayBuffer);
+    const fileBase64 = bytes.toString("base64");
+
     // `includeAi` is the bundle-as-zip flag, controlled by the user toggle
     // on the badge/certificate filter. The DB `format` column is always
     // "PDF" for template exports (since AI is shipped alongside, not instead).
-    const includeAi = (formData.get("includeAi") as string) === "true";
-
-    if (!file) {
-      throw new AppError("No file data received.");
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const bytes = Buffer.from(arrayBuffer);
-    const fileBase64 = bytes.toString("base64");
+    const includeAi = !!input.includeAi;
 
     const fileName = includeAi
       ? `${row.type.toLowerCase()}.zip`
@@ -164,23 +157,15 @@ export async function finalizeTemplateExportAction(
       ? 0
       : Math.max(0, serverNowMs() - queuedAtMs);
 
-    console.info("[gr-debug][exports][finalize]", {
-      festivalId,
-      exportId,
-      type: row.type,
-      includeAi,
-      itemCount,
-      bytes: bytes.byteLength,
-      completedInMs,
-    });
     await ExportRepo.completeExport({
       id: exportId,
       fileData: fileBase64,
       fileName,
       mimeType,
       fileSizeBytes: bytes.byteLength,
-      itemCount,
+      itemCount: input.itemCount,
       completedInMs,
+      cloudinaryPublicId: input.publicId,
     });
     return { success: true, data: { id: exportId } };
   } catch (error) {
@@ -197,7 +182,6 @@ export async function failTemplateExportAction(
   try {
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
-    console.warn("[gr-debug][exports][fail]", { festivalId, exportId, message });
     await ExportRepo.failExport(exportId, message);
     return { success: true, data: { id: exportId } };
   } catch (error) {

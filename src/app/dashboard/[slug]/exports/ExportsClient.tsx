@@ -1,6 +1,7 @@
 "use client";
 
 import { FileDown, Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import { useDeleteExport, useExports } from "@/api/client/exports";
 import { Button } from "@/components/ui/button";
@@ -8,12 +9,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/lib/toast";
-import dynamic from "next/dynamic";
 
 const ClientTemplateExportRunner = dynamic(
-  () => import("./_components/ClientTemplateExportRunner").then((m) => m.ClientTemplateExportRunner),
-  { ssr: false }
+  () =>
+    import("./_components/ClientTemplateExportRunner").then(
+      (m) => m.ClientTemplateExportRunner,
+    ),
+  { ssr: false },
 );
+
+import { ExportIssuesBanner } from "./_components/ExportIssuesBanner";
 import { ExportsTable } from "./_components/ExportsTable";
 import { NewExportDrawer } from "./_components/NewExportDrawer";
 
@@ -51,14 +56,17 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
 
   return (
     <div className="space-y-6">
+      {exports && exports.length > 0 && (
+        <ExportIssuesBanner exports={exports} />
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
             Exports
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Files are processed in the background and expire after 2 days.
-            Use the download button on a row to save the file.
+            Files are processed in the background and expire after 2 days. Use
+            the download button on a row to save the file.
           </p>
         </div>
         <Button onClick={() => setDrawerOpen(true)} className="shrink-0">

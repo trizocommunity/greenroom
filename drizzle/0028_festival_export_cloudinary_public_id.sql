@@ -1,0 +1,1 @@
+ALTER TABLE "festival_export" ADD COLUMN "cloudinary_public_id" text;

@@ -425,21 +425,6 @@ export function ClientTemplateExportRunner({
     [qc, festivalId],
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot mount/unmount trace; the runner state lives in refs and the effects below.
-  useEffect(() => {
-    console.info("[gr-debug][exports][runner][mount]", {
-      festivalId,
-      exportsCount: exports.length,
-      processingCount: exports.filter((e) => e.status === "PROCESSING").length,
-    });
-    return () => {
-      console.info("[gr-debug][exports][runner][unmount]", {
-        festivalId,
-        activeJob: handled.current.size,
-      });
-    };
-  }, []);
-
   // Tab close warning when processing
   useEffect(() => {
     if (!job) return;
@@ -464,29 +449,15 @@ export function ClientTemplateExportRunner({
 
     busy.current = true;
     handled.current.add(next.id);
-    console.info("[gr-debug][exports][runner][pick]", {
-      festivalId,
-      exportId: next.id,
-      type: next.type,
-    });
     (async () => {
       const res = await getTemplateExportPayloadAction(festivalId, next.id);
       if (!res.success) {
-        console.error("[gr-debug][exports][runner][pick-failed]", {
-          festivalId,
-          exportId: next.id,
-          error: res.error,
-        });
         await failTemplateExportAction(festivalId, next.id, res.error);
         busy.current = false;
         invalidate();
         return;
       }
       if (res.data.items.length === 0) {
-        console.warn("[gr-debug][exports][runner][empty]", {
-          festivalId,
-          exportId: next.id,
-        });
         await failTemplateExportAction(
           festivalId,
           next.id,
@@ -503,21 +474,6 @@ export function ClientTemplateExportRunner({
         payload: res.data,
         index: 0,
       });
-      console.info("[gr-debug][exports][runner][start]", {
-        festivalId,
-        exportId: next.id,
-        items: res.data.items.length,
-        width: res.data.width,
-        height: res.data.height,
-        pageSize: res.data.pageSize,
-        orientation: res.data.pageOrientation,
-        layout: res.data.printLayout,
-        quality: res.data.quality,
-        includeAi: res.data.includeAi,
-        targetDpi: TARGET_DPI[res.data.quality],
-        pageW: pdfRef.current.pageW,
-        pageH: pdfRef.current.pageH,
-      });
       onProgress?.(next.id, 0, res.data.items.length);
     })();
   }, [exports, job, festivalId, invalidate, onProgress]);
@@ -528,25 +484,13 @@ export function ClientTemplateExportRunner({
     if (!job || !pdfContext) return;
 
     let cancelled = false;
-    console.info("[gr-debug][exports][runner][render-start]", {
-      festivalId,
-      exportId: job.exportId,
-      index: job.index,
-      total: job.payload.items.length,
-    });
 
     (async () => {
       try {
-        // Deterministic wait: wait for all fonts and Konva images to be fully loaded
         if (document.fonts?.ready) await document.fonts.ready;
 
         const stage = await waitForStage(stageRef);
         if (!stage) {
-          console.error("[gr-debug][exports][runner][no-stage]", {
-            festivalId,
-            exportId: job.exportId,
-            index: job.index,
-          });
           return;
         }
 
@@ -581,15 +525,46 @@ export function ClientTemplateExportRunner({
           checkImages();
         });
 
+        // Wait for QR elements. Each `<QrCodeElement>` is async — it calls
+        // `QRCodeStyling.getRawData()` inside a useEffect and only swaps
+        // its placeholder <Group> for a <KonvaImage> once the raster is
+        // ready. Without this wait, the stage captures whatever is in
+        // flight and some cards end up showing the "QR" placeholder in
+        // the final PDF instead of an actual code.
+        await new Promise<void>((resolve) => {
+          let attempts = 0;
+          const expectedQrIds = new Set(
+            (job.payload.doc.elements || [])
+              .filter((e) => e.type === "qr")
+              .map((e) => e.id),
+          );
+          if (expectedQrIds.size === 0) {
+            resolve();
+            return;
+          }
+          const checkQr = () => {
+            attempts++;
+            const pending = (
+              stage.find((node: any) => {
+                if (!node) return false;
+                const name = node.name?.();
+                if (name !== "qr-element") return false;
+                const id = node.id?.();
+                return (
+                  expectedQrIds.has(id) && node.getClassName?.() === "Group"
+                );
+              }) as Array<unknown>
+            ).length;
+            if (pending === 0 || attempts > 60) resolve();
+            else setTimeout(checkQr, 50);
+          };
+          checkQr();
+        });
+
         // Give React one last moment to mount late elements like QR codes
         await new Promise((r) => setTimeout(r, 100));
 
         if (cancelled) {
-          console.warn("[gr-debug][exports][runner][cancelled-mid]", {
-            festivalId,
-            exportId: job.exportId,
-            index: job.index,
-          });
           return;
         }
 
@@ -649,18 +624,7 @@ export function ClientTemplateExportRunner({
           if (cropped) dataUrl = cropped;
         }
         const format: "PNG" | "JPEG" = "JPEG";
-        console.info("[gr-debug][exports][runner][rendered-item]", {
-          festivalId,
-          exportId: job.exportId,
-          index: job.index,
-          format,
-          qualityTier,
-          targetDpi,
-          pixelRatio: Number(pixelRatio.toFixed(3)),
-          dataUrlLen: dataUrl.length,
-        });
 
-        // Stream immediately to jsPDF to keep memory low
         appendToPdf(
           pdfContext.doc,
           dataUrl,
@@ -671,13 +635,6 @@ export function ClientTemplateExportRunner({
         );
 
         if (job.index + 1 < job.payload.items.length) {
-          console.info("[gr-debug][exports][runner][advance]", {
-            festivalId,
-            exportId: job.exportId,
-            from: job.index,
-            to: job.index + 1,
-            total: job.payload.items.length,
-          });
           setJob({ ...job, index: job.index + 1 });
           onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
           return;
@@ -688,12 +645,6 @@ export function ClientTemplateExportRunner({
         if (pdfBlob.size > MAX_BLOB_BYTES) {
           const mb = Math.round(pdfBlob.size / (1024 * 1024));
           const message = `Export is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
-          console.error("[gr-debug][exports][runner][blob-too-large]", {
-            festivalId,
-            exportId: job.exportId,
-            bytes: pdfBlob.size,
-            max: MAX_BLOB_BYTES,
-          });
           await failTemplateExportAction(festivalId, job.exportId, message);
           pdfRef.current = null;
           setJob(null);
@@ -712,13 +663,14 @@ export function ClientTemplateExportRunner({
         // the export config (`includeAi`); the format is always PDF.
         const includeAi = job.payload.includeAi;
         const baseName = job.payload.doc.templateName ?? "export";
-        const safeBase = baseName
-          .toLowerCase()
-          .normalize("NFKD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "")
-          .slice(0, 48) || "export";
+        const safeBase =
+          baseName
+            .toLowerCase()
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 48) || "export";
         const pdfName = `${safeBase}.pdf`;
         const aiName = `${safeBase}.ai`;
         let uploadBytes: Uint8Array<ArrayBuffer>;
@@ -732,12 +684,6 @@ export function ClientTemplateExportRunner({
           if (zipBytes.byteLength > MAX_BLOB_BYTES) {
             const mb = Math.round(zipBytes.byteLength / (1024 * 1024));
             const message = `Export bundle is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
-            console.error("[gr-debug][exports][runner][zip-too-large]", {
-              festivalId,
-              exportId: job.exportId,
-              bytes: zipBytes.byteLength,
-              max: MAX_BLOB_BYTES,
-            });
             await failTemplateExportAction(festivalId, job.exportId, message);
             pdfRef.current = null;
             setJob(null);
@@ -754,24 +700,66 @@ export function ClientTemplateExportRunner({
           uploadMime = "application/pdf";
         }
         const uploadBlob = new Blob([uploadBytes], { type: uploadMime });
-        const formData = new FormData();
-        formData.append("file", uploadBlob, uploadName);
-        formData.append("itemCount", String(job.payload.items.length));
-        formData.append("includeAi", includeAi ? "true" : "false");
-
-        console.info("[gr-debug][exports][runner][finalize-sending]", {
-          festivalId,
-          exportId: job.exportId,
-          itemCount: job.payload.items.length,
-          bytes: uploadBytes.byteLength,
-          includeAi,
-          fileName: uploadName,
-          mime: uploadMime,
+        const signRes = await fetch("/api/v1/exports/sign-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            festivalId,
+            exportId: job.exportId,
+          }),
         });
-        await finalizeTemplateExportAction(festivalId, job.exportId, formData);
-        console.info("[gr-debug][exports][runner][finalize-ok]", {
-          festivalId,
-          exportId: job.exportId,
+        if (!signRes.ok) {
+          const text = await signRes.text();
+          throw new Error(`Could not sign upload (${signRes.status}): ${text}`);
+        }
+        const signJson = (await signRes.json()) as {
+          success: boolean;
+          data?: {
+            cloudName: string;
+            apiKey: string;
+            timestamp: number;
+            signature: string;
+            folder: string;
+            publicId: string;
+            uploadUrl: string;
+          };
+          error?: { code: string; message: string };
+        };
+        if (!signJson.success || !signJson.data) {
+          throw new Error(signJson.error?.message ?? "Could not sign upload.");
+        }
+        const sig = signJson.data;
+
+        const cloudForm = new FormData();
+        cloudForm.append("file", uploadBlob, uploadName);
+        cloudForm.append("api_key", sig.apiKey);
+        cloudForm.append("timestamp", String(sig.timestamp));
+        cloudForm.append("signature", sig.signature);
+        cloudForm.append("folder", sig.folder);
+        cloudForm.append("public_id", sig.publicId);
+
+        const cloudRes = await fetch(sig.uploadUrl, {
+          method: "POST",
+          body: cloudForm,
+        });
+        if (!cloudRes.ok) {
+          const text = await cloudRes.text();
+          throw new Error(
+            `Storage upload failed (${cloudRes.status}): ${text}`,
+          );
+        }
+        const cloudJson = (await cloudRes.json()) as {
+          secure_url: string;
+          public_id: string;
+          bytes: number;
+        };
+
+        await finalizeTemplateExportAction(festivalId, job.exportId, {
+          secureUrl: cloudJson.secure_url,
+          publicId: cloudJson.public_id,
+          bytes: cloudJson.bytes,
+          itemCount: job.payload.items.length,
+          includeAi,
         });
 
         pdfRef.current = null;
@@ -780,19 +768,8 @@ export function ClientTemplateExportRunner({
         invalidate();
       } catch (err) {
         if (cancelled) {
-          console.warn("[gr-debug][exports][runner][cancelled-err]", {
-            festivalId,
-            exportId: job.exportId,
-            index: job.index,
-          });
           return;
         }
-        console.error("[gr-debug][exports][runner][item-failed]", {
-          festivalId,
-          exportId: job.exportId,
-          index: job.index,
-          error: err instanceof Error ? err.message : String(err),
-        });
         await failTemplateExportAction(
           festivalId,
           job.exportId,

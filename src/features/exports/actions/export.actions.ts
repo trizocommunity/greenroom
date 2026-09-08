@@ -10,6 +10,7 @@ import {
   scheduleEntry,
 } from "@/core/database/schema";
 import { handleActionError } from "@/core/errors/errors";
+import { deleteFile } from "@/core/integrations/cloudinary";
 import type { ActionResponse } from "@/core/types/actions";
 import * as ExportRepo from "@/features/exports/repositories/export.repository";
 import {
@@ -87,7 +88,30 @@ export async function deleteExportAction(
   try {
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
+
+    // Look up the Cloudinary publicId BEFORE deleting the DB row so we still
+    // have the mapping. Non-template exports have `cloudinaryPublicId = null`
+    // and skip the Cloudinary call.
+    const publicId = await ExportRepo.getExportCloudinaryPublicId(
+      id,
+      festivalId,
+    );
     await ExportRepo.deleteExport(id, festivalId);
+
+    if (publicId) {
+      try {
+        await deleteFile(publicId);
+      } catch (err) {
+        // Don't fail the delete — the daily cron will retry cleanup.
+        console.error(
+          "[deleteExportAction] Cloudinary delete failed",
+          id,
+          publicId,
+          err,
+        );
+      }
+    }
+
     return { success: true, data: { id } };
   } catch (error) {
     return handleActionError(error);
