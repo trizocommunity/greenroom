@@ -208,6 +208,9 @@ function QrCodeElement({
       id={el.id}
       x={el.x}
       y={el.y}
+      rotation={el.rotation ?? 0}
+      scaleX={el.scaleX ?? 1}
+      scaleY={el.scaleY ?? 1}
       opacity={nodeOpacity}
       draggable={draggable}
       onClick={onSelect}
@@ -359,6 +362,9 @@ export function PosterElementRenderer(props: PosterElementRendererProps) {
         stroke={el.stroke}
         strokeWidth={el.strokeWidth}
         opacity={nodeOpacity}
+        rotation={el.rotation ?? 0}
+        scaleX={el.scaleX ?? 1}
+        scaleY={el.scaleY ?? 1}
         draggable={draggable}
         onClick={onSelect}
         onTap={onSelect}
@@ -383,6 +389,9 @@ export function PosterElementRenderer(props: PosterElementRendererProps) {
         stroke={el.stroke}
         strokeWidth={el.strokeWidth}
         opacity={nodeOpacity}
+        rotation={el.rotation ?? 0}
+        scaleX={el.scaleX ?? 1}
+        scaleY={el.scaleY ?? 1}
         draggable={draggable}
         onClick={onSelect}
         onTap={onSelect}
@@ -405,6 +414,9 @@ export function PosterElementRenderer(props: PosterElementRendererProps) {
         stroke={el.stroke ?? "#0f172a"}
         strokeWidth={el.strokeWidth ?? 4}
         opacity={nodeOpacity}
+        rotation={el.rotation ?? 0}
+        scaleX={el.scaleX ?? 1}
+        scaleY={el.scaleY ?? 1}
         draggable={draggable}
         onClick={onSelect}
         onTap={onSelect}
