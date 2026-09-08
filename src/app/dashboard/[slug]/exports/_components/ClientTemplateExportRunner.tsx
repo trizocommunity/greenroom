@@ -58,10 +58,12 @@ const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
 
 // Hard upper bound on the final PDF size the client will upload. Above this,
 // the export is auto-marked FAILED with an actionable message instead of
-// hitting the Cloudinary upload cap. Cloudinary Free tier caps `raw/upload`
-// at 100,000,000 bytes (~95.4 MiB); 95 MiB leaves a small safety margin so
-// borderline sizes don't get rejected upstream.
-const MAX_BLOB_BYTES = 95 * 1024 * 1024;
+// hitting the Cloudinary upload cap. Cloudinary Free tier caps BOTH
+// `image/upload` AND `raw/upload` at 10,485,760 bytes (10 MB). 9 MiB
+// leaves a small safety margin so borderline sizes don't get rejected
+// upstream. Users with larger templates should either lower Export
+// Quality (PRINT → STANDARD → SCREEN) or split into smaller batches.
+const MAX_BLOB_BYTES = 9 * 1024 * 1024;
 
 const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   A3: { w: 842, h: 1191 },
@@ -656,7 +658,8 @@ export function ClientTemplateExportRunner({
         const pdfBlob = pdfContext.doc.output("blob");
         if (pdfBlob.size > MAX_BLOB_BYTES) {
           const mb = Math.round(pdfBlob.size / (1024 * 1024));
-          const message = `Export is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
+          const maxMb = Math.round(MAX_BLOB_BYTES / (1024 * 1024));
+          const message = `Export is ${mb} MB which exceeds the ${maxMb} MB Cloudinary Free upload limit. Lower Export Quality (PRINT → STANDARD → SCREEN) or split into smaller batches by category or team.`;
           await failTemplateExportAction(festivalId, job.exportId, message);
           pdfRef.current = null;
           setJob(null);
@@ -695,7 +698,8 @@ export function ClientTemplateExportRunner({
           ]);
           if (zipBytes.byteLength > MAX_BLOB_BYTES) {
             const mb = Math.round(zipBytes.byteLength / (1024 * 1024));
-            const message = `Export bundle is ${mb} MB which exceeds the ${Math.round(MAX_BLOB_BYTES / (1024 * 1024))} MB limit. Lower the Export Quality or print fewer items per export.`;
+            const maxMb = Math.round(MAX_BLOB_BYTES / (1024 * 1024));
+            const message = `Export bundle is ${mb} MB which exceeds the ${maxMb} MB Cloudinary Free upload limit. Lower Export Quality (PRINT → STANDARD → SCREEN) or split into smaller batches by category or team.`;
             await failTemplateExportAction(festivalId, job.exportId, message);
             pdfRef.current = null;
             setJob(null);

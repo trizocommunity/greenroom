@@ -31,9 +31,19 @@ describe("summarizeIssue", () => {
   it("matches the size-limit pattern emitted by the runner", () => {
     expect(
       summarizeIssue(
-        "Export is 105 MB which exceeds the 100 MB limit. Lower the Export Quality.",
+        "Export is 13 MB which exceeds the 9 MB limit. Lower Export Quality (PRINT → STANDARD → SCREEN) or split into smaller batches.",
       ),
     ).toMatch(/Cloudinary Free tier/);
+  });
+
+  it("matches Cloudinary's raw 10485760-byte cap response", () => {
+    // The raw Cloudinary error format that bypasses our client-side check
+    // when the file is under 9 MiB but Cloudinary rejects it server-side.
+    expect(
+      summarizeIssue(
+        'Storage upload failed (400): [{"error":{"message":"File size too large. Got 13560364. Maximum is 10485760."},"message":"Your file exceeds the Free plan upload limit. Upgrade to upload larger assets."}]',
+      ),
+    ).toMatch(/10 MB/);
   });
 
   it("matches the upload-timeout / aborted pattern", () => {
