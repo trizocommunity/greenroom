@@ -153,7 +153,8 @@ function QrCodeElement({
 
     qrCode.getRawData("png").then((buffer) => {
       if (!buffer) return;
-      const url = URL.createObjectURL(buffer);
+      const blob = buffer instanceof Blob ? buffer : new Blob([buffer as BlobPart], { type: "image/png" });
+      const url = URL.createObjectURL(blob);
       const img = new window.Image();
       img.onload = () => {
         setQrImage(img);
