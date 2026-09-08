@@ -33,7 +33,14 @@ describe("summarizeIssue", () => {
       summarizeIssue(
         "Export is 105 MB which exceeds the 100 MB limit. Lower the Export Quality.",
       ),
-    ).toMatch(/larger than the browser upload limit/);
+    ).toMatch(/Cloudinary Free tier/);
+  });
+
+  it("matches the upload-timeout / aborted pattern", () => {
+    expect(
+      summarizeIssue("Upload to storage timed out after 5 minutes."),
+    ).toMatch(/timed out/);
+    expect(summarizeIssue("Upload aborted.")).toMatch(/timed out/);
   });
 
   it("matches the 413 / failed-to-load pattern", () => {
@@ -84,9 +91,7 @@ describe("getBannerContent", () => {
     expect(content).not.toBeNull();
     expect(content?.variant).toBe("failure");
     expect(content?.title).toBe("Export failed");
-    expect(content?.description).toMatch(
-      /larger than the browser upload limit/,
-    );
+    expect(content?.description).toMatch(/Cloudinary Free tier/);
   });
 
   it("surfaces a recent 413 failure with a network hint", () => {
@@ -168,6 +173,15 @@ describe("getBannerContent", () => {
 
   it("does NOT surface a fresh PROCESSING export as stuck", () => {
     const queuedAt = new Date(now - 30 * 1000).toISOString();
+    const exports = [makeExport({ status: "PROCESSING", queuedAt })];
+    expect(getBannerContent(exports, now)).toBeNull();
+  });
+
+  it("does NOT surface a 5-minute PROCESSING upload as stuck (threshold is 10 min)", () => {
+    // Covers the upload phase: a 95 MiB upload can take 3–5 min on Free tier.
+    // The 5-min XHR timeout (separate mechanism) handles genuine hangs;
+    // the banner should not compete with it.
+    const queuedAt = new Date(now - 5 * 60 * 1000).toISOString();
     const exports = [makeExport({ status: "PROCESSING", queuedAt })];
     expect(getBannerContent(exports, now)).toBeNull();
   });

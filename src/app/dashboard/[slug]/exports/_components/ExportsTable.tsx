@@ -18,11 +18,26 @@ import type { ExportListItem } from "@/features/exports/types/export.types";
 import { toast } from "@/lib/toast";
 import { getExportTypeMeta } from "./export-types";
 
+interface ProgressEntry {
+  current: number;
+  total: number;
+  phase: "rendering" | "uploading";
+}
+
 interface ExportsTableProps {
   exports: ExportListItem[];
-  progressMap?: Record<string, { current: number; total: number }>;
+  progressMap?: Record<string, ProgressEntry>;
   onDelete: (id: string) => void;
   deletingId: string | null;
+}
+
+function progressLabel(prog: ProgressEntry): string {
+  if (prog.phase === "uploading") {
+    return `Uploading ${formatBytes(prog.current)} / ${formatBytes(prog.total)}`;
+  }
+  const pct =
+    prog.total > 0 ? Math.round((prog.current / prog.total) * 100) : 0;
+  return `Processing (${pct}%)`;
 }
 
 function downloadUrl(id: string): string {
@@ -258,9 +273,7 @@ export function ExportsTable({
                     {e.status === "PROCESSING" && (
                       <Badge variant="warning" className="gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        {prog
-                          ? `Processing (${Math.round((prog.current / prog.total) * 100)}%)`
-                          : "Processing"}
+                        {prog ? progressLabel(prog) : "Processing"}
                       </Badge>
                     )}
                     {e.status === "FAILED" && (

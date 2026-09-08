@@ -6,7 +6,7 @@ import type { ExportListItem } from "@/features/exports/types/export.types";
  * nothing is actionable.
  */
 
-export const STUCK_PROCESSING_MS = 5 * 60 * 1000;
+export const STUCK_PROCESSING_MS = 10 * 60 * 1000;
 export const RECENT_FAILURE_MS = 24 * 60 * 60 * 1000;
 
 export type BannerVariant = "failure" | "stuck" | null;
@@ -25,7 +25,10 @@ export function summarizeIssue(errorMessage: string | null): string | null {
   const msg = (errorMessage ?? "").toLowerCase();
   if (!msg) return null;
   if (msg.includes("exceeds the") && msg.includes("mb limit")) {
-    return "Export was larger than the browser upload limit. Try lowering Export Quality or splitting into smaller batches.";
+    return "Export is too large for the Cloudinary Free tier (100 MB cap). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.";
+  }
+  if (msg.includes("timed out") || msg.includes("aborted")) {
+    return "Upload to storage timed out. Try a smaller batch or a faster connection.";
   }
   if (msg.includes("413") || msg.includes("failed to load")) {
     return "Browser upload hit a network limit. The export will retry automatically; if it keeps failing, try a smaller scope.";

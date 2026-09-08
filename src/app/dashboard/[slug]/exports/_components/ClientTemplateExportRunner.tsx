@@ -25,7 +25,12 @@ import type { ExportListItem } from "@/features/exports/types/export.types";
 interface Props {
   festivalId: string;
   exports: ExportListItem[];
-  onProgress?: (exportId: string, current: number, total: number) => void;
+  onProgress?: (
+    exportId: string,
+    current: number,
+    total: number,
+    phase: "rendering" | "uploading",
+  ) => void;
 }
 
 // Quality tiers map to a *target printed DPI*, not a fixed pixelRatio. The
@@ -53,9 +58,10 @@ const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
 
 // Hard upper bound on the final PDF size the client will upload. Above this,
 // the export is auto-marked FAILED with an actionable message instead of
-// hitting the proxy body cap and surfacing "Unexpected end of form".
-// 100 MB covers ~150 items at PRINT 300 DPI on solid backgrounds.
-const MAX_BLOB_BYTES = 100 * 1024 * 1024;
+// hitting the Cloudinary upload cap. Cloudinary Free tier caps `raw/upload`
+// at 100,000,000 bytes (~95.4 MiB); 95 MiB leaves a small safety margin so
+// borderline sizes don't get rejected upstream.
+const MAX_BLOB_BYTES = 95 * 1024 * 1024;
 
 const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   A3: { w: 842, h: 1191 },
@@ -474,7 +480,7 @@ export function ClientTemplateExportRunner({
         payload: res.data,
         index: 0,
       });
-      onProgress?.(next.id, 0, res.data.items.length);
+      onProgress?.(next.id, 0, res.data.items.length, "rendering");
     })();
   }, [exports, job, festivalId, invalidate, onProgress]);
 
@@ -484,6 +490,7 @@ export function ClientTemplateExportRunner({
     if (!job || !pdfContext) return;
 
     let cancelled = false;
+    const controller = new AbortController();
 
     (async () => {
       try {
@@ -636,7 +643,12 @@ export function ClientTemplateExportRunner({
 
         if (job.index + 1 < job.payload.items.length) {
           setJob({ ...job, index: job.index + 1 });
-          onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
+          onProgress?.(
+            job.exportId,
+            job.index + 1,
+            job.payload.items.length,
+            "rendering",
+          );
           return;
         }
 
@@ -738,21 +750,20 @@ export function ClientTemplateExportRunner({
         cloudForm.append("folder", sig.folder);
         cloudForm.append("public_id", sig.publicId);
 
-        const cloudRes = await fetch(sig.uploadUrl, {
-          method: "POST",
-          body: cloudForm,
+        // XHR (not fetch) so we get upload progress events. fetch() exposes
+        // response-stream progress but not request-body progress. AbortController
+        // ties to the runner's `cancelled` flag so navigating away cancels the
+        // in-flight upload cleanly. 5-minute timeout covers Cloudinary Free
+        // throttling on large files; longer than typical 95 MiB upload time
+        // (~1–3 min) but short enough to surface genuine hangs.
+        const cloudJson = await uploadWithProgress({
+          url: sig.uploadUrl,
+          formData: cloudForm,
+          signal: controller.signal,
+          timeoutMs: 5 * 60 * 1000,
+          onProgress: (sent, total) =>
+            onProgress?.(job.exportId, sent, total, "uploading"),
         });
-        if (!cloudRes.ok) {
-          const text = await cloudRes.text();
-          throw new Error(
-            `Storage upload failed (${cloudRes.status}): ${text}`,
-          );
-        }
-        const cloudJson = (await cloudRes.json()) as {
-          secure_url: string;
-          public_id: string;
-          bytes: number;
-        };
 
         await finalizeTemplateExportAction(festivalId, job.exportId, {
           secureUrl: cloudJson.secure_url,
@@ -784,6 +795,7 @@ export function ClientTemplateExportRunner({
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [job, festivalId, invalidate, onProgress]);
 
@@ -800,6 +812,100 @@ export function ClientTemplateExportRunner({
       scale={1}
     />
   );
+}
+
+interface UploadWithProgressOpts {
+  url: string;
+  formData: FormData;
+  signal: AbortSignal;
+  timeoutMs: number;
+  onProgress: (sent: number, total: number) => void;
+}
+
+function uploadWithProgress(
+  opts: UploadWithProgressOpts,
+): Promise<{ secure_url: string; public_id: string; bytes: number }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    let settled = false;
+
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      fn();
+    };
+
+    const timeoutId = setTimeout(() => {
+      xhr.abort();
+      settle(() =>
+        reject(
+          new Error(
+            `Upload to storage timed out after ${Math.round(opts.timeoutMs / 60000)} minutes.`,
+          ),
+        ),
+      );
+    }, opts.timeoutMs);
+
+    opts.signal.addEventListener("abort", () => {
+      xhr.abort();
+      settle(() => reject(new DOMException("Upload aborted.", "AbortError")));
+    });
+
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) {
+        opts.onProgress(e.loaded, e.total);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        settle(() =>
+          reject(
+            new Error(
+              `Storage upload failed (${xhr.status}): ${xhr.responseText}`,
+            ),
+          ),
+        );
+        return;
+      }
+      try {
+        const data = JSON.parse(xhr.responseText) as {
+          secure_url: string;
+          public_id: string;
+          bytes: number;
+        };
+        settle(() => resolve(data));
+      } catch {
+        settle(() =>
+          reject(
+            new Error(
+              `Storage upload returned an invalid response: ${xhr.responseText.slice(0, 200)}`,
+            ),
+          ),
+        );
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      settle(() =>
+        reject(
+          new Error(
+            `Network error during upload to storage (status: ${xhr.status})`,
+          ),
+        ),
+      );
+    });
+
+    xhr.addEventListener("abort", () => {
+      // Timeout and external abort both fire this; the first one to settle
+      // wins. If neither settled first, treat as a transport abort.
+      settle(() => reject(new DOMException("Upload aborted.", "AbortError")));
+    });
+
+    xhr.open("POST", opts.url);
+    xhr.send(opts.formData);
+  });
 }
 
 export type { ExportTemplateOption };
