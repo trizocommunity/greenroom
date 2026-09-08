@@ -222,7 +222,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
       <FieldGrid cols={2}>
         <SingleSelect
           label="Category"
-          hint="Required — one category per export keeps the bundle under the Cloudinary Free upload limit."
+          hint="Required — one category per export keeps the bundle under the Vercel Hobby upload limit."
           required
           options={singleCategories}
           value={value.categoryIds[0] ?? null}
@@ -230,7 +230,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         />
         <SingleSelect
           label="Team"
-          hint="Required — one team per export keeps the bundle under the Cloudinary Free upload limit."
+          hint="Required — one team per export keeps the bundle under the Vercel Hobby upload limit."
           required
           options={teams ?? []}
           value={value.teamIds[0] ?? null}

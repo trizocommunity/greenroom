@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { festivalExport, user as userTable } from "@/core/database/schema";
 import { fromNow, serverNowIso } from "@/core/datetime/server";
@@ -145,21 +145,6 @@ export async function deleteExport(
     );
 }
 
-/** Look up the Cloudinary publicId for a single export (if any). */
-export async function getExportCloudinaryPublicId(
-  id: string,
-  festivalId: string,
-): Promise<string | null> {
-  const row = await db.query.festivalExport.findFirst({
-    where: and(
-      eq(festivalExport.id, id),
-      eq(festivalExport.festivalId, festivalId),
-    ),
-    columns: { cloudinaryPublicId: true },
-  });
-  return row?.cloudinaryPublicId ?? null;
-}
-
 /** Prune rows whose retention window has elapsed. Returns the number deleted. */
 export async function deleteExpiredExports(): Promise<number> {
   const nowIso = serverNowIso();
@@ -168,27 +153,4 @@ export async function deleteExpiredExports(): Promise<number> {
     .where(lt(festivalExport.expiresAt, nowIso))
     .returning({ id: festivalExport.id });
   return deleted.length;
-}
-
-/** Rows that have expired AND have a Cloudinary publicId to clean up. */
-export async function listExpiredExportCloudinaryIds(): Promise<
-  Array<{ id: string; cloudinaryPublicId: string }>
-> {
-  const nowIso = serverNowIso();
-  const rows = await db
-    .select({
-      id: festivalExport.id,
-      cloudinaryPublicId: festivalExport.cloudinaryPublicId,
-    })
-    .from(festivalExport)
-    .where(
-      and(
-        lt(festivalExport.expiresAt, nowIso),
-        sql`${festivalExport.cloudinaryPublicId} IS NOT NULL`,
-      ),
-    );
-  return rows.filter(
-    (r): r is { id: string; cloudinaryPublicId: string } =>
-      r.cloudinaryPublicId !== null,
-  );
 }

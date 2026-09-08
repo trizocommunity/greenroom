@@ -21,7 +21,6 @@ import { getExportTypeMeta } from "./export-types";
 interface ProgressEntry {
   current: number;
   total: number;
-  phase: "rendering" | "uploading";
 }
 
 interface ExportsTableProps {
@@ -32,9 +31,6 @@ interface ExportsTableProps {
 }
 
 function progressLabel(prog: ProgressEntry): string {
-  if (prog.phase === "uploading") {
-    return `Uploading ${formatBytes(prog.current)} / ${formatBytes(prog.total)}`;
-  }
   const pct =
     prog.total > 0 ? Math.round((prog.current / prog.total) * 100) : 0;
   return `Processing (${pct}%)`;

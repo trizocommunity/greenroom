@@ -148,7 +148,7 @@ export function CertificateFilters({ festivalId, value, onChange }: Props) {
       <FieldGrid cols={2}>
         <SingleSelect
           label="Category"
-          hint="Required — one category per export keeps the bundle under the Cloudinary Free upload limit."
+          hint="Required — one category per export keeps the bundle under the Vercel Hobby upload limit."
           required
           options={singleCategories}
           value={value.categoryIds[0] ?? null}
@@ -156,7 +156,7 @@ export function CertificateFilters({ festivalId, value, onChange }: Props) {
         />
         <SingleSelect
           label="Programme"
-          hint="Required — one programme per export keeps the bundle under the Cloudinary Free upload limit."
+          hint="Required — one programme per export keeps the bundle under the Vercel Hobby upload limit."
           required
           options={programmes ?? []}
           value={value.programmeIds[0] ?? null}

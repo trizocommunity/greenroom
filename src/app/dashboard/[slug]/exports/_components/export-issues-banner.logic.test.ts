@@ -31,19 +31,9 @@ describe("summarizeIssue", () => {
   it("matches the size-limit pattern emitted by the runner", () => {
     expect(
       summarizeIssue(
-        "Export is 13 MB which exceeds the 9 MB limit. Lower Export Quality (PRINT → STANDARD → SCREEN) or split into smaller batches.",
+        "Export is 13 MB which exceeds the 4 MB Vercel Hobby Server Action body limit even at SCREEN quality. Please split the export into smaller batches by category or team.",
       ),
-    ).toMatch(/Cloudinary Free tier/);
-  });
-
-  it("matches Cloudinary's raw 10485760-byte cap response", () => {
-    // The raw Cloudinary error format that bypasses our client-side check
-    // when the file is under 9 MiB but Cloudinary rejects it server-side.
-    expect(
-      summarizeIssue(
-        'Storage upload failed (400): [{"error":{"message":"File size too large. Got 13560364. Maximum is 10485760."},"message":"Your file exceeds the Free plan upload limit. Upgrade to upload larger assets."}]',
-      ),
-    ).toMatch(/10 MB/);
+    ).toMatch(/Vercel Hobby/);
   });
 
   it("matches the upload-timeout / aborted pattern", () => {
@@ -93,7 +83,7 @@ describe("getBannerContent", () => {
         id: "exp-1",
         status: "FAILED",
         errorMessage:
-          "Export is 105 MB which exceeds the 100 MB limit. Lower Export Quality.",
+          "Export is 105 MB which exceeds the 4 MB Vercel Hobby Server Action body limit even at SCREEN quality. Please split the export into smaller batches by category or team.",
         queuedAt,
       }),
     ];
@@ -101,7 +91,7 @@ describe("getBannerContent", () => {
     expect(content).not.toBeNull();
     expect(content?.variant).toBe("failure");
     expect(content?.title).toBe("Export failed");
-    expect(content?.description).toMatch(/Cloudinary Free tier/);
+    expect(content?.description).toMatch(/Vercel Hobby/);
   });
 
   it("surfaces a recent 413 failure with a network hint", () => {
@@ -188,9 +178,8 @@ describe("getBannerContent", () => {
   });
 
   it("does NOT surface a 5-minute PROCESSING upload as stuck (threshold is 10 min)", () => {
-    // Covers the upload phase: a 95 MiB upload can take 3–5 min on Free tier.
-    // The 5-min XHR timeout (separate mechanism) handles genuine hangs;
-    // the banner should not compete with it.
+    // The banner should not compete with the runner's rendering work; only
+    // genuinely-stuck jobs (over the 10-min threshold) get surfaced here.
     const queuedAt = new Date(now - 5 * 60 * 1000).toISOString();
     const exports = [makeExport({ status: "PROCESSING", queuedAt })];
     expect(getBannerContent(exports, now)).toBeNull();
@@ -210,7 +199,8 @@ describe("getBannerContent", () => {
       makeExport({
         id: "failed",
         status: "FAILED",
-        errorMessage: "Export is 200 MB which exceeds the 100 MB limit.",
+        errorMessage:
+          "Export is 200 MB which exceeds the 4 MB Vercel Hobby Server Action body limit even at SCREEN quality.",
         queuedAt: failureQueuedAt,
       }),
     ];

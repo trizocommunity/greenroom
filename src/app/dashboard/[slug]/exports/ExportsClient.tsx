@@ -33,22 +33,14 @@ export function ExportsClient({ festivalId }: ExportsClientProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [exportProgress, setExportProgress] = useState<
-    Record<
-      string,
-      { current: number; total: number; phase: "rendering" | "uploading" }
-    >
+    Record<string, { current: number; total: number }>
   >({});
 
   const handleTemplateProgress = useCallback(
-    (
-      id: string,
-      current: number,
-      total: number,
-      phase: "rendering" | "uploading",
-    ) => {
+    (id: string, current: number, total: number) => {
       setExportProgress((prev) => ({
         ...prev,
-        [id]: { current, total, phase },
+        [id]: { current, total },
       }));
     },
     [],
