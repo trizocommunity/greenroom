@@ -2427,8 +2427,9 @@ export const judgeStageAssignment = pgTable(
 
 // ─── festival_export (depends on: festival, user) ────────────────────────────
 // Festival-scoped export jobs. Generated files are stored inline as base64
-// (`fileData`) — no external object storage — and pruned 2 days after queueing
-// by the daily cron. See issues/ISSUE-11-exports-foundation-and-data-exports.md.
+// (`fileData`) — plus a Cloudinary copy for template exports (badge / cert)
+// when `cloudinaryPublicId` is set — and pruned 1 day after queueing by the
+// daily cron. See issues/ISSUE-11-exports-foundation-and-data-exports.md.
 
 export const festivalExport = pgTable(
   "festival_export",
@@ -2445,6 +2446,7 @@ export const festivalExport = pgTable(
     fileSizeBytes: integer(),
     mimeType: text(),
     itemCount: integer(),
+    cloudinaryPublicId: text("cloudinary_public_id"),
     errorMessage: text(),
     createdBy: text().notNull(),
     createdByName: text("created_by_name"),
