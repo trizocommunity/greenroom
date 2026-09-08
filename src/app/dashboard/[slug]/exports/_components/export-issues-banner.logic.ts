@@ -25,7 +25,13 @@ export function summarizeIssue(errorMessage: string | null): string | null {
   const msg = (errorMessage ?? "").toLowerCase();
   if (!msg) return null;
   if (msg.includes("exceeds the") && msg.includes("mb limit")) {
-    return "Export is too large for the Cloudinary Free tier (100 MB cap). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.";
+    return "Export is too large for the Cloudinary Free tier (10 MB upload cap). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.";
+  }
+  if (
+    msg.includes("10485760") ||
+    (msg.includes("maximum is") && msg.includes("mb"))
+  ) {
+    return "Cloudinary Free tier caps uploads at 10 MB. Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.";
   }
   if (msg.includes("timed out") || msg.includes("aborted")) {
     return "Upload to storage timed out. Try a smaller batch or a faster connection.";
