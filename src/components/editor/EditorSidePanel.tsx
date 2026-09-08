@@ -283,6 +283,14 @@ export function EditorSidePanel({
                         color: doc.background.color,
                         imageUrl: url,
                       });
+                      
+                      const img = new window.Image();
+                      img.onload = () => {
+                        if (img.naturalWidth && img.naturalHeight) {
+                          editor.resizeCanvas(img.naturalWidth, img.naturalHeight);
+                        }
+                      };
+                      img.src = url;
 
                       if (editor.uploadImage) {
                         try {
