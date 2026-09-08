@@ -96,7 +96,7 @@ export function GridPicker({
       : PORTRAIT_GRID_OPTIONS;
 
   return (
-    <div className="grid grid-cols-7 gap-1.5">
+    <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5">
       {options.map((opt) => {
         const selected = opt.value === value;
         return (
@@ -104,26 +104,40 @@ export function GridPicker({
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
-            title={opt.label}
+            title={
+              opt.value === "AUTO"
+                ? "Auto (orientation-driven)"
+                : `${opt.cols} cols × ${opt.rows} rows (${opt.cols * opt.rows} per page)`
+            }
             className={cn(
-              "flex aspect-square items-center justify-center rounded-md border transition-all overflow-hidden",
+              "flex flex-col aspect-square items-center justify-between p-1 rounded-md border transition-all overflow-hidden",
               selected
                 ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                 : "bg-background hover:border-primary/40 hover:shadow-sm",
             )}
           >
-            {opt.value === "AUTO" ? (
-              <span
-                className={cn(
-                  "text-[10px] font-semibold tracking-tight",
-                  selected ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                Auto
-              </span>
-            ) : (
-              <GridSwatch cols={opt.cols} rows={opt.rows} active={selected} />
-            )}
+            <div className="flex flex-1 w-full items-center justify-center overflow-hidden">
+              {opt.value === "AUTO" ? (
+                <span
+                  className={cn(
+                    "text-[10px] font-semibold tracking-tight",
+                    selected ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  Auto
+                </span>
+              ) : (
+                <GridSwatch cols={opt.cols} rows={opt.rows} active={selected} />
+              )}
+            </div>
+            <span
+              className={cn(
+                "text-[9px] tabular-nums font-medium",
+                selected ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              {opt.label}
+            </span>
           </button>
         );
       })}
@@ -412,49 +426,25 @@ export const FIT_OPTIONS = [
 export const PORTRAIT_GRID_OPTIONS = [
   { value: "AUTO", cols: 0, rows: 0, label: "Auto" },
   { value: "1x2", cols: 1, rows: 2, label: "1×2" },
-  { value: "1x3", cols: 1, rows: 3, label: "1×3" },
-  { value: "1x4", cols: 1, rows: 4, label: "1×4" },
-  { value: "1x5", cols: 1, rows: 5, label: "1×5" },
-  { value: "1x6", cols: 1, rows: 6, label: "1×6" },
   { value: "2x2", cols: 2, rows: 2, label: "2×2" },
   { value: "2x3", cols: 2, rows: 3, label: "2×3" },
   { value: "2x4", cols: 2, rows: 4, label: "2×4" },
   { value: "2x5", cols: 2, rows: 5, label: "2×5" },
-  { value: "2x6", cols: 2, rows: 6, label: "2×6" },
-  { value: "3x2", cols: 3, rows: 2, label: "3×2" },
   { value: "3x3", cols: 3, rows: 3, label: "3×3" },
   { value: "3x4", cols: 3, rows: 4, label: "3×4" },
   { value: "3x5", cols: 3, rows: 5, label: "3×5" },
-  { value: "3x6", cols: 3, rows: 6, label: "3×6" },
-  { value: "4x2", cols: 4, rows: 2, label: "4×2" },
-  { value: "4x3", cols: 4, rows: 3, label: "4×3" },
-  { value: "4x4", cols: 4, rows: 4, label: "4×4" },
-  { value: "4x5", cols: 4, rows: 5, label: "4×5" },
-  { value: "4x6", cols: 4, rows: 6, label: "4×6" },
 ] as const;
 
 export const LANDSCAPE_GRID_OPTIONS = [
   { value: "AUTO", cols: 0, rows: 0, label: "Auto" },
   { value: "2x1", cols: 2, rows: 1, label: "2×1" },
-  { value: "3x1", cols: 3, rows: 1, label: "3×1" },
-  { value: "4x1", cols: 4, rows: 1, label: "4×1" },
-  { value: "5x1", cols: 5, rows: 1, label: "5×1" },
-  { value: "6x1", cols: 6, rows: 1, label: "6×1" },
   { value: "2x2", cols: 2, rows: 2, label: "2×2" },
   { value: "3x2", cols: 3, rows: 2, label: "3×2" },
   { value: "4x2", cols: 4, rows: 2, label: "4×2" },
   { value: "5x2", cols: 5, rows: 2, label: "5×2" },
-  { value: "6x2", cols: 6, rows: 2, label: "6×2" },
-  { value: "2x3", cols: 2, rows: 3, label: "2×3" },
   { value: "3x3", cols: 3, rows: 3, label: "3×3" },
   { value: "4x3", cols: 4, rows: 3, label: "4×3" },
   { value: "5x3", cols: 5, rows: 3, label: "5×3" },
-  { value: "6x3", cols: 6, rows: 3, label: "6×3" },
-  { value: "2x4", cols: 2, rows: 4, label: "2×4" },
-  { value: "3x4", cols: 3, rows: 4, label: "3×4" },
-  { value: "4x4", cols: 4, rows: 4, label: "4×4" },
-  { value: "5x4", cols: 5, rows: 4, label: "5×4" },
-  { value: "6x4", cols: 6, rows: 4, label: "6×4" },
 ] as const;
 
 export const MULTI_GRID_OPTIONS = [

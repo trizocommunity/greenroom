@@ -124,6 +124,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           />
           <NumberInput
             label="Margin"
+            hint="Sheet edge padding"
             value={value.marginMm}
             min={0}
             max={20}
@@ -132,6 +133,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           />
           <NumberInput
             label="Bleed"
+            hint="Cutting overlap border"
             value={value.bleedMm}
             min={0}
             max={6}
@@ -154,6 +156,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           <FieldGrid cols={3}>
             <NumberInput
               label="Margin"
+              hint="Sheet edge padding"
               value={value.marginMm}
               min={0}
               max={20}
@@ -162,6 +165,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
             />
             <NumberInput
               label="Gutter"
+              hint="Spacing between badges"
               value={value.gutterMm}
               min={0}
               max={20}
@@ -170,6 +174,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
             />
             <NumberInput
               label="Bleed"
+              hint="Cutting overlap border"
               value={value.bleedMm}
               min={0}
               max={6}

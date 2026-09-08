@@ -101,10 +101,12 @@ function resolveMultiGrid(
   multiGrid: TemplateExportPayload["multiGrid"],
   pageW: number,
   pageH: number,
+  docW?: number,
+  docH?: number,
 ): { cols: number; rows: number } {
   const explicit = parseMultiGrid(multiGrid);
   if (explicit) return explicit;
-  return autoMultiGrid(pageW, pageH);
+  return autoMultiGrid(pageW, pageH, docW, docH);
 }
 
 /**
@@ -143,7 +145,13 @@ function computePixelRatio(
   } else {
     // Must match appendToPdf's MULTIPLE_PER_PAGE resolution so the raster
     // targets the actual placed cell size.
-    const { cols, rows } = resolveMultiGrid(multiGrid, pageW, pageH);
+    const { cols, rows } = resolveMultiGrid(
+      multiGrid,
+      pageW,
+      pageH,
+      docW,
+      docH,
+    );
     cellW = (pageW - 2 * mmToPx(3)) / cols;
     cellH = (pageH - 2 * mmToPx(3)) / rows;
   }
@@ -266,13 +274,15 @@ function appendToPdf(
       // can place the result at full page size with no further math here.
       doc.addImage(imgBase64, format, 0, 0, pageW, pageH);
     } else {
-      // FIT: shrink-to-fit inside margin, top-left aligned, never upscales.
+      // FIT: shrink-to-fit inside margin, centered on page.
       const availW = pageW - 2 * margin;
       const availH = pageH - 2 * margin;
       const scale = Math.min(availW / width, availH / height);
       const renderW = width * scale;
       const renderH = height * scale;
-      doc.addImage(imgBase64, format, margin, margin, renderW, renderH);
+      const tileX = margin + (availW - renderW) / 2;
+      const tileY = margin + (availH - renderH) / 2;
+      doc.addImage(imgBase64, format, tileX, tileY, renderW, renderH);
     }
 
     if (drawCropMarks) drawTrimMarks(doc, pageW, pageH, bleedMm);
@@ -280,27 +290,35 @@ function appendToPdf(
   }
 
   // ── MULTIPLE_PER_PAGE (BADGE only) ─────────────────────────────────────
-  // The doc is scaled DOWN to fit a sticker-sheet-style grid. Doc aspect is
+  // The doc is scaled to fit a sticker-sheet-style grid. Doc aspect is
   // preserved; cell count follows the user-selected `multiGrid` preset, or
   // the orientation-driven heuristic when `multiGrid === "AUTO"`.
-  //   AUTO landscape → 4 × 2 = 8 per page
-  //   AUTO portrait  → 2 × 2 = 4 per page
-  //   "NxM"          → explicit cols × rows
-  // The doc never upscales (preserves "no upscaling" policy).
+  // Items are auto-aligned and centered within each cell.
   const { cols: colsW, rows: colsH } = resolveMultiGrid(
     multiGrid,
     pageW,
     pageH,
+    width,
+    height,
   );
   const availW = pageW - 2 * margin;
   const availH = pageH - 2 * margin;
   const cellW = (availW - (colsW - 1) * gutter) / colsW;
   const cellH = (availH - (colsH - 1) * gutter) / colsH;
-  const scale = Math.min(cellW / width, cellH / height, 1);
-  const itemW = width * scale;
-  const itemH = height * scale;
-  const perPage = colsW * colsH;
 
+  let itemW: number;
+  let itemH: number;
+  if (fit === "FILL") {
+    itemW = cellW;
+    itemH = cellH;
+  } else {
+    // FIT: scale proportionally to fit inside cell, auto-aligned & centered
+    const scale = Math.min(cellW / width, cellH / height);
+    itemW = width * scale;
+    itemH = height * scale;
+  }
+
+  const perPage = colsW * colsH;
   const slot = index % perPage;
   if (index > 0 && slot === 0) doc.addPage([pageW, pageH], orientation);
 
@@ -311,7 +329,7 @@ function appendToPdf(
   doc.addImage(imgBase64, format, tileX, tileY, itemW, itemH);
 
   if (drawCropMarks && slot === 0) {
-    drawGridTrimMarks(doc, margin, margin, availW, availH, colsW, colsH);
+    drawGridTrimMarks(doc, margin, margin, cellW, cellH, gutter, colsW, colsH);
   }
 }
 
@@ -338,25 +356,42 @@ function drawTrimMarks(
   }
 }
 
-/** Draw trim cross for each tile top-left in a multi-up grid. */
+/** Draw trim ticks for each cell in a multi-up grid, honoring cell size and gutter. */
 function drawGridTrimMarks(
   doc: jsPDF,
   originX: number,
   originY: number,
-  totalW: number,
-  totalH: number,
+  cellW: number,
+  cellH: number,
+  gutter: number,
   cols: number,
   rows: number,
 ) {
   const len = mmToPx(3);
   const w = 0.4;
   doc.setLineWidth(w);
-  for (let r = 0; r <= rows; r++) {
-    const y = originY + (r * totalH) / rows;
-    for (let c = 0; c <= cols; c++) {
-      const x = originX + (c * totalW) / cols;
-      doc.line(x - len, y, x + len, y);
-      doc.line(x, y - len, x, y + len);
+  for (let r = 0; r < rows; r++) {
+    const yTop = originY + r * (cellH + gutter);
+    const yBottom = yTop + cellH;
+    for (let c = 0; c < cols; c++) {
+      const xLeft = originX + c * (cellW + gutter);
+      const xRight = xLeft + cellW;
+
+      // Top-left corner
+      doc.line(xLeft - len, yTop, xLeft, yTop);
+      doc.line(xLeft, yTop - len, xLeft, yTop);
+
+      // Top-right corner
+      doc.line(xRight, yTop, xRight + len, yTop);
+      doc.line(xRight, yTop - len, xRight, yTop);
+
+      // Bottom-left corner
+      doc.line(xLeft - len, yBottom, xLeft, yBottom);
+      doc.line(xLeft, yBottom, xLeft, yBottom + len);
+
+      // Bottom-right corner
+      doc.line(xRight, yBottom, xRight + len, yBottom);
+      doc.line(xRight, yBottom, xRight, yBottom + len);
     }
   }
 }

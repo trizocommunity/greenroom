@@ -56,14 +56,39 @@ export function parseMultiGrid(
 export function autoMultiGrid(
   pageW: number,
   pageH: number,
+  docW?: number,
+  docH?: number,
 ): {
   cols: number;
   rows: number;
 } {
-  const aspect = pageW / pageH;
-  if (aspect > 1.4) return { cols: 4, rows: 2 };
-  if (aspect > 1.0) return { cols: 3, rows: 3 };
-  if (aspect > 0.6) return { cols: 2, rows: 2 };
+  const pageAspect = pageW / pageH;
+  const isPageLandscape = pageAspect >= 1.0;
+
+  if (docW && docH && docW > 0 && docH > 0) {
+    const docAspect = docW / docH;
+    const isDocLandscape = docAspect >= 1.15;
+
+    if (isPageLandscape) {
+      // Wide sheet (e.g. A4 landscape, 13x19 landscape)
+      if (isDocLandscape) {
+        return pageAspect > 1.5 ? { cols: 4, rows: 2 } : { cols: 3, rows: 2 };
+      }
+      return { cols: 4, rows: 2 };
+    }
+
+    // Portrait sheet (e.g. A4 portrait, 13x19 portrait)
+    if (isDocLandscape) {
+      // Wide template on portrait sheet: 2 columns × 4 rows provides wide cells
+      return pageAspect < 0.6 ? { cols: 2, rows: 5 } : { cols: 2, rows: 4 };
+    }
+    return pageAspect < 0.6 ? { cols: 2, rows: 3 } : { cols: 2, rows: 2 };
+  }
+
+  // Pure page-aspect fallback
+  if (pageAspect > 1.4) return { cols: 4, rows: 2 };
+  if (pageAspect > 1.0) return { cols: 3, rows: 3 };
+  if (pageAspect > 0.6) return { cols: 2, rows: 2 };
   return { cols: 2, rows: 4 };
 }
 

@@ -1143,6 +1143,7 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
     flipSelected,
     reorderSelected,
     nudgeSelected,
+    festivalImages: options?.festivalImages ?? [],
   };
 }
 
