@@ -37,6 +37,15 @@ export interface FestAdminFieldDef {
   templateTypes: PosterTemplateType[];
 }
 
+export function resolveFestAdminFieldValue(
+  bindingKey: string,
+  bindings: Record<string, string>,
+): string {
+  const value = bindings[bindingKey];
+  if (value?.trim()) return value;
+  return FEST_ADMIN_FIELDS.find((field) => field.key === bindingKey)?.preview ?? "";
+}
+
 export interface TemplateTypeMeta {
   type: PosterTemplateType;
   emoji: string;

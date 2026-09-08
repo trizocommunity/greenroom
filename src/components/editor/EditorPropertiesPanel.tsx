@@ -170,6 +170,29 @@ export function EditorPropertiesPanel({
             {alignGrid}
           </EditorSelectionSection>
 
+          {isText && !multi && (
+            <EditorSelectionSection title="Spacing">
+              <div className="grid grid-cols-2 gap-1.5">
+                <SelectionField
+                  label="Tracking (px)"
+                  value={finiteNumber(selectedElement.letterSpacing, 0)}
+                  onChange={(v) =>
+                    updateElement(selectedElement.id, { letterSpacing: v })
+                  }
+                />
+                <SelectionField
+                  label="Leading"
+                  value={finiteNumber(selectedElement.lineHeight, 1.2)}
+                  onChange={(v) =>
+                    updateElement(selectedElement.id, { lineHeight: v })
+                  }
+                  min={0.8}
+                  max={3}
+                />
+              </div>
+            </EditorSelectionSection>
+          )}
+
           {multi && (
             <EditorSelectionSection title="Align selection">
               <div className="grid grid-cols-3 gap-1">
@@ -544,7 +567,7 @@ export function EditorPropertiesPanel({
             />
           </div>
           <div>
-            <Label className="text-xs">Line height</Label>
+            <Label className="text-xs">Leading</Label>
             <Input
               type="number"
               className="h-7 text-xs"
@@ -560,7 +583,7 @@ export function EditorPropertiesPanel({
             />
           </div>
           <div>
-            <Label className="text-xs">Letter spacing (px)</Label>
+            <Label className="text-xs">Tracking (px)</Label>
             <Input
               type="number"
               className="h-7 text-xs"
@@ -578,22 +601,80 @@ export function EditorPropertiesPanel({
         </div>
       )}
 
-      {selectedElement.type === "rect" && selectedIds.length === 1 && (
+      {(selectedElement.type === "rect" || selectedElement.type === "image") &&
+        selectedIds.length === 1 && (
+          <div className="space-y-2">
+            <Label className={sectionLabel}>
+              {selectedElement.type === "rect" ? "Rectangle" : "Image"}
+            </Label>
+            <div>
+              <Label className="text-xs">Corner radius</Label>
+              <Input
+                type="number"
+                className="h-7 text-xs"
+                min={0}
+                max={120}
+                value={numericInputValue(selectedElement.cornerRadius, 0)}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (Number.isFinite(v))
+                    updateElement(selectedElement.id, { cornerRadius: v });
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+      {selectedElement.type === "qr" && selectedIds.length === 1 && (
         <div className="space-y-2">
-          <Label className={sectionLabel}>Rectangle</Label>
+          <Label className={sectionLabel}>QR Code Style</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Pattern</Label>
+              <select
+                className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                value={selectedElement.qrDotsStyle || "square"}
+                onChange={(e) =>
+                  updateElement(selectedElement.id, {
+                    qrDotsStyle: e.target.value as any,
+                  })
+                }
+              >
+                <option value="square">Square</option>
+                <option value="dots">Dots</option>
+                <option value="rounded">Rounded</option>
+                <option value="extra-rounded">Extra Rounded</option>
+                <option value="classy">Classy</option>
+                <option value="classy-rounded">Classy Rounded</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Corner Eye</Label>
+              <select
+                className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                value={selectedElement.qrCornersStyle || "square"}
+                onChange={(e) =>
+                  updateElement(selectedElement.id, {
+                    qrCornersStyle: e.target.value as any,
+                  })
+                }
+              >
+                <option value="square">Square</option>
+                <option value="dot">Dot</option>
+                <option value="extra-rounded">Extra Rounded</option>
+              </select>
+            </div>
+          </div>
           <div>
-            <Label className="text-xs">Corner radius</Label>
+            <Label className="text-xs">Center Logo URL (optional)</Label>
             <Input
-              type="number"
-              className="h-7 text-xs"
-              min={0}
-              max={120}
-              value={numericInputValue(selectedElement.cornerRadius, 0)}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (Number.isFinite(v))
-                  updateElement(selectedElement.id, { cornerRadius: v });
-              }}
+              type="text"
+              placeholder="https://..."
+              className="mt-1 h-7 text-xs"
+              value={selectedElement.qrLogoUrl || ""}
+              onChange={(e) =>
+                updateElement(selectedElement.id, { qrLogoUrl: e.target.value })
+              }
             />
           </div>
         </div>

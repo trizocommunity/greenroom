@@ -295,7 +295,7 @@ export function EditorTextToolbar({
             <PopoverContent className="w-52 p-3" align="start">
               <div className="space-y-2">
                 <div>
-                  <Label className="text-xs">Line height</Label>
+                  <Label className="text-xs">Leading</Label>
                   <Input
                     type="number"
                     className="mt-1 h-7 text-xs"
@@ -311,7 +311,7 @@ export function EditorTextToolbar({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Letter spacing (px)</Label>
+                  <Label className="text-xs">Tracking (px)</Label>
                   <Input
                     type="number"
                     className="mt-1 h-7 text-xs"
