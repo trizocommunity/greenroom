@@ -53,6 +53,8 @@ export type PublishTemplateConfig = {
   templateCode: string;
   onConfirmPublish: (doc: PosterEditorDocument) => Promise<boolean>;
   pending?: boolean;
+  isPublished?: boolean;
+  onConfirmUnpublish?: () => Promise<boolean>;
 };
 
 export type ResetTemplateConfig = {
@@ -387,7 +389,7 @@ export default function PosterEditorPlayground({
                 previewDataHint={previewDataHint}
                 resetTemplate={resetTemplate}
               />
-              {publishTemplate && doc && (
+              {publishTemplate && doc && !publishTemplate.isPublished && (
                 <Button
                   type="button"
                   size="sm"
@@ -399,6 +401,23 @@ export default function PosterEditorPlayground({
                   }}
                 >
                   Publish template
+                </Button>
+              )}
+              {publishTemplate && doc && publishTemplate.isPublished && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  disabled={publishTemplate.pending}
+                  onClick={async (e) => {
+                    e.currentTarget.blur();
+                    if (publishTemplate.onConfirmUnpublish) {
+                      await publishTemplate.onConfirmUnpublish();
+                    }
+                  }}
+                >
+                  Unpublish
                 </Button>
               )}
               {headerEnd}

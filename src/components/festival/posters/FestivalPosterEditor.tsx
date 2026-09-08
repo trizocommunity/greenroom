@@ -18,6 +18,7 @@ import {
   getPosterTemplateAction,
   listPosterTemplatesAction,
   publishPosterTemplateAction,
+  unpublishPosterTemplateAction,
   savePosterTemplateDraftAction,
 } from "@/features/posters/actions/poster-template.actions";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
@@ -286,6 +287,27 @@ export function FestivalPosterEditor({
     [festivalId, festivalSlug, saveDraftSilent, templateCode],
   );
 
+  const confirmUnpublish = useCallback(async (): Promise<boolean> => {
+    if (!templateCode) return false;
+    setPublishing(true);
+    try {
+      const res = await unpublishPosterTemplateAction(
+        festivalId,
+        templateCode,
+        festivalSlug,
+      );
+      if (res.success) {
+        toast.success(`Unpublished ${templateCode}`);
+        setTemplateStatus("DRAFT");
+        return true;
+      }
+      toast.error(res.error);
+      return false;
+    } finally {
+      setPublishing(false);
+    }
+  }, [festivalId, festivalSlug, templateCode]);
+
   // ── Render: loading ──────────────────────────────────────────────────────
   if (!ready) {
     return (
@@ -325,7 +347,9 @@ export function FestivalPosterEditor({
               ? {
                   templateCode,
                   pending: publishing,
+                  isPublished: templateStatus === "PUBLISHED",
                   onConfirmPublish: confirmPublish,
+                  onConfirmUnpublish: confirmUnpublish,
                 }
               : undefined
           }
