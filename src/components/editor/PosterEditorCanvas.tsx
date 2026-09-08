@@ -836,7 +836,7 @@ export function PosterEditorCanvas({
                     previewMode={previewMode}
                     draggable={draggable}
                     nodeOpacity={nodeOpacity}
-                    displayText={el.type === "text" ? displayText(el) : ""}
+                    displayText={displayText(el)}
                     onSelect={onSelect}
                     hoverHandlers={hoverHandlers}
                     dragHandlers={dragHandlers}
