@@ -278,6 +278,17 @@ export async function deleteFile(
  * Extracts the Cloudinary public_id from a secure_url.
  * E.g., https://res.cloudinary.com/cloud/image/upload/v1234/folder/file.png -> folder/file
  */
+/**
+ * Basic-Auth header value for Cloudinary Admin/Resource API calls.
+ * Returns null when CLOUDINARY_URL is not configured (caller should
+ * fall back to throwing CloudinaryConfigError).
+ */
+export function cloudinaryBasicAuthHeader(): string | null {
+  const cfg = readConfig();
+  if (!cfg) return null;
+  return `Basic ${Buffer.from(`${cfg.apiKey}:${cfg.apiSecret}`).toString("base64")}`;
+}
+
 export function extractPublicIdFromUrl(url: string): string | null {
   try {
     const parsed = new URL(url);

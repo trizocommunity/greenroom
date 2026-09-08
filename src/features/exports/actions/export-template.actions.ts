@@ -12,6 +12,7 @@ import {
   ERROR_MESSAGES,
   handleActionError,
 } from "@/core/errors/errors";
+import { cloudinaryBasicAuthHeader } from "@/core/integrations/cloudinary";
 import type { ActionResponse } from "@/core/types/actions";
 import * as ExportRepo from "@/features/exports/repositories/export.repository";
 import { exportConfigSchema } from "@/features/exports/schemas/export-config.schema";
@@ -132,7 +133,14 @@ export async function finalizeTemplateExportAction(
       throw new AppError("Missing upload metadata.");
     }
 
-    const fileRes = await fetch(input.secureUrl);
+    // Cloudinary's `secure_url` for `raw/upload` may require Basic Auth
+    // when the account has folder-level access controls or "Strict
+    // access control" enabled. Sending credentials on every fetch is
+    // safe — Cloudinary ignores them on publicly-readable assets.
+    const authHeader = cloudinaryBasicAuthHeader();
+    const fileRes = await fetch(input.secureUrl, {
+      headers: authHeader ? { Authorization: authHeader } : {},
+    });
     if (!fileRes.ok) {
       throw new AppError(
         `Could not retrieve uploaded file from storage (${fileRes.status}).`,
