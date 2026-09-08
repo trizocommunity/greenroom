@@ -696,6 +696,25 @@ export function PosterEditorCanvas({
           ? "relative shrink-0 overflow-visible"
           : "relative flex h-full min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/40 p-8"
       }
+      onDragOver={(e) => {
+        if (!interactive) return;
+        e.preventDefault();
+      }}
+      onDrop={(e) => {
+        if (!interactive || !doc) return;
+        e.preventDefault();
+        const file = e.dataTransfer.files?.[0];
+        if (file && file.type.startsWith("image/") && editor.addImageFromFile) {
+          const stage = stageRef.current;
+          if (stage) {
+            stage.setPointersPositions(e);
+            const pos = stage.getRelativePointerPosition();
+            editor.addImageFromFile(file, pos?.x, pos?.y);
+          } else {
+            editor.addImageFromFile(file);
+          }
+        }
+      }}
     >
       <div
         className={
