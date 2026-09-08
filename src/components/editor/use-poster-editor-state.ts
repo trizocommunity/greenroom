@@ -656,23 +656,25 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
   );
 
   const addImageFromFile = useCallback(
-    async (file: File) => {
+    async (file: File, dropX?: number, dropY?: number) => {
       let url = URL.createObjectURL(file);
       const isTempUrl = true;
       const elementId = uuid();
 
       setDocWithHistory((d) => {
         const maxZ = d.elements.reduce((m, e) => Math.max(m, e.zIndex), 0);
+        const w = 280;
+        const h = 200;
         const el: EditorElement = {
           id: elementId,
           zIndex: maxZ + 1,
           type: "image",
           name: file.name,
           visible: true,
-          x: 100,
-          y: 100,
-          width: 280,
-          height: 200,
+          x: dropX !== undefined ? dropX - w / 2 : (d.width - w) / 2,
+          y: dropY !== undefined ? dropY - h / 2 : (d.height - h) / 2,
+          width: w,
+          height: h,
           imageUrl: url,
           opacity: 0.5,
         };

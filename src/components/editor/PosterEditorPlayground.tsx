@@ -163,6 +163,25 @@ export default function PosterEditorPlayground({
   }, [initialDocument, initialTabLabel, templateCode, loadDocument]);
 
   useEffect(() => {
+    if (doc?.customFonts && doc.customFonts.length > 0) {
+      doc.customFonts.forEach((font) => {
+        let loaded = false;
+        document.fonts.forEach((f) => {
+          if (f.family === font.name) loaded = true;
+        });
+        if (!loaded && font.url) {
+          const fontFace = new FontFace(font.name, `url(${font.url})`);
+          fontFace.load().then((loadedFace) => {
+            document.fonts.add(loadedFace);
+          }).catch((err) => {
+            console.error("Failed to load custom font", font.name, err);
+          });
+        }
+      });
+    }
+  }, [doc?.customFonts]);
+
+  useEffect(() => {
     if (!initialDocument && !templateCode) {
       editor.setNavPanel("templates");
       setPanelOpen(true);
