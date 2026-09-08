@@ -222,8 +222,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
       <FieldGrid cols={2}>
         <SingleSelect
           label="Category"
-          hint="Required — one category per export keeps the bundle under the Vercel Hobby upload limit."
-          required
+          hint="Optional. Picking a team automatically includes every category that team has."
           options={singleCategories}
           value={value.categoryIds[0] ?? null}
           onChange={(id) => set({ categoryIds: id ? [id] : [] })}

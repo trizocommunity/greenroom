@@ -59,6 +59,15 @@ const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
 // margin so borderline sizes don't get rejected with a 413.
 const MAX_BLOB_BYTES = 4 * 1024 * 1024;
 
+// The Vercel Hobby cap only bites in production. Local `next dev` has no
+// edge function in front of the Server Action, so there's no reason to
+// reject (or auto-downgrade) exports that would otherwise render fine.
+// `NEXT_PUBLIC_EXPORT_GUARD_ENABLED=1` re-enables the guard for local
+// smoke-testing of the prod code path.
+const SIZE_GUARD_ENABLED =
+  process.env.NODE_ENV !== "development" ||
+  process.env.NEXT_PUBLIC_EXPORT_GUARD_ENABLED === "1";
+
 // Quality fallback order when a rendered PDF exceeds MAX_BLOB_BYTES.
 // Highest quality first; the runner re-renders at the next entry until
 // it fits under the cap (or exhausts the list, at which point it fails).
@@ -657,8 +666,10 @@ export function ClientTemplateExportRunner({
         // automatically retry at the next-lower quality (PRINT → STANDARD
         // → SCREEN) by re-rendering. If even SCREEN exceeds the cap, fail
         // with an actionable message — user must split into smaller batches.
+        // In dev the guard is off (see SIZE_GUARD_ENABLED) so users can
+        // exercise the full Server Action path with large files locally.
         const pdfBlob = pdfContext.doc.output("blob");
-        if (pdfBlob.size > MAX_BLOB_BYTES) {
+        if (SIZE_GUARD_ENABLED && pdfBlob.size > MAX_BLOB_BYTES) {
           const nextQuality = nextQualityDown(job.payload.quality);
           if (nextQuality) {
             // Re-render at lower quality. Re-init the PDF context (the
@@ -715,7 +726,7 @@ export function ClientTemplateExportRunner({
             { name: pdfName, data: pdfBytes },
             { name: aiName, data: pdfBytes },
           ]);
-          if (zipBytes.byteLength > MAX_BLOB_BYTES) {
+          if (SIZE_GUARD_ENABLED && zipBytes.byteLength > MAX_BLOB_BYTES) {
             const nextQuality = nextQualityDown(job.payload.quality);
             if (nextQuality) {
               pdfRef.current = initPdf({
@@ -727,11 +738,7 @@ export function ClientTemplateExportRunner({
                 payload: { ...job.payload, quality: nextQuality },
                 index: 0,
               });
-              onProgress?.(
-                job.exportId,
-                0,
-                job.payload.items.length,
-              );
+              onProgress?.(job.exportId, 0, job.payload.items.length);
               return;
             }
             const mb = Math.round(zipBytes.byteLength / (1024 * 1024));

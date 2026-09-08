@@ -115,13 +115,14 @@ function validateExport(
 ): string | null {
   if (!implemented) return "This export type isn't available yet.";
   if (!config) return "This export type isn't available yet.";
-  if (config.type === "BADGE" || config.type === "CERTIFICATE") {
+  if (config.type === "BADGE") {
+    if (!config.templateId) return "Select a template.";
+    if (config.teamIds.length === 0) return "Select one team.";
+  }
+  if (config.type === "CERTIFICATE") {
     if (!config.templateId) return "Select a template.";
     if (config.categoryIds.length === 0) return "Select one category.";
-    if (config.type === "BADGE" && config.teamIds.length === 0)
-      return "Select one team.";
-    if (config.type === "CERTIFICATE" && config.programmeIds.length === 0)
-      return "Select one programme.";
+    if (config.programmeIds.length === 0) return "Select one programme.";
   }
   return null;
 }
