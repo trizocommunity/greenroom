@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { clampCanvasDimension, presetsForTemplate } from "./editor-canvas-size";
+import { clampCanvasDimension, presetsForTemplate, CanvasUnit, toPixels, fromPixels } from "./editor-canvas-size";
 import { editorInput } from "./editor-chrome";
 import type { PosterEditorState } from "./use-poster-editor-state";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function EditorCanvasSizeSetup({
   editor,
@@ -17,77 +18,95 @@ export function EditorCanvasSizeSetup({
   const { doc, resizeCanvas } = editor;
   const [width, setWidth] = useState(1200);
   const [height, setHeight] = useState(1600);
-  const [widthInput, setWidthInput] = useState("1200");
-  const [heightInput, setHeightInput] = useState("1600");
+  const [unit, setUnit] = useState<CanvasUnit>("in");
+  const [widthInput, setWidthInput] = useState("12.5");
+  const [heightInput, setHeightInput] = useState("16.67");
   const [lockAspect, setLockAspect] = useState(true);
   const [aspect, setAspect] = useState(1200 / 1600);
+
+  const formatUnit = (px: number, u: CanvasUnit) => {
+    const val = fromPixels(px, u);
+    return u === "px" ? String(Math.round(val)) : val.toFixed(2).replace(/\.?0+$/, "");
+  };
 
   useEffect(() => {
     if (!doc) return;
     setWidth(doc.width);
     setHeight(doc.height);
-    setWidthInput(String(doc.width));
-    setHeightInput(String(doc.height));
+    setWidthInput(formatUnit(doc.width, unit));
+    setHeightInput(formatUnit(doc.height, unit));
     setAspect(doc.width / doc.height);
-  }, [doc?.width, doc?.height, doc]);
+  }, [doc?.width, doc?.height, doc, unit]);
 
   if (!doc) return null;
 
   const presets = presetsForTemplate(doc.templateType);
 
-  const applySize = (w: number, h: number) => {
-    const cw = clampCanvasDimension(w);
-    const ch = clampCanvasDimension(h);
+  const applySize = (wPx: number, hPx: number) => {
+    const cw = clampCanvasDimension(wPx);
+    const ch = clampCanvasDimension(hPx);
     setWidth(cw);
     setHeight(ch);
-    setWidthInput(String(cw));
-    setHeightInput(String(ch));
+    setWidthInput(formatUnit(cw, unit));
+    setHeightInput(formatUnit(ch, unit));
     setAspect(cw / ch);
     resizeCanvas(cw, ch);
   };
 
   const onWidthChange = (val: string) => {
     setWidthInput(val);
-    const w = parseInt(val, 10);
+    const w = parseFloat(val);
     if (!Number.isNaN(w) && w > 0 && lockAspect) {
-      setHeightInput(String(Math.round(w / aspect)));
+      setHeightInput(formatUnit(toPixels(w, unit) / aspect, unit));
     }
   };
 
   const onHeightChange = (val: string) => {
     setHeightInput(val);
-    const h = parseInt(val, 10);
+    const h = parseFloat(val);
     if (!Number.isNaN(h) && h > 0 && lockAspect) {
-      setWidthInput(String(Math.round(h * aspect)));
+      setWidthInput(formatUnit(toPixels(h, unit) * aspect, unit));
     }
   };
 
   const commitFields = () => {
-    applySize(
-      parseInt(widthInput, 10) || width,
-      parseInt(heightInput, 10) || height,
-    );
+    const wPx = parseFloat(widthInput) ? toPixels(parseFloat(widthInput), unit) : width;
+    const hPx = parseFloat(heightInput) ? toPixels(parseFloat(heightInput), unit) : height;
+    applySize(wPx, hPx);
   };
 
   return (
     <div className="space-y-3 border-b border-border pb-3">
-      <div className="flex items-center gap-2">
-        <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
-        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-          Canvas size
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Canvas size
+          </p>
+        </div>
+        <Select value={unit} onValueChange={(v) => setUnit(v as CanvasUnit)}>
+          <SelectTrigger className="h-6 w-[70px] text-[10px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="px">px</SelectItem>
+            <SelectItem value="in">inch</SelectItem>
+            <SelectItem value="cm">cm</SelectItem>
+            <SelectItem value="mm">mm</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Label className="text-[10px] text-muted-foreground">
-            Width (px)
+            Width ({unit})
           </Label>
           <Input
             type="number"
             className={editorInput}
-            min={320}
-            max={5000}
+            min={0.1}
+            step={unit === "px" ? 1 : 0.01}
             value={widthInput}
             onChange={(e) => onWidthChange(e.target.value)}
             onBlur={commitFields}
@@ -96,13 +115,13 @@ export function EditorCanvasSizeSetup({
         </div>
         <div>
           <Label className="text-[10px] text-muted-foreground">
-            Height (px)
+            Height ({unit})
           </Label>
           <Input
             type="number"
             className={editorInput}
-            min={320}
-            max={5000}
+            min={0.1}
+            step={unit === "px" ? 1 : 0.01}
             value={heightInput}
             onChange={(e) => onHeightChange(e.target.value)}
             onBlur={commitFields}
