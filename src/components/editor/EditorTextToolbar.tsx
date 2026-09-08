@@ -303,11 +303,12 @@ export function EditorTextToolbar({
                     max={3}
                     step={0.05}
                     value={el.lineHeight ?? 1.2}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
                       updateElement(el.id, {
-                        lineHeight: Number(e.target.value),
-                      })
-                    }
+                        lineHeight: Math.max(0.1, v),
+                      });
+                    }}
                   />
                 </div>
                 <div>
