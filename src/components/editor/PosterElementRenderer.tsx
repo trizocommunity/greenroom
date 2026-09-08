@@ -118,6 +118,15 @@ function ImageElement({
   );
 }
 
+/**
+ * Minimum canvas size passed to `QRCodeStyling`. The library throws
+ * "The canvas is too small." when its offscreen render canvas is smaller
+ * than the QR's module count (e.g. 21 modules for a 4-character chest
+ * number at error-correction H). 96 px is enough headroom for any
+ * plausible badge payload (chest number, profile URL, deep-link).
+ */
+const QR_MIN_RENDER_PX = 96;
+
 function QrCodeElement({
   el,
   onSelect,
@@ -138,10 +147,27 @@ function QrCodeElement({
 
     const textToEncode = displayText || "https://trizocommunity.com";
     const qw = el.width ?? 160;
+    // Guarantee the offscreen render canvas is at least QR_MIN_RENDER_PX
+    // even when the element has been shrunk below 48 px. The element still
+    // displays at its real (possibly small) size; the QR raster is upscaled.
+    const renderSize = Math.max(qw * 2, QR_MIN_RENDER_PX);
+
+    if (process.env.NEXT_PUBLIC_GR_DEBUG_QR === "1") {
+      // One-shot diagnostic: confirm what the element actually looks like
+      // when the throw fires. Print only once per element id per session.
+      console.info("[gr-debug][qr][render]", {
+        id: el.id,
+        elWidth: el.width,
+        elHeight: el.height,
+        qw,
+        renderSize,
+        payloadLen: textToEncode.length,
+      });
+    }
 
     const qrCode = new QRCodeStyling({
-      width: qw * 2, // render at 2x resolution
-      height: qw * 2,
+      width: renderSize, // render at min 2x resolution, clamped to 96 px
+      height: renderSize,
       data: textToEncode,
       margin: 0,
       qrOptions: { errorCorrectionLevel: "H" },
@@ -184,11 +210,19 @@ function QrCodeElement({
         };
         img.src = url;
       })
-      .catch(console.error);
+      .catch((err) => {
+        // The placeholder dashed rect is shown to the user; no need to
+        // pollute the console with this library-level constraint error.
+        const msg = String((err as Error)?.message ?? err);
+        if (msg.includes("canvas is too small")) return;
+        console.error(err);
+      });
   }, [
     displayText,
     previewMode,
+    el.id,
     el.width,
+    el.height,
     el.fill,
     el.stroke,
     el.qrDotsStyle,
@@ -204,6 +238,7 @@ function QrCodeElement({
     return (
       <KonvaImage
         id={el.id}
+        name="qr-element"
         image={qrImage}
         x={el.x}
         y={el.y}
@@ -229,6 +264,8 @@ function QrCodeElement({
   return (
     <Group
       id={el.id}
+      name="qr-element"
+      data-qr-status={previewMode ? "pending" : "placeholder"}
       x={el.x}
       y={el.y}
       rotation={el.rotation ?? 0}

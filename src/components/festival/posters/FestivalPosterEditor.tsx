@@ -13,15 +13,15 @@ import {
   clearLocalEditorBackup,
   readLocalEditorBackup,
 } from "@/components/festival/posters/festival-editor-local-backup";
+import { getMediaImagesAction } from "@/features/media/actions/media.actions";
 import {
   getEditorPreviewBindingsAction,
   getPosterTemplateAction,
   listPosterTemplatesAction,
   publishPosterTemplateAction,
-  unpublishPosterTemplateAction,
   savePosterTemplateDraftAction,
+  unpublishPosterTemplateAction,
 } from "@/features/posters/actions/poster-template.actions";
-import { getMediaImagesAction } from "@/features/media/actions/media.actions";
 import type { PosterBindings } from "@/features/posters/services/poster-bindings.service";
 import type { PosterTemplateStatus } from "@/features/posters/types/poster-template.types";
 import {
@@ -87,7 +87,9 @@ export function FestivalPosterEditor({
   const [previewDataHint, setPreviewDataHint] = useState<string | null>(null);
 
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
-  const [festivalImages, setFestivalImages] = useState<{ id: string; url: string }[]>([]);
+  const [festivalImages, setFestivalImages] = useState<
+    { id: string; url: string }[]
+  >([]);
 
   const refreshFestivalImages = useCallback(async () => {
     const images = await getMediaImagesAction(festivalId);
@@ -98,7 +100,7 @@ export function FestivalPosterEditor({
     startTransition(async () => {
       const [res, imagesRes] = await Promise.all([
         listPosterTemplatesAction(festivalId),
-        getMediaImagesAction(festivalId)
+        getMediaImagesAction(festivalId),
       ]);
       if (res.success) {
         setDbTemplates(res.data);

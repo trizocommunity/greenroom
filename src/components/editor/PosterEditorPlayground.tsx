@@ -180,11 +180,14 @@ export default function PosterEditorPlayground({
         });
         if (!loaded && font.url) {
           const fontFace = new FontFace(font.name, `url(${font.url})`);
-          fontFace.load().then((loadedFace) => {
-            document.fonts.add(loadedFace);
-          }).catch((err) => {
-            console.error("Failed to load custom font", font.name, err);
-          });
+          fontFace
+            .load()
+            .then((loadedFace) => {
+              document.fonts.add(loadedFace);
+            })
+            .catch((err) => {
+              console.error("Failed to load custom font", font.name, err);
+            });
         }
       });
     }

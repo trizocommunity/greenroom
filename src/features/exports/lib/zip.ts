@@ -41,7 +41,7 @@ function toDosDateTime(d = new Date()): { date: number; time: number } {
   const date =
     (d.getDate() & 0x1f) |
     (((d.getMonth() + 1) & 0x0f) << 5) |
-    (((Math.max(d.getFullYear() - 1980, 0)) & 0x7f) << 9);
+    ((Math.max(d.getFullYear() - 1980, 0) & 0x7f) << 9);
   return { date, time };
 }
 
@@ -80,8 +80,7 @@ export function buildZip(entries: ZipEntry[]): Uint8Array<ArrayBuffer> {
   const localOffsets: number[] = [];
   for (let i = 0; i < entries.length; i++) {
     localOffsets.push(totalSize);
-    totalSize +=
-      localHeaderSize + nameBytes[i].length + entries[i].data.length;
+    totalSize += localHeaderSize + nameBytes[i].length + entries[i].data.length;
   }
   const cdOffset = totalSize;
   totalSize += entries.length * cdHeaderSize;

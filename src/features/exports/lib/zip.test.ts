@@ -49,7 +49,9 @@ function parseZip(bytes: Uint8Array): ParsedEntry[] {
     const size = readU32(bytes, p + 20);
     const nameLen = readU16(bytes, p + 28);
     const localOffset = readU32(bytes, p + 42);
-    const name = new TextDecoder().decode(bytes.slice(p + 46, p + 46 + nameLen));
+    const name = new TextDecoder().decode(
+      bytes.slice(p + 46, p + 46 + nameLen),
+    );
     p += 46 + nameLen;
 
     const localNameLen = readU16(bytes, localOffset + 26);

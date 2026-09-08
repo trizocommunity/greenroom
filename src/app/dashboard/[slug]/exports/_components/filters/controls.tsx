@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/core/utils/cn";
 
@@ -292,11 +293,15 @@ export function TemplatePicker({
   options,
   selectedId,
   onSelect,
+  loading = false,
+  errorMessage,
 }: {
   label: string;
   options: ExportTemplateOption[];
   selectedId: string;
   onSelect: (id: string) => void;
+  loading?: boolean;
+  errorMessage?: string;
 }) {
   const [previewId, setPreviewId] = React.useState<string | null>(null);
   const previewOpt = options.find((o) => o.id === previewId);
@@ -306,7 +311,29 @@ export function TemplatePicker({
       <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </Label>
-      {options.length === 0 ? (
+      {loading ? (
+        <div className="space-y-1.5 rounded-md border bg-muted/20 p-2 max-h-44 overflow-y-auto">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="flex w-full items-center justify-between rounded-md border bg-background overflow-hidden"
+              aria-hidden="true"
+            >
+              <div className="flex-1 px-3 py-2 space-y-1.5">
+                <Skeleton className="h-3.5 w-1/2" />
+                <Skeleton className="h-2.5 w-1/3" />
+              </div>
+              <div className="border-l p-3">
+                <Skeleton className="h-4 w-4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : errorMessage ? (
+        <p className="text-xs text-destructive rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-3">
+          {errorMessage}
+        </p>
+      ) : options.length === 0 ? (
         <p className="text-xs text-muted-foreground rounded-md border border-dashed p-3">
           No published templates found. Create and publish one in the poster
           editor first.
@@ -433,6 +460,11 @@ export const PORTRAIT_GRID_OPTIONS = [
   { value: "3x3", cols: 3, rows: 3, label: "3×3" },
   { value: "3x4", cols: 3, rows: 4, label: "3×4" },
   { value: "3x5", cols: 3, rows: 5, label: "3×5" },
+  { value: "4x4", cols: 4, rows: 4, label: "4×4" },
+  { value: "4x5", cols: 4, rows: 5, label: "4×5" },
+  { value: "4x6", cols: 4, rows: 6, label: "4×6" },
+  { value: "5x5", cols: 5, rows: 5, label: "5×5" },
+  { value: "5x6", cols: 5, rows: 6, label: "5×6" },
 ] as const;
 
 export const LANDSCAPE_GRID_OPTIONS = [
@@ -445,6 +477,11 @@ export const LANDSCAPE_GRID_OPTIONS = [
   { value: "3x3", cols: 3, rows: 3, label: "3×3" },
   { value: "4x3", cols: 4, rows: 3, label: "4×3" },
   { value: "5x3", cols: 5, rows: 3, label: "5×3" },
+  { value: "6x3", cols: 6, rows: 3, label: "6×3" },
+  { value: "4x4", cols: 4, rows: 4, label: "4×4" },
+  { value: "5x4", cols: 5, rows: 4, label: "5×4" },
+  { value: "6x4", cols: 6, rows: 4, label: "6×4" },
+  { value: "6x5", cols: 6, rows: 5, label: "6×5" },
 ] as const;
 
 export const MULTI_GRID_OPTIONS = [

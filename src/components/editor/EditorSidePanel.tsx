@@ -212,9 +212,7 @@ export function EditorSidePanel({
 
   const markImageBroken = (id: string, url: string) => {
     if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        `[EditorSidePanel] Failed to load media thumbnail: ${url}`,
-      );
+      console.warn(`[EditorSidePanel] Failed to load media thumbnail: ${url}`);
     }
     setBrokenImageIds((prev) => {
       if (prev.has(id)) return prev;
@@ -449,7 +447,9 @@ export function EditorSidePanel({
                         uploadedUrl,
                       );
                       if (result.success) {
-                        toast.success("Background set and saved to media library");
+                        toast.success(
+                          "Background set and saved to media library",
+                        );
                         await onMediaChanged?.();
                       } else {
                         toast.error(
@@ -552,7 +552,9 @@ export function EditorSidePanel({
                               <button
                                 type="button"
                                 title={
-                                  broken ? `Failed: ${failedUrl}` : "Preview image"
+                                  broken
+                                    ? `Failed: ${failedUrl}`
+                                    : "Preview image"
                                 }
                                 onClick={() => setPreviewImage(img)}
                                 className="absolute inset-0 z-10 bg-transparent"
@@ -652,9 +654,9 @@ export function EditorSidePanel({
                             : `View all (${festivalImages.length})`}
                           <ChevronDown
                             className={cn(
-                                "ml-1 h-3.5 w-3.5 transition-transform",
-                                showAllMedia && "rotate-180",
-                              )}
+                              "ml-1 h-3.5 w-3.5 transition-transform",
+                              showAllMedia && "rotate-180",
+                            )}
                           />
                         </Button>
                       )}

@@ -5,10 +5,22 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { clampCanvasDimension, presetsForTemplate, CanvasUnit, toPixels, fromPixels } from "./editor-canvas-size";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  type CanvasUnit,
+  clampCanvasDimension,
+  fromPixels,
+  presetsForTemplate,
+  toPixels,
+} from "./editor-canvas-size";
 import { editorInput } from "./editor-chrome";
 import type { PosterEditorState } from "./use-poster-editor-state";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function EditorCanvasSizeSetup({
   editor,
@@ -26,7 +38,9 @@ export function EditorCanvasSizeSetup({
 
   const formatUnit = (px: number, u: CanvasUnit) => {
     const val = fromPixels(px, u);
-    return u === "px" ? String(Math.round(val)) : val.toFixed(2).replace(/\.?0+$/, "");
+    return u === "px"
+      ? String(Math.round(val))
+      : val.toFixed(2).replace(/\.?0+$/, "");
   };
 
   useEffect(() => {
@@ -70,8 +84,12 @@ export function EditorCanvasSizeSetup({
   };
 
   const commitFields = () => {
-    const wPx = parseFloat(widthInput) ? toPixels(parseFloat(widthInput), unit) : width;
-    const hPx = parseFloat(heightInput) ? toPixels(parseFloat(heightInput), unit) : height;
+    const wPx = parseFloat(widthInput)
+      ? toPixels(parseFloat(widthInput), unit)
+      : width;
+    const hPx = parseFloat(heightInput)
+      ? toPixels(parseFloat(heightInput), unit)
+      : height;
     applySize(wPx, hPx);
   };
 

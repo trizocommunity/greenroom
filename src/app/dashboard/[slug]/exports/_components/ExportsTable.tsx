@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Download, Loader2, Trash2, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { formatRelative } from "@/core/datetime";
 import type { ExportListItem } from "@/features/exports/types/export.types";
+import { toast } from "@/lib/toast";
 import { getExportTypeMeta } from "./export-types";
 
 interface ExportsTableProps {
@@ -28,13 +29,138 @@ function downloadUrl(id: string): string {
   return `/api/v1/exports/${id}/download`;
 }
 
-function triggerDownload(id: string, fileName: string | null) {
+function saveBlob(blob: Blob, fileName: string | null) {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = downloadUrl(id);
+  a.href = url;
   if (fileName) a.download = fileName;
   document.body.appendChild(a);
   a.click();
   a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function startDownload(
+  id: string,
+  fileName: string | null,
+  onProgress: (percent: number) => void,
+) {
+  const res = await fetch(downloadUrl(id));
+  if (!res.ok) {
+    throw new Error(`Download failed (${res.status})`);
+  }
+
+  const totalHeader = res.headers.get("Content-Length");
+  const total = totalHeader ? Number(totalHeader) : 0;
+
+  if (!res.body || !Number.isFinite(total) || total <= 0) {
+    const blob = await res.blob();
+    saveBlob(blob, fileName);
+    return;
+  }
+
+  let received = 0;
+  const tapped = res.body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        received += chunk.byteLength;
+        onProgress(Math.min(99, (received / total) * 100));
+        controller.enqueue(chunk);
+      },
+    }),
+  );
+
+  const blob = await new Response(tapped).blob();
+  onProgress(100);
+  saveBlob(blob, fileName);
+}
+
+function CircularProgress({
+  percent,
+  size = 28,
+  strokeWidth = 2.5,
+}: {
+  percent: number;
+  size?: number;
+  strokeWidth?: number;
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.min(100, percent) / 100) * circumference;
+  const center = size / 2;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="text-primary"
+      aria-hidden="true"
+    >
+      <circle
+        cx={center}
+        cy={center}
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeOpacity={0.2}
+      />
+      <circle
+        cx={center}
+        cy={center}
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${center} ${center})`}
+        className="transition-[stroke-dashoffset] duration-150 ease-linear"
+      />
+    </svg>
+  );
+}
+
+interface DownloadButtonProps {
+  disabled: boolean;
+  downloading: boolean;
+  percent: number;
+  fileName: string | null;
+  onStart: () => void;
+}
+
+function DownloadButton({
+  disabled,
+  downloading,
+  percent,
+  fileName,
+  onStart,
+}: DownloadButtonProps) {
+  const label = fileName ? `Download ${fileName}` : "Download";
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="relative h-9 w-9 overflow-hidden"
+      disabled={disabled || downloading}
+      onClick={onStart}
+      aria-label={downloading ? `Downloading ${percent}%` : label}
+    >
+      {downloading ? (
+        <>
+          <CircularProgress percent={percent} />
+          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold tabular-nums text-primary">
+            {Math.round(percent)}
+          </span>
+        </>
+      ) : (
+        <Download className="h-4 w-4" />
+      )}
+    </Button>
+  );
 }
 
 function formatDuration(ms: number | null): string {
@@ -72,6 +198,33 @@ export function ExportsTable({
 }: ExportsTableProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = 15;
+
+  const [downloads, setDownloads] = useState<Record<string, number>>({});
+  const [activeDownload, setActiveDownload] = useState<string | null>(null);
+
+  const handleStartDownload = useCallback(
+    async (id: string, fileName: string | null) => {
+      if (activeDownload) return;
+      setActiveDownload(id);
+      setDownloads((prev) => ({ ...prev, [id]: 0 }));
+      try {
+        await startDownload(id, fileName, (percent) => {
+          setDownloads((prev) => ({ ...prev, [id]: percent }));
+        });
+      } catch (err) {
+        console.error("Export download failed", err);
+        toast.error("Download failed. Please try again.");
+      } finally {
+        setActiveDownload(null);
+        setDownloads((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }
+    },
+    [activeDownload],
+  );
 
   return (
     <>
@@ -158,16 +311,13 @@ export function ExportsTable({
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
+                    <DownloadButton
                       disabled={e.status !== "COMPLETED"}
-                      onClick={() => triggerDownload(e.id, e.fileName)}
-                      aria-label="Download"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                      downloading={activeDownload === e.id}
+                      percent={downloads[e.id] ?? 0}
+                      fileName={e.fileName}
+                      onStart={() => handleStartDownload(e.id, e.fileName)}
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
@@ -278,15 +428,13 @@ export function ExportsTable({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <DownloadButton
                           disabled={e.status !== "COMPLETED"}
-                          onClick={() => triggerDownload(e.id, e.fileName)}
-                          aria-label="Download"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
+                          downloading={activeDownload === e.id}
+                          percent={downloads[e.id] ?? 0}
+                          fileName={e.fileName}
+                          onStart={() => handleStartDownload(e.id, e.fileName)}
+                        />
                         <Button
                           variant="ghost"
                           size="icon"

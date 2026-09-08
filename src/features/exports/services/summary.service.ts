@@ -109,7 +109,9 @@ export function buildExportSummary(config: ExportConfig): ExportSummary {
     case "CERTIFICATE": {
       summary = "Certificates";
       badges.push(`Quality: ${config.quality.toLowerCase()}`);
-      badges.push(`Fit: ${config.fit.toLowerCase()} · ${config.marginMm}mm margin`);
+      badges.push(
+        `Fit: ${config.fit.toLowerCase()} · ${config.marginMm}mm margin`,
+      );
       badges.push(`${config.certificateTypes.length} types`);
       break;
     }

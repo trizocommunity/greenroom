@@ -417,10 +417,15 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
   }, []);
 
   const addElement = useCallback(
-    (elementOrFn: Omit<EditorElement, "id" | "zIndex"> | ((d: PosterEditorDocument) => Omit<EditorElement, "id" | "zIndex">)) => {
+    (
+      elementOrFn:
+        | Omit<EditorElement, "id" | "zIndex">
+        | ((d: PosterEditorDocument) => Omit<EditorElement, "id" | "zIndex">),
+    ) => {
       const newId = uuid();
       setDocWithHistory((d) => {
-        const element = typeof elementOrFn === "function" ? elementOrFn(d) : elementOrFn;
+        const element =
+          typeof elementOrFn === "function" ? elementOrFn(d) : elementOrFn;
         const maxZ = d.elements.reduce((m, e) => Math.max(m, e.zIndex), 0);
         const el: EditorElement = {
           ...element,
@@ -593,7 +598,10 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
     (type: "rect" | "circle" | "triangle" | "line") => {
       if (type === "rect") {
         addElement((d) => ({
-          visible: true, x: d.width / 2 - 100, y: d.height / 2 - 60, opacity: 1,
+          visible: true,
+          x: d.width / 2 - 100,
+          y: d.height / 2 - 60,
+          opacity: 1,
           type: "rect",
           name: "Rectangle",
           width: 200,
@@ -604,7 +612,10 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
         }));
       } else if (type === "circle") {
         addElement((d) => ({
-          visible: true, x: d.width / 2, y: d.height / 2, opacity: 1,
+          visible: true,
+          x: d.width / 2,
+          y: d.height / 2,
+          opacity: 1,
           type: "circle",
           name: "Circle",
           radius: 60,
@@ -614,7 +625,10 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
         }));
       } else if (type === "triangle") {
         addElement((d) => ({
-          visible: true, x: d.width / 2, y: d.height / 2, opacity: 1,
+          visible: true,
+          x: d.width / 2,
+          y: d.height / 2,
+          opacity: 1,
           type: "triangle",
           name: "Triangle",
           radius: 70,
@@ -624,7 +638,10 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
         }));
       } else {
         addElement((d) => ({
-          visible: true, x: d.width / 2 - 120, y: d.height / 2, opacity: 1,
+          visible: true,
+          x: d.width / 2 - 120,
+          y: d.height / 2,
+          opacity: 1,
           type: "line",
           name: "Line",
           points: [0, 0, 240, 0],
