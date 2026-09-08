@@ -416,9 +416,10 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
   }, []);
 
   const addElement = useCallback(
-    (element: Omit<EditorElement, "id" | "zIndex">) => {
+    (elementOrFn: Omit<EditorElement, "id" | "zIndex"> | ((d: PosterEditorDocument) => Omit<EditorElement, "id" | "zIndex">)) => {
       const newId = uuid();
       setDocWithHistory((d) => {
+        const element = typeof elementOrFn === "function" ? elementOrFn(d) : elementOrFn;
         const maxZ = d.elements.reduce((m, e) => Math.max(m, e.zIndex), 0);
         const el: EditorElement = {
           ...element,
@@ -564,13 +565,13 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
       const field = FEST_ADMIN_FIELDS.find((f) => f.key === bindingKey);
       if (!field) return;
       const preview = resolveFestAdminFieldValue(bindingKey, bindingSource);
-      addElement({
+      addElement((d) => ({
         type: bindingKey === "qrCode" ? "qr" : "text",
         name: field.label,
         bindingKey,
         visible: true,
-        x: 120,
-        y: 120,
+        x: (d.width - (bindingKey === "qrCode" ? 180 : 200)) / 2,
+        y: (d.height - (bindingKey === "qrCode" ? 180 : 50)) / 2,
         width: bindingKey === "qrCode" ? 180 : undefined,
         height: bindingKey === "qrCode" ? 180 : undefined,
         text: bindingKey === "qrCode" ? undefined : preview,
@@ -580,19 +581,18 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
         stroke:
           bindingKey === "qrCode" ? EDITOR_COLORS.mutedForeground : undefined,
         strokeWidth: bindingKey === "qrCode" ? 2 : undefined,
-        align: "left",
+        align: "center",
         opacity: 1,
-      });
+      }));
     },
     [addElement, bindingSource, doc],
   );
 
   const addShape = useCallback(
     (type: "rect" | "circle" | "triangle" | "line") => {
-      const base = { visible: true, x: 200, y: 200, zIndex: 0, opacity: 1 };
       if (type === "rect") {
-        addElement({
-          ...base,
+        addElement((d) => ({
+          visible: true, x: d.width / 2 - 100, y: d.height / 2 - 60, opacity: 1,
           type: "rect",
           name: "Rectangle",
           width: 200,
@@ -600,36 +600,36 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
           fill: EDITOR_COLORS.primary,
           stroke: EDITOR_COLORS.primaryLight,
           strokeWidth: 2,
-        });
+        }));
       } else if (type === "circle") {
-        addElement({
-          ...base,
+        addElement((d) => ({
+          visible: true, x: d.width / 2, y: d.height / 2, opacity: 1,
           type: "circle",
           name: "Circle",
           radius: 60,
           fill: `${EDITOR_COLORS.primary}33`,
           stroke: EDITOR_COLORS.primary,
           strokeWidth: 2,
-        });
+        }));
       } else if (type === "triangle") {
-        addElement({
-          ...base,
+        addElement((d) => ({
+          visible: true, x: d.width / 2, y: d.height / 2, opacity: 1,
           type: "triangle",
           name: "Triangle",
           radius: 70,
           fill: `${EDITOR_COLORS.gradientTo}33`,
           stroke: EDITOR_COLORS.gradientTo,
           strokeWidth: 2,
-        });
+        }));
       } else {
-        addElement({
-          ...base,
+        addElement((d) => ({
+          visible: true, x: d.width / 2 - 120, y: d.height / 2, opacity: 1,
           type: "line",
           name: "Line",
           points: [0, 0, 240, 0],
           stroke: EDITOR_COLORS.foreground,
           strokeWidth: 4,
-        });
+        }));
       }
     },
     [addElement],
@@ -637,20 +637,20 @@ export function usePosterEditorState(options?: UsePosterEditorStateOptions) {
 
   const addTextBlock = useCallback(
     (variant: "heading" | "body") => {
-      addElement({
+      addElement((d) => ({
         type: "text",
         name: variant === "heading" ? "Heading" : "Body text",
         visible: true,
-        x: 160,
-        y: 160,
+        x: d.width / 2 - 100,
+        y: d.height / 2 - 20,
         text: variant === "heading" ? "Heading" : "Body text goes here",
         fontSize: variant === "heading" ? 40 : 24,
         fontFamily: "Outfit, system-ui, sans-serif",
         fontStyle: variant === "heading" ? "bold" : "normal",
         fill: EDITOR_COLORS.foreground,
-        align: "left",
+        align: "center",
         opacity: 1,
-      });
+      }));
     },
     [addElement],
   );
