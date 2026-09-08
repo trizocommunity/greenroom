@@ -13,6 +13,7 @@ import {
   PAGE_ORIENTATION_OPTIONS,
   QUALITY_OPTIONS,
   SegmentedControl,
+  SingleSelect,
   TemplatePicker,
   ToggleRow,
   toggleId,
@@ -145,23 +146,21 @@ export function CertificateFilters({ festivalId, value, onChange }: Props) {
       />
 
       <FieldGrid cols={2}>
-        <CheckList
-          label="Categories"
-          hint="Empty = all"
+        <SingleSelect
+          label="Category"
+          hint="Required — one category per export keeps the bundle under the Cloudinary Free upload limit."
+          required
           options={singleCategories}
-          selected={value.categoryIds}
-          onToggle={(id, v) =>
-            set({ categoryIds: toggleId(value.categoryIds, id, v) })
-          }
+          value={value.categoryIds[0] ?? null}
+          onChange={(id) => set({ categoryIds: id ? [id] : [] })}
         />
-        <CheckList
-          label="Programmes"
-          hint="Empty = all"
+        <SingleSelect
+          label="Programme"
+          hint="Required — one programme per export keeps the bundle under the Cloudinary Free upload limit."
+          required
           options={programmes ?? []}
-          selected={value.programmeIds}
-          onToggle={(id, v) =>
-            set({ programmeIds: toggleId(value.programmeIds, id, v) })
-          }
+          value={value.programmeIds[0] ?? null}
+          onChange={(id) => set({ programmeIds: id ? [id] : [] })}
         />
       </FieldGrid>
     </div>

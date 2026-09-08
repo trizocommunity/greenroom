@@ -1,6 +1,12 @@
 "use client";
 
-import { Check, Loader2, Settings2, SlidersHorizontal } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  Loader2,
+  Settings2,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useState } from "react";
 import { useCreateExport } from "@/api/client/exports";
 import { Button } from "@/components/ui/button";
@@ -98,6 +104,28 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
   }
 }
 
+/**
+ * Returns a short, user-facing reason the export can't run yet, or null
+ * when everything is valid. Single source of truth for the inline message
+ * AND the disabled-button state.
+ */
+function validateExport(
+  config: ExportConfig | null,
+  implemented: boolean,
+): string | null {
+  if (!implemented) return "This export type isn't available yet.";
+  if (!config) return "This export type isn't available yet.";
+  if (config.type === "BADGE" || config.type === "CERTIFICATE") {
+    if (!config.templateId) return "Select a template.";
+    if (config.categoryIds.length === 0) return "Select one category.";
+    if (config.type === "BADGE" && config.teamIds.length === 0)
+      return "Select one team.";
+    if (config.type === "CERTIFICATE" && config.programmeIds.length === 0)
+      return "Select one programme.";
+  }
+  return null;
+}
+
 export function NewExportDrawer({
   festivalId,
   open,
@@ -111,6 +139,7 @@ export function NewExportDrawer({
 
   const createExport = useCreateExport();
   const meta = getExportTypeMeta(selectedType);
+  const validationError = validateExport(config, meta.implemented);
 
   const handleSelectType = (id: ExportTypeId) => {
     setSelectedType(id);
@@ -119,15 +148,12 @@ export function NewExportDrawer({
   };
 
   const handleExport = async () => {
-    if (!config) {
-      toast.error("This export type is coming soon.");
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
-    if (
-      (config.type === "BADGE" || config.type === "CERTIFICATE") &&
-      !config.templateId
-    ) {
-      toast.error("Select a template first.");
+    if (!config) {
+      toast.error("This export type is coming soon.");
       return;
     }
     const parsed = exportConfigSchema.safeParse(config);
@@ -296,45 +322,51 @@ export function NewExportDrawer({
           </section>
         </div>
 
-        {/* Footer */}
-
-        <DrawerFooter className="flex items-center flex-row justify-end">
-          <div className="flex items-center gap-1 rounded-md border p-0.5">
-            {(meta.formats as ExportFormat[]).map((f) => {
-              const enabled = meta.formats.includes(f);
-              return (
-                <button
-                  key={f}
-                  type="button"
-                  disabled={!enabled}
-                  onClick={() => setFormat(f)}
-                  className={cn(
-                    "rounded px-3 py-2 text-xs font-medium transition-colors",
-                    format === f
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground",
-                    !enabled && "opacity-40 cursor-not-allowed",
-                  )}
-                >
-                  {f}
-                </button>
-              );
-            })}
+        {/* Footer: format selector + validation message + Export button */}
+        <DrawerFooter className="flex flex-col gap-2 items-stretch border-t bg-background">
+          {validationError && (
+            <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{validationError}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-2">
+            <fieldset
+              className="flex items-center gap-1 rounded-md border p-0.5 border-solid"
+              aria-label="Export format"
+            >
+              {(meta.formats as ExportFormat[]).map((f) => {
+                const enabled = meta.formats.includes(f);
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    aria-pressed={format === f}
+                    disabled={!enabled}
+                    onClick={() => setFormat(f)}
+                    className={cn(
+                      "rounded px-3 py-2 text-xs font-medium transition-colors",
+                      format === f
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground",
+                      !enabled && "opacity-40 cursor-not-allowed",
+                    )}
+                  >
+                    {f}
+                  </button>
+                );
+              })}
+            </fieldset>
+            <Button
+              onClick={handleExport}
+              disabled={!!validationError || createExport.isPending}
+            >
+              {createExport.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Export {format}
+            </Button>
           </div>
-          <Button
-            onClick={handleExport}
-            disabled={
-              !meta.implemented ||
-              createExport.isPending ||
-              ((config?.type === "BADGE" || config?.type === "CERTIFICATE") &&
-                !config.templateId)
-            }
-          >
-            {createExport.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Export {format}
-          </Button>
         </DrawerFooter>
       </SheetContent>
     </Sheet>

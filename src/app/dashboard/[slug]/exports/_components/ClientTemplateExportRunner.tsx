@@ -57,13 +57,30 @@ const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
 };
 
 // Hard upper bound on the final PDF size the client will upload. Above this,
-// the export is auto-marked FAILED with an actionable message instead of
-// hitting the Cloudinary upload cap. Cloudinary Free tier caps BOTH
-// `image/upload` AND `raw/upload` at 10,485,760 bytes (10 MB). 9 MiB
-// leaves a small safety margin so borderline sizes don't get rejected
-// upstream. Users with larger templates should either lower Export
-// Quality (PRINT → STANDARD → SCREEN) or split into smaller batches.
+// the export is auto-retried at the next-lower quality (see
+// `nextQualityDown`). If SCREEN still exceeds the cap, the export is
+// marked FAILED with an actionable message instead of hitting the
+// Cloudinary upload cap. Cloudinary Free tier caps BOTH `image/upload`
+// AND `raw/upload` at 10,485,760 bytes (10 MB). 9 MiB leaves a small
+// safety margin so borderline sizes don't get rejected upstream.
 const MAX_BLOB_BYTES = 9 * 1024 * 1024;
+
+// Quality fallback order when a rendered PDF exceeds MAX_BLOB_BYTES.
+// Highest quality first; the runner re-renders at the next entry until
+// it fits under the cap (or exhausts the list, at which point it fails).
+const QUALITY_FALLBACK: TemplateExportPayload["quality"][] = [
+  "PRINT",
+  "STANDARD",
+  "SCREEN",
+];
+
+function nextQualityDown(
+  current: TemplateExportPayload["quality"],
+): TemplateExportPayload["quality"] | null {
+  const idx = QUALITY_FALLBACK.indexOf(current);
+  if (idx === -1 || idx === QUALITY_FALLBACK.length - 1) return null;
+  return QUALITY_FALLBACK[idx + 1];
+}
 
 const PAGE_SIZES: Record<string, { w: number; h: number }> = {
   A3: { w: 842, h: 1191 },
@@ -654,12 +671,37 @@ export function ClientTemplateExportRunner({
           return;
         }
 
-        // All items captured — extract Blob and upload via FormData (avoids huge JSON payloads)
+        // All items captured — extract Blob and check size. If over the cap,
+        // automatically retry at the next-lower quality (PRINT → STANDARD
+        // → SCREEN) by re-rendering. If even SCREEN exceeds the cap, fail
+        // with an actionable message — user must split into smaller batches.
         const pdfBlob = pdfContext.doc.output("blob");
         if (pdfBlob.size > MAX_BLOB_BYTES) {
+          const nextQuality = nextQualityDown(job.payload.quality);
+          if (nextQuality) {
+            // Re-render at lower quality. Re-init the PDF context (the
+            // existing one already has items appended) and reset index to
+            // 0. The render useEffect re-runs because `job` changed.
+            pdfRef.current = initPdf({
+              ...job.payload,
+              quality: nextQuality,
+            });
+            setJob({
+              ...job,
+              payload: { ...job.payload, quality: nextQuality },
+              index: 0,
+            });
+            onProgress?.(
+              job.exportId,
+              0,
+              job.payload.items.length,
+              "rendering",
+            );
+            return;
+          }
           const mb = Math.round(pdfBlob.size / (1024 * 1024));
           const maxMb = Math.round(MAX_BLOB_BYTES / (1024 * 1024));
-          const message = `Export is ${mb} MB which exceeds the ${maxMb} MB Cloudinary Free upload limit. Lower Export Quality (PRINT → STANDARD → SCREEN) or split into smaller batches by category or team.`;
+          const message = `Export is ${mb} MB which exceeds the ${maxMb} MB Cloudinary Free upload limit even at SCREEN quality. Please split the export into smaller batches by category or team.`;
           await failTemplateExportAction(festivalId, job.exportId, message);
           pdfRef.current = null;
           setJob(null);
@@ -697,9 +739,28 @@ export function ClientTemplateExportRunner({
             { name: aiName, data: pdfBytes },
           ]);
           if (zipBytes.byteLength > MAX_BLOB_BYTES) {
+            const nextQuality = nextQualityDown(job.payload.quality);
+            if (nextQuality) {
+              pdfRef.current = initPdf({
+                ...job.payload,
+                quality: nextQuality,
+              });
+              setJob({
+                ...job,
+                payload: { ...job.payload, quality: nextQuality },
+                index: 0,
+              });
+              onProgress?.(
+                job.exportId,
+                0,
+                job.payload.items.length,
+                "rendering",
+              );
+              return;
+            }
             const mb = Math.round(zipBytes.byteLength / (1024 * 1024));
             const maxMb = Math.round(MAX_BLOB_BYTES / (1024 * 1024));
-            const message = `Export bundle is ${mb} MB which exceeds the ${maxMb} MB Cloudinary Free upload limit. Lower Export Quality (PRINT → STANDARD → SCREEN) or split into smaller batches by category or team.`;
+            const message = `Export bundle is ${mb} MB which exceeds the ${maxMb} MB Cloudinary Free upload limit even at SCREEN quality. Please split the export into smaller batches by category or team.`;
             await failTemplateExportAction(festivalId, job.exportId, message);
             pdfRef.current = null;
             setJob(null);
@@ -753,6 +814,14 @@ export function ClientTemplateExportRunner({
         cloudForm.append("signature", sig.signature);
         cloudForm.append("folder", sig.folder);
         cloudForm.append("public_id", sig.publicId);
+
+        // Flip the badge to "Uploading X / Y MB" immediately so users
+        // see real progress the moment the upload starts. XHR progress
+        // events can take a moment to fire (or may not fire at all if
+        // the browser can't compute the body length), so seeding the
+        // state at 0/total guarantees the phase transition is visible
+        // without waiting on the first network event.
+        onProgress?.(job.exportId, 0, uploadBytes.byteLength, "uploading");
 
         // XHR (not fetch) so we get upload progress events. fetch() exposes
         // response-stream progress but not request-body progress. AbortController

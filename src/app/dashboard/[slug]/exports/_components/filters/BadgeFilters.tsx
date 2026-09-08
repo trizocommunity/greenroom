@@ -6,7 +6,6 @@ import { useGroups } from "@/api/client/groups";
 import type { BadgeConfig } from "@/features/exports/schemas/export-config.schema";
 import {
   BADGE_PAGE_SIZE_OPTIONS,
-  CheckList,
   FIT_OPTIONS,
   FieldGrid,
   GENDER_OPTIONS,
@@ -19,9 +18,9 @@ import {
   QUALITY_OPTIONS,
   SectionLabel,
   SegmentedControl,
+  SingleSelect,
   TemplatePicker,
   ToggleRow,
-  toggleId,
 } from "./controls";
 
 interface Props {
@@ -221,21 +220,21 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
       />
 
       <FieldGrid cols={2}>
-        <CheckList
-          label="Categories"
-          hint="Empty = all"
+        <SingleSelect
+          label="Category"
+          hint="Required — one category per export keeps the bundle under the Cloudinary Free upload limit."
+          required
           options={singleCategories}
-          selected={value.categoryIds}
-          onToggle={(id, v) =>
-            set({ categoryIds: toggleId(value.categoryIds, id, v) })
-          }
+          value={value.categoryIds[0] ?? null}
+          onChange={(id) => set({ categoryIds: id ? [id] : [] })}
         />
-        <CheckList
-          label="Teams"
-          hint="Empty = all"
+        <SingleSelect
+          label="Team"
+          hint="Required — one team per export keeps the bundle under the Cloudinary Free upload limit."
+          required
           options={teams ?? []}
-          selected={value.teamIds}
-          onToggle={(id, v) => set({ teamIds: toggleId(value.teamIds, id, v) })}
+          value={value.teamIds[0] ?? null}
+          onChange={(id) => set({ teamIds: id ? [id] : [] })}
         />
       </FieldGrid>
     </div>
