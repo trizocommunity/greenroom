@@ -1,8 +1,28 @@
 import type { PosterTemplateType } from "./poster-editor-config";
 import type { EditorElement } from "./poster-editor-types";
 
-export const CANVAS_SIZE_MIN = 320;
-export const CANVAS_SIZE_MAX = 5000;
+export const CANVAS_SIZE_MIN = 100;
+export const CANVAS_SIZE_MAX = 20000;
+
+export const PIXELS_PER_INCH = 96;
+export const PIXELS_PER_CM = PIXELS_PER_INCH / 2.54;
+export const PIXELS_PER_MM = PIXELS_PER_INCH / 25.4;
+
+export type CanvasUnit = "px" | "in" | "cm" | "mm";
+
+export function toPixels(value: number, unit: CanvasUnit): number {
+  if (unit === "in") return value * PIXELS_PER_INCH;
+  if (unit === "cm") return value * PIXELS_PER_CM;
+  if (unit === "mm") return value * PIXELS_PER_MM;
+  return value;
+}
+
+export function fromPixels(value: number, unit: CanvasUnit): number {
+  if (unit === "in") return value / PIXELS_PER_INCH;
+  if (unit === "cm") return value / PIXELS_PER_CM;
+  if (unit === "mm") return value / PIXELS_PER_MM;
+  return value;
+}
 
 export interface CanvasSizePreset {
   id: string;
