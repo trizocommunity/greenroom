@@ -43,6 +43,16 @@ async function signNonce(nonce: string, secret: string): Promise<string> {
     .join("");
 }
 
+const REFERRER_POLICY = "strict-origin-when-cross-origin";
+const PERMISSIONS_POLICY =
+  "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()";
+
+function applyDocumentHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Referrer-Policy", REFERRER_POLICY);
+  response.headers.set("Permissions-Policy", PERMISSIONS_POLICY);
+  return response;
+}
+
 function applySecurityHeaders(
   response: NextResponse,
   nonce: string,
@@ -71,12 +81,9 @@ function applySecurityHeaders(
 
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Referrer-Policy", REFERRER_POLICY);
 
-  response.headers.set(
-    "Permissions-Policy",
-    "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
-  );
+  response.headers.set("Permissions-Policy", PERMISSIONS_POLICY);
   response.headers.set(
     "Content-Security-Policy",
     [
@@ -113,6 +120,10 @@ async function withCsrf(response: NextResponse): Promise<NextResponse> {
  * CSRF/CSP cookies+headers historically only ran on `/api/*`.
  * Applying that strict CSP to HTML documents blanked the app (inline styles
  * blocked; interactive UI dead) while still returning 200.
+ *
+ * Permissions-Policy + Referrer-Policy are still safe for HTML — they do not
+ * strip inline styles. Apply them on every response so the QR scanner pages
+ * get a usable camera policy even when `vercel.json` is misconfigured.
  */
 function shouldApplySecurityHeaders(pathname: string): boolean {
   return pathname.startsWith("/api/");
@@ -122,6 +133,7 @@ async function finalize(
   pathname: string,
   response: NextResponse,
 ): Promise<NextResponse> {
+  applyDocumentHeaders(response);
   if (shouldApplySecurityHeaders(pathname)) {
     return withCsrf(response);
   }
