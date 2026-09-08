@@ -23,6 +23,12 @@ function makeExport(overrides: Partial<ExportListItem>): ExportListItem {
     completedAt: null,
     completedInMs: null,
     expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    templateName: null,
+    selectedTeamNames: [],
+    selectedCategoryNames: [],
+    selectedProgrammeNames: [],
+    selectedStageNames: [],
+    config: null,
     ...overrides,
   };
 }

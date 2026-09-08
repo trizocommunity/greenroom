@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatRelative } from "@/core/datetime";
+import { cn } from "@/core/utils/cn";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 import { toast } from "@/lib/toast";
 import { getExportTypeMeta } from "./export-types";
@@ -28,6 +29,36 @@ interface ExportsTableProps {
   progressMap?: Record<string, ProgressEntry>;
   onDelete: (id: string) => void;
   deletingId: string | null;
+  onRowClick?: (item: ExportListItem) => void;
+}
+
+/** Show at most `max` names; collapse the rest into "+N more". */
+function NameChips({
+  names,
+  max = 2,
+  variant = "outline",
+}: {
+  names: string[];
+  max?: number;
+  variant?: "outline" | "secondary";
+}) {
+  if (names.length === 0) return null;
+  const shown = names.slice(0, max);
+  const extra = names.length - shown.length;
+  return (
+    <>
+      {shown.map((n) => (
+        <Badge key={n} variant={variant} className="font-normal">
+          {n}
+        </Badge>
+      ))}
+      {extra > 0 && (
+        <Badge variant="secondary" className="font-normal">
+          +{extra} more
+        </Badge>
+      )}
+    </>
+  );
 }
 
 function progressLabel(prog: ProgressEntry): string {
@@ -206,6 +237,7 @@ export function ExportsTable({
   progressMap = {},
   onDelete,
   deletingId,
+  onRowClick,
 }: ExportsTableProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = 15;
@@ -250,9 +282,27 @@ export function ExportsTable({
             const prog = progressMap[e.id];
 
             return (
+              // biome-ignore lint/a11y/noStaticElementInteractions: role="button" + tabIndex makes the card accessible; nested action buttons stop propagation so they don't fire the row click.
               <div
                 key={e.id}
-                className="rounded-lg border p-4 flex flex-col bg-card gap-3"
+                className={cn(
+                  "rounded-lg border p-4 flex flex-col bg-card gap-3",
+                  onRowClick &&
+                    "cursor-pointer transition-colors hover:bg-muted/30",
+                )}
+                role={onRowClick ? "button" : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                onClick={onRowClick ? () => onRowClick(e) : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (ev) => {
+                        if (ev.key === "Enter" || ev.key === " ") {
+                          ev.preventDefault();
+                          onRowClick(e);
+                        }
+                      }
+                    : undefined
+                }
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 font-medium">
@@ -299,6 +349,31 @@ export function ExportsTable({
                       </Badge>
                     )}
                   </div>
+                  {(e.selectedTeamNames.length > 0 ||
+                    e.selectedCategoryNames.length > 0) && (
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      {e.selectedTeamNames.length > 0 && (
+                        <>
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                            Team
+                          </span>
+                          <NameChips names={e.selectedTeamNames} max={2} />
+                        </>
+                      )}
+                      {e.selectedCategoryNames.length > 0 && (
+                        <>
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                            Category
+                          </span>
+                          <NameChips
+                            names={e.selectedCategoryNames}
+                            max={2}
+                            variant="secondary"
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
                   {e.status === "COMPLETED" &&
                     metaLine(e.itemCount, e.fileSizeBytes) && (
                       <div className="text-xs text-muted-foreground">
@@ -319,7 +394,11 @@ export function ExportsTable({
                       <span>Done in: {formatDuration(e.completedInMs)}</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  {/* biome-ignore lint/a11y/noStaticElementInteractions: nested action buttons inside a clickable card; we stop propagation so the card's onClick doesn't fire on Download/Delete. */}
+                  <div
+                    className="flex items-center gap-1 shrink-0"
+                    onClick={(ev) => ev.stopPropagation()}
+                  >
                     <DownloadButton
                       disabled={e.status !== "COMPLETED"}
                       downloading={activeDownload === e.id}
@@ -370,7 +449,11 @@ export function ExportsTable({
                 const prog = progressMap[e.id];
 
                 return (
-                  <TableRow key={e.id}>
+                  <TableRow
+                    key={e.id}
+                    className={onRowClick ? "cursor-pointer" : undefined}
+                    onClick={onRowClick ? () => onRowClick(e) : undefined}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2 font-medium whitespace-nowrap">
                         <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -391,6 +474,31 @@ export function ExportsTable({
                           </Badge>
                         )}
                       </div>
+                      {(e.selectedTeamNames.length > 0 ||
+                        e.selectedCategoryNames.length > 0) && (
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          {e.selectedTeamNames.length > 0 && (
+                            <>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                                Team
+                              </span>
+                              <NameChips names={e.selectedTeamNames} max={2} />
+                            </>
+                          )}
+                          {e.selectedCategoryNames.length > 0 && (
+                            <>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                                Category
+                              </span>
+                              <NameChips
+                                names={e.selectedCategoryNames}
+                                max={2}
+                                variant="secondary"
+                              />
+                            </>
+                          )}
+                        </div>
+                      )}
                       {e.status === "COMPLETED" &&
                         metaLine(e.itemCount, e.fileSizeBytes) && (
                           <div className="text-xs text-muted-foreground mt-0.5">
@@ -435,7 +543,7 @@ export function ExportsTable({
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {relative(e.queuedAt)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(ev) => ev.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         <DownloadButton
                           disabled={e.status !== "COMPLETED"}

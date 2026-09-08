@@ -23,9 +23,36 @@ import type {
   ExportListItem,
 } from "@/features/exports/types/export.types";
 
-function toListItem(row: ExportRepo.ExportRowMeta): ExportListItem {
+function toListItem(
+  row: ExportRepo.ExportRowMeta,
+  names: Awaited<ReturnType<typeof ExportRepo.resolveExportNames>>,
+): ExportListItem {
   const parsed = exportConfigSchema.safeParse(row.config);
-  const badges = parsed.success ? buildExportSummary(parsed.data).badges : [];
+  const cfg = parsed.success ? parsed.data : null;
+  const badges = cfg ? buildExportSummary(cfg).badges : [];
+
+  const resolve = (ids: string[] | undefined, map: Map<string, string>) =>
+    (ids ?? [])
+      .map((id) => map.get(id))
+      .filter((n): n is string => typeof n === "string");
+
+  const selectedTeamNames =
+    cfg && "teamIds" in cfg ? resolve(cfg.teamIds, names.teamNamesById) : [];
+  const selectedCategoryNames =
+    cfg && "categoryIds" in cfg
+      ? resolve(cfg.categoryIds, names.categoryNamesById)
+      : [];
+  const selectedProgrammeNames =
+    cfg && "programmeIds" in cfg
+      ? resolve(cfg.programmeIds, names.programmeNamesById)
+      : [];
+  const selectedStageNames =
+    cfg && "stageIds" in cfg ? resolve(cfg.stageIds, names.stageNamesById) : [];
+  const templateName =
+    cfg && "templateId" in cfg && cfg.templateId
+      ? (names.templateNamesById.get(cfg.templateId) ?? null)
+      : null;
+
   return {
     id: row.id,
     type: row.type,
@@ -41,6 +68,12 @@ function toListItem(row: ExportRepo.ExportRowMeta): ExportListItem {
     completedAt: row.completedAt,
     completedInMs: row.completedInMs,
     expiresAt: row.expiresAt,
+    templateName,
+    selectedTeamNames,
+    selectedCategoryNames,
+    selectedProgrammeNames,
+    selectedStageNames,
+    config: cfg,
   };
 }
 
@@ -51,7 +84,8 @@ export async function listExportsAction(
     const session = await getSession();
     await assertFestivalAccess(session, festivalId);
     const rows = await ExportRepo.listExportsByFestival(festivalId);
-    return { success: true, data: rows.map(toListItem) };
+    const names = await ExportRepo.resolveExportNames(festivalId, rows);
+    return { success: true, data: rows.map((r) => toListItem(r, names)) };
   } catch (error) {
     return handleActionError(error);
   }

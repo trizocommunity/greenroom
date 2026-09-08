@@ -18,8 +18,9 @@ export type FestivalExportRow = InferSelectModel<typeof festivalExport>;
 
 /**
  * Shape returned to the client for the exports table. The heavy `fileData`
- * (base64 bytes) and raw `config` are intentionally omitted — bytes are served
- * only through the download route.
+ * (base64 bytes) is intentionally omitted — bytes are served only through
+ * the download route. `config` is small (a few hundred bytes) and needed
+ * by the detail drawer, so it ships inline.
  */
 export interface ExportListItem {
   id: string;
@@ -36,6 +37,17 @@ export interface ExportListItem {
   completedAt: string | null;
   completedInMs: number | null;
   expiresAt: string;
+  /** Resolved template name for BADGE / CERTIFICATE (null otherwise). */
+  templateName: string | null;
+  /** Resolved names for the IDs in the config (empty if none selected). */
+  selectedTeamNames: string[];
+  selectedCategoryNames: string[];
+  selectedProgrammeNames: string[];
+  selectedStageNames: string[];
+  /** Parsed config. Null if the row's jsonb no longer matches the schema. */
+  config:
+    | import("@/features/exports/schemas/export-config.schema").ExportConfig
+    | null;
 }
 
 /** Output every generator produces; the orchestrator persists it. */
