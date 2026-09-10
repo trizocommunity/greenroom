@@ -52,9 +52,14 @@ export function useDeleteMediaItem() {
   const qc = useQueryClient();
   return useMutation<void, Error, { festivalId: string; imageId: string }>({
     mutationFn: async ({ festivalId, imageId }) => {
+      // Backend reads `imageId` from the query string (see
+      // /api/v1/media DELETE handler). The earlier version sent it in
+      // the request body, which made the handler return
+      // 400 MISSING_PARAM and surface to the user as a generic error.
+      // Matches the videos delete shape so both delete flows behave
+      // consistently.
       const response = await apiClient.delete<ApiResponse<void>>(
-        `/media?festivalId=${encodeURIComponent(festivalId)}`,
-        { data: { imageId } },
+        `/media?festivalId=${encodeURIComponent(festivalId)}&imageId=${encodeURIComponent(imageId)}`,
       );
       return handleApiResponse(response.data);
     },
