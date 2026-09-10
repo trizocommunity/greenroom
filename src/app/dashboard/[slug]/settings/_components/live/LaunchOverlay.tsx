@@ -8,7 +8,7 @@ import {
   useTransform,
 } from "framer-motion";
 import { ExternalLink, Rocket } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/core/utils/cn";
 import styles from "./LaunchOverlay.module.css";
@@ -45,13 +45,30 @@ export function LaunchOverlay({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Esc closes the overlay; body scroll is locked while it's open so the page
-  // doesn't bleed through.
+  // Esc closes the overlay; Space launches the buzzer while it's showing and
+  // the preview is ready. Body scroll is locked while the overlay is open so
+  // the page doesn't bleed through.
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      // Honour Space even when the button isn't focused (e.g. focus drifted
+      // to the iframe during a pointer interaction). preventDefault stops the
+      // default page-scroll behaviour and also suppresses the button's own
+      // native Space-click so we don't double-fire onLaunch.
+      if (
+        e.code === "Space" &&
+        !isLive &&
+        previewReady &&
+        !isReadOnly
+      ) {
+        e.preventDefault();
+        void onLaunch();
+      }
     },
-    [onClose],
+    [onClose, isLive, previewReady, isReadOnly, onLaunch],
   );
 
   useEffect(() => {
@@ -188,6 +205,65 @@ function LiveOverlay({
   );
 }
 
+/** Broad satin folds with curved tops, sides and hems, like hanging fabric. */
+function CurtainFabric() {
+  const foldGradient = useId();
+
+  return (
+    <svg
+      aria-hidden
+      className={styles.fabric}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <linearGradient id={foldGradient} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#1c1c1c" />
+          <stop offset="12%" stopColor="#303030" />
+          <stop offset="28%" stopColor="#535353" />
+          <stop offset="40%" stopColor="#707070" />
+          <stop offset="49%" stopColor="#656565" />
+          <stop offset="63%" stopColor="#424242" />
+          <stop offset="80%" stopColor="#292929" />
+          <stop offset="100%" stopColor="#1c1c1c" />
+        </linearGradient>
+      </defs>
+      {Array.from({ length: 14 }, (_, index) => {
+        const width = 100 / 14;
+        const left = index * width;
+        const right = left + width;
+        const mid = left + width / 2;
+        // Bezier control offsets are scaled to the fold width so each fold
+        // keeps the same visual curvature as the original 8-fold layout.
+        const shoulder = width * 0.24;
+        const swell = width * 0.14;
+        const swellBack = width * 0.1;
+        const hem = width / 2;
+        return (
+          <g key={index}>
+            <path
+              fill={`url(#${foldGradient})`}
+              d={`M ${left} 1.2
+                C ${left + shoulder} -0.4 ${right - shoulder} -0.4 ${right} 1.2
+                C ${right - swell} 30 ${right + swellBack} 68 ${right} 99
+                Q ${left + hem} 101 ${left} 99
+                C ${left - swellBack} 68 ${left + swell} 30 ${left} 1.2 Z`}
+            />
+            <line
+              x1={mid}
+              y1="0"
+              x2={mid}
+              y2="100"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="0.35"
+            />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 /** The hems draw aside first, then the gathered panels clear the whole site. */
 function OpeningCurtains({
   opening = true,
@@ -214,8 +290,8 @@ function OpeningCurtains({
         const innerEdge = side === "left" ? 100 : 0;
         // Matching polygon vertices let the lower hem sweep into a curved
         // opening while the top stays joined at the centre.
-        const edge = Array.from({ length: 11 }, (_, index) => {
-          const y = index * 10;
+        const edge = Array.from({ length: 61 }, (_, index) => {
+          const y = (index / 60) * 100;
           const pull = 82 * (y / 100) ** 2;
           return {
             closed: `${innerEdge}% ${y}%`,
@@ -248,7 +324,7 @@ function OpeningCurtains({
               opening && side === "right" ? onComplete : undefined
             }
           >
-            <div className={styles.gatheredHeader} />
+            <CurtainFabric />
             <div
               className={cn(
                 styles.seam,
@@ -357,7 +433,7 @@ function BuzzerOverlay({
           }
           className={cn(
             styles.buzzer,
-            "group relative flex h-36 w-36 cursor-pointer touch-manipulation flex-col items-center justify-center gap-3 rounded-full transition-transform duration-150 hover:scale-[1.025] active:translate-y-1 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-[18px] focus-visible:outline-[#f7df9e] disabled:cursor-wait disabled:opacity-60 motion-reduce:transform-none sm:h-44 sm:w-44",
+            "group relative flex h-36 w-36 cursor-pointer touch-manipulation flex-col items-center justify-center gap-3 rounded-full transition-transform duration-150 hover:scale-[1.025] active:translate-y-1 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-[18px] focus-visible:outline-white disabled:cursor-wait disabled:opacity-60 motion-reduce:transform-none sm:h-44 sm:w-44",
           )}
         >
           <motion.span

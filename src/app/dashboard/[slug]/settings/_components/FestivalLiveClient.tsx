@@ -302,8 +302,7 @@ export function FestivalLiveClient({
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     celebrationCleanup.current?.();
     const emitters: party.Emitter[] = [];
-    const roundCounts = [42, 50, 60];
-    const roundIntervalMs = 900;
+    const particlesPerSource = 80;
     const particleLifetimeSeconds = 4;
 
     const sources = [
@@ -360,23 +359,18 @@ export function FestivalLiveClient({
       );
     };
 
-    // Three quick rounds after the reveal. Their falling confetti overlaps
-    // so the celebration stays continuous; closing cancels the whole sequence.
-    const timers = roundCounts.map((count, index) =>
-      window.setTimeout(() => {
-        for (const { source, angle } of sources) {
-          burst(source, angle, count);
-        }
-      }, index * roundIntervalMs),
-    );
-
+    // One burst from each source right after the reveal. Closing the overlay
+    // cancels the burst and tears down the source elements before they pile up.
+    const timers: number[] = [];
+    for (const { source, angle } of sources) {
+      burst(source, angle, particlesPerSource);
+    }
     timers.push(
       window.setTimeout(
         () => {
           for (const { source } of sources) source.remove();
         },
-        (roundCounts.length - 1) * roundIntervalMs +
-          particleLifetimeSeconds * 1_000,
+        particleLifetimeSeconds * 1_000,
       ),
     );
 
