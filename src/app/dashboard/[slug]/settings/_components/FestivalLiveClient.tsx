@@ -1,47 +1,15 @@
 "use client";
 
-import {
-  Building2,
-  CheckCircle2,
-  Copy,
-  ExternalLink,
-  Eye,
-  Gavel,
-  Globe,
-  Loader2,
-  Pencil,
-  Plug,
-  PlugZap,
-  Power,
-  RefreshCw,
-  Rocket,
-  Trash2,
-  UserRound,
-  X,
-} from "lucide-react";
+import { Building2, Gavel, UserRound } from "lucide-react";
 import party from "party-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/core/utils/cn";
 import { setPublicSiteEnabledAction } from "@/features/festivals/actions/festival-crud.actions";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
   type CustomDomainPhase,
   type CustomDomainStatus,
-  describeCustomDomainProblem,
   getDomainOwnershipToken,
   getDomainOwnershipTxtName,
   isCustomDomainPhasePending,
@@ -49,21 +17,26 @@ import {
 } from "@/features/institutions/lib/custom-domain";
 import { toast } from "@/lib/toast";
 
-export type CustomDomainState = {
-  institutionId: string | null;
-  customDomain: string | null;
-  verifiedAt: string | null;
-  httpsReadyAt: string | null;
-  /** Owner-controlled switch; when false, branded URL is hidden from share. */
-  customDomainConnected: boolean;
-  isOwner: boolean;
-  isPro: boolean;
-  isInstitutional: boolean;
-  /** Whether the viewer owns the festival — only they can upgrade its account. */
-  isFestivalOwner: boolean;
-  /** Viewer is on a PERSONAL account, so no institution exists to hold a domain. */
-  isPersonalAccount: boolean;
-};
+import { CustomSubdomainCard } from "./live/CustomSubdomainCard";
+import { DeleteSubdomainDialog } from "./live/DeleteSubdomainDialog";
+import { DnsRecordsCard } from "./live/DnsRecordsCard";
+import { LaunchOverlay } from "./live/LaunchOverlay";
+import { MobileLaunchBar } from "./live/MobileLaunchBar";
+import { PageHeader } from "./live/PageHeader";
+import { PublicSiteAddressCard } from "./live/PublicSiteAddressCard";
+import { StatusHeroCard } from "./live/StatusHeroCard";
+import { SubdomainActions } from "./live/SubdomainActions";
+import type {
+  CustomDomainState,
+  DnsRow,
+  LaunchPhase,
+  ShareLink,
+} from "./live/types";
+
+/** Re-exported so SettingsTabs.tsx keeps importing it from here. The actual
+ * definition now lives in `./live/types.ts` next to the rest of the public
+ * shape for this feature. */
+export type { CustomDomainState };
 
 interface FestivalLiveClientProps {
   festivalId: string;
@@ -77,15 +50,6 @@ interface FestivalLiveClientProps {
   onExit: () => void;
 }
 
-type Phase = "idle" | "live" | "taking-offline";
-
-type DnsRow = {
-  id: string;
-  type: string;
-  hostname: string;
-  value: string;
-};
-
 /** How often to re-check while a certificate is still being issued. */
 const STATUS_POLL_MS = 15_000;
 
@@ -95,94 +59,6 @@ function phaseFromState(state: CustomDomainState): CustomDomainPhase {
   if (!state.verifiedAt) return "awaiting-dns";
   if (!state.httpsReadyAt) return "provisioning";
   return "https-ready";
-}
-
-function phaseBadge(phase: CustomDomainPhase): {
-  label: string;
-  className: string;
-  variant: "default" | "secondary" | "outline";
-} {
-  switch (phase) {
-    case "https-ready":
-      return {
-        label: "HTTPS ready",
-        variant: "default",
-        className: "bg-green-600 hover:bg-green-600",
-      };
-    case "provisioning":
-      return {
-        label: "Provisioning HTTPS…",
-        variant: "outline",
-        className:
-          "border-blue-500/40 bg-blue-500/10 text-blue-800 dark:text-blue-300",
-      };
-    case "manual-attach":
-      return {
-        label: "DNS verified — awaiting HTTPS",
-        variant: "outline",
-        className:
-          "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300",
-      };
-    case "awaiting-dns":
-      return {
-        label: "Awaiting DNS verification",
-        variant: "outline",
-        className:
-          "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300",
-      };
-    case "error":
-      return {
-        label: "Needs attention",
-        variant: "outline",
-        className: "border-destructive/40 bg-destructive/10 text-destructive",
-      };
-    default:
-      return { label: "Not configured", variant: "secondary", className: "" };
-  }
-}
-
-function CopyIconButton({
-  value,
-  label,
-  className,
-}: {
-  value: string;
-  label: string;
-  className?: string;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      toast.success("Copied");
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast.error("Copy failed");
-    }
-  };
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className={cn(
-        "h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground sm:h-8 sm:w-8",
-        className,
-      )}
-      onClick={onCopy}
-      title={`Copy ${label}`}
-      aria-label={`Copy ${label}`}
-    >
-      {copied ? (
-        <CheckCircle2 className="h-4 w-4 text-green-600 sm:h-3.5 sm:w-3.5" />
-      ) : (
-        <Copy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-      )}
-    </Button>
-  );
 }
 
 export function FestivalLiveClient({
@@ -196,35 +72,64 @@ export function FestivalLiveClient({
 }: FestivalLiveClientProps) {
   const { isReadOnly } = useFestivalReadOnly();
   const [enabled, setEnabled] = useState(publicSiteEnabled);
-  const [phase, setPhase] = useState<Phase>(
+  const [phase, setPhase] = useState<LaunchPhase>(
     publicSiteEnabled ? "live" : "idle",
   );
   const [iframeReady, setIframeReady] = useState(false);
-  /**
-   * One fullscreen surface serves both jobs: it shows the buzzer while the
-   * site is offline and swaps to the live preview the moment it goes live.
-   */
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [justLaunched, setJustLaunched] = useState(false);
+  const celebrationCleanup = useRef<(() => void) | null>(null);
+  const ownsFullscreen = useRef(false);
 
-  const [domainInput, setDomainInput] = useState(
-    initialDomain.customDomain ?? "",
-  );
-  /**
-   * Inline reason the typed apex is unusable. Set on save and on blur rather
-   * than on every keystroke, so the field doesn't shout at a half-typed domain.
-   */
-  const [domainError, setDomainError] = useState<string | null>(null);
+  const openOverlay = useCallback(() => {
+    setOverlayOpen(true);
+    if (
+      !document.fullscreenElement &&
+      document.documentElement.requestFullscreen
+    ) {
+      // Enter from the launch click, while browser user activation is available.
+      ownsFullscreen.current = true;
+      void document.documentElement.requestFullscreen().catch(() => {
+        // Browsers without fullscreen support still get the full viewport overlay.
+        ownsFullscreen.current = false;
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!overlayOpen) return;
+    const handleFullscreenChange = () => {
+      if (ownsFullscreen.current && !document.fullscreenElement) {
+        ownsFullscreen.current = false;
+        setOverlayOpen(false);
+        setJustLaunched(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      if (ownsFullscreen.current && document.fullscreenElement) {
+        void document.exitFullscreen().catch(() => {});
+      }
+      ownsFullscreen.current = false;
+    };
+  }, [overlayOpen]);
+
+  useEffect(() => {
+    if (!overlayOpen || !justLaunched) {
+      celebrationCleanup.current?.();
+      celebrationCleanup.current = null;
+    }
+    return () => {
+      celebrationCleanup.current?.();
+      celebrationCleanup.current = null;
+    };
+  }, [overlayOpen, justLaunched]);
+
   const [domainState, setDomainState] = useState(initialDomain);
   const [savingDomain, setSavingDomain] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  /** True while a manual "Sync now" call to the status route is in flight. */
   const [syncing, setSyncing] = useState(false);
-  /** Empty domain starts in edit mode so first setup is immediate. */
-  const [editingDomain, setEditingDomain] = useState(
-    !initialDomain.customDomain,
-  );
-  const domainInputRef = useRef<HTMLInputElement>(null);
 
   const [status, setStatus] = useState<CustomDomainStatus>(() => ({
     phase: phaseFromState(initialDomain),
@@ -237,27 +142,6 @@ export function FestivalLiveClient({
     setOverlayOpen(false);
     setJustLaunched(false);
   }, []);
-
-  useEffect(() => {
-    if (!overlayOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeOverlay();
-    };
-    window.addEventListener("keydown", onKey);
-    // Body scroll would otherwise bleed behind the fullscreen surface.
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [overlayOpen, closeOverlay]);
-
-  useEffect(() => {
-    if (!editingDomain) return;
-    domainInputRef.current?.focus();
-    domainInputRef.current?.select();
-  }, [editingDomain]);
 
   const refreshStatus =
     useCallback(async (): Promise<CustomDomainStatus | null> => {
@@ -284,11 +168,6 @@ export function FestivalLiveClient({
       }
     }, [festivalId]);
 
-  /**
-   * Manual on-demand status refresh — used by the "Sync now" affordance so an
-   * owner can resolve a drift between Greenroom's view and Vercel's without
-   * waiting for the next 15s poll or re-running DNS verification.
-   */
   const handleSyncNow = useCallback(async () => {
     if (syncing) return;
     setSyncing(true);
@@ -299,11 +178,6 @@ export function FestivalLiveClient({
     }
   }, [refreshStatus, syncing]);
 
-  /**
-   * Owner-controlled Connect/Disconnect. Disconnect pauses the branded URL
-   * (path URL is shared instead); apex, verification, and Vercel host stay in
-   * place. Connect flips it back on without re-verifying DNS.
-   */
   const [togglingConnection, setTogglingConnection] = useState(false);
   const handleToggleConnection = useCallback(
     async (next: boolean) => {
@@ -343,69 +217,61 @@ export function FestivalLiveClient({
     [domainState.isOwner, isReadOnly, togglingConnection, refreshStatus],
   );
 
-  /** Delete the custom domain permanently — opens the confirmation dialog. */
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  const handleDeleteDomain = useCallback(async () => {
-    if (
-      !domainState.isOwner ||
-      isReadOnly ||
-      deleting ||
-      !domainState.customDomain ||
-      deleteConfirm.trim().toLowerCase() !==
-        domainState.customDomain.trim().toLowerCase()
-    ) {
-      return;
-    }
-    setDeleting(true);
-    try {
-      const res = await fetch(
-        "/api/v1/profile/institution/custom-domain/delete",
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ apexConfirmation: deleteConfirm }),
-        },
-      );
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        toast.error(json?.error?.message ?? "Failed to delete custom domain");
+  const handleDeleteDomain = useCallback(
+    async (typedApex: string) => {
+      if (
+        !domainState.isOwner ||
+        isReadOnly ||
+        deleting ||
+        !domainState.customDomain ||
+        typedApex.trim().toLowerCase() !==
+          domainState.customDomain.trim().toLowerCase()
+      ) {
         return;
       }
-      // Wipe client-side state to match the cleared DB row. The next status
-      // poll will return no-domain.
-      setDomainState((s) => ({
-        ...s,
-        customDomain: null,
-        verifiedAt: null,
-        httpsReadyAt: null,
-        customDomainConnected: true,
-      }));
-      setStatus({
-        phase: "no-domain",
-        customDomain: null,
-        verifiedAt: null,
-        httpsReadyAt: null,
-      });
-      setDeleteOpen(false);
-      setDeleteConfirm("");
-      toast.success(
-        "Custom domain deleted. Remove the DNS records from your registrar to finish.",
-      );
-    } catch {
-      toast.error("Failed to delete custom domain");
-    } finally {
-      setDeleting(false);
-    }
-  }, [
-    domainState.isOwner,
-    domainState.customDomain,
-    isReadOnly,
-    deleting,
-    deleteConfirm,
-  ]);
+      setDeleting(true);
+      try {
+        const res = await fetch(
+          "/api/v1/profile/institution/custom-domain/delete",
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ apexConfirmation: typedApex }),
+          },
+        );
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          toast.error(json?.error?.message ?? "Failed to delete custom domain");
+          return;
+        }
+        setDomainState((s) => ({
+          ...s,
+          customDomain: null,
+          verifiedAt: null,
+          httpsReadyAt: null,
+          customDomainConnected: true,
+        }));
+        setStatus({
+          phase: "no-domain",
+          customDomain: null,
+          verifiedAt: null,
+          httpsReadyAt: null,
+        });
+        setDeleteOpen(false);
+        toast.success(
+          "Custom domain deleted. Remove the DNS records from your registrar to finish.",
+        );
+      } catch {
+        toast.error("Failed to delete custom domain");
+      } finally {
+        setDeleting(false);
+      }
+    },
+    [domainState.isOwner, domainState.customDomain, isReadOnly, deleting],
+  );
 
   /**
    * Poll only while a certificate is still being issued (or ops has yet to
@@ -433,11 +299,95 @@ export function FestivalLiveClient({
   ]);
 
   const fireConfetti = useCallback(() => {
-    const burst = (count: number, speed: number) =>
-      party.confetti(document.body, { count, size: 2, speed, spread: 360 });
-    burst(120, 14);
-    setTimeout(() => burst(80, 11), 250);
-    setTimeout(() => burst(50, 8), 600);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    celebrationCleanup.current?.();
+    const emitters: party.Emitter[] = [];
+    const roundCounts = [42, 50, 60];
+    const roundIntervalMs = 900;
+    const particleLifetimeSeconds = 4;
+
+    const sources = [
+      { left: "3%", angle: -65 },
+      { left: "27%", angle: -80 },
+      { left: "50%", angle: -90 },
+      { left: "73%", angle: -100 },
+      { left: "97%", angle: -115 },
+    ].map(({ left, angle }) => {
+      const source = document.createElement("span");
+      source.setAttribute("aria-hidden", "true");
+      Object.assign(source.style, {
+        position: "fixed",
+        bottom: "8px",
+        left,
+        width: "1px",
+        height: "1px",
+        pointerEvents: "none",
+      });
+      document.body.appendChild(source);
+      return { source, angle };
+    });
+
+    const burst = (source: HTMLElement, angle: number, count: number) => {
+      // Scale the launch velocity to reach the top of the current viewport.
+      const speed = Math.sqrt(2 * party.settings.gravity * window.innerHeight);
+      emitters.push(
+        party.scene.current.createEmitter({
+          emitterOptions: {
+            loops: 1,
+            duration: particleLifetimeSeconds,
+            modules: [
+              new party.ModuleBuilder()
+                .drive("rotation")
+                .by((t) => new party.Vector(140, 200, 260).scale(t))
+                .relative()
+                .build(),
+            ],
+          },
+          emissionOptions: {
+            rate: 0,
+            bursts: [{ time: 0, count }],
+            sourceSampler: party.sources.dynamicSource(source),
+            angle: party.variation.skew(angle, 20),
+            initialLifetime: particleLifetimeSeconds,
+            initialSpeed: party.variation.range(speed * 0.85, speed * 1.1),
+            initialSize: party.variation.skew(1.3, 0.3),
+            initialRotation: () => party.random.randomUnitVector().scale(180),
+            initialColor: () =>
+              party.Color.fromHsl(party.random.randomRange(0, 360), 100, 70),
+          },
+          rendererOptions: { shapeFactory: ["square", "circle"] },
+        }),
+      );
+    };
+
+    // Three quick rounds after the reveal. Their falling confetti overlaps
+    // so the celebration stays continuous; closing cancels the whole sequence.
+    const timers = roundCounts.map((count, index) =>
+      window.setTimeout(() => {
+        for (const { source, angle } of sources) {
+          burst(source, angle, count);
+        }
+      }, index * roundIntervalMs),
+    );
+
+    timers.push(
+      window.setTimeout(
+        () => {
+          for (const { source } of sources) source.remove();
+        },
+        (roundCounts.length - 1) * roundIntervalMs +
+          particleLifetimeSeconds * 1_000,
+      ),
+    );
+
+    celebrationCleanup.current = () => {
+      timers.forEach(window.clearTimeout);
+      for (const emitter of emitters) {
+        emitter.emission.bursts = [];
+        emitter.clearParticles();
+      }
+      for (const { source } of sources) source.remove();
+    };
   }, []);
 
   const handleLaunch = async () => {
@@ -448,7 +398,6 @@ export function FestivalLiveClient({
     setEnabled(true);
     setPhase("live");
     setJustLaunched(true);
-    fireConfetti();
 
     const rollback = (msg: string) => {
       setEnabled(false);
@@ -459,9 +408,7 @@ export function FestivalLiveClient({
 
     try {
       const result = await setPublicSiteEnabledAction(festivalId, true);
-      if (result?.success) {
-        toast.success("Website is live.");
-      } else {
+      if (!result?.success) {
         rollback(
           result && "error" in result && typeof result.error === "string"
             ? result.error
@@ -494,48 +441,15 @@ export function FestivalLiveClient({
     }
   };
 
-  const copyText = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Copied");
-    } catch {
-      toast.error("Copy failed");
-    }
-  };
-
-  const startEditingDomain = () => {
-    if (!domainState.isOwner || isReadOnly) return;
-    setDomainInput(domainState.customDomain ?? "");
-    setDomainError(null);
-    setEditingDomain(true);
-  };
-
-  const cancelEditingDomain = () => {
-    setDomainInput(domainState.customDomain ?? "");
-    setDomainError(null);
-    setEditingDomain(!domainState.customDomain);
-  };
-
   /**
-   * Same rules the API enforces, so a typo never costs a round trip. Clearing
-   * the field is intentionally valid — that removes the domain.
+   * Save the typed apex to the institution. The card already validated the
+   * string with the same rule the API enforces, so by the time this fires the
+   * only check left is "are we the owner and not in read-only mode?".
+   * Confirmation when changing a *verified* apex is preserved verbatim — losing
+   * verification wipes the certificate and Vercel host.
    */
-  const validateDomainInput = (value: string): string | null => {
-    if (!value.trim()) return null;
-    return describeCustomDomainProblem(value);
-  };
-
-  const saveDomain = async () => {
-    if (!domainState.isOwner || isReadOnly || !editingDomain) return;
-    const trimmed = domainInput.trim();
-
-    const problem = validateDomainInput(trimmed);
-    if (problem) {
-      setDomainError(problem);
-      domainInputRef.current?.focus();
-      return;
-    }
-    setDomainError(null);
+  const saveDomain = async (trimmed: string) => {
+    if (!domainState.isOwner || isReadOnly) return;
 
     const changing =
       (domainState.customDomain ?? "") !== trimmed && !!domainState.verifiedAt;
@@ -578,8 +492,6 @@ export function FestivalLiveClient({
         verifiedAt: inst.verifiedAt ?? null,
         httpsReadyAt: null,
       });
-      setDomainInput(nextDomain ?? "");
-      setEditingDomain(!nextDomain);
       toast.success(
         trimmed
           ? "Domain saved. Verify DNS when records are ready."
@@ -676,12 +588,6 @@ export function FestivalLiveClient({
         ]
       : [];
 
-  /**
-   * Extra records our certificate provider asked for. Normally empty — hosts are
-   * validated over the traffic path, so no DNS challenge is involved. When it is
-   * non-empty the certificate cannot issue until these are published, so they
-   * have to be on screen rather than swallowed into a status string.
-   */
   const extraDnsRows: DnsRow[] = (status.vercelVerification ?? []).map(
     (record, index) => ({
       id: `provider-${index}`,
@@ -691,16 +597,13 @@ export function FestivalLiveClient({
     }),
   );
 
-  const shareLinks: {
-    key: string;
-    label: string;
-    url: string;
-    icon: React.ComponentType<{ className?: string }>;
-  }[] = [
-    { key: "site", label: "Public site", url: fullPublicUrl, icon: Globe },
-    // Branded portal links appear once HTTPS actually serves — before that
-    // `fullPublicUrl` is still the path URL and these would just duplicate it.
-    ...(domainState.httpsReadyAt && domainState.customDomain
+  /** Derived entry points shown under the primary URL row. The public site
+   * itself is the primary row, so it's omitted here to avoid duplicating the
+   * same address. Login + stage portal only appear once the branded host is
+   * actually serving over HTTPS — before that, sharing them would just point
+   * at the path URL. */
+  const shareLinks: ShareLink[] =
+    domainState.httpsReadyAt && domainState.customDomain
       ? [
           {
             key: "login",
@@ -715,194 +618,31 @@ export function FestivalLiveClient({
             icon: Gavel,
           },
         ]
-      : []),
-  ];
+      : [];
 
   return (
-    <div className="w-full space-y-4 sm:space-y-6 pb-24 sm:pb-0">
-      {/* Header */}
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold tracking-tight sm:text-xl">
-            Launch Website
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Publish your festival site and share links with participants.
-          </p>
-        </div>
-        {enabled ? (
-          <Badge
-            variant="outline"
-            className="shrink-0 gap-1.5 border-green-600/30 bg-green-500/10 text-green-700 dark:text-green-400"
-          >
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            Live
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="shrink-0">
-            Offline
-          </Badge>
+    <div className="w-full space-y-5 pb-24 sm:pb-6">
+      <PageHeader isLive={enabled} publicUrl={fullPublicUrl} />
+
+      <StatusHeroCard
+        isLive={enabled}
+        phase={phase}
+        hasSsl={Boolean(
+          domainState.httpsReadyAt || fullPublicUrl.startsWith("https://"),
         )}
-      </header>
+        isReadOnly={isReadOnly}
+        previewReady={iframeReady}
+        onPreview={openOverlay}
+        onTakeOffline={() => void handleTakeOffline()}
+        onLaunch={openOverlay}
+      />
 
-      {/* Status + share links — one compact card */}
-      <section
-        className={cn(
-          "overflow-hidden rounded-xl border shadow-sm",
-          enabled ? "border-green-600/25 bg-card" : "bg-card",
-        )}
-      >
-        {/* Status strip */}
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-3 py-2.5 sm:px-4",
-            enabled ? "bg-green-500/5" : "bg-muted/30",
-          )}
-        >
-          <span
-            className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-              enabled
-                ? "bg-green-500/15 text-green-700 dark:text-green-400"
-                : "bg-primary/10 text-primary",
-            )}
-          >
-            {enabled ? (
-              <CheckCircle2 className="h-4 w-4" />
-            ) : (
-              <Rocket className="h-4 w-4" />
-            )}
-          </span>
+      <PublicSiteAddressCard
+        publicUrl={fullPublicUrl}
+        shareLinks={shareLinks}
+        isLocked={!enabled}
+      />
 
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">
-              {enabled ? "Your site is live" : "Ready to go live?"}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {enabled
-                ? "Share the links below, or take it offline anytime."
-                : "Turn on the public site instantly — no domain setup needed."}
-            </p>
-          </div>
-
-          {enabled ? (
-            <div className="flex w-full shrink-0 gap-2 sm:w-auto mt-1 sm:mt-0">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 flex-1 sm:flex-none"
-                onClick={() => setOverlayOpen(true)}
-                disabled={!iframeReady}
-              >
-                <Eye className="h-3.5 w-3.5 mr-1.5" />
-                Preview
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 flex-1 text-destructive hover:text-destructive sm:flex-none"
-                onClick={handleTakeOffline}
-                disabled={phase === "taking-offline" || isReadOnly}
-              >
-                {phase === "taking-offline" ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <Power className="h-3.5 w-3.5 mr-1.5" />
-                )}
-                {phase === "taking-offline" ? "Stopping…" : "Take offline"}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex w-full shrink-0 sm:w-auto mt-1 sm:mt-0">
-              <Button
-                type="button"
-                size="sm"
-                className="flex w-full sm:w-auto h-9 shrink-0"
-                onClick={() => setOverlayOpen(true)}
-                disabled={isReadOnly}
-              >
-                <Rocket className="h-3.5 w-3.5 mr-1.5" />
-                Launch website
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Share links */}
-        <div className="divide-y">
-          {shareLinks.map((row) => {
-            const locked = row.key === "site" && !enabled;
-            return (
-              <div
-                key={row.key}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4",
-                  locked && "opacity-60",
-                )}
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  <row.icon className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-muted-foreground">
-                    {locked ? "Launch to share" : row.label}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => copyText(row.url)}
-                    className="block w-full truncate text-left font-mono text-xs text-foreground hover:text-primary sm:text-sm"
-                    title="Tap to copy"
-                  >
-                    {row.url}
-                  </button>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={() => copyText(row.url)}
-                    title={`Copy ${row.label}`}
-                    aria-label={`Copy ${row.label}`}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    disabled={locked}
-                    asChild={!locked}
-                    title={`Open ${row.label}`}
-                    aria-label={`Open ${row.label}`}
-                  >
-                    {locked ? (
-                      <ExternalLink className="h-4 w-4" />
-                    ) : (
-                      <a
-                        href={row.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Personal account — custom domains live on an institution, so there is
-          nothing here to configure until the account is upgraded. Only shown
-          when that is the actual blocker: a PRO festival on a personal account.
-          The festival slug is unaffected and works on any account type. */}
       {showPersonalAccountNotice && (
         <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="border-b bg-muted/30 px-4 py-4 sm:px-5">
@@ -945,721 +685,69 @@ export function FestivalLiveClient({
         </section>
       )}
 
-      {/* Custom subdomain — institutional PRO */}
       {domainState.isInstitutional && domainState.isPro && (
-        <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <div className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <div className="min-w-0 space-y-1">
-              <h3 className="text-sm font-semibold">Custom subdomain</h3>
-              <p className="text-sm text-muted-foreground break-words">
-                Festivals resolve at{" "}
-                <span className="font-mono text-foreground">
-                  {brandedPreviewHost}
-                </span>{" "}
-                after DNS verify.
-              </p>
-            </div>
-            {(() => {
-              const badge = phaseBadge(status.phase);
-              return (
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={badge.variant}
-                    className={cn("w-fit gap-1.5", badge.className)}
-                  >
-                    {status.phase === "https-ready" && (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    )}
-                    {isCustomDomainPhasePending(status.phase) && (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    )}
-                    {badge.label}
-                  </Badge>
-                  {/* Manual refresh — used when Greenroom's status and Vercel's
-                      real state drift. Idempotent on the server. */}
-                  <button
-                    type="button"
-                    onClick={() => void handleSyncNow()}
-                    disabled={syncing}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label="Sync now"
-                    title="Refresh status from Vercel"
-                  >
-                    <RefreshCw
-                      className={cn("h-3 w-3", syncing && "animate-spin")}
-                    />
-                    Sync now
-                  </button>
-                </div>
-              );
-            })()}
-          </div>
+        <>
+          <CustomSubdomainCard
+            state={domainState}
+            phase={status.phase}
+            festivalSlug={festivalSlug}
+            brandedPreviewHost={brandedPreviewHost}
+            syncing={syncing}
+            saving={savingDomain}
+            verifying={verifying}
+            isReadOnly={isReadOnly}
+            onSave={(value) => void saveDomain(value)}
+            onVerify={() => void verifyDomain()}
+            onSyncNow={() => void handleSyncNow()}
+            onAskDelete={() => setDeleteOpen(true)}
+          />
 
-          <div className="space-y-6 p-4 sm:p-5">
-            {domainState.isOwner ? (
-              <div className="space-y-2">
-                <Label htmlFor="custom-domain">Apex domain</Label>
-                <div className="gap-2 md:gap-5 flex flex-col sm:flex-row items-center justify-between w-full">
-                  <div className="w-full">
-                    <Input
-                      ref={domainInputRef}
-                      id="custom-domain"
-                      placeholder="ahlussuffa.in"
-                      value={domainInput}
-                      onChange={(e) => {
-                        setDomainInput(e.target.value);
-                        // Clear while typing: the message returns on blur or
-                        // save, so a half-typed domain is never scolded.
-                        if (domainError) setDomainError(null);
-                      }}
-                      onBlur={(e) => {
-                        if (!editingDomain) return;
-                        setDomainError(validateDomainInput(e.target.value));
-                      }}
-                      aria-invalid={!!domainError}
-                      aria-describedby="custom-domain-hint"
-                      readOnly={!editingDomain || isReadOnly}
-                      disabled={savingDomain || isReadOnly}
-                      className={cn(
-                        "h-12 font-mono text-base sm:h-11 sm:text-sm",
-                        !editingDomain &&
-                          "cursor-default bg-muted/40 text-muted-foreground",
-                        domainError &&
-                          "border-destructive focus-visible:ring-destructive",
-                      )}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && editingDomain) {
-                          e.preventDefault();
-                          void saveDomain();
-                        }
-                        if (e.key === "Escape" && editingDomain) {
-                          e.preventDefault();
-                          cancelEditingDomain();
-                        }
-                      }}
-                    />
-                  </div>
+          {dnsRows.length > 0 && (
+            <DnsRecordsCard rows={dnsRows} extraRows={extraDnsRows} />
+          )}
 
-                  <div className="flex gap-2 flex-row w-full sm:w-auto">
-                    {!editingDomain ? (
-                      <Button
-                        type="button"
-                        variant="default"
-                        className="h-11 w-full sm:w-auto"
-                        onClick={startEditingDomain}
-                        disabled={isReadOnly}
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit domain
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          type="button"
-                          className="h-11 w-full sm:w-auto"
-                          onClick={saveDomain}
-                          disabled={savingDomain || isReadOnly}
-                        >
-                          {savingDomain && (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          )}
-                          Save domain
-                        </Button>
-                        {!!domainState.customDomain && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-11 w-full sm:w-auto"
-                            onClick={cancelEditingDomain}
-                            disabled={savingDomain}
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-                <p
-                  id="custom-domain-hint"
-                  className={cn(
-                    "text-xs",
-                    domainError ? "text-destructive" : "text-muted-foreground",
-                  )}
-                >
-                  {domainError
-                    ? domainError
-                    : editingDomain
-                      ? "Root domain only — not www and not a full URL."
-                      : "Tap Edit domain to change the apex."}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm font-mono text-muted-foreground break-all">
-                  {domainState.customDomain || "No domain configured"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Only the institution owner can edit the domain. Managers can
-                  view status and DNS instructions.
-                </p>
-              </div>
-            )}
-
-            {dnsRows.length > 0 && (
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <h4 className="text-sm font-semibold">DNS records</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Copy these into your DNS provider, then verify. Propagation
-                    can take a few minutes.
-                  </p>
-                </div>
-
-                {/* Mobile-first stacked records; table from lg */}
-                <div className="space-y-3 lg:hidden">
-                  {dnsRows.map((row) => (
-                    <div
-                      key={row.id}
-                      className="space-y-3 rounded-xl border bg-muted/20 p-3.5"
-                    >
-                      <Badge variant="outline" className="font-semibold">
-                        {row.type}
-                      </Badge>
-                      <div className="space-y-1.5">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Hostname
-                        </p>
-                        <div className="flex items-start gap-1">
-                          <code className="min-w-0 flex-1 break-all rounded-lg bg-background px-3 py-2.5 text-xs">
-                            {row.hostname}
-                          </code>
-                          <CopyIconButton
-                            value={row.hostname}
-                            label={`${row.type} hostname`}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Value
-                        </p>
-                        <div className="flex items-start gap-1">
-                          <code className="min-w-0 flex-1 break-all rounded-lg bg-background px-3 py-2.5 text-xs">
-                            {row.value}
-                          </code>
-                          <CopyIconButton
-                            value={row.value}
-                            label={`${row.type} value`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="hidden overflow-hidden rounded-xl border lg:block">
-                  <div className="grid grid-cols-[6.5rem_minmax(0,1.2fr)_minmax(0,1.4fr)] gap-3 border-b bg-muted/50 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    <span>Type</span>
-                    <span>Hostname</span>
-                    <span>Value</span>
-                  </div>
-                  {dnsRows.map((row) => (
-                    <div
-                      key={row.id}
-                      className="grid grid-cols-[6.5rem_minmax(0,1.2fr)_minmax(0,1.4fr)] items-center gap-3 border-b px-4 py-3 last:border-b-0"
-                    >
-                      <span className="text-sm font-semibold">{row.type}</span>
-                      <div className="flex min-w-0 items-center gap-1">
-                        <code className="min-w-0 flex-1 truncate rounded-md bg-muted/60 px-2 py-1 text-xs">
-                          {row.hostname}
-                        </code>
-                        <CopyIconButton
-                          value={row.hostname}
-                          label={`${row.type} hostname`}
-                        />
-                      </div>
-                      <div className="flex min-w-0 items-center gap-1">
-                        <code className="min-w-0 flex-1 truncate rounded-md bg-muted/60 px-2 py-1 text-xs">
-                          {row.value}
-                        </code>
-                        <CopyIconButton
-                          value={row.value}
-                          label={`${row.type} value`}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {extraDnsRows.length > 0 && (
-                  <div className="space-y-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
-                    <div className="space-y-1">
-                      <h5 className="text-sm font-semibold">
-                        One more record is needed
-                      </h5>
-                      <p className="text-sm text-muted-foreground">
-                        Our certificate provider is asking for this before it
-                        can issue{" "}
-                        <span className="font-mono">{brandedPreviewHost}</span>.
-                        Add it the same way as the records above.
-                      </p>
-                    </div>
-                    {extraDnsRows.map((row) => (
-                      <div
-                        key={row.id}
-                        className="space-y-3 rounded-lg border bg-background/60 p-3"
-                      >
-                        <Badge variant="outline" className="font-semibold">
-                          {row.type}
-                        </Badge>
-                        <div className="space-y-1.5">
-                          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                            Hostname
-                          </p>
-                          <div className="flex items-start gap-1">
-                            <code className="min-w-0 flex-1 break-all rounded-lg bg-background px-3 py-2.5 text-xs">
-                              {row.hostname}
-                            </code>
-                            <CopyIconButton
-                              value={row.hostname}
-                              label={`${row.type} hostname`}
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                            Value
-                          </p>
-                          <div className="flex items-start gap-1">
-                            <code className="min-w-0 flex-1 break-all rounded-lg bg-background px-3 py-2.5 text-xs">
-                              {row.value}
-                            </code>
-                            <CopyIconButton
-                              value={row.value}
-                              label={`${row.type} value`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Why no `_vercel` row by default — explained here so owners
-                    don't add it preemptively (a stale TXT can block Vercel's
-                    verification later). When Vercel actually asks for one,
-                    it surfaces in the amber block above this footnote. */}
-                <p className="text-xs text-muted-foreground">
-                  Note: Vercel only requires a{" "}
-                  <span className="font-mono">{`_vercel.${domainState.customDomain ?? "{apex}"}`}</span>{" "}
-                  TXT when the host was previously on another Vercel account. If
-                  Vercel asks for one, Greenroom surfaces it here automatically
-                  — no need to add it preemptively.
-                </p>
-
-                {domainState.isOwner && !domainState.verifiedAt && (
-                  <Button
-                    type="button"
-                    className="w-full"
-                    size="lg"
-                    onClick={verifyDomain}
-                    disabled={verifying || isReadOnly || editingDomain}
-                  >
-                    {verifying && (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    )}
-                    Verify DNS
-                  </Button>
-                )}
-
-                {status.phase === "https-ready" ? (
-                  <Alert className="border-green-600/30 bg-green-500/5">
-                    <AlertTitle className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      HTTPS ready
-                    </AlertTitle>
-                    <AlertDescription>
-                      <span className="font-mono">{brandedPreviewHost}</span> is
-                      serving over HTTPS. Branded links are live above and on
-                      the dashboard overview.
-                    </AlertDescription>
-                  </Alert>
-                ) : status.phase === "provisioning" ? (
-                  <Alert>
-                    <AlertTitle className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Issuing a certificate for {brandedPreviewHost}
-                    </AlertTitle>
-                    <AlertDescription>
-                      DNS is verified. Each festival gets its own certificate,
-                      and this one is being issued now — usually a few minutes.
-                      This page checks on its own and turns green when it
-                      serves.
-                      <span className="mt-1.5 block">
-                        Your public site is already live at{" "}
-                        <span className="font-mono">{fullPublicUrl}</span>, so
-                        nothing is waiting on this.
-                      </span>
-                      {status.detail && (
-                        <span className="mt-1.5 block text-xs text-muted-foreground">
-                          {status.detail}
-                        </span>
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                ) : status.phase === "manual-attach" ? (
-                  <Alert>
-                    <AlertTitle>
-                      Awaiting HTTPS for {brandedPreviewHost}
-                    </AlertTitle>
-                    <AlertDescription>
-                      DNS is verified, but this festival's address still needs
-                      to be set up on our side before HTTPS works. Ask Greenroom
-                      support to finish it — this page goes green on its own
-                      once the certificate serves. Your public site stays live
-                      at <span className="font-mono">{fullPublicUrl}</span>
-                      meanwhile.
-                      {status.detail && (
-                        <span className="mt-1.5 block text-xs text-muted-foreground">
-                          {status.detail}
-                        </span>
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                ) : status.phase === "error" ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Domain needs attention</AlertTitle>
-                    <AlertDescription>
-                      {status.detail ||
-                        "We could not confirm the domain setup. Re-check the DNS records above and verify again."}
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <Alert>
-                    <AlertTitle>Verify DNS to continue</AlertTitle>
-                    <AlertDescription>
-                      Add both records at your DNS provider, then press Verify
-                      DNS. Greenroom sets up{" "}
-                      <span className="font-mono">{brandedPreviewHost}</span>{" "}
-                      and issues its certificate right after.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Connect / Disconnect + Delete controls — owner-only, only
-                    once an apex is saved. Disconnect pauses the branded URL;
-                    Delete erases the apex, verification, and Vercel host. */}
-                {domainState.isOwner && domainState.customDomain && (
-                  <div className="space-y-3 border-t pt-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-medium">
-                          {domainState.customDomainConnected
-                            ? "Custom domain is connected"
-                            : "Custom domain is paused"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {domainState.customDomainConnected
-                            ? "Branded URL is shared. Disconnect to pause without losing setup."
-                            : "Path URL is shared. Connect to resume the branded URL."}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant={
-                          domainState.customDomainConnected
-                            ? "outline"
-                            : "default"
-                        }
-                        size="sm"
-                        className="h-9 w-full sm:w-auto"
-                        onClick={() =>
-                          void handleToggleConnection(
-                            !domainState.customDomainConnected,
-                          )
-                        }
-                        disabled={togglingConnection || isReadOnly}
-                      >
-                        {togglingConnection ? (
-                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                        ) : domainState.customDomainConnected ? (
-                          <PlugZap className="h-3.5 w-3.5 mr-1.5" />
-                        ) : (
-                          <Plug className="h-3.5 w-3.5 mr-1.5" />
-                        )}
-                        {domainState.customDomainConnected
-                          ? "Disconnect"
-                          : "Connect"}
-                      </Button>
-                    </div>
-
-                    <div className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-medium text-destructive">
-                          Delete custom domain
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Erases the apex, verification, and Vercel host for
-                          every festival under this institution. Cannot be
-                          undone.
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="h-9 w-full sm:w-auto"
-                        onClick={() => setDeleteOpen(true)}
-                        disabled={isReadOnly}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                        Delete domain
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+          {domainState.isOwner && domainState.customDomain && (
+            <SubdomainActions
+              isConnected={domainState.customDomainConnected}
+              isToggling={togglingConnection}
+              isReadOnly={isReadOnly}
+              onToggle={(next) => void handleToggleConnection(next)}
+            />
+          )}
+        </>
       )}
 
-      {/* Delete custom domain confirmation dialog. Requires the owner to type
-          the apex verbatim before the destructive action is enabled. */}
-      <Dialog
+      <DeleteSubdomainDialog
+        apexDomain={domainState.customDomain ?? ""}
+        festivalSlug={festivalSlug}
+        festivalFallbackHost={
+          fullPublicUrl.startsWith("https://") ? fullPublicUrl : ""
+        }
         open={deleteOpen}
-        onOpenChange={(open) => {
-          if (deleting) return;
-          setDeleteOpen(open);
-          if (!open) setDeleteConfirm("");
-        }}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Delete custom subdomain</DialogTitle>
-            <DialogDescription>
-              This permanently removes the apex, ownership verification, and
-              every branded festival host on Vercel for this institution.
-            </DialogDescription>
-          </DialogHeader>
+        deleting={deleting}
+        onOpenChange={setDeleteOpen}
+        onConfirm={(value) => void handleDeleteDomain(value)}
+      />
 
-          <div className="space-y-3 text-sm">
-            <p className="font-medium">
-              After deleting, also remove these from your DNS registrar:
-            </p>
-            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-              <li>
-                TXT{" "}
-                <span className="font-mono">{`_greenroom.${domainState.customDomain ?? ""}`}</span>
-              </li>
-              <li>
-                TXT{" "}
-                <span className="font-mono">
-                  {`_vercel.${domainState.customDomain ?? ""}`}
-                </span>{" "}
-                <span className="text-xs">
-                  (only if Vercel added one during verification)
-                </span>
-              </li>
-              <li>
-                CNAME <span className="font-mono">*</span> →{" "}
-                <span className="font-mono">cname.vercel-dns.com</span>{" "}
-                <span className="text-xs">
-                  (only if no other Greenroom institution shares the apex)
-                </span>
-              </li>
-            </ul>
-            <p className="text-xs text-muted-foreground">
-              Branded links will stop resolving once DNS is cleared. The
-              festival site stays reachable at{" "}
-              <span className="font-mono">{`https://greenroomfestivals.in/${festivalSlug}`}</span>
-              .
-            </p>
-          </div>
+      <MobileLaunchBar
+        visible={!enabled && !overlayOpen}
+        isReadOnly={isReadOnly}
+        onLaunch={openOverlay}
+      />
 
-          <div className="space-y-2">
-            <Label htmlFor="apex-confirmation">
-              Type <span className="font-mono">{domainState.customDomain}</span>{" "}
-              to confirm
-            </Label>
-            <Input
-              id="apex-confirmation"
-              value={deleteConfirm}
-              onChange={(e) => setDeleteConfirm(e.target.value)}
-              placeholder={domainState.customDomain ?? ""}
-              autoComplete="off"
-              spellCheck={false}
-              disabled={deleting}
-              className="font-mono"
-            />
-          </div>
-
-          <DialogFooter className="gap-2">
-            <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={deleting}>
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={
-                deleting ||
-                deleteConfirm.trim().toLowerCase() !==
-                  (domainState.customDomain ?? "").trim().toLowerCase()
-              }
-              onClick={() => void handleDeleteDomain()}
-            >
-              {deleting ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-1.5" />
-              )}
-              Delete domain
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mobile sticky launch bar when offline */}
-      {!enabled && !overlayOpen && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:hidden">
-          <Button
-            type="button"
-            size="lg"
-            className="h-12 w-full text-base"
-            onClick={() => setOverlayOpen(true)}
-            disabled={isReadOnly}
-          >
-            <Rocket className="h-4 w-4 mr-2" />
-            Launch website
-          </Button>
-        </div>
-      )}
-
-      {/* Fullscreen launch buzzer / live preview */}
-      <div
-        className={cn(
-          "fixed inset-0 z-50 bg-background",
-          overlayOpen
-            ? "visible opacity-100"
-            : "invisible pointer-events-none opacity-0",
-        )}
-        aria-hidden={!overlayOpen}
-      >
-        {/* Keep the private, same-route preview mounted from the first settings
-            paint. The buzzer covers it while offline; launching only removes
-            that cover, so there is no second navigation or blank frame. */}
-        <iframe
-          src={`${previewPath}?preview=1`}
-          className="absolute inset-0 h-full w-full"
-          title="Festival website preview"
-          onLoad={() => setIframeReady(true)}
-        />
-        {enabled ? (
-          <>
-            {!iframeReady && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden bg-background">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full bg-primary/10 blur-3xl"
-                />
-                <span className="relative flex h-32 w-32 items-center justify-center sm:h-40 sm:w-40">
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute h-full w-full rounded-full bg-primary/15 animate-ping"
-                  />
-                  <span className="relative flex h-full w-full items-center justify-center rounded-full bg-gradient-to-b from-primary to-primary-hover text-primary-foreground shadow-[0_18px_40px_-12px_var(--primary)] ring-1 ring-white/20">
-                    <Rocket className="h-11 w-11 sm:h-14 sm:w-14" />
-                  </span>
-                </span>
-              </div>
-            )}
-            {justLaunched && (
-              <div className="absolute inset-x-3 top-4 z-20 mx-auto flex max-w-lg items-center gap-2 rounded-full border border-green-600/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-800 shadow-lg backdrop-blur dark:text-green-300 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span className="truncate">Your festival website is live!</span>
-              </div>
-            )}
-            <div className="absolute inset-x-3 bottom-4 z-20 flex max-w-lg mx-auto items-center gap-1 rounded-full border bg-background/90 px-1.5 py-1.5 shadow-lg backdrop-blur sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-6 sm:px-2">
-              <span className="flex min-w-0 flex-1 items-center gap-2 px-2 text-sm font-mono text-muted-foreground sm:px-3">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-green-500 animate-pulse" />
-                <span className="truncate">{fullPublicUrl}</span>
-              </span>
-              <a
-                href={fullPublicUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open
-              </a>
-              <button
-                type="button"
-                onClick={closeOverlay}
-                className="shrink-0 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
-              >
-                Close
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6">
-            {/* Ambient glow behind the buzzer */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full bg-primary/10 blur-3xl"
-            />
-
-            <div className="relative flex h-56 w-56 items-center justify-center sm:h-72 sm:w-72">
-              {/* Concentric halos, offset so they read as a radar sweep */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute h-full w-full rounded-full bg-primary/10 animate-ping"
-              />
-              <span
-                aria-hidden
-                className="pointer-events-none absolute h-3/4 w-3/4 rounded-full bg-primary/15 animate-ping [animation-delay:400ms]"
-              />
-              <span
-                aria-hidden
-                className="pointer-events-none absolute h-full w-full rounded-full border border-primary/20"
-              />
-
-              <button
-                type="button"
-                onClick={handleLaunch}
-                disabled={isReadOnly || !iframeReady}
-                aria-label={
-                  iframeReady
-                    ? "Launch festival website"
-                    : "Preparing festival website preview"
-                }
-                className="group relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-b from-primary to-primary-hover text-primary-foreground shadow-[0_18px_40px_-12px_var(--primary)] ring-1 ring-white/20 transition-all duration-150 hover:scale-105 hover:shadow-[0_22px_55px_-10px_var(--primary)] active:scale-95 active:duration-75 disabled:pointer-events-none disabled:opacity-50 sm:h-40 sm:w-40"
-              >
-                {/* Specular highlight for the physical-button feel */}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-3 top-2 h-1/3 rounded-full bg-white/25 blur-md"
-                />
-                <Rocket className="relative h-11 w-11 transition-transform duration-200 group-hover:-translate-y-0.5 sm:h-14 sm:w-14" />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={closeOverlay}
-              aria-label="Close"
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground sm:right-6 sm:top-6"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-      </div>
+      <LaunchOverlay
+        open={overlayOpen}
+        isLive={enabled}
+        previewPath={previewPath}
+        previewReady={iframeReady}
+        justLaunched={justLaunched}
+        publicUrl={fullPublicUrl}
+        isReadOnly={isReadOnly}
+        onPreviewReady={() => setIframeReady(true)}
+        onClose={closeOverlay}
+        onLaunch={() => void handleLaunch()}
+        onRevealComplete={fireConfetti}
+      />
     </div>
   );
 }
