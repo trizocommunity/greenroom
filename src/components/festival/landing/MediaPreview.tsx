@@ -44,38 +44,38 @@ export function MediaPreview({
           title="From the festival"
           className="mb-8"
         />
-      </div>
 
-      <div className="scrollbar-hide flex gap-3 overflow-x-auto px-4 pb-1 sm:px-6">
-        {preview.map((img, i) => (
-          <motion.div
-            key={img.id}
-            initial={{ opacity: 0, scale: 0.97 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.45, delay: i * 0.05 }}
-            className="relative aspect-[4/5] w-40 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-52"
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {preview.map((img, i) => (
+            <motion.div
+              key={img.id}
+              initial={{ opacity: 0, scale: 0.97 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.45, delay: i * 0.05 }}
+              className="relative aspect-[4/5] overflow-hidden rounded-lg bg-muted"
+            >
+              <Image
+                src={img.url}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                className="object-cover transition-transform duration-700 hover:scale-105"
+              />
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="mt-6">
+          <Link
+            href={`${linkBase}/media`}
+            className="group inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
+            style={{ color: accentColor }}
           >
-            <Image
-              src={img.url}
-              alt=""
-              fill
-              sizes="(max-width: 640px) 160px, 208px"
-              className="object-cover transition-transform duration-700 hover:scale-105"
-            />
-          </motion.div>
-        ))}
-      </div>
-
-      <div className={`mt-6 ${PUBLIC_CONTAINER}`}>
-        <Link
-          href={`${linkBase}/media`}
-          className="group inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
-          style={{ color: accentColor }}
-        >
-          All media
-          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-        </Link>
+            All media
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
       </div>
     </section>
   );
