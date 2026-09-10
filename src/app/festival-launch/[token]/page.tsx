@@ -18,6 +18,14 @@ import { verifyPairing } from "@/features/festivals/services/launch-pairing.serv
  * with the path-URL the operator's preview also uses. Vercel/Redis DNS
  * resolves that path to the branded host for end visitors, but the
  * stage device is on the same app host so the path works directly.
+ *
+ * We deliberately do NOT pass `?remote=1` here. That flag tells the
+ * public layout to strip navbar/footer/banner chrome — useful for the
+ * dashboard's preview iframe, but wrong for the paired device: the
+ * guest's tablet is the *audience's* view of the festival site after
+ * launch, so it should look like the site everyone else sees, with
+ * navbar and footer intact. Pre-launch the curtains still cover the
+ * iframe so the guest sees only the buzzer regardless.
  */
 export default async function StageLaunchPage({
   params,
@@ -32,7 +40,7 @@ export default async function StageLaunchPage({
     <StageLaunchController
       festivalId={pairing.festivalId}
       token={token}
-      publicUrl={`/${pairing.slug}?remote=1`}
+      publicUrl={`/${pairing.slug}`}
     />
   );
 }
