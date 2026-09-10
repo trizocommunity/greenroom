@@ -10,9 +10,12 @@ import {
   Globe,
   Loader2,
   Pencil,
+  Plug,
+  PlugZap,
   Power,
   RefreshCw,
   Rocket,
+  Trash2,
   UserRound,
   X,
 } from "lucide-react";
@@ -21,6 +24,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/core/utils/cn";
@@ -42,6 +54,8 @@ export type CustomDomainState = {
   customDomain: string | null;
   verifiedAt: string | null;
   httpsReadyAt: string | null;
+  /** Owner-controlled switch; when false, branded URL is hidden from share. */
+  customDomainConnected: boolean;
   isOwner: boolean;
   isPro: boolean;
   isInstitutional: boolean;
@@ -284,6 +298,114 @@ export function FestivalLiveClient({
       setSyncing(false);
     }
   }, [refreshStatus, syncing]);
+
+  /**
+   * Owner-controlled Connect/Disconnect. Disconnect pauses the branded URL
+   * (path URL is shared instead); apex, verification, and Vercel host stay in
+   * place. Connect flips it back on without re-verifying DNS.
+   */
+  const [togglingConnection, setTogglingConnection] = useState(false);
+  const handleToggleConnection = useCallback(
+    async (next: boolean) => {
+      if (!domainState.isOwner || isReadOnly) return;
+      if (togglingConnection) return;
+      setTogglingConnection(true);
+      try {
+        const endpoint = next
+          ? "/api/v1/profile/institution/custom-domain/connect"
+          : "/api/v1/profile/institution/custom-domain/disconnect";
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          toast.error(json?.error?.message ?? "Failed to update custom domain");
+          return;
+        }
+        setDomainState((s) => ({
+          ...s,
+          customDomainConnected: next,
+        }));
+        toast.success(
+          next
+            ? "Custom domain connected. Branded URL is live."
+            : "Custom domain disconnected. Path URL is shared.",
+        );
+        await refreshStatus();
+      } catch {
+        toast.error("Failed to update custom domain");
+      } finally {
+        setTogglingConnection(false);
+      }
+    },
+    [domainState.isOwner, isReadOnly, togglingConnection, refreshStatus],
+  );
+
+  /** Delete the custom domain permanently — opens the confirmation dialog. */
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteDomain = useCallback(async () => {
+    if (
+      !domainState.isOwner ||
+      isReadOnly ||
+      deleting ||
+      !domainState.customDomain ||
+      deleteConfirm.trim().toLowerCase() !==
+        domainState.customDomain.trim().toLowerCase()
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(
+        "/api/v1/profile/institution/custom-domain/delete",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apexConfirmation: deleteConfirm }),
+        },
+      );
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        toast.error(json?.error?.message ?? "Failed to delete custom domain");
+        return;
+      }
+      // Wipe client-side state to match the cleared DB row. The next status
+      // poll will return no-domain.
+      setDomainState((s) => ({
+        ...s,
+        customDomain: null,
+        verifiedAt: null,
+        httpsReadyAt: null,
+        customDomainConnected: true,
+      }));
+      setStatus({
+        phase: "no-domain",
+        customDomain: null,
+        verifiedAt: null,
+        httpsReadyAt: null,
+      });
+      setDeleteOpen(false);
+      setDeleteConfirm("");
+      toast.success(
+        "Custom domain deleted. Remove the DNS records from your registrar to finish.",
+      );
+    } catch {
+      toast.error("Failed to delete custom domain");
+    } finally {
+      setDeleting(false);
+    }
+  }, [
+    domainState.isOwner,
+    domainState.customDomain,
+    isReadOnly,
+    deleting,
+    deleteConfirm,
+  ]);
 
   /**
    * Poll only while a certificate is still being issued (or ops has yet to
@@ -1213,11 +1335,181 @@ export function FestivalLiveClient({
                     </AlertDescription>
                   </Alert>
                 )}
+
+                {/* Connect / Disconnect + Delete controls — owner-only, only
+                    once an apex is saved. Disconnect pauses the branded URL;
+                    Delete erases the apex, verification, and Vercel host. */}
+                {domainState.isOwner && domainState.customDomain && (
+                  <div className="space-y-3 border-t pt-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium">
+                          {domainState.customDomainConnected
+                            ? "Custom domain is connected"
+                            : "Custom domain is paused"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {domainState.customDomainConnected
+                            ? "Branded URL is shared. Disconnect to pause without losing setup."
+                            : "Path URL is shared. Connect to resume the branded URL."}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={
+                          domainState.customDomainConnected
+                            ? "outline"
+                            : "default"
+                        }
+                        size="sm"
+                        className="h-9 w-full sm:w-auto"
+                        onClick={() =>
+                          void handleToggleConnection(
+                            !domainState.customDomainConnected,
+                          )
+                        }
+                        disabled={togglingConnection || isReadOnly}
+                      >
+                        {togglingConnection ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        ) : domainState.customDomainConnected ? (
+                          <PlugZap className="h-3.5 w-3.5 mr-1.5" />
+                        ) : (
+                          <Plug className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        {domainState.customDomainConnected
+                          ? "Disconnect"
+                          : "Connect"}
+                      </Button>
+                    </div>
+
+                    <div className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium text-destructive">
+                          Delete custom domain
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Erases the apex, verification, and Vercel host for
+                          every festival under this institution. Cannot be
+                          undone.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="h-9 w-full sm:w-auto"
+                        onClick={() => setDeleteOpen(true)}
+                        disabled={isReadOnly}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Delete domain
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </section>
       )}
+
+      {/* Delete custom domain confirmation dialog. Requires the owner to type
+          the apex verbatim before the destructive action is enabled. */}
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (deleting) return;
+          setDeleteOpen(open);
+          if (!open) setDeleteConfirm("");
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Delete custom subdomain</DialogTitle>
+            <DialogDescription>
+              This permanently removes the apex, ownership verification, and
+              every branded festival host on Vercel for this institution.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm">
+            <p className="font-medium">
+              After deleting, also remove these from your DNS registrar:
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+              <li>
+                TXT{" "}
+                <span className="font-mono">{`_greenroom.${domainState.customDomain ?? ""}`}</span>
+              </li>
+              <li>
+                TXT{" "}
+                <span className="font-mono">
+                  {`_vercel.${domainState.customDomain ?? ""}`}
+                </span>{" "}
+                <span className="text-xs">
+                  (only if Vercel added one during verification)
+                </span>
+              </li>
+              <li>
+                CNAME <span className="font-mono">*</span> →{" "}
+                <span className="font-mono">cname.vercel-dns.com</span>{" "}
+                <span className="text-xs">
+                  (only if no other Greenroom institution shares the apex)
+                </span>
+              </li>
+            </ul>
+            <p className="text-xs text-muted-foreground">
+              Branded links will stop resolving once DNS is cleared. The
+              festival site stays reachable at{" "}
+              <span className="font-mono">{`https://greenroomfestivals.in/${festivalSlug}`}</span>
+              .
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="apex-confirmation">
+              Type <span className="font-mono">{domainState.customDomain}</span>{" "}
+              to confirm
+            </Label>
+            <Input
+              id="apex-confirmation"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder={domainState.customDomain ?? ""}
+              autoComplete="off"
+              spellCheck={false}
+              disabled={deleting}
+              className="font-mono"
+            />
+          </div>
+
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={deleting}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={
+                deleting ||
+                deleteConfirm.trim().toLowerCase() !==
+                  (domainState.customDomain ?? "").trim().toLowerCase()
+              }
+              onClick={() => void handleDeleteDomain()}
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-1.5" />
+              )}
+              Delete domain
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Mobile sticky launch bar when offline */}
       {!enabled && !overlayOpen && (

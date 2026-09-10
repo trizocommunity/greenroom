@@ -112,6 +112,7 @@ export default async function SettingsPage({
         institutionId: institution?.id ?? null,
         customDomain: institution?.customDomain ?? null,
         verifiedAt: institution?.verifiedAt ?? null,
+        customDomainConnected: institution?.customDomainConnected ?? true,
         // This festival's own certificate, not the institution's — hosts are
         // certified one at a time.
         httpsReadyAt: festival.domainHttpsReadyAt ?? null,

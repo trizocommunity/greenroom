@@ -231,3 +231,69 @@ export async function clearInstitutionDomainVerification(
     await invalidateCustomDomainCache(existing.customDomain);
   }
 }
+
+/**
+ * Owner-controlled pause/resume of the branded URL.
+ *
+ * Disconnect flips `customDomainConnected` to false: the apex and verification
+ * stay, the Vercel host stays attached, the cert stays valid — share links
+ * just stop advertising the branded URL and fall back to the path form.
+ * Connect flips it back to true; no DNS work, no Vercel calls, no probe delay.
+ *
+ * Cache is invalidated so `getCachedVerifiedInstitution` re-reads the row
+ * with the new flag. The proxy will start/stop serving the branded host on
+ * the next request after the cache clears (≤60s).
+ */
+export async function setInstitutionCustomDomainConnected(
+  institutionId: string,
+  connected: boolean,
+): Promise<typeof institution.$inferSelect | null> {
+  const existing = await findInstitutionById(institutionId);
+  if (!existing?.customDomain) return null;
+
+  const [updated] = await db
+    .update(institution)
+    .set({
+      customDomainConnected: connected,
+      updatedAt: serverNowIso(),
+    })
+    .where(eq(institution.id, institutionId))
+    .returning();
+
+  await invalidateCustomDomainCache(existing.customDomain);
+  return updated ?? null;
+}
+
+/**
+ * Permanent removal of the institution's custom domain setup.
+ *
+ * Clears the apex, verification, and the connected flag. The caller is
+ * responsible for detaching every festival host on Vercel
+ * (`detachAllFestivalsForApex`) — the repository stays free of network side
+ * effects because it is imported by `src/proxy.ts`.
+ *
+ * Returns the previous apex so the route handler can detach, mirroring
+ * `updateInstitutionCustomDomain`'s shape.
+ */
+export async function deleteInstitutionCustomDomain(
+  institutionId: string,
+): Promise<{ previousDomain: string | null }> {
+  const existing = await findInstitutionById(institutionId);
+  if (!existing) return { previousDomain: null };
+
+  const previousDomain = existing.customDomain;
+
+  await db
+    .update(institution)
+    .set({
+      customDomain: null,
+      customDomainConnected: true,
+      verifiedAt: null,
+      httpsReadyAt: null,
+      updatedAt: serverNowIso(),
+    })
+    .where(eq(institution.id, institutionId));
+
+  if (previousDomain) await invalidateCustomDomainCache(previousDomain);
+  return { previousDomain };
+}
