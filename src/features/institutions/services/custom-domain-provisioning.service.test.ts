@@ -90,7 +90,10 @@ describe("probeHttpsReady", () => {
     const [url, init] = fetchMock.mock.calls[0];
     // Per-host certificates mean only the real host has one to present.
     expect(url).toBe(`https://${HOST}/`);
-    expect(init.method).toBe("HEAD");
+    // GET (not HEAD) so we can inspect the body for Vercel's verification
+    // interstitial markers.
+    expect(init.method).toBe("GET");
+    expect(init.redirect).toBe("follow");
   });
 
   it("returns false when the connection or handshake fails", async () => {
@@ -108,6 +111,65 @@ describe("probeHttpsReady", () => {
 
     await expect(probeHttpsReady(SLUG, "")).resolves.toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns false when Vercel redirects the host to its verification page", async () => {
+    // Vercel redirects unverified hosts to a vercel.com subdomain — TLS
+    // succeeds but the response is Vercel's challenge, not our app.
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    );
+    // Response.url is the *final* URL after redirects (we pass redirect: follow).
+    vi.stubGlobal("fetch", fetchMock);
+    // Make res.url report a different host.
+    Object.defineProperty(Response.prototype, "url", {
+      configurable: true,
+      get: () => "https://vercel.com/verify",
+    });
+
+    try {
+      await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(false);
+    } finally {
+      // Restore to default — jsdom doesn't ship a working Response.url by default.
+      Object.defineProperty(Response.prototype, "url", {
+        configurable: true,
+        value: "",
+        writable: true,
+      });
+    }
+  });
+
+  it("returns false when the response body is Vercel's inline verification challenge", async () => {
+    const html = `<!doctype html><html><head><title>Verify Domain</title></head><body>...</body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      ),
+    );
+
+    await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(false);
+  });
+
+  it("returns true for a real Greenroom HTML response", async () => {
+    const html = `<!doctype html><html><head><title>Festival</title></head><body>...</body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      ),
+    );
+
+    await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(true);
   });
 });
 

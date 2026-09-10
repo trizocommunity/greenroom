@@ -357,7 +357,7 @@ export function PosterElementRenderer(props: PosterElementRendererProps) {
           fontSize={fontSize}
           fontFamily={el.fontFamily}
           fontStyle={el.fontStyle}
-          fill={el.fill ?? EDITOR_COLORS.foreground}
+          fill={el.fill ?? EDITOR_COLORS.black}
           align={el.align ?? "left"}
           width={textWidth}
           lineHeight={el.lineHeight ?? 1.2}
@@ -374,7 +374,7 @@ export function PosterElementRenderer(props: PosterElementRendererProps) {
         {deco.includes("underline") && (
           <Line
             points={[0, fontSize + 4, textWidth, fontSize + 4]}
-            stroke={el.fill ?? EDITOR_COLORS.foreground}
+            stroke={el.fill ?? EDITOR_COLORS.black}
             strokeWidth={2}
             listening={false}
           />
@@ -382,7 +382,7 @@ export function PosterElementRenderer(props: PosterElementRendererProps) {
         {deco.includes("line-through") && (
           <Line
             points={[0, fontSize * 0.55, textWidth, fontSize * 0.55]}
-            stroke={el.fill ?? EDITOR_COLORS.foreground}
+            stroke={el.fill ?? EDITOR_COLORS.black}
             strokeWidth={2}
             listening={false}
           />

@@ -14,13 +14,17 @@ import {
   getTemplateExportPayloadAction,
 } from "@/features/exports/actions/export-template.actions";
 import {
-  autoMultiGrid,
-  parseMultiGrid,
+  resolveMultiGrid,
   type TemplateExportPayload,
 } from "@/features/exports/lib/multi-grid";
+import {
+  createVectorPdfDoc,
+  vectoriseItemToPdf,
+} from "@/features/exports/lib/vectorise-template";
 import { buildZip } from "@/features/exports/lib/zip";
 import { isTemplateExport } from "@/features/exports/schemas/export-config.schema";
 import type { ExportListItem } from "@/features/exports/types/export.types";
+import { documentWithBindings } from "@/features/posters/services/poster-bindings.service";
 
 interface Props {
   festivalId: string;
@@ -28,28 +32,25 @@ interface Props {
   onProgress?: (exportId: string, current: number, total: number) => void;
 }
 
-// Quality tiers map to a *target printed DPI*, not a fixed pixelRatio. The
-// on-paper DPI is dictated by the page dimensions (jsPDF "px" ≈ 72 DPI), so
-// a fixed pixelRatio would either over-rasterise small pages or — as before
-// — leave a 300 DPI export indistinguishable from a 96 DPI one. We compute
-// the source raster per (doc, page, target) so SCREEN/STANDARD/PRINT have
-// a real effect. PNG transparency isn't needed on paper, so all tiers ship
-// JPEG.
-const TARGET_DPI: Record<TemplateExportPayload["quality"], number> = {
-  SCREEN: 150,
-  STANDARD: 240,
-  PRINT: 300,
-};
+// All three quality tiers render at 300 DPI on paper — what print shops
+// expect for badges and certificates. No upscale cap: a small template
+// that needs 17× upscale to hit 300 DPI gets 17×, even if the raster is
+// large. Set NEXT_PUBLIC_EXPORT_DPI_CAP in .env.local if a specific
+// template blows the tab memory.
+const TARGET_DPI = 300;
 
-// Hard upper bound so a 300 DPI export of a giant template on Letter paper
-// can't OOM the renderer. ~16× source pixels is plenty for print sharpness.
-const MAX_PIXEL_RATIO = 8;
-
+// JPEG encoder quality per tier. SCREEN/STANDARD are tuned for size;
+// PRINT bumps to 0.98 for max quality while staying JPEG.
 const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
   SCREEN: 0.88,
   STANDARD: 0.94,
   PRINT: 0.98,
 };
+
+// Output codec. JPEG for all tiers — PNG transparency isn't needed on paper
+// and JPEG compresses the raster path's blobs enough to fit under
+// MAX_BLOB_BYTES on Vercel Hobby.
+const OUTPUT_FORMAT: "PNG" | "JPEG" = "JPEG";
 
 // Hard upper bound on the final PDF size the client will upload. Above this,
 // the export is auto-retried at the next-lower quality (see
@@ -59,6 +60,14 @@ const JPEG_QUALITY: Record<TemplateExportPayload["quality"], number> = {
 // margin so borderline sizes don't get rejected with a 413.
 const MAX_BLOB_BYTES = 4 * 1024 * 1024;
 
+// When outputFormat is "BOTH" the runner ZIPs the PDF and the `.ai`
+// (same PDF bytes under a different extension — `.ai` is a PDF wrapper)
+// into a single `.zip`. The bundle is therefore ~2× the PDF size, so
+// the cap is halved for that path — quality-fallback kicks in earlier
+// and exports don't fail at the upload stage (413 on Vercel's edge). A
+// 2 MiB PDF → 4 MiB ZIP fits.
+const MAX_BLOB_BYTES_INCLUDE_SOURCE = MAX_BLOB_BYTES / 2;
+
 // The Vercel Hobby cap only bites in production. Local `next dev` has no
 // edge function in front of the Server Action, so there's no reason to
 // reject (or auto-downgrade) exports that would otherwise render fine.
@@ -67,6 +76,16 @@ const MAX_BLOB_BYTES = 4 * 1024 * 1024;
 const SIZE_GUARD_ENABLED =
   process.env.NODE_ENV !== "development" ||
   process.env.NEXT_PUBLIC_EXPORT_GUARD_ENABLED === "1";
+
+// Dev-only vector pass. When enabled the runner walks the template's bound
+// elements and emits jsPDF primitives instead of rasterising through Konva,
+// so shapes and text render at infinite resolution regardless of DPI / codec.
+// Disabled in prod because the raster path has more visual regression coverage
+// (same path the QA suite exercises). Opt in locally with
+// `NEXT_PUBLIC_EXPORT_VECTOR=1` in `.env.local`.
+const VECTOR_MODE_ENABLED =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_EXPORT_VECTOR === "1";
 
 // Quality fallback order when a rendered PDF exceeds MAX_BLOB_BYTES.
 // Highest quality first; the runner re-renders at the next entry until
@@ -112,41 +131,40 @@ function pageDims(payload: TemplateExportPayload): {
 
 function initPdf(payload: TemplateExportPayload) {
   const { pageW, pageH, orientation } = pageDims(payload);
-  const doc = new jsPDF({ unit: "px", format: [pageW, pageH], orientation });
+  // Unit MUST be "pt": with "px" jsPDF multiplies the format array by
+  // ~1.333 (96/72) so a 13×19 page prints at 17.33×25.33 inches. See
+  // `scaleFactor` in jsPDF's addPage/beginPage source. We use "pt" so the
+  // PAGE_SIZES values land in the PDF mediaBox verbatim as points
+  // (1/72 inch). This also matches the meaning of `mmToPt` below — every
+  // drawing call (addImage, rect, etc.) now reads its arguments in points.
+  const doc = new jsPDF({ unit: "pt", format: [pageW, pageH], orientation });
   return { doc, pageW, pageH, orientation };
 }
 
-/** Convert millimetres to jsPDF "px" (≈ 1/72 inch). */
-function mmToPx(mm: number): number {
+/** Convert millimetres to PDF points (1/72 inch). Matches the runner's
+ * `unit: "pt"` so addImage/rect coordinates land at the intended mm size. */
+function mmToPt(mm: number): number {
   return (mm * 72) / 25.4;
 }
 
 /**
- * Resolve the effective cols × rows for a MULTIPLE_PER_PAGE export. Honors
- * an explicit "COLSxROWS" preset; falls back to the orientation-driven
- * heuristic when the user picks "AUTO".
+ * Resolve the effective cols × rows for a MULTIPLE_PER_PAGE export. Lives in
+ * `multi-grid.ts` so the filter UI can show the user the actual grid that
+ * AUTO will pick — same source of truth as the runner.
  */
-function resolveMultiGrid(
-  multiGrid: TemplateExportPayload["multiGrid"],
-  pageW: number,
-  pageH: number,
-  docW?: number,
-  docH?: number,
-): { cols: number; rows: number } {
-  const explicit = parseMultiGrid(multiGrid);
-  if (explicit) return explicit;
-  return autoMultiGrid(pageW, pageH, docW, docH);
-}
 
 /**
- * Compute the source `pixelRatio` so each item lands at `targetDpi` on paper.
+ * Compute the source `pixelRatio` so each item lands at `TARGET_DPI` on paper.
  *
- * Derivation: a jsPDF stage at unit "px" prints at ≈ 72 DPI. After fitting,
- * an item on paper occupies `cellW` px (in inches: cellW / 72). The source
- * raster is `docW × pixelRatio` px. Printed DPI = pixelRatio × docW / cellIn.
+ * Derivation: jsPDF's unit is pt (1 pt = 1/72 in). After placement, an item
+ * occupies `cellW` pt on the page (cellW / 72 in). The source raster is
+ * `docW × pixelRatio` px. Printed DPI = pixelRatio × docW / cellIn.
  * Solving for the bound: pixelRatio = targetDpi × cellIn / docW. We take the
- * max across both axes and both axes layouts (ONE_PER_PAGE and MULTIPLE)
- * since both must hit DPI, then cap.
+ * max across both axes and both layouts (ONE_PER_PAGE and MULTIPLE) since
+ * both must hit DPI. No upscale cap: a tiny template on a large page gets
+ * the upscale it needs to hit 300 DPI exactly, even if the raster is large.
+ * Set NEXT_PUBLIC_EXPORT_DPI_CAP in .env.local if a specific template
+ * blows the tab memory.
  */
 function computePixelRatio(
   docW: number,
@@ -156,24 +174,21 @@ function computePixelRatio(
   printLayout: TemplateExportPayload["printLayout"],
   fit: TemplateExportPayload["fit"],
   multiGrid: TemplateExportPayload["multiGrid"],
-  targetDpi: number,
 ): number {
+  const envCap = process.env.NEXT_PUBLIC_EXPORT_DPI_CAP;
+  const cap = envCap ? Number.parseFloat(envCap) : Number.POSITIVE_INFINITY;
   let cellW: number;
   let cellH: number;
   if (printLayout === "ONE_PER_PAGE") {
     if (fit === "FILL") {
-      // Cover the entire page edge-to-edge; printed cell is the page itself.
       cellW = pageW;
       cellH = pageH;
     } else {
-      // FIT: contain within page, aspect preserved.
       const s = Math.min(pageW / docW, pageH / docH);
       cellW = docW * s;
       cellH = docH * s;
     }
   } else {
-    // Must match appendToPdf's MULTIPLE_PER_PAGE resolution so the raster
-    // targets the actual placed cell size.
     const { cols, rows } = resolveMultiGrid(
       multiGrid,
       pageW,
@@ -181,14 +196,14 @@ function computePixelRatio(
       docW,
       docH,
     );
-    cellW = (pageW - 2 * mmToPx(3)) / cols;
-    cellH = (pageH - 2 * mmToPx(3)) / rows;
+    cellW = (pageW - 2 * mmToPt(3)) / cols;
+    cellH = (pageH - 2 * mmToPt(3)) / rows;
   }
   const cellWIn = cellW / 72;
   const cellHIn = cellH / 72;
-  const needW = (targetDpi * cellWIn) / docW;
-  const needH = (targetDpi * cellHIn) / docH;
-  return Math.min(MAX_PIXEL_RATIO, Math.max(1, Math.max(needW, needH)));
+  const needW = (TARGET_DPI * cellWIn) / docW;
+  const needH = (TARGET_DPI * cellHIn) / docH;
+  return Math.min(cap, Math.max(1, Math.max(needW, needH)));
 }
 
 async function waitForStage(
@@ -215,6 +230,7 @@ async function cropViaCanvas(
   srcCropW: number,
   srcCropH: number,
   quality = 0.94,
+  format: "PNG" | "JPEG" = "JPEG",
 ): Promise<string | null> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image();
@@ -247,14 +263,17 @@ async function cropViaCanvas(
     outW,
     outH,
   );
+  const mimeType = format === "PNG" ? "image/png" : "image/jpeg";
   if ("convertToBlob" in canvas) {
     const blob = await (canvas as unknown as OffscreenCanvas).convertToBlob({
-      type: "image/jpeg",
-      quality,
+      type: mimeType,
+      ...(format === "JPEG" ? { quality } : {}),
     });
     return await blobToDataUrl(blob);
   }
-  return (canvas as HTMLCanvasElement).toDataURL("image/jpeg", quality);
+  return format === "JPEG"
+    ? (canvas as HTMLCanvasElement).toDataURL("image/jpeg", quality)
+    : (canvas as HTMLCanvasElement).toDataURL("image/png");
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -290,8 +309,8 @@ function appendToPdf(
     drawCropMarks,
   } = payload;
   const { pageW, pageH, orientation } = pageContext;
-  const margin = mmToPx(marginMm);
-  const gutter = mmToPx(gutterMm);
+  const margin = mmToPt(marginMm);
+  const gutter = mmToPt(gutterMm);
 
   // ── ONE_PER_PAGE ────────────────────────────────────────────────────────
   if (printLayout === "ONE_PER_PAGE") {
@@ -369,9 +388,9 @@ function drawTrimMarks(
   pageH: number,
   _bleedMm: number,
 ) {
-  const len = mmToPx(5); // 5 mm tick
+  const len = mmToPt(5); // 5 mm tick
   const w = 0.5; // px stroke
-  const inset = mmToPx(3); // tick sits this far inside the trim
+  const inset = mmToPt(3); // tick sits this far inside the trim
   const corners = [
     [inset, inset],
     [pageW - inset, inset],
@@ -396,7 +415,7 @@ function drawGridTrimMarks(
   cols: number,
   rows: number,
 ) {
-  const len = mmToPx(3);
+  const len = mmToPt(3);
   const w = 0.4;
   doc.setLineWidth(w);
   for (let r = 0; r < rows; r++) {
@@ -441,12 +460,23 @@ export function ClientTemplateExportRunner({
   const handled = useRef<Set<string>>(new Set());
   const [job, setJob] = useState<Job | null>(null);
   const busy = useRef(false);
-  const pdfRef = useRef<{
-    doc: jsPDF;
-    pageW: number;
-    pageH: number;
-    orientation: "landscape" | "portrait";
-  } | null>(null);
+  const pdfRef = useRef<
+    | {
+        kind: "raster";
+        doc: jsPDF;
+        pageW: number;
+        pageH: number;
+        orientation: "landscape" | "portrait";
+      }
+    | {
+        kind: "vector";
+        doc: PDFKit.PDFDocument;
+        finalize: () => Promise<Blob>;
+        pageW: number;
+        pageH: number;
+      }
+    | null
+  >(null);
 
   const invalidate = useCallback(
     () => qc.invalidateQueries({ queryKey: queryKeys.exports.all(festivalId) }),
@@ -496,7 +526,25 @@ export function ClientTemplateExportRunner({
         return;
       }
       await preloadDocImages(res.data.doc);
-      pdfRef.current = initPdf(res.data);
+      const { pageW, pageH } = pageDims(res.data);
+      const needsPdfKit =
+        VECTOR_MODE_ENABLED &&
+        (res.data.outputFormat === "PDF" || res.data.outputFormat === "BOTH");
+      pdfRef.current = needsPdfKit
+        ? {
+            kind: "vector",
+            ...createVectorPdfDoc(
+              pageW,
+              pageH,
+              res.data.doc.templateName ?? "Export",
+            ),
+            pageW,
+            pageH,
+          }
+        : { kind: "raster", ...initPdf(res.data) };
+      // The `.ai` slot reuses the PDFKit output (`.ai` is a PDF wrapper),
+      // so the raster/PDFKit path serves both `PDF`, `BOTH`, and `AI`
+      // outputs.
       setJob({
         exportId: next.id,
         payload: res.data,
@@ -508,11 +556,128 @@ export function ClientTemplateExportRunner({
 
   // Capture the currently-rendered item, then advance or finalize.
   useEffect(() => {
+    if (!job) return;
     const pdfContext = pdfRef.current;
-    if (!job || !pdfContext) return;
 
     (async () => {
       try {
+        // Vector path: skip stage/fonts/QR waits; we emit jsPDF primitives
+        // from the bound template directly. Images are preloaded once at
+        // job pickup (preloadDocImages above) so the QR / image / bg
+        // raster fallbacks have cached HTMLImageElements to draw.
+        if (VECTOR_MODE_ENABLED) {
+          // `.ai` output no longer takes this branch — the AI format is a
+          // PDF wrapper, so it reuses the PDFKit raster bytes below.
+
+          if (!pdfContext || pdfContext.kind !== "vector") return;
+          const itemBindings = job.payload.items[job.index]?.bindings ?? {};
+          const boundDoc = documentWithBindings(
+            job.payload.doc,
+            itemBindings,
+            true,
+          );
+          await vectoriseItemToPdf(
+            job.payload,
+            job.index,
+            boundDoc,
+            itemBindings,
+            pdfContext.pageW,
+            pdfContext.pageH,
+            pdfContext.doc,
+          );
+
+          if (job.index + 1 < job.payload.items.length) {
+            setJob({ ...job, index: job.index + 1 });
+            onProgress?.(job.exportId, job.index + 1, job.payload.items.length);
+            return;
+          }
+
+          // All PDFKit items captured. Flush PDF bytes once.
+          const pdfBlob = await pdfContext.finalize();
+          const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+          const outputFormat = job.payload.outputFormat;
+          const baseName = job.payload.doc.templateName ?? "export";
+          const safeBase =
+            baseName
+              .toLowerCase()
+              .normalize("NFKD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "")
+              .slice(0, 48) || "export";
+          const pdfName = `${safeBase}.pdf`;
+          const aiName = `${safeBase}.ai`;
+          let uploadBytes: Uint8Array<ArrayBuffer>;
+          let uploadName: string;
+          let uploadMime: string;
+
+          if (outputFormat === "BOTH") {
+            // The `.ai` format is a PDF wrapper — we re-emit the
+            // already-built PDF with the `.ai` filename so Illustrator
+            // opens it as a multi-artboard document. Multi-page support
+            // comes for free because the PDF path already calls
+            // `doc.addPage()` when the slot wraps to 0.
+            const zipBytes = buildZip([
+              { name: pdfName, data: pdfBytes },
+              { name: aiName, data: pdfBytes },
+            ]);
+            if (
+              SIZE_GUARD_ENABLED &&
+              zipBytes.byteLength > MAX_BLOB_BYTES_INCLUDE_SOURCE
+            ) {
+              const mb = Math.round(zipBytes.byteLength / (1024 * 1024));
+              const maxSourceMb = Math.round(
+                MAX_BLOB_BYTES_INCLUDE_SOURCE / 2 / (1024 * 1024),
+              );
+              const message = `Export bundle is ${mb} MB (the ZIP contains the PDF and the .ai — both are the same multi-page PDF, just named differently). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.`;
+              await failTemplateExportAction(
+                festivalId,
+                job.exportId,
+                message,
+              );
+              pdfRef.current = null;
+              setJob(null);
+              busy.current = false;
+              invalidate();
+              return;
+            }
+            uploadBytes = zipBytes;
+            uploadName = `${safeBase}.zip`;
+            uploadMime = "application/zip";
+          } else {
+            // outputFormat === "PDF"
+            uploadBytes = pdfBytes;
+            uploadName = pdfName;
+            uploadMime = "application/pdf";
+          }
+          const uploadBlob = new Blob([uploadBytes], { type: uploadMime });
+          const formData = new FormData();
+          formData.append("file", uploadBlob, uploadName);
+          formData.append("itemCount", String(job.payload.items.length));
+          formData.append("outputFormat", outputFormat);
+          const finalizeRes = await finalizeTemplateExportAction(
+            festivalId,
+            job.exportId,
+            formData,
+          );
+          if (!finalizeRes?.success) {
+            const message =
+              finalizeRes && "error" in finalizeRes
+                ? String(finalizeRes.error)
+                : "Upload failed.";
+            await failTemplateExportAction(festivalId, job.exportId, message);
+            pdfRef.current = null;
+            setJob(null);
+            busy.current = false;
+            invalidate();
+            return;
+          }
+          pdfRef.current = null;
+          setJob(null);
+          busy.current = false;
+          invalidate();
+          return;
+        }
         if (document.fonts?.ready) await document.fonts.ready;
 
         const stage = await waitForStage(stageRef);
@@ -590,8 +755,8 @@ export function ClientTemplateExportRunner({
         // Give React one last moment to mount late elements like QR codes
         await new Promise((r) => setTimeout(r, 100));
 
+        if (!pdfContext || pdfContext.kind !== "raster") return;
         const qualityTier = job.payload.quality;
-        const targetDpi = TARGET_DPI[qualityTier];
         const pixelRatio = computePixelRatio(
           job.payload.width,
           job.payload.height,
@@ -600,12 +765,13 @@ export function ClientTemplateExportRunner({
           job.payload.printLayout,
           job.payload.fit,
           job.payload.multiGrid,
-          targetDpi,
         );
         let dataUrl = stage.toDataURL({
           pixelRatio,
-          mimeType: "image/jpeg",
-          quality: JPEG_QUALITY[qualityTier],
+          mimeType: OUTPUT_FORMAT === "PNG" ? "image/png" : "image/jpeg",
+          ...(OUTPUT_FORMAT === "JPEG"
+            ? { quality: JPEG_QUALITY[qualityTier] }
+            : {}),
         });
         // For FILL, cover-crop the source before placing so
         // jsPDF never has to upscale or distort. Konva 7/8 don't expose a
@@ -621,8 +787,8 @@ export function ClientTemplateExportRunner({
               job.payload.width,
               job.payload.height,
             );
-            const margin = mmToPx(job.payload.marginMm);
-            const gutter = mmToPx(job.payload.gutterMm);
+            const margin = mmToPt(job.payload.marginMm);
+            const gutter = mmToPt(job.payload.gutterMm);
             targetW =
               (pdfContext.pageW - 2 * margin - (cols - 1) * gutter) / cols;
             targetH =
@@ -642,10 +808,11 @@ export function ClientTemplateExportRunner({
             srcCropW,
             srcCropH,
             JPEG_QUALITY[qualityTier],
+            OUTPUT_FORMAT,
           );
           if (cropped) dataUrl = cropped;
         }
-        const format: "PNG" | "JPEG" = "JPEG";
+        const format = OUTPUT_FORMAT;
 
         appendToPdf(
           pdfContext.doc,
@@ -675,10 +842,7 @@ export function ClientTemplateExportRunner({
             // Re-render at lower quality. Re-init the PDF context (the
             // existing one already has items appended) and reset index to
             // 0. The render useEffect re-runs because `job` changed.
-            pdfRef.current = initPdf({
-              ...job.payload,
-              quality: nextQuality,
-            });
+            pdfRef.current = { kind: "raster", ...initPdf({ ...job.payload, quality: nextQuality }) };
             setJob({
               ...job,
               payload: { ...job.payload, quality: nextQuality },
@@ -700,13 +864,12 @@ export function ClientTemplateExportRunner({
         const pdfBytes: Uint8Array<ArrayBuffer> = new Uint8Array(
           await pdfBlob.arrayBuffer(),
         );
-        // The .ai (Adobe Illustrator) bundle pairs the printable PDF with
-        // a same-content `.ai` file. Modern Illustrator (CC 2017+) opens
-        // PDF-compatible files, so the user can edit the template source
-        // and re-save as a native .ai if needed. We bundle both into a
-        // single .zip so the user gets one download. The toggle is on
-        // the export config (`includeAi`); the format is always PDF.
-        const includeAi = job.payload.includeAi;
+        // Adobe Illustrator's `.ai` format is a PDF wrapper. The runner
+        // always emits PDF bytes — "AI" ships the same PDF with a `.ai`
+        // extension, "BOTH" zips it twice under different names so the
+        // user gets a printable PDF and a same-content `.ai` Illustrator
+        // opens as a multi-artboard PDF.
+        const outputFormat = job.payload.outputFormat;
         const baseName = job.payload.doc.templateName ?? "export";
         const safeBase =
           baseName
@@ -721,18 +884,22 @@ export function ClientTemplateExportRunner({
         let uploadBytes: Uint8Array<ArrayBuffer>;
         let uploadName: string;
         let uploadMime: string;
-        if (includeAi) {
+        if (outputFormat === "AI") {
+          uploadBytes = pdfBytes;
+          uploadName = aiName;
+          uploadMime = "application/pdf";
+        } else if (outputFormat === "BOTH") {
           const zipBytes = buildZip([
             { name: pdfName, data: pdfBytes },
             { name: aiName, data: pdfBytes },
           ]);
-          if (SIZE_GUARD_ENABLED && zipBytes.byteLength > MAX_BLOB_BYTES) {
+          if (
+            SIZE_GUARD_ENABLED &&
+            zipBytes.byteLength > MAX_BLOB_BYTES_INCLUDE_SOURCE
+          ) {
             const nextQuality = nextQualityDown(job.payload.quality);
             if (nextQuality) {
-              pdfRef.current = initPdf({
-                ...job.payload,
-                quality: nextQuality,
-              });
+              pdfRef.current = { kind: "raster", ...initPdf({ ...job.payload, quality: nextQuality }) };
               setJob({
                 ...job,
                 payload: { ...job.payload, quality: nextQuality },
@@ -742,9 +909,15 @@ export function ClientTemplateExportRunner({
               return;
             }
             const mb = Math.round(zipBytes.byteLength / (1024 * 1024));
-            const maxMb = Math.round(MAX_BLOB_BYTES / (1024 * 1024));
-            const message = `Export bundle is ${mb} MB which exceeds the ${maxMb} MB Vercel Hobby Server Action body limit even at SCREEN quality. Please split the export into smaller batches by category or team.`;
-            await failTemplateExportAction(festivalId, job.exportId, message);
+            const maxSourceMb = Math.round(
+              MAX_BLOB_BYTES_INCLUDE_SOURCE / 2 / (1024 * 1024),
+            );
+            const message = `Export bundle is ${mb} MB (the ZIP contains the PDF and the .ai — both are the same multi-page PDF, just named differently). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.`;
+            await failTemplateExportAction(
+              festivalId,
+              job.exportId,
+              message,
+            );
             pdfRef.current = null;
             setJob(null);
             busy.current = false;
@@ -756,17 +929,26 @@ export function ClientTemplateExportRunner({
           uploadMime = "application/zip";
         } else {
           uploadBytes = pdfBytes;
-          uploadName = `${safeBase}.pdf`;
+          uploadName = pdfName;
           uploadMime = "application/pdf";
         }
         const uploadBlob = new Blob([uploadBytes], { type: uploadMime });
         const formData = new FormData();
         formData.append("file", uploadBlob, uploadName);
         formData.append("itemCount", String(job.payload.items.length));
-        formData.append("includeAi", includeAi ? "true" : "false");
-
-        await finalizeTemplateExportAction(festivalId, job.exportId, formData);
-
+        formData.append("outputFormat", outputFormat);
+        const finalizeRes = await finalizeTemplateExportAction(
+          festivalId,
+          job.exportId,
+          formData,
+        );
+        if (!finalizeRes?.success) {
+          const message =
+            finalizeRes && "error" in finalizeRes
+              ? String(finalizeRes.error)
+              : "Upload failed.";
+          await failTemplateExportAction(festivalId, job.exportId, message);
+        }
         pdfRef.current = null;
         setJob(null);
         busy.current = false;

@@ -62,7 +62,7 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
       bleedMm: 0,
       drawCropMarks: false,
       onlyWithChestNumber: true,
-      includeAi: false,
+      outputFormat: "PDF",
       categoryIds: [],
       teamIds: [],
     };
@@ -80,7 +80,7 @@ function buildDefaultConfig(type: ExportTypeId): ExportConfig | null {
       gutterMm: 3,
       bleedMm: 0,
       drawCropMarks: false,
-      includeAi: false,
+      outputFormat: "PDF",
       certificateTypes: ["PARTICIPATION"],
       categoryIds: [],
       programmeIds: [],
@@ -117,7 +117,6 @@ function validateExport(
   if (!config) return "This export type isn't available yet.";
   if (config.type === "BADGE") {
     if (!config.templateId) return "Select a template.";
-    if (config.teamIds.length === 0) return "Select one team.";
   }
   if (config.type === "CERTIFICATE") {
     if (!config.templateId) return "Select a template.";
@@ -133,7 +132,10 @@ export function NewExportDrawer({
   onOpenChange,
 }: NewExportDrawerProps) {
   const [selectedType, setSelectedType] = useState<ExportTypeId>("CALL_LIST");
-  const [format, setFormat] = useState<ExportFormat>("PDF");
+  // Format choice in the footer. For template exports (BADGE / CERTIFICATE)
+  // this drives `config.outputFormat`; for data-driven exports it drives
+  // the API's top-level `format`. "BOTH" is template-only.
+  const [format, setFormat] = useState<ExportFormat | "BOTH">("PDF");
   const [config, setConfig] = useState<ExportConfig | null>(() =>
     buildDefaultConfig("CALL_LIST"),
   );
@@ -145,7 +147,8 @@ export function NewExportDrawer({
   const handleSelectType = (id: ExportTypeId) => {
     setSelectedType(id);
     setConfig(buildDefaultConfig(id));
-    setFormat(getExportTypeMeta(id).formats[0]);
+    const firstFormat = getExportTypeMeta(id).formats[0];
+    setFormat(firstFormat === "BOTH" ? "PDF" : firstFormat);
   };
 
   const handleExport = async () => {
@@ -167,10 +170,21 @@ export function NewExportDrawer({
     if (finalConfig.type === "SCHEDULE") {
       finalConfig.timezoneOffset = new Date().getTimezoneOffset();
     }
+    // For template exports (BADGE / CERTIFICATE) the footer choice lives
+    // inside the config (`outputFormat`). For data-driven exports the
+    // choice stays in the top-level `format` field.
+    if (finalConfig.type === "BADGE" || finalConfig.type === "CERTIFICATE") {
+      finalConfig.outputFormat = format === "AI" || format === "BOTH" ? format : "PDF";
+    }
 
     const result = await createExport.mutateAsync({
       festivalId,
-      format,
+      // For template exports the API's top-level `format` is always "PDF";
+      // the actual on-disk format comes from `config.outputFormat`.
+      format:
+        finalConfig.type === "BADGE" || finalConfig.type === "CERTIFICATE"
+          ? "PDF"
+          : (format as ExportFormat),
       config: finalConfig,
     });
     if (result.status === "FAILED") {
@@ -336,8 +350,14 @@ export function NewExportDrawer({
               className="flex items-center gap-1 rounded-md border p-0.5 border-solid"
               aria-label="Export format"
             >
-              {(meta.formats as ExportFormat[]).map((f) => {
-                const enabled = meta.formats.includes(f);
+              {meta.formats.map((f) => {
+                const enabled = true;
+                const label =
+                  f === "BOTH"
+                    ? "Both (PDF + AI)"
+                    : f === "AI"
+                      ? "AI"
+                      : f;
                 return (
                   <button
                     key={f}
@@ -353,7 +373,7 @@ export function NewExportDrawer({
                       !enabled && "opacity-40 cursor-not-allowed",
                     )}
                   >
-                    {f}
+                    {label}
                   </button>
                 );
               })}
@@ -365,7 +385,7 @@ export function NewExportDrawer({
               {createExport.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Export {format}
+              Export {format === "BOTH" ? "Both" : format}
             </Button>
           </div>
         </DrawerFooter>

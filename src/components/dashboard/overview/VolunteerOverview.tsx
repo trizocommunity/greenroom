@@ -18,12 +18,13 @@ export function VolunteerOverview({ festivalSlug }: VolunteerOverviewProps) {
     <div className="space-y-6">
       <div>
         <p className="text-sm text-muted-foreground">
-          Manage food entries and assist with day-to-day festival operations.
+          Scan participants at checkpoints and assist with day-to-day festival
+          operations.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Link href={`${basePath}/event-works/food-entry`}>
+        <Link href={`${basePath}/event-works/checkpoints`}>
           <Card className="h-full transition-colors hover:bg-muted/50">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -31,9 +32,9 @@ export function VolunteerOverview({ festivalSlug }: VolunteerOverviewProps) {
                   <QrCode className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <CardTitle>Food Entry</CardTitle>
+                  <CardTitle>Checkpoints</CardTitle>
                   <CardDescription>
-                    Scan participant QR codes to issue food tokens.
+                    Scan participant QR codes for attendance, food, and more.
                   </CardDescription>
                 </div>
               </div>

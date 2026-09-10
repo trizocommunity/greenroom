@@ -155,7 +155,10 @@ export function buildZip(entries: ZipEntry[]): Uint8Array<ArrayBuffer> {
   writeUint16(view, cdCursor + 6, 0); // disk where CD starts
   writeUint16(view, cdCursor + 8, entries.length);
   writeUint16(view, cdCursor + 10, entries.length);
-  writeUint32(view, cdCursor + 12, cdCursor + eocdSize - cdOffset); // cd size
+  // Central-directory size = bytes from cdOffset to the EOCD start.
+  // Was `cdCursor + eocdSize - cdOffset` which over-reported by 22 bytes
+  // (the eocdSize itself) and made WinRAR flag the archive as corrupted.
+  writeUint32(view, cdCursor + 12, cdCursor - cdOffset);
   writeUint32(view, cdCursor + 16, cdOffset);
   writeUint16(view, cdCursor + 20, 0); // comment length
 

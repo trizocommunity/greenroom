@@ -67,11 +67,11 @@ describe("multi-grid presets", () => {
   });
 
   it("calculates auto grid considering template document aspect ratio (density-first)", () => {
-    // Wide badge (1050x600, aspect 1.75) on Portrait A4 (595x842).
-    // Density-first picks 3x5 (15 cards) — cell aspect 1.17 is within the
-    // ASPECT_SOFT_LIMIT (~1.5× doc aspect = 2.6), so the higher count wins
-    // over the closer-aspect 2x5 (10 cards, cell aspect 1.75).
-    expect(autoMultiGrid(595, 842, 1050, 600)).toEqual({ cols: 3, rows: 5 });
+    // Wide badge (1050x600, aspect 1.75) on Portrait A4 (595x842). The badge
+    // is wider than the page, so no candidate fits at native size (≥1:1) and
+    // the heuristic falls back to density-first across every printable
+    // candidate (aspect gate lifted in the fallback), landing on 5x6 = 30.
+    expect(autoMultiGrid(595, 842, 1050, 600)).toEqual({ cols: 5, rows: 6 });
 
     // Tall badge (600x1050, aspect 0.57) on Portrait A4 (595x842).
     // Density-first picks 5x6 (30 cards). Cell aspect 0.84 is within
@@ -93,18 +93,20 @@ describe("multi-grid presets", () => {
   });
 });
 
-describe("density-first auto-grid on sticker sheets", () => {
-  it("packs 2.7x3.9 candidate cards densely on a 13x19 portrait sheet", () => {
+describe("no-downscale auto-grid on sticker sheets", () => {
+  it("keeps 2.7x3.9 cards at native size on a 13x19 portrait sheet", () => {
     // 13×19 in at 72 DPI = 936 × 1368 px
-    // 2.7×3.9 in at 96 DPI = 259 × 374 px (docAspect = 0.69)
-    // Density-first lands on 5x6 = 30 cards/sheet, cell aspect 0.82 which
-    // sits comfortably inside the 1.5× aspect soft limit.
-    expect(autoMultiGrid(936, 1368, 259, 374)).toEqual({ cols: 5, rows: 6 });
+    // 2.7×3.9 in card at 96 DPI = 259 × 374 px (docAspect ≈ 0.69)
+    // The card fits at native size (≥1:1), so the no-downscale preference
+    // caps density at 4x4 = 16: 5 cols would shrink the cell below the
+    // card's native width, 5 rows below its native height.
+    expect(autoMultiGrid(936, 1368, 259, 374)).toEqual({ cols: 4, rows: 4 });
   });
 
-  it("packs 2.7x3.9 candidate cards densely on a 13x19 landscape sheet", () => {
-    // Same template on landscape 13×19 = 1368 × 936 px.
-    expect(autoMultiGrid(1368, 936, 259, 374)).toEqual({ cols: 6, rows: 4 });
+  it("keeps 2.7x3.9 cards at native size on a 13x19 landscape sheet", () => {
+    // Same card on landscape 13×19 = 1368 × 936 px. No-downscale caps rows
+    // at 3 (4 rows would drop below native height), giving 6x3 = 18.
+    expect(autoMultiGrid(1368, 936, 259, 374)).toEqual({ cols: 6, rows: 3 });
   });
 
   it("never picks a grid whose cell drops below MIN_PRINTABLE_INCHES", () => {

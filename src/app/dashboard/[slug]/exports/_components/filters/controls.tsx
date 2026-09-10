@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { resolveMultiGrid } from "@/features/exports/lib/multi-grid";
 import { cn } from "@/core/utils/cn";
 
 export function SegmentedControl<T extends string>({
@@ -675,6 +676,81 @@ export function NumberInput({
         )}
       </div>
       {hint && <p className="text-[10px] text-muted-foreground/80">{hint}</p>}
+    </div>
+  );
+}
+
+/** Sheet dimensions in pt (1 pt = 1/72 in). Kept in sync with the runner's
+ *  `PAGE_SIZES` table — both pages and templates are sized in pt there. */
+const FILTER_PAGE_SIZES_PT: Record<
+  "A3" | "A4" | "13X19",
+  { w: number; h: number }
+> = {
+  A3: { w: 842, h: 1191 },
+  A4: { w: 595, h: 842 },
+  "13X19": { w: 936, h: 1368 },
+};
+
+/** Tiny preview of the resolved per-page grid for MULTIPLE_PER_PAGE. Uses
+ *  the same `resolveMultiGrid` heuristic as the runner so the swatch always
+ *  matches what the export will actually emit. */
+export function GridPreview({
+  pageSize,
+  pageOrientation,
+  templateWidth,
+  templateHeight,
+  multiGrid,
+}: {
+  pageSize: "A3" | "A4" | "13X19";
+  pageOrientation: "PORTRAIT" | "LANDSCAPE";
+  templateWidth: number;
+  templateHeight: number;
+  multiGrid: string;
+}) {
+  if (!templateWidth || !templateHeight) {
+    return (
+      <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+        Pick a template to see the resolved grid.
+      </div>
+    );
+  }
+  const base = FILTER_PAGE_SIZES_PT[pageSize];
+  const isLandscape = pageOrientation === "LANDSCAPE";
+  const pageW = isLandscape ? base.h : base.w;
+  const pageH = isLandscape ? base.w : base.h;
+  const { cols, rows } = resolveMultiGrid(
+    multiGrid as Parameters<typeof resolveMultiGrid>[0],
+    pageW,
+    pageH,
+    templateWidth,
+    templateHeight,
+  );
+  const cells = cols * rows;
+  return (
+    <div className="flex items-center gap-3 rounded-md border bg-muted/20 px-3 py-2">
+      <div
+        className="flex h-12 w-12 shrink-0 flex-col gap-[1.5px] p-1 justify-center"
+        style={{ aspectRatio: `${cols} / ${rows}` }}
+      >
+        {Array.from({ length: rows }).map((_, r) => (
+          <div key={r} className="flex flex-1 gap-[1.5px]">
+            {Array.from({ length: cols }).map((__, c) => (
+              <span
+                key={c}
+                className="flex-1 rounded-[1px] border border-primary/40 bg-primary/30 min-w-0 min-h-0"
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-col text-[11px] tabular-nums leading-tight">
+        <span className="font-semibold text-foreground">
+          {cols}×{rows} · {cells} cells/sheet
+        </span>
+        <span className="text-muted-foreground/80">
+          {multiGrid === "AUTO" ? "Auto-resolved" : "Manual"}
+        </span>
+      </div>
     </div>
   );
 }

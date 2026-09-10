@@ -49,6 +49,23 @@ export function parseMultiGrid(
   return { cols: c, rows: r };
 }
 
+/**
+ * Resolve the effective cols × rows for a MULTIPLE_PER_PAGE export. Honors
+ * an explicit "COLSxROWS" preset; falls back to the orientation-driven
+ * `autoMultiGrid` heuristic when the user picks "AUTO".
+ */
+export function resolveMultiGrid(
+  g: MultiGrid,
+  pageW: number,
+  pageH: number,
+  docW?: number,
+  docH?: number,
+): { cols: number; rows: number } {
+  const explicit = parseMultiGrid(g);
+  if (explicit) return explicit;
+  return autoMultiGrid(pageW, pageH, docW, docH);
+}
+
 /** Convert millimetres to jsPDF "px" (≈ 1/72 inch). */
 function mmToPx(mm: number): number {
   return (mm * 72) / 25.4;
@@ -81,7 +98,10 @@ const ASPECT_TIE_EPSILON = 1e-9;
  * candidate gets a heavy penalty so density never wins by sacrificing
  * fit beyond a usable visual ratio.
  */
-const ASPECT_SOFT_LIMIT = Math.log(1.5); // ~0.405 — cellAspect up to 1.5× doc
+const ASPECT_SOFT_LIMIT = Math.log(2.0); // ~0.693 — cellAspect up to 2× doc
+// (3×6 on 13×19 portrait: cell aspect 1.36 vs doc 0.697 → log-diff 0.67;
+// relaxing from log(1.5)=0.405 lets 3×6 clear the soft limit while still
+// rejecting truly bad fits like 1×6.)
 
 /**
  * Curated candidate grids for AUTO. The runner always renders through one
@@ -101,6 +121,7 @@ const PORTRAIT_AUTO_CANDIDATES: ReadonlyArray<{ cols: number; rows: number }> =
     { cols: 3, rows: 3 },
     { cols: 3, rows: 4 },
     { cols: 3, rows: 5 },
+    { cols: 3, rows: 6 },
     { cols: 4, rows: 4 },
     { cols: 4, rows: 5 },
     { cols: 4, rows: 6 },
@@ -126,21 +147,33 @@ const LANDSCAPE_AUTO_CANDIDATES: ReadonlyArray<{ cols: number; rows: number }> =
   ];
 
 /**
+ * Minimum template-scale ratio (cell / template) for a layout to count as
+ * "no downscale". At a scale of 1.0 the template renders at its native
+ * size on the page; below that, Konva rasterises at <1 px-per-source-px
+ * and the print gets softer. Match Adobe Illustrator's "Make Guides"
+ * behaviour: prefer layouts that keep the template at native size.
+ */
+const NO_DOWNSCALE_THRESHOLD = 1.0;
+
+/**
  * Orientation-aware default grid when the user picks "AUTO". When the
- * template document size is known, the heuristic **maximises cards per
- * sheet first** (density-first) and uses aspect match only as a tie-
- * breaker or soft cap. This matches the user-facing intent of "pack as
- * many candidate cards on a 13×19 sheet as you can". Each candidate is
- * rejected outright if either cell edge drops below MIN_PRINTABLE_INCHES,
- * so QR readability is preserved.
+ * template document size is known, the heuristic first looks for a
+ * layout where the template fits at native size (≥1:1) within the aspect
+ * tolerance, then **density-first within that subset**. If no such layout
+ * exists (the template is too large for the sheet at native size), it
+ * falls back to density-first across every valid candidate so a smaller
+ * downscale is picked over no layout at all. Each candidate is rejected
+ * outright if either cell edge drops below MIN_PRINTABLE_INCHES, so QR
+ * readability is preserved.
  *
  * Selection rules (in order):
- *   1. Pick the candidate with the highest card count whose cell aspect
- *      is within ASPECT_SOFT_LIMIT of the doc aspect. (Density wins.)
- *   2. Among candidates with the same count, prefer the closest aspect.
- *   3. A candidate whose aspect mismatch exceeds ASPECT_SOFT_LIMIT never
- *      beats a denser candidate — this caps how far density can push us
- *      into poorly-shaped cells.
+ *   1. Restrict to candidates whose template-scale ≥ NO_DOWNSCALE_THRESHOLD
+ *      AND whose cell aspect is within ASPECT_SOFT_LIMIT of the doc aspect.
+ *      (No-downscale preference; matches Adobe Illustrator.)
+ *   2. Within that subset, pick the densest (most cards); on ties, the
+ *      candidate whose cell aspect is closest to the doc aspect.
+ *   3. If no candidate satisfies (1), fall back to density-first across
+ *      every printable candidate so the user always gets a result.
  *
  * Without a doc size, falls back to a page-aspect heuristic that picks a
  * reasonable density.
@@ -171,41 +204,71 @@ export function autoMultiGrid(
     const usableH = Math.max(1, pageH - 2 * marginPx);
     const minCellPx = inchesToPx(MIN_PRINTABLE_INCHES);
 
-    let bestCols = candidates[0].cols;
-    let bestRows = candidates[0].rows;
-    let bestCount = -1; // -1 so the first valid candidate always wins
-    let bestAspectDiff = Number.POSITIVE_INFINITY;
+    // Phase 1: evaluate every printable candidate once. The "scale" assumes
+    // the template is designed at the CSS-standard 96 DPI: 1 px = 1/96 in
+    // and 1 pt = 1/72 in, so cell-inches = cellW_pt/72, doc-inches = docW_px/96,
+    // and scale = (cellW_pt × 96/72) / docW_px = cellW_pt × 4/3 / docW_px.
+    // We take the min across both axes; scale ≥ 1 means the template fits
+    // at native size in the cell.
+    interface Evaluated {
+      cols: number;
+      rows: number;
+      count: number;
+      aspectDiff: number;
+      scale: number;
+    }
+    const evaluated: Evaluated[] = [];
     for (const c of candidates) {
       const cellW = usableW / c.cols;
       const cellH = usableH / c.rows;
-      // Hard reject if either axis drops below the printable threshold.
       if (cellW < minCellPx || cellH < minCellPx) continue;
 
       const cellAspect = cellW / cellH;
       const aspectDiff = Math.abs(Math.log(cellAspect / docAspect));
+      const scale = Math.min(
+        (cellW * (4 / 3)) / docW,
+        (cellH * (4 / 3)) / docH,
+      );
+      evaluated.push({
+        cols: c.cols,
+        rows: c.rows,
+        count: c.cols * c.rows,
+        aspectDiff,
+        scale,
+      });
+    }
 
-      // Density-first: maximise cards per page first; among ties, prefer the
-      // candidate whose cell aspect is closest to the doc aspect. A candidate
-      // whose aspect mismatch exceeds ASPECT_SOFT_LIMIT loses to ANY denser
-      // candidate even if its aspect is closer — this prevents trading
-      // badly-shaped cells for one more card.
-      const count = c.cols * c.rows;
-      const withinSoftLimit = aspectDiff <= ASPECT_SOFT_LIMIT;
-      if (count > bestCount) {
-        if (withinSoftLimit) {
-          bestCount = count;
-          bestAspectDiff = aspectDiff;
-          bestCols = c.cols;
-          bestRows = c.rows;
-        }
-      } else if (count === bestCount && aspectDiff < bestAspectDiff) {
-        bestCount = count;
-        bestAspectDiff = aspectDiff;
-        bestCols = c.cols;
-        bestRows = c.rows;
+    if (evaluated.length === 0) {
+      return { cols: candidates[0].cols, rows: candidates[0].rows };
+    }
+
+    // Phase 2: prefer no-downscale within aspect tolerance. If we have any,
+    // density-first selection runs only on those.
+    const noDownscale = evaluated.filter(
+      (c) =>
+        c.scale >= NO_DOWNSCALE_THRESHOLD && c.aspectDiff <= ASPECT_SOFT_LIMIT,
+    );
+    const pool = noDownscale.length > 0 ? noDownscale : evaluated;
+
+    // Phase 3: density-first on the pool. Within the pool the aspect gate
+    // is either already passed (no-downscale branch) or irrelevant
+    // (fallback branch — every candidate was printable but no no-downscale
+    // option existed).
+    let best = pool[0];
+    let bestCount = best.count;
+    let bestAspectDiff = best.aspectDiff;
+    for (const c of pool) {
+      if (c.count > bestCount) {
+        best = c;
+        bestCount = c.count;
+        bestAspectDiff = c.aspectDiff;
+      } else if (c.count === bestCount && c.aspectDiff < bestAspectDiff) {
+        best = c;
+        bestCount = c.count;
+        bestAspectDiff = c.aspectDiff;
       }
     }
-    return { cols: bestCols, rows: bestRows };
+    return { cols: best.cols, rows: best.rows };
   }
 
   // Pure page-aspect fallback (no doc info). Mirror the historical behaviour.
@@ -222,7 +285,7 @@ export interface TemplateExportItem {
 }
 
 /** Server → client payload. Type-only so client components can import it
- * without pulling the server-only service file. */
+ *  without pulling the server-only service file. */
 export interface TemplateExportPayload {
   doc: PosterEditorDocument;
   width: number;
@@ -238,11 +301,12 @@ export interface TemplateExportPayload {
   bleedMm: number;
   drawCropMarks: boolean;
   /**
-   * When `true`, the runner packages the printable PDF together with a
-   * same-content `.ai` (Adobe Illustrator) source inside a single `.zip`
-   * so the user can download both from one file. When `false`, the
-   * runner ships the PDF on its own.
+   * Output format selected at the export footer.
+   *  - PDF:  standalone printable PDF.
+   *  - AI:   same PDF bytes under a `.ai` extension (`.ai` is a PDF
+   *         wrapper; Illustrator opens it as a multi-artboard PDF).
+   *  - BOTH: a single `.zip` containing both `name.pdf` and `name.ai`.
    */
-  includeAi: boolean;
+  outputFormat: "PDF" | "AI" | "BOTH";
   items: TemplateExportItem[];
 }

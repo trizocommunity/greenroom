@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
@@ -6,6 +7,9 @@ import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
 import { CustomDomainProvider } from "@/components/providers/custom-domain-provider";
 import { getFestivalDurationDays } from "@/config/pricing";
+import { getSession } from "@/core/auth/session";
+import { db } from "@/core/database/client";
+import { festivalMember as memberTable } from "@/core/database/schema";
 import { MS } from "@/core/datetime/constants";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
@@ -96,10 +100,29 @@ export default async function FestivalLayout({
 
   const expired = isFestivalExpired(festival);
 
-  // Expired festivals keep results/standings on the same public URL.
-  // Offline (and not expired) → 404.
+  // Expired festivals keep results/standings on the same public URL. While a
+  // site is offline, owners and admins may still render this exact route in the
+  // authenticated settings preview; everyone else continues to receive 404.
   if (!expired && !festival.publicSiteEnabled) {
-    notFound();
+    const session = await getSession();
+    const isOwner = session?.userId === festival.ownerId;
+    const isSuperAdmin = session?.role === "SUPER_ADMIN";
+    const adminMember =
+      session?.userId && !isOwner && !isSuperAdmin
+        ? await db.query.festivalMember.findFirst({
+            where: and(
+              eq(memberTable.festivalId, festival.id),
+              eq(memberTable.userId, session.userId),
+              eq(memberTable.role, "ADMIN"),
+              eq(memberTable.isActive, true),
+            ),
+            columns: { id: true },
+          })
+        : null;
+
+    if (!isOwner && !isSuperAdmin && !adminMember) {
+      notFound();
+    }
   }
 
   const branding = getBrandingFromJson(festival.branding);

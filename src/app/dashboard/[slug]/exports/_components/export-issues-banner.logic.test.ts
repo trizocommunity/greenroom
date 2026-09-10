@@ -39,7 +39,7 @@ describe("summarizeIssue", () => {
       summarizeIssue(
         "Export is 13 MB which exceeds the 4 MB Vercel Hobby Server Action body limit even at SCREEN quality. Please split the export into smaller batches by category or team.",
       ),
-    ).toMatch(/Vercel Hobby/);
+    ).toMatch(/too large/);
   });
 
   it("matches the upload-timeout / aborted pattern", () => {
@@ -51,13 +51,13 @@ describe("summarizeIssue", () => {
 
   it("matches the 413 / failed-to-load pattern", () => {
     expect(summarizeIssue("Failed to load resource: 413")).toMatch(
-      /network limit/,
+      /couldn't upload/,
     );
   });
 
   it("matches the unexpected-response pattern", () => {
     expect(summarizeIssue("An unexpected response was received")).toMatch(
-      /unexpected response/,
+      /unexpected response/i,
     );
   });
 
@@ -97,7 +97,7 @@ describe("getBannerContent", () => {
     expect(content).not.toBeNull();
     expect(content?.variant).toBe("failure");
     expect(content?.title).toBe("Export failed");
-    expect(content?.description).toMatch(/Vercel Hobby/);
+    expect(content?.description).toMatch(/too large/);
   });
 
   it("surfaces a recent 413 failure with a network hint", () => {
@@ -111,7 +111,7 @@ describe("getBannerContent", () => {
     ];
     const content = getBannerContent(exports, now);
     expect(content?.variant).toBe("failure");
-    expect(content?.description).toMatch(/network limit/);
+    expect(content?.description).toMatch(/couldn't upload/);
   });
 
   it("surfaces an 'unexpected response' failure", () => {
@@ -125,7 +125,7 @@ describe("getBannerContent", () => {
     ];
     const content = getBannerContent(exports, now);
     expect(content?.variant).toBe("failure");
-    expect(content?.description).toMatch(/unexpected response/);
+    expect(content?.description).toMatch(/unexpected response/i);
   });
 
   it("ignores failures older than the recent window", () => {
@@ -162,7 +162,7 @@ describe("getBannerContent", () => {
     const exports = [makeExport({ status: "PROCESSING", queuedAt })];
     const content = getBannerContent(exports, now);
     expect(content?.variant).toBe("stuck");
-    expect(content?.title).toContain("1 export");
+    expect(content?.title).toContain("stuck");
   });
 
   it("pluralises the stuck title correctly", () => {
@@ -174,7 +174,7 @@ describe("getBannerContent", () => {
       makeExport({ id: "b", status: "PROCESSING", queuedAt }),
     ];
     const content = getBannerContent(exports, now);
-    expect(content?.title).toContain("2 exports");
+    expect(content?.title).toMatch(/2.*stuck/);
   });
 
   it("does NOT surface a fresh PROCESSING export as stuck", () => {

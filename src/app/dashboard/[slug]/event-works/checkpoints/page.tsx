@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/core/auth/session";
+import { CheckpointsLanding } from "@/features/checkpoints/components/CheckpointsLanding";
+import { getCheckpointsPageData } from "@/features/checkpoints/services/checkpoint.service";
 import { getFestivalContext } from "@/features/festivals/services/festival-context.service";
-import { FoodEntryDashboard } from "@/features/food-entry/components/FoodEntryDashboard";
-import { getGroupsAndCategoriesForFestival } from "@/features/food-entry/repositories/food-entry.repository";
-import { getFoodHallDashboardData } from "@/features/food-entry/services/food-entry.service";
 
 export const metadata: Metadata = {
-  title: "Food Hall Entry | Greenroom",
-  description: "Manage food hall entries",
+  title: "Checkpoints | Greenroom",
+  description: "Scan participants for attendance, food, and custom checkpoints",
 };
 
-export default async function FoodEntryPage({
+export default async function CheckpointsPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -33,20 +32,22 @@ export default async function FoodEntryPage({
     notFound();
   }
 
-  // Only Admin, Owner, Volunteer can access
   if (!["ADMIN", "OWNER", "VOLUNTEER"].includes(context.role)) {
     redirect(`/dashboard/${slug}`);
   }
 
-  const data = await getFoodHallDashboardData(context.festival.id);
-  const filters = await getGroupsAndCategoriesForFestival(context.festival.id);
+  const { checkpoints, todayString } = await getCheckpointsPageData(
+    context.festival.id,
+    { name: session.name, email: session.email },
+  );
 
   return (
     <div className="pt-4 sm:pt-6 space-y-4">
-      <FoodEntryDashboard
+      <CheckpointsLanding
         festivalId={context.festival.id}
-        initialData={{ ...data, filters }}
-        role={context.role as any}
+        basePath={`/dashboard/${slug}/event-works/checkpoints`}
+        todayString={todayString}
+        checkpoints={checkpoints}
       />
     </div>
   );

@@ -12,6 +12,7 @@ import {
   type ElementDragHandlers,
   PosterElementRenderer,
 } from "@/components/editor/PosterElementRenderer";
+import { MOCK_BINDINGS } from "@/components/editor/poster-editor-config";
 import type {
   EditorElement,
   PosterEditorDocument,
@@ -123,10 +124,20 @@ export function PosterExportCanvas({
 }) {
   const effectiveScale = scale ?? (inline ? 0.35 : 1);
 
+  // Preview callers (template list drawer, NewExportDrawer picker) pass an
+  // empty `bindings={{}}` to render the template without per-participant
+  // data. Fall back to MOCK_BINDINGS so QR elements get a sample payload
+  // instead of an empty string (which would skip rendering entirely in
+  // `PosterElementRenderer`).
+  const effectiveBindings =
+    Object.keys(bindings).length === 0
+      ? (MOCK_BINDINGS as PosterBindings)
+      : bindings;
+
   // Apply bindings (text substitution) — textCase is handled per-element in ExportTextElement
   const boundDoc = useMemo(
-    () => documentWithBindings(doc, bindings, true),
-    [doc, bindings],
+    () => documentWithBindings(doc, effectiveBindings, true),
+    [doc, effectiveBindings],
   );
 
   // Eagerly load fonts used in this specific document so export renders correctly
@@ -196,9 +207,9 @@ export function PosterExportCanvas({
             {sorted.map((el) => {
               const display =
                 el.type === "text"
-                  ? resolveText(el, bindings)
+                  ? resolveText(el, effectiveBindings)
                   : el.type === "qr"
-                    ? bindings.qrCode || ""
+                    ? effectiveBindings.qrCode || ""
                     : "";
 
               return (

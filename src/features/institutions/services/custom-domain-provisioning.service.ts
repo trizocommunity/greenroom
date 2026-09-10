@@ -50,8 +50,20 @@ function toIso(value: string | Date | null | undefined): string | null {
  * certificates there is no wildcard covering an arbitrary label, so a sentinel
  * would never have a certificate and would always report not-ready.
  *
- * Any HTTP response — including our own 404 — proves the handshake succeeded.
- * Only transport/TLS failures count as not-ready.
+ * A successful handshake alone is not enough — while a host is in Vercel's
+ * "Verification Required" state the edge still terminates TLS for it, but
+ * serves Vercel's own challenge page rather than our app. Counting that as
+ * ready would stamp `domainHttpsReadyAt` prematurely, flip the UI to
+ * "HTTPS ready", and drop the `_vercel` TXT record the owner needs to add.
+ * Two discriminators guard against that:
+ *
+ *   1. Vercel redirects unverified hosts to a verification page on a
+ *      vercel.com subdomain. The response URL must still be our host.
+ *   2. When served inline (no redirect), the body is Vercel's own HTML
+ *      containing known markers like "Verify Domain" or "Verification
+ *      Required". Our app's HTML never contains those.
+ *
+ * Only transport/TLS failures count as not-ready otherwise.
  */
 export async function probeHttpsReady(
   slug: string,
@@ -61,12 +73,37 @@ export async function probeHttpsReady(
   if (!host) return false;
 
   try {
-    await fetch(`https://${host}/`, {
-      method: "HEAD",
-      redirect: "manual",
+    const res = await fetch(`https://${host}/`, {
+      method: "GET",
+      redirect: "follow",
       cache: "no-store",
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
+
+    // (1) Vercel redirects unverified hosts to a verification page hosted
+    // on a vercel.com subdomain. A real handshake for our branded host must
+    // terminate on the host itself. `res.url` is empty when the Response was
+    // constructed in-process (e.g. by tests) — fall back to the request URL.
+    const finalUrl = res.url || `https://${host}/`;
+    if (new URL(finalUrl).hostname.toLowerCase() !== host.toLowerCase()) {
+      return false;
+    }
+
+    // (2) Vercel sometimes serves the challenge inline (no redirect). The
+    // body is plain HTML with markers our app never emits. Reading the body
+    // costs a few KB once every 15s while a cert is in flight — acceptable.
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("text/html")) {
+      const body = await res.text();
+      if (
+        /verify\s+domain|verification\s+required|add\s+a\s+txt\s+record/i.test(
+          body,
+        )
+      ) {
+        return false;
+      }
+    }
+
     return true;
   } catch {
     // DNS failure, TLS error, timeout, or connection refused — not ready.

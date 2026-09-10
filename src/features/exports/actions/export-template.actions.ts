@@ -118,10 +118,15 @@ export async function finalizeTemplateExportAction(
 
     const file = formData.get("file") as File;
     const itemCount = parseInt(formData.get("itemCount") as string, 10);
-    // `includeAi` is the bundle-as-zip flag, controlled by the user toggle
-    // on the badge/certificate filter. The DB `format` column is always
-    // "PDF" for template exports (since AI is shipped alongside, not instead).
-    const includeAi = (formData.get("includeAi") as string) === "true";
+    // `outputFormat` is the format chosen at the export footer: PDF (the
+    // standalone printable), AI (the same multi-page PDF renamed to
+    // `.ai` — Adobe Illustrator's `.ai` is a PDF wrapper), or BOTH
+    // (a single `.zip` containing both `name.pdf` and `name.ai`).
+    const outputFormatRaw = formData.get("outputFormat") as string | null;
+    const outputFormat: "PDF" | "AI" | "BOTH" =
+      outputFormatRaw === "AI" || outputFormatRaw === "BOTH"
+        ? outputFormatRaw
+        : "PDF";
 
     if (!file) {
       throw new AppError("No file data received.");
@@ -131,10 +136,23 @@ export async function finalizeTemplateExportAction(
     const bytes = Buffer.from(arrayBuffer);
     const fileBase64 = bytes.toString("base64");
 
-    const fileName = includeAi
-      ? `${row.type.toLowerCase()}.zip`
-      : `${row.type.toLowerCase()}.pdf`;
-    const mimeType = includeAi ? "application/zip" : "application/pdf";
+    // Honour the extension the runner picked (`.pdf` / `.ai` / `.zip`).
+    // `.ai` is a PDF wrapper so the byte content is the same PDF in both
+    // slots — the server stays out of that decision and just persists
+    // whatever the runner uploaded.
+    const defaultExt =
+      outputFormat === "AI" ? "ai" : outputFormat === "BOTH" ? "zip" : "pdf";
+    const uploadedName = file?.name ?? "";
+    const hasKnownExt = /\.(pdf|ai|zip)$/i.test(uploadedName);
+    const fileName = hasKnownExt
+      ? uploadedName
+      : `${row.type.toLowerCase()}.${defaultExt}`;
+    const mimeType =
+      outputFormat === "AI"
+        ? "application/pdf"
+        : outputFormat === "BOTH"
+          ? "application/zip"
+          : "application/pdf";
 
     const queuedAtMs = Date.parse(row.queuedAt);
     const completedInMs = Number.isNaN(queuedAtMs)

@@ -131,7 +131,7 @@ export async function resolveBadgePayload(
     gutterMm: config.gutterMm,
     bleedMm: config.bleedMm,
     drawCropMarks: config.drawCropMarks,
-    includeAi: config.includeAi,
+    outputFormat: config.outputFormat,
     items,
   };
 }
@@ -282,7 +282,7 @@ export async function resolveCertificatePayload(
     gutterMm: config.gutterMm,
     bleedMm: config.bleedMm,
     drawCropMarks: config.drawCropMarks,
-    includeAi: config.includeAi,
+    outputFormat: config.outputFormat,
     items,
   };
 }

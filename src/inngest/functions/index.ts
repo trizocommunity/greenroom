@@ -1,3 +1,4 @@
+import { checkpointIdleClose } from "./checkpoint-idle-close";
 import { cloudinaryTransform } from "./cloudinary-transform";
 import { countdownTicker } from "./countdown-ticker";
 import { cronDaily } from "./cron-daily";
@@ -20,6 +21,7 @@ import { smokeTest } from "./smoke-test";
 export const inngestFunctions = [
   // Production queues
   cronDaily,
+  checkpointIdleClose,
   countdownTicker,
   emailSend,
   exportJob,

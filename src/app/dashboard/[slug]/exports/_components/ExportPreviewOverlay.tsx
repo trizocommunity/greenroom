@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/core/datetime";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 import { CsvPreviewViewer } from "./CsvPreviewViewer";
-import { getExportTypeMeta } from "./export-types";
+import { displayFormat, getExportTypeMeta } from "./export-types";
 import { PdfPreviewViewer } from "./PdfPreviewViewer";
 
 interface Props {
@@ -20,7 +20,9 @@ export function ExportPreviewOverlay({ exportId, exports, onClose }: Props) {
   const row = exportId ? exports.find((e) => e.id === exportId) : null;
   const open = !!exportId;
   const status = row?.status ?? null;
-  const format = row?.format ?? "PDF";
+  // Display format follows the file extension so includeAi ZIPs don't render
+  // as a CSV preview. The underlying `format` field is locked at queue time.
+  const format: "PDF" | "CSV" | "AI" | "ZIP" = row ? displayFormat(row) : "PDF";
   const meta = row ? getExportTypeMeta(row.type) : null;
 
   const blob = useExportBlob({
@@ -124,7 +126,22 @@ export function ExportPreviewOverlay({ exportId, exports, onClose }: Props) {
             {blob.error?.message ?? "Failed to load preview."}
           </div>
         ) : blob.data ? (
-          format === "PDF" ? (
+          format === "ZIP" ? (
+            <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
+              <div>
+                <p className="font-medium text-foreground">
+                  ZIP archive — preview not available
+                </p>
+                <p className="mt-1 max-w-md">
+                  This export was bundled with both PDF and AI (the same
+                  multi-page PDF under a `.ai` extension). Use Download to
+                  save the .zip and extract the .pdf and .ai files.
+                </p>
+              </div>
+            </div>
+          ) : format === "PDF" || format === "AI" ? (
+            // `.ai` is a PDF wrapper — same content, different extension —
+            // so it goes through the PDF previewer.
             <PdfPreviewViewer blobUrl={URL.createObjectURL(blob.data)} />
           ) : (
             <CsvPreviewViewer blobUrl={URL.createObjectURL(blob.data)} />

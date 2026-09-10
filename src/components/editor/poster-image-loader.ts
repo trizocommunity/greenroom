@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { PosterEditorDocument } from "./poster-editor-types";
 
 // In-memory cache of preloaded HTMLImageElement instances.
-const imageCache = new Map<string, HTMLImageElement>();
+export const imageCache = new Map<string, HTMLImageElement>();
 const loadingPromises = new Map<string, Promise<HTMLImageElement | null>>();
 
 function shouldBypassCrossOrigin(url: string): boolean {
