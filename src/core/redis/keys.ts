@@ -200,6 +200,10 @@ export const keys = {
   foodHallEvents(slotId: string): string {
     return key("foodhall", slotId, "events");
   },
+  /** `greenroom:checkpoint:<sessionId>:events` — live scan feed per session */
+  checkpointEvents(sessionId: string): string {
+    return key("checkpoint", sessionId, "events");
+  },
   /** `greenroom:super-admin:stats` — UC13 */
   superAdminStats(): string {
     return key("super-admin", "stats");

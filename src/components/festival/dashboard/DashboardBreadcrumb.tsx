@@ -28,7 +28,19 @@ export function DashboardBreadcrumb({
   // 1. Get path relative to dashboard root
   // e.g. /dashboard/my-fest/pre-event-works/categories -> Pre Event Works/categories
   const relativePath = pathname.replace(basePath, "");
-  const segments = relativePath.split("/").filter(Boolean);
+  const rawSegments = relativePath.split("/").filter(Boolean);
+
+  // Dynamic route ids (e.g. [checkpointId]) are UUIDs — don't show them as a
+  // capitalized crumb like "F800613f 8d58 4bce...". Keep each crumb's real href.
+  const isUuid = (s: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
+  const segments = rawSegments
+    .map((segment, index) => ({
+      segment,
+      pathSoFar: `${basePath}/${rawSegments.slice(0, index + 1).join("/")}`,
+    }))
+    .filter((c) => !isUuid(c.segment));
 
   // 2. Helper to find title from sidebar config
   // We'll flatten the config to look up titles by href or partial match logic
@@ -68,11 +80,8 @@ export function DashboardBreadcrumb({
         )}
 
         {/* Dynamic Segments */}
-        {segments.map((segment, index) => {
+        {segments.map(({ segment, pathSoFar }, index) => {
           const isLast = index === segments.length - 1;
-          const pathSoFar = `${basePath}/${segments
-            .slice(0, index + 1)
-            .join("/")}`;
           const title = getSegmentTitle(segment, { pathSoFar });
 
           return (

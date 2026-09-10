@@ -2611,67 +2611,90 @@ export const generalEntryAward = pgTable(
   ],
 );
 
-// ─── Food Hall Entry ─────────────────────────────────────────────────────────
+// ─── Food Hall Entry (removed) ───────────────────────────────────────────────
+// Replaced by the generic Checkpoints feature below (checkpoint /
+// checkpointSession / checkpointScan). The food_hall_* tables are dropped via
+// db:push once existing data has been migrated into the built-in "Food" checkpoint.
 
-export const foodHallSlot = pgTable(
-  "food_hall_slot",
+
+// ─── Checkpoints ─────────────────────────────────────────────────────────────
+// Generalises Food Hall entry into named scan checkpoints (Attendance, Food, …).
+// A `checkpoint` is a recurring scan point; a `checkpointSession` is one open
+// scanning window on a date; a `checkpointScan` is one participant check-in.
+// `requiresWindow` distinguishes food-style checkpoints (operator enters an
+// explicit start/end time) from attendance-style ones (window stamped when the
+// session is started).
+
+export const checkpoint = pgTable(
+  "checkpoint",
   {
     id: text("id").primaryKey().notNull(),
     festivalId: text("festival_id")
       .notNull()
       .references(() => festival.id, { onDelete: "cascade" }),
-    slotOrder: integer("slot_order").notNull(),
     name: text("name").notNull(),
-    windowStartMin: integer("window_start_min").notNull(),
-    windowEndMin: integer("window_end_min").notNull(),
+    requiresWindow: boolean("requires_window").default(false).notNull(),
+    // Built-in checkpoints (Attendance, Food) are seeded per festival and
+    // cannot be renamed or deleted from the UI.
+    isBuiltIn: boolean("is_built_in").default(false).notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
     createdAt: tzTimestampNamed("created_at").defaultNow().notNull(),
     updatedAt: tzTimestampNamed("updated_at").defaultNow().notNull(),
     createdByName: text("created_by_name"),
     createdByEmail: text("created_by_email"),
   },
   (table) => [
-    uniqueIndex("food_hall_slot_festival_order_idx").on(
+    uniqueIndex("checkpoint_festival_name_idx").on(
       table.festivalId,
-      table.slotOrder,
+      table.name,
     ),
+    index("checkpoint_festival_idx").on(table.festivalId),
   ],
 );
 
-export const foodHallSession = pgTable(
-  "food_hall_session",
+export const checkpointSession = pgTable(
+  "checkpoint_session",
   {
     id: text("id").primaryKey().notNull(),
     festivalId: text("festival_id")
       .notNull()
       .references(() => festival.id, { onDelete: "cascade" }),
-    slotId: text("slot_id")
+    checkpointId: text("checkpoint_id")
       .notNull()
-      .references(() => foodHallSlot.id, { onDelete: "cascade" }),
+      .references(() => checkpoint.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
     sessionDate: text("session_date").notNull(),
+    // Minutes-from-midnight window. Null when the checkpoint doesn't require a
+    // window (attendance) and none was captured at start.
+    windowStartMin: integer("window_start_min"),
+    windowEndMin: integer("window_end_min"),
     status: sessionStatus("status").default("OPEN").notNull(),
+    startedAt: tzTimestampNamed("started_at").defaultNow().notNull(),
+    closedAt: tzTimestampNamed("closed_at"),
     createdAt: tzTimestampNamed("created_at").defaultNow().notNull(),
     updatedAt: tzTimestampNamed("updated_at").defaultNow().notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
   },
   (table) => [
-    uniqueIndex("food_hall_session_unique_idx").on(
-      table.festivalId,
-      table.slotId,
+    index("checkpoint_session_checkpoint_date_idx").on(
+      table.checkpointId,
       table.sessionDate,
     ),
-    index("food_hall_session_festival_date_idx").on(
+    index("checkpoint_session_festival_date_idx").on(
       table.festivalId,
       table.sessionDate,
     ),
   ],
 );
 
-export const foodHallEntry = pgTable(
-  "food_hall_entry",
+export const checkpointScan = pgTable(
+  "checkpoint_scan",
   {
     id: text("id").primaryKey().notNull(),
     sessionId: text("session_id")
       .notNull()
-      .references(() => foodHallSession.id, { onDelete: "cascade" }),
+      .references(() => checkpointSession.id, { onDelete: "cascade" }),
     participantId: text("participant_id")
       .notNull()
       .references(() => participant.id, { onDelete: "cascade" }),
@@ -2683,11 +2706,11 @@ export const foodHallEntry = pgTable(
     createdAt: tzTimestampNamed("created_at").defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("food_hall_entry_unique_idx").on(
+    uniqueIndex("checkpoint_scan_unique_idx").on(
       table.sessionId,
       table.participantId,
     ),
-    index("food_hall_entry_participant_idx").on(table.participantId),
-    index("food_hall_entry_scanned_at_idx").on(table.scannedAt),
+    index("checkpoint_scan_participant_idx").on(table.participantId),
+    index("checkpoint_scan_scanned_at_idx").on(table.scannedAt),
   ],
 );

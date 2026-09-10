@@ -190,16 +190,7 @@ export function FestivalLiveClient({
    * site is offline and swaps to the live preview the moment it goes live.
    */
   const [overlayOpen, setOverlayOpen] = useState(false);
-  /** Busts the iframe cache so a pre-launch 404 is never what loads. */
-  const [previewNonce, setPreviewNonce] = useState(0);
   const [justLaunched, setJustLaunched] = useState(false);
-  /**
-   * The public layout 404s while `publicSiteEnabled` is false, so mounting the
-   * frame optimistically would race the write and flash a 404. Gate the `src`
-   * on the server's confirmation instead — the celebration still fires on the
-   * click, so the press feels instant without a spinner in between.
-   */
-  const [siteConfirmed, setSiteConfirmed] = useState(publicSiteEnabled);
 
   const [domainInput, setDomainInput] = useState(
     initialDomain.customDomain ?? "",
@@ -227,7 +218,6 @@ export function FestivalLiveClient({
 
   const closeOverlay = useCallback(() => {
     setOverlayOpen(false);
-    setIframeReady(false);
     setJustLaunched(false);
   }, []);
 
@@ -311,33 +301,25 @@ export function FestivalLiveClient({
   }, []);
 
   const handleLaunch = async () => {
-    if (isReadOnly || enabled) return;
-    // Celebrate on the click so the buzzer feels instant, but keep the frame's
-    // `src` unset until the write confirms — see `siteConfirmed`.
+    if (isReadOnly || enabled || !iframeReady) return;
+    // The authenticated preview has already painted behind the buzzer, so this
+    // state change reveals it synchronously while publishing continues.
     setOverlayOpen(true);
     setEnabled(true);
     setPhase("live");
     setJustLaunched(true);
-    setIframeReady(false);
-    setSiteConfirmed(false);
     fireConfetti();
 
     const rollback = (msg: string) => {
       setEnabled(false);
       setPhase("idle");
       setJustLaunched(false);
-      setIframeReady(false);
-      setSiteConfirmed(false);
       toast.error(msg);
     };
 
     try {
       const result = await setPublicSiteEnabledAction(festivalId, true);
       if (result?.success) {
-        // Write has landed: the public route now resolves, so mount the frame
-        // with a fresh src that cannot replay a cached pre-launch 404.
-        setPreviewNonce((n) => n + 1);
-        setSiteConfirmed(true);
         toast.success("Website is live.");
       } else {
         rollback(
@@ -358,10 +340,8 @@ export function FestivalLiveClient({
       const result = await setPublicSiteEnabledAction(festivalId, false);
       if (result?.success) {
         setEnabled(false);
-        setIframeReady(false);
         setOverlayOpen(false);
         setJustLaunched(false);
-        setSiteConfirmed(false);
         setPhase("idle");
         toast.success("Website is now offline.");
       } else {
@@ -672,13 +652,8 @@ export function FestivalLiveClient({
                 variant="outline"
                 size="sm"
                 className="h-9 flex-1 sm:flex-none"
-                onClick={() => {
-                  setOverlayOpen(true);
-                  setIframeReady(false);
-                  // Already-live site: bump the nonce so the preview reflects
-                  // content edits rather than replaying a cached page.
-                  setPreviewNonce((n) => n + 1);
-                }}
+                onClick={() => setOverlayOpen(true)}
+                disabled={!iframeReady}
               >
                 <Eye className="h-3.5 w-3.5 mr-1.5" />
                 Preview
@@ -1226,122 +1201,126 @@ export function FestivalLiveClient({
       )}
 
       {/* Fullscreen launch buzzer / live preview */}
-      {overlayOpen && (
-        <div className="fixed inset-0 z-50 bg-background">
-          {enabled ? (
-            <>
-              {/* Covers both the confirmation gap (write in flight) and the
-                  frame's own load, so the site is revealed already-painted
-                  instead of flashing blank. No spinner — the buzzer's glow
-                  carries the moment. */}
-              {(!siteConfirmed || !iframeReady) && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden bg-background">
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full bg-primary/10 blur-3xl"
-                  />
-                  <span className="relative flex h-32 w-32 items-center justify-center sm:h-40 sm:w-40">
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute h-full w-full rounded-full bg-primary/15 animate-ping"
-                    />
-                    <span className="relative flex h-full w-full items-center justify-center rounded-full bg-gradient-to-b from-primary to-primary-hover text-primary-foreground shadow-[0_18px_40px_-12px_var(--primary)] ring-1 ring-white/20">
-                      <Rocket className="h-11 w-11 sm:h-14 sm:w-14" />
-                    </span>
-                  </span>
-                </div>
-              )}
-              {justLaunched && (
-                <div className="absolute inset-x-3 top-4 z-20 mx-auto flex max-w-lg items-center gap-2 rounded-full border border-green-600/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-800 shadow-lg backdrop-blur dark:text-green-300 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
-                    Your festival website is live!
-                  </span>
-                </div>
-              )}
-              {siteConfirmed && (
-                <iframe
-                  key={previewNonce}
-                  src={`${previewPath}${previewNonce ? `?v=${previewNonce}` : ""}`}
-                  className="h-full w-full"
-                  title="Festival website preview"
-                  onLoad={() => setIframeReady(true)}
-                />
-              )}
-              <div className="absolute inset-x-3 bottom-4 z-20 flex max-w-lg mx-auto items-center gap-1 rounded-full border bg-background/90 px-1.5 py-1.5 shadow-lg backdrop-blur sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-6 sm:px-2">
-                <span className="flex min-w-0 flex-1 items-center gap-2 px-2 text-sm font-mono text-muted-foreground sm:px-3">
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-green-500 animate-pulse" />
-                  <span className="truncate">{fullPublicUrl}</span>
-                </span>
-                <a
-                  href={fullPublicUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Open
-                </a>
-                <button
-                  type="button"
-                  onClick={closeOverlay}
-                  className="shrink-0 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
-                >
-                  Close
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6">
-              {/* Ambient glow behind the buzzer */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full bg-primary/10 blur-3xl"
-              />
-
-              <div className="relative flex h-56 w-56 items-center justify-center sm:h-72 sm:w-72">
-                {/* Concentric halos, offset so they read as a radar sweep */}
-                <span
+      <div
+        className={cn(
+          "fixed inset-0 z-50 bg-background",
+          overlayOpen
+            ? "visible opacity-100"
+            : "invisible pointer-events-none opacity-0",
+        )}
+        aria-hidden={!overlayOpen}
+      >
+        {/* Keep the private, same-route preview mounted from the first settings
+            paint. The buzzer covers it while offline; launching only removes
+            that cover, so there is no second navigation or blank frame. */}
+        <iframe
+          src={`${previewPath}?preview=1`}
+          className="absolute inset-0 h-full w-full"
+          title="Festival website preview"
+          onLoad={() => setIframeReady(true)}
+        />
+        {enabled ? (
+          <>
+            {!iframeReady && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden bg-background">
+                <div
                   aria-hidden
-                  className="pointer-events-none absolute h-full w-full rounded-full bg-primary/10 animate-ping"
+                  className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full bg-primary/10 blur-3xl"
                 />
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute h-3/4 w-3/4 rounded-full bg-primary/15 animate-ping [animation-delay:400ms]"
-                />
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute h-full w-full rounded-full border border-primary/20"
-                />
-
-                <button
-                  type="button"
-                  onClick={handleLaunch}
-                  disabled={isReadOnly}
-                  aria-label="Launch festival website"
-                  className="group relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-b from-primary to-primary-hover text-primary-foreground shadow-[0_18px_40px_-12px_var(--primary)] ring-1 ring-white/20 transition-all duration-150 hover:scale-105 hover:shadow-[0_22px_55px_-10px_var(--primary)] active:scale-95 active:duration-75 disabled:pointer-events-none disabled:opacity-50 sm:h-40 sm:w-40"
-                >
-                  {/* Specular highlight for the physical-button feel */}
+                <span className="relative flex h-32 w-32 items-center justify-center sm:h-40 sm:w-40">
                   <span
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-3 top-2 h-1/3 rounded-full bg-white/25 blur-md"
+                    className="pointer-events-none absolute h-full w-full rounded-full bg-primary/15 animate-ping"
                   />
-                  <Rocket className="relative h-11 w-11 transition-transform duration-200 group-hover:-translate-y-0.5 sm:h-14 sm:w-14" />
-                </button>
+                  <span className="relative flex h-full w-full items-center justify-center rounded-full bg-gradient-to-b from-primary to-primary-hover text-primary-foreground shadow-[0_18px_40px_-12px_var(--primary)] ring-1 ring-white/20">
+                    <Rocket className="h-11 w-11 sm:h-14 sm:w-14" />
+                  </span>
+                </span>
               </div>
-
+            )}
+            {justLaunched && (
+              <div className="absolute inset-x-3 top-4 z-20 mx-auto flex max-w-lg items-center gap-2 rounded-full border border-green-600/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-800 shadow-lg backdrop-blur dark:text-green-300 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span className="truncate">Your festival website is live!</span>
+              </div>
+            )}
+            <div className="absolute inset-x-3 bottom-4 z-20 flex max-w-lg mx-auto items-center gap-1 rounded-full border bg-background/90 px-1.5 py-1.5 shadow-lg backdrop-blur sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-6 sm:px-2">
+              <span className="flex min-w-0 flex-1 items-center gap-2 px-2 text-sm font-mono text-muted-foreground sm:px-3">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-green-500 animate-pulse" />
+                <span className="truncate">{fullPublicUrl}</span>
+              </span>
+              <a
+                href={fullPublicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open
+              </a>
               <button
                 type="button"
                 onClick={closeOverlay}
-                aria-label="Close"
-                className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground sm:right-6 sm:top-6"
+                className="shrink-0 rounded-full px-3 py-2 text-xs font-medium hover:bg-muted"
               >
-                <X className="h-4 w-4" />
+                Close
               </button>
             </div>
-          )}
-        </div>
-      )}
+          </>
+        ) : (
+          <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6">
+            {/* Ambient glow behind the buzzer */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute h-[38rem] w-[38rem] rounded-full bg-primary/10 blur-3xl"
+            />
+
+            <div className="relative flex h-56 w-56 items-center justify-center sm:h-72 sm:w-72">
+              {/* Concentric halos, offset so they read as a radar sweep */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute h-full w-full rounded-full bg-primary/10 animate-ping"
+              />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute h-3/4 w-3/4 rounded-full bg-primary/15 animate-ping [animation-delay:400ms]"
+              />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute h-full w-full rounded-full border border-primary/20"
+              />
+
+              <button
+                type="button"
+                onClick={handleLaunch}
+                disabled={isReadOnly || !iframeReady}
+                aria-label={
+                  iframeReady
+                    ? "Launch festival website"
+                    : "Preparing festival website preview"
+                }
+                className="group relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-b from-primary to-primary-hover text-primary-foreground shadow-[0_18px_40px_-12px_var(--primary)] ring-1 ring-white/20 transition-all duration-150 hover:scale-105 hover:shadow-[0_22px_55px_-10px_var(--primary)] active:scale-95 active:duration-75 disabled:pointer-events-none disabled:opacity-50 sm:h-40 sm:w-40"
+              >
+                {/* Specular highlight for the physical-button feel */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-3 top-2 h-1/3 rounded-full bg-white/25 blur-md"
+                />
+                <Rocket className="relative h-11 w-11 transition-transform duration-200 group-hover:-translate-y-0.5 sm:h-14 sm:w-14" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={closeOverlay}
+              aria-label="Close"
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground sm:right-6 sm:top-6"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

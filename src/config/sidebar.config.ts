@@ -266,8 +266,8 @@ export const getFestivalDashboardSidebarConfig = (
           allowedRoles: ["ADMIN", "OWNER"] as FestivalRole[],
         },
         {
-          title: "Food Entry",
-          href: `${basePath}/event-works/food-entry`,
+          title: "Checkpoints",
+          href: `${basePath}/event-works/checkpoints`,
           icon: QrCode,
           allowedRoles: ["ADMIN", "OWNER", "VOLUNTEER"] as FestivalRole[],
         },
