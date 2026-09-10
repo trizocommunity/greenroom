@@ -325,6 +325,23 @@ h6 {
   .animate-pulse-dot {
     animation: gr-pulse-dot 2s ease-in-out infinite;
   }
+
+  /* Hero hairline flash — fires when a result lands. */
+  .animate-rule-flash {
+    animation: gr-rule-flash 160ms ease-out 1;
+  }
+
+  /* Same sweep as .animate-sheen, retimed to a single pass: the infinite one
+     is a decoration, this one is an event. */
+  .animate-sheen-once {
+    animation: gr-sheen 1100ms linear 1;
+  }
+
+  /* A row that just arrived: warms, then cools. "Fresh" expires by itself,
+     so no badge has to be added and later removed. */
+  .animate-row-fresh {
+    animation: gr-row-fresh 6000ms ease-out 1;
+  }
 }
 
 @keyframes gr-marquee {
@@ -371,14 +388,38 @@ h6 {
   }
 }
 
+@keyframes gr-rule-flash {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(3);
+  }
+}
+
+/* `--fest` is the festival accent, set on the public layout root. */
+@keyframes gr-row-fresh {
+  from {
+    background-color: color-mix(in srgb, var(--fest) 12%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
 /* Unlayered on purpose: rules outside a cascade layer beat the layered
    utilities above, so this disables the decorative motion without
-   `!important`. */
+   `!important`. It is a manual allowlist, not a wildcard — a new
+   `animate-*` utility that is not listed here keeps animating. */
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee,
   .animate-aurora,
   .animate-sheen,
-  .animate-pulse-dot {
+  .animate-pulse-dot,
+  .animate-rule-flash,
+  .animate-sheen-once,
+  .animate-row-fresh {
     animation: none;
   }
 }

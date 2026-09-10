@@ -64,7 +64,7 @@ export function PublicNewsView({
     page,
     goToPage,
   } = usePublicPages<Post>({
-    endpoint: `/api/festivals/${festivalSlug}/news`,
+    endpoint: `/api/v1/festivals/festivals/${festivalSlug}/news`,
     select: selectPosts,
     pageSize,
     initial: {

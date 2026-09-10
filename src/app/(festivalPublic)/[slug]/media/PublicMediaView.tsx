@@ -65,7 +65,7 @@ export function PublicMediaView({
     page,
     goToPage,
   } = usePublicPages<ImageItem>({
-    endpoint: `/api/festivals/${festivalSlug}/media`,
+    endpoint: `/api/v1/festivals/festivals/${festivalSlug}/media`,
     select: selectImages,
     pageSize,
     initial: {

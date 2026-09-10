@@ -26,8 +26,10 @@ import {
   getNextResultNumber,
   type TeamStandingRow,
 } from "@/features/announcement/services/announcer.service";
+import { formatParticipantLabel } from "@/features/announcement/services/result-display.resolver";
 import { createAuditLog } from "@/features/auth/services/audit-log.service";
 import { ensureFestivalWritable } from "@/features/festivals/services/festival-context.service";
+import { invalidatePublicFestivalCaches } from "@/features/festivals/services/public-cache-invalidation";
 import {
   computeGeneralEntryStandings,
   computeGeneralEntryStandingsWithDetails,
@@ -263,6 +265,7 @@ export async function announceResult(
       columns: {
         id: true,
         name: true,
+        type: true,
         resultNumber: true,
         status: true,
       },
@@ -300,21 +303,78 @@ export async function announceResult(
       })
       .where(eq(programmeTable.id, programmeId));
 
-    const [standingsFestival, announcedCountRow] = await Promise.all([
-      db.query.festival.findFirst({
-        where: eq(festivalTable.id, festivalId),
-        columns: { teamStandings: true },
-      }),
-      db
-        .select({ value: count() })
-        .from(programmeTable)
-        .where(
-          and(
-            eq(programmeTable.festivalId, festivalId),
-            eq(programmeTable.status, "ANNOUNCED"),
+    const [standingsFestival, announcedCountRow, winnerRows] =
+      await Promise.all([
+        db.query.festival.findFirst({
+          where: eq(festivalTable.id, festivalId),
+          columns: { teamStandings: true },
+        }),
+        db
+          .select({ value: count() })
+          .from(programmeTable)
+          .where(
+            and(
+              eq(programmeTable.festivalId, festivalId),
+              eq(programmeTable.status, "ANNOUNCED"),
+            ),
           ),
-        ),
-    ]);
+        // the announce payload has to be renderable on its own — a subscriber
+        // that must fetch the winner back is a second round trip during the
+        // exact second everyone is refreshing. one indexed lookup, parallel
+        // with the two above. the single participant join covers individual
+        // and group-member rows alike, same shape as the call list above.
+        db
+          .select({
+            participantName: participantTable.name,
+            teamName: groupTable.name,
+          })
+          .from(resultTable)
+          .innerJoin(
+            programmeAssignment,
+            eq(programmeAssignment.id, resultTable.assignmentId),
+          )
+          .leftJoin(groupTable, eq(programmeAssignment.groupId, groupTable.id))
+          .leftJoin(
+            programmeAssignmentMember,
+            eq(programmeAssignmentMember.assignmentId, programmeAssignment.id),
+          )
+          .leftJoin(
+            participantTable,
+            or(
+              eq(programmeAssignment.participantId, participantTable.id),
+              eq(programmeAssignmentMember.participantId, participantTable.id),
+            ),
+          )
+          .leftJoin(
+            programmeTeamLead,
+            and(
+              eq(programmeTeamLead.programmeId, programmeId),
+              eq(programmeTeamLead.participantId, participantTable.id),
+            ),
+          )
+          .where(
+            and(
+              eq(resultTable.programmeId, programmeId),
+              eq(resultTable.position, 1),
+            ),
+          )
+          // an appointed team lead is the face of a group entry; otherwise the
+          // earliest member, matching resolveAssignmentDisplays.
+          .orderBy(
+            sql`CASE WHEN ${programmeTeamLead.participantId} IS NOT NULL THEN 0 ELSE 1 END`,
+            asc(programmeAssignmentMember.assignedAt),
+          )
+          .limit(1),
+      ]);
+
+    const winner = winnerRows[0];
+    const winnerName = winner?.participantName
+      ? formatParticipantLabel(programme.type, {
+          name: winner.participantName,
+          chestNumber: null,
+          isTeamLeader: false,
+        })
+      : null;
 
     await Promise.all([
       publish(keys.festivalAnnounce(festivalId), {
@@ -322,6 +382,9 @@ export async function announceResult(
         position: programme.resultNumber,
         resultNumber: programme.resultNumber,
         startedAt: now,
+        programmeName: programme.name,
+        winnerName,
+        winnerTeam: winner?.teamName ?? null,
       }),
       publish(keys.festivalStandings(festivalId), {
         teamStandings: standingsFestival?.teamStandings ?? null,
@@ -335,7 +398,13 @@ export async function announceResult(
     ]);
 
     const slug = await getFestivalSlug(festivalId);
-    if (slug) revalidateAnnouncerPaths(slug);
+    if (slug) {
+      revalidateAnnouncerPaths(slug);
+      // getPublicFestivalData is cache.wrap'ed for 5 minutes, so without this
+      // the public board repaints from a snapshot taken before the result it
+      // was just told about.
+      await invalidatePublicFestivalCaches({ festivalId, slug });
+    }
 
     await createAuditLog({
       action: "ANNOUNCE_RESULTS",

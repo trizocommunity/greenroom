@@ -115,7 +115,7 @@ export function ResultsList({
     refreshFirstPage,
     goToPage,
   } = usePublicPages<PublicProgrammeResults>({
-    endpoint: `/api/festivals/${festivalSlug}/results`,
+    endpoint: `/api/v1/festivals/festivals/${festivalSlug}/results`,
     select: selectProgrammes,
     pageSize: PAGE_SIZE,
     initial: {
@@ -218,7 +218,7 @@ export function ResultsList({
       setIsLoadingDeepLink(true);
       try {
         const url = new URL(
-          `/api/festivals/${festivalSlug}/results`,
+          `/api/v1/festivals/festivals/${festivalSlug}/results`,
           window.location.origin,
         );
         url.searchParams.set("programmeId", programmeId);
