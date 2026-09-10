@@ -42,6 +42,7 @@ import {
   detachFestivalDomain,
   ensureFestivalDomainAttached,
   probeHttpsReady,
+  reconcileFestivalDomain,
   syncFestivalDomainStatus,
 } from "./custom-domain-provisioning.service";
 
@@ -422,5 +423,98 @@ describe("syncFestivalDomainStatus", () => {
     expect(status.vercelVerification).toEqual([
       { type: "TXT", domain: "_vercel.ahlussuffa.in", value: "vc-domain=x" },
     ]);
+  });
+});
+
+describe("reconcileFestivalDomain", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsVercelDomainsConfigured.mockReturnValue(true);
+    mockAddDomainToProject.mockResolvedValue({ verified: true });
+    mockCheckAttachStatus.mockResolvedValue({ status: "attached" });
+  });
+
+  it("attaches the host when shouldServe is true and apex is verified", async () => {
+    mockFindFestivalById.mockResolvedValue(festival());
+    mockFindInstitutionById.mockResolvedValue(institution());
+
+    await reconcileFestivalDomain("fest_1", true);
+
+    expect(mockAddDomainToProject).toHaveBeenCalledWith(HOST);
+    expect(mockRemoveProjectDomain).not.toHaveBeenCalled();
+  });
+
+  it("keeps the host attached when shouldServe is false (no detach on take-offline)", async () => {
+    // The host IS the festival — toggling the public site offline no longer
+    // detaches the Vercel project domain or clears readiness. The branded URL
+    // keeps serving our app and the layout renders a countdown page instead.
+    mockFindFestivalById.mockResolvedValue(festival());
+    mockFindInstitutionById.mockResolvedValue(institution());
+
+    await reconcileFestivalDomain("fest_1", false);
+
+    expect(mockRemoveProjectDomain).not.toHaveBeenCalled();
+    expect(mockClearFestivalHttpsReady).not.toHaveBeenCalled();
+  });
+
+  it("still attaches on take-offline so a festival that toggled online then offline stays attached", async () => {
+    mockFindFestivalById.mockResolvedValue(festival());
+    mockFindInstitutionById.mockResolvedValue(institution());
+
+    await reconcileFestivalDomain("fest_1", false);
+
+    // Idempotent attach — no-op when already attached, attach when not.
+    expect(mockAddDomainToProject).toHaveBeenCalledWith(HOST);
+  });
+
+  it("does nothing when the festival has no institution", async () => {
+    mockFindFestivalById.mockResolvedValue(festival({ institutionId: null }));
+
+    await reconcileFestivalDomain("fest_1", true);
+
+    expect(mockAddDomainToProject).not.toHaveBeenCalled();
+    expect(mockFindInstitutionById).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the apex is not configured", async () => {
+    mockFindFestivalById.mockResolvedValue(festival());
+    mockFindInstitutionById.mockResolvedValue(
+      institution({ customDomain: null }),
+    );
+
+    await reconcileFestivalDomain("fest_1", true);
+
+    expect(mockAddDomainToProject).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the apex is not yet verified", async () => {
+    mockFindFestivalById.mockResolvedValue(festival());
+    mockFindInstitutionById.mockResolvedValue(
+      institution({ verifiedAt: null }),
+    );
+
+    await reconcileFestivalDomain("fest_1", true);
+
+    expect(mockAddDomainToProject).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the festival tier does not allow custom domains", async () => {
+    mockFindFestivalById.mockResolvedValue(festival({ tier: "BASIC" }));
+    mockFindInstitutionById.mockResolvedValue(institution());
+
+    await reconcileFestivalDomain("fest_1", true);
+
+    expect(mockAddDomainToProject).not.toHaveBeenCalled();
+  });
+
+  it("never throws — an attach failure is consumed inside ensureFestivalDomainAttached", async () => {
+    // ensureFestivalDomainAttached maps Vercel failures to a status object
+    // instead of throwing (see its own tests), so reconcileFestivalDomain
+    // has nothing to log — the failure shows up later via syncFestivalDomainStatus.
+    mockFindFestivalById.mockResolvedValue(festival());
+    mockFindInstitutionById.mockResolvedValue(institution());
+    mockAddDomainToProject.mockRejectedValue(new Error("rate limited"));
+
+    await expect(reconcileFestivalDomain("fest_1", true)).resolves.toBeUndefined();
   });
 });

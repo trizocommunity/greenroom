@@ -26,6 +26,7 @@ export type PublicFestivalData = {
     expiresAt: string | null;
     resultPdfUrl: string | null;
     tier: "BASIC" | "STANDARD" | "PRO" | null;
+    publicSiteEnabled: boolean;
     participantCreationStartDate: string | null;
     participantCreationDeadline: string | null;
     programmeAssignmentStartDate: string | null;
@@ -71,6 +72,7 @@ async function loadPublicFestivalData(
       expiresAt: true,
       resultPdfUrl: true,
       location: true,
+      publicSiteEnabled: true,
       participantCreationStartDate: true,
       participantCreationDeadline: true,
       programmeAssignmentStartDate: true,

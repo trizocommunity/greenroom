@@ -177,21 +177,27 @@ export async function detachFestivalDomain(
 }
 
 /**
- * Make Vercel's domain list match reality for one festival: attached while it
- * serves a public site under a verified institution apex, detached otherwise.
+ * Make Vercel's domain list match reality for one festival.
  *
- * The single entry point for every lifecycle edge — publish, unpublish, delete.
- * Callers pass what the festival is *about to* become, and this resolves the
- * eligibility rules (institutional, plan allows custom domains, apex verified)
- * so they don't each re-derive them.
+ * The host *is* the festival, so toggling the public site on or off does not
+ * touch Vercel: the branded URL keeps serving our app either way. When the
+ * site is offline, the layout renders a countdown page in place of the public
+ * site; when it goes live, the countdown collapses to an inline banner. The
+ * cert therefore stays attached for the lifetime of the festival.
+ *
+ * Detach is reserved for the lifecycle edges that actually invalidate the
+ * host — delete (`src/app/api/v1/festivals/[id]/route.ts`), slug change
+ * (`handleFestivalSlugChange`), and apex change (`detachAllFestivalsForApex`).
+ * Those callers do their own detach + `clearFestivalHttpsReady` while the row
+ * still exists; they don't go through this function.
  *
  * Never throws and never blocks the caller's action: a festival that fails to
  * attach is still published, just on its path URL until the next status poll
- * retries. Detach must run *before* a delete, while the row still exists.
+ * retries.
  */
 export async function reconcileFestivalDomain(
   festivalId: string,
-  shouldServe: boolean,
+  _shouldServe: boolean,
 ): Promise<void> {
   try {
     const festival = await findFestivalById(festivalId);
@@ -206,17 +212,14 @@ export async function reconcileFestivalDomain(
     );
     if (!isEnabled(festival.tier, "customDomain")) return;
 
-    if (shouldServe) {
-      // No verified apex yet means the host cannot resolve — the status route
-      // attaches it once verification lands, so skipping here loses nothing.
-      if (!institution.verifiedAt) return;
-      await ensureFestivalDomainAttached(festival.slug, apex);
-      return;
-    }
+    // No verified apex yet means the host cannot resolve — the status route
+    // attaches it once verification lands, so skipping here loses nothing.
+    if (!institution.verifiedAt) return;
 
-    await detachFestivalDomain(festival.slug, apex);
-    // The certificate is gone with the host; stop advertising the branded URL.
-    await clearFestivalHttpsReady(festivalId);
+    // Idempotent: a no-op when the host is already attached (409 → read back),
+    // and harmless when it isn't (just attaches). Toggling offline no longer
+    // detaches; the host stays attached until delete/slug/apex-change does.
+    await ensureFestivalDomainAttached(festival.slug, apex);
   } catch (err) {
     console.error(
       `Festival domain reconcile failed for ${festivalId}:`,

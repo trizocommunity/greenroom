@@ -11,6 +11,7 @@ import {
   Loader2,
   Pencil,
   Power,
+  RefreshCw,
   Rocket,
   UserRound,
   X,
@@ -203,6 +204,8 @@ export function FestivalLiveClient({
   const [domainState, setDomainState] = useState(initialDomain);
   const [savingDomain, setSavingDomain] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  /** True while a manual "Sync now" call to the status route is in flight. */
+  const [syncing, setSyncing] = useState(false);
   /** Empty domain starts in edit mode so first setup is immediate. */
   const [editingDomain, setEditingDomain] = useState(
     !initialDomain.customDomain,
@@ -266,6 +269,21 @@ export function FestivalLiveClient({
         return null;
       }
     }, [festivalId]);
+
+  /**
+   * Manual on-demand status refresh — used by the "Sync now" affordance so an
+   * owner can resolve a drift between Greenroom's view and Vercel's without
+   * waiting for the next 15s poll or re-running DNS verification.
+   */
+  const handleSyncNow = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await refreshStatus();
+    } finally {
+      setSyncing(false);
+    }
+  }, [refreshStatus, syncing]);
 
   /**
    * Poll only while a certificate is still being issued (or ops has yet to
@@ -822,18 +840,35 @@ export function FestivalLiveClient({
             {(() => {
               const badge = phaseBadge(status.phase);
               return (
-                <Badge
-                  variant={badge.variant}
-                  className={cn("w-fit gap-1.5", badge.className)}
-                >
-                  {status.phase === "https-ready" && (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  )}
-                  {isCustomDomainPhasePending(status.phase) && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  )}
-                  {badge.label}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={badge.variant}
+                    className={cn("w-fit gap-1.5", badge.className)}
+                  >
+                    {status.phase === "https-ready" && (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
+                    {isCustomDomainPhasePending(status.phase) && (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    )}
+                    {badge.label}
+                  </Badge>
+                  {/* Manual refresh — used when Greenroom's status and Vercel's
+                      real state drift. Idempotent on the server. */}
+                  <button
+                    type="button"
+                    onClick={() => void handleSyncNow()}
+                    disabled={syncing}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label="Sync now"
+                    title="Refresh status from Vercel"
+                  >
+                    <RefreshCw
+                      className={cn("h-3 w-3", syncing && "animate-spin")}
+                    />
+                    Sync now
+                  </button>
+                </div>
               );
             })()}
           </div>
