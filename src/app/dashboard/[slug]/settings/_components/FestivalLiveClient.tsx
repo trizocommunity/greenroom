@@ -1247,6 +1247,18 @@ export function FestivalLiveClient({
                   </div>
                 )}
 
+                {/* Why no `_vercel` row by default — explained here so owners
+                    don't add it preemptively (a stale TXT can block Vercel's
+                    verification later). When Vercel actually asks for one,
+                    it surfaces in the amber block above this footnote. */}
+                <p className="text-xs text-muted-foreground">
+                  Note: Vercel only requires a{" "}
+                  <span className="font-mono">{`_vercel.${domainState.customDomain ?? "{apex}"}`}</span>{" "}
+                  TXT when the host was previously on another Vercel account. If
+                  Vercel asks for one, Greenroom surfaces it here automatically
+                  — no need to add it preemptively.
+                </p>
+
                 {domainState.isOwner && !domainState.verifiedAt && (
                   <Button
                     type="button"
