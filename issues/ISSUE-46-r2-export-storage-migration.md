@@ -1,14 +1,15 @@
-# R2 Export Storage Migration (Drop Cloudinary for Badge/Certificate Exports)
+# Supabase Storage Export Migration (Drop Cloudinary for Badge/Certificate Exports)
 
 ## Status
-- **Created**: 2026-09-08
+- **Created**: 2026-09-09
+- **Supersedes**: 2026-09-08 R2 plan in this same file (R2 was replaced by Supabase Storage on 2026-09-09; this file was overwritten in place)
 - **Status**: Ready for Implementation (post-Cloudinary 10 MB cap fix)
 - **Priority**: Medium (Cloudinary cap workaround is in place; this is the long-term fix)
-- **Complexity**: High (storage migration, signed-URL flow, cron cleanup, schema change)
+- **Complexity**: Medium-High (storage migration, signed-URL flow, cron cleanup, schema change — simpler than R2 because the SDK + auth model is lighter)
 - **Area**: Exports, Storage, Infrastructure, Cron
-- **Blocks**: PRINT-quality badge exports > 10 MB; PRINT-quality certificate exports for full festivals; multi-team exports at PRINT
+- **Blocks**: PRINT-quality badge exports > 10 MB; PRINT-quality certificate exports for full festivals; multi-team exports at PRINT; Vercel Hobby's 4MB serverless response cap on download routes
 
-This issue is the planned **Path A** from the Cloudinary cap discussion: migrate badge/certificate exports from Cloudinary Free (10 MB cap, slow Free-tier throttling) to Cloudflare R2 (5 GB per-file cap, free egress).
+This issue is the planned **long-term fix**: migrate badge/certificate exports from Cloudinary Free (10 MB cap, slow Free-tier throttling, egress fees) to **Supabase Storage** (5 GB per-file cap, signed URLs first-class via `@supabase/supabase-js`, Mumbai region to match Neon + Redis).
 
 The short-term fix is already live: drawer enforces single team + single category (`88cb33b8`), 9 MiB client cap (`bb9d92c9`), 10 MB Cloudinary cap surfaced in banner hints (`bb9d92c9`), upload progress + 5-min timeout (`314ead9b`), Basic Auth on download fetch (`3cf2ccd1`). This issue is the long-term fix.
 
@@ -24,21 +25,24 @@ The short-term fix is already live: drawer enforces single team + single categor
 
 ### Why we need to move off Cloudinary
 1. **10 MB cap on Free** — single-team PRINT badges exceed this for any team with > ~50 participants. The Cloudinary response is `400 "File size too large. Got 13560364. Maximum is 10485760."`.
-2. **Egress fees** — Cloudinary charges for downloads (Free tier: 25 GB/mo). R2 has **zero egress fees**, which matters for a download-heavy workflow like exports.
+2. **Egress fees** — Cloudinary charges for downloads (Free tier: 25 GB/mo). Supabase Storage has predictable Free-tier egress (2 GB/mo).
 3. **Slow Free-tier latency** — 5–10 MB uploads on Cloudinary Free regularly take 1–5 minutes with no SLA.
-4. **Account-level access controls** — already required us to send Basic Auth on download fetch (`3cf2ccd1`). R2's signed URLs are simpler.
+4. **Account-level access controls** — already required us to send Basic Auth on download fetch (`3cf2ccd1`). Supabase Storage's signed URLs are simpler.
 
-### Why Cloudflare R2
+### Why Supabase Storage
 - **5 GB per file** (vs Cloudinary's 10 MB) — covers any realistic badge export at PRINT quality.
-- **10 GB free storage** (vs Cloudinary's 25 GB credits — actually 25 GB "managed" but bandwidth-bounded).
-- **Zero egress fees** — biggest long-term win.
-- **S3-compatible API** — drop-in for any tooling.
-- **Cloudflare CDN** baked in — downloads are fast globally.
+- **1 GB free storage** on the Free tier — comfortably covers the `RETENTION_DAYS = 1` working set.
+- **First-class signed URLs** via `@supabase/supabase-js` — `createSignedUploadUrl()` and `createSignedUrl()` are one-liners; no need for a separate presigner SDK.
+- **Mumbai region** (`ap-south-1`) available — matches Neon + Redis to keep the export flow on one continent.
+- **Single, simpler SDK surface** — fewer env vars than R2 (no `ACCOUNT_ID`, `ENDPOINT`, `ACCESS_KEY_ID`/`SECRET_ACCESS_KEY` split); `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` is the entire credential set.
+- **Matches the existing stack pattern** — the codebase uses `@supabase/supabase-js` patterns in spirit for its simplicity, and the `src/core/database/client.ts` lazy-Proxy module shape can be mirrored exactly under `src/core/storage/supabase.ts`.
 
 ### Non-goals
 - Migrating non-export Cloudinary usage (poster images, festival logos, news images via `/api/v1/upload`). Those continue using Cloudinary `image/upload` and stay within the 10 MB image cap (those are JPG/PNG, never 10 MB+).
 - Replacing the Inngest `poster-render` flow for single-poster exports (already uses Cloudinary URL directly, no base64 round-trip).
 - Storage tier changes for the existing `/api/v1/upload` route.
+- Custom domain on the Supabase Storage bucket — defer; use the default `*.supabase.co` URL for MVP.
+- Direct S3-compatible API access to the Supabase Storage backend — defer; use `@supabase/supabase-js` only.
 
 ---
 
@@ -46,21 +50,21 @@ The short-term fix is already live: drawer enforces single team + single categor
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | Storage backend | **Cloudflare R2** via S3-compatible API |
-| 2 | Per-file cap | **5 GB** (R2 hard limit) — no practical ceiling for badge/cert PDFs |
-| 3 | Free tier limits | 10 GB storage, 1M Class B ops/mo, **0 egress** |
-| 4 | Storage layout | `greenroom/exports/{exportId}.{pdf|zip}` — flat folder, publicId = exportId (deterministic, matches existing Cloudinary pattern) |
-| 5 | Upload path | Browser → presigned PUT URL → R2 directly. No Vercel edge hop. |
-| 6 | Server fetch strategy | **Stop fetching base64**. Store R2 URL in DB. Downloads redirect (302) to R2. |
-| 7 | Auth model | Presigned PUT for upload (5-min TTL). Public-read objects via R2 public bucket or presigned GET on demand. |
-| 8 | Bucket visibility | **Public-read** via R2 custom domain or `r2.dev` subdomain. Avoids signed-URL plumbing on every download. |
-| 9 | Custom domain | Use `r2.greenroomfestivals.in` or stick with `*.r2.dev` for MVP |
+| 1 | Storage backend | **Supabase Storage** via `@supabase/supabase-js` |
+| 2 | Per-file cap | **5 GB** (Supabase Storage project default); configurable per project. No practical ceiling for badge/cert PDFs. |
+| 3 | Free tier limits | 1 GB storage, 2 GB egress/mo, 50K MAU. Tracked separately from Neon + Redis quotas. |
+| 4 | Storage layout | `{bucket}/festival/{festivalId}/{exportId}.{ext}` — flat per festival, key is the `festival_export.id` (deterministic). |
+| 5 | Upload path (server-generated exports, §2 types) | Server uploads via `SUPABASE_SERVICE_ROLE_KEY` (bypasses RLS). Handler returns JSON `{ url }` to client. Client downloads directly from Supabase CDN. |
+| 6 | Upload path (client-generated exports, §3 BADGE/CERTIFICATE) | Two-step: server issues `createSignedUploadUrl()` → browser PUTs the file directly → server finalizes row. No Vercel edge hop on the upload body. |
+| 7 | Server fetch strategy | **Stop fetching base64 for new rows.** New rows write `exportKey` only. Download route returns `{ url: signedUrl }` for rows where `exportKey IS NOT NULL`; legacy rows where `fileData IS NOT NULL` keep streaming base64 until they age out. |
+| 8 | Auth model | **Private bucket** — never public. Server uses `SUPABASE_SERVICE_ROLE_KEY`. Client uploads use `createSignedUploadUrl()` (5-min TTL). Client downloads use `createSignedUrl()` (default 10 min, overridable per call). |
+| 9 | Custom domain | Out of scope for MVP — use the default `*.supabase.co` storage URL. |
 | 10 | Cloudinary cleanup | Delete the Cloudinary helper, sign-upload route, cron step. Keep `/api/v1/upload` for image uploads. |
-| 11 | Migration of existing data | One-time script: scan `festival_export` rows, re-upload base64 to R2, write URL. Skip rows older than 1 day (already past retention — they're already cron-deleted). |
-| 12 | Cron retention | Drop Cloudinary cleanup step. New step: list R2 objects in `greenroom/exports` folder, delete DB rows whose `expiresAt < now`, then `s3.deleteObject` for each R2 key. |
-| 13 | Failure handling | Upload failure → user sees banner with retry. Storage deletion failure → log + retry next cron run (current pattern). |
-| 14 | Local dev | Use MinIO (S3-compatible) via Docker compose. R2-specific code paths gated behind env. |
-| 15 | Vercel Blob | Considered; rejected — requires Vercel Pro ($20/mo) just to use it. R2 is free. |
+| 11 | Migration of existing data | **Optional, never-blocking.** `scripts/migrate-exports-to-supabase.ts` scans `festival_export` rows where `fileData IS NOT NULL AND exportKey IS NULL`, re-uploads to Supabase, writes `exportKey`. Idempotent. Skip rows older than `expiresAt`. Default OFF — base64 fallback carries legacy rows until they age out via cron. |
+| 12 | Cron retention | Extend `export-gc` step: list rows past `expiresAt`, call `supabase.storage.remove([keys])` for each `exportKey`, then `db.delete()` the row. Cloudinary sweep deleted; no longer needed. |
+| 13 | Failure handling | Upload failure → user sees banner with retry (existing pattern). Storage deletion failure in cron → log + retry next cron run (current pattern). Signed URL failure on the client → user reloads; `expiresAt` is well past client refresh cycles. |
+| 14 | Local dev | **Real Supabase project** (Mumbai region, matches Neon + Redis). Free-tier quota. No docker-compose container needed. |
+| 15 | Alternatives considered | Cloudflare R2 — rejected (heavier S3 + presigner SDK surface, more env vars). Vercel Blob — rejected (requires Vercel Pro). Direct S3-compatible API against Supabase Storage — rejected for MVP (extra package, no immediate benefit). |
 
 ---
 
@@ -69,7 +73,8 @@ The short-term fix is already live: drawer enforces single team + single categor
 1. PRINT-quality badge exports for medium/large teams (> ~50 participants) exceed Cloudinary Free's 10 MB cap → no path forward on Cloudinary Free tier.
 2. Cloudinary Plus raises cap to 20 MB but costs $89/mo and still doesn't cover truly large festivals.
 3. Cloudinary charges egress for downloads; at scale this becomes a meaningful bill.
-4. The current architecture (base64 in DB) wastes ~33% storage and forces a server-side fetch round-trip on every export.
+4. Vercel Hobby's 4 MB serverless response-body cap is hit when the download route streams a >4 MB file inline — today this is masked because most files fit, but multi-team PRINT exports reliably exceed it.
+5. The current architecture (base64 in DB) wastes ~33% storage and forces a server-side fetch round-trip on every export.
 
 ---
 
@@ -79,69 +84,70 @@ The short-term fix is already live: drawer enforces single team + single categor
 
 ```env
 # .env / .env.development / .env.production
-R2_ACCOUNT_ID="<cloudflare-account-id>"
-R2_ACCESS_KEY_ID="<r2-api-token-access-key>"
-R2_SECRET_ACCESS_KEY="<r2-api-token-secret>"
-R2_BUCKET="greenroom-exports"
-R2_PUBLIC_BASE_URL="https://bucket-<hash>.r2.dev"  # or custom domain
-R2_ENDPOINT="https://<account-id>.r2.cloudflarestorage.com"
-
-# Local dev (MinIO via Docker compose)
-R2_ENDPOINT="http://localhost:9000"
-R2_ACCESS_KEY_ID="minioadmin"
-R2_SECRET_ACCESS_KEY="minioadmin"
-R2_BUCKET="greenroom-exports"
-R2_PUBLIC_BASE_URL="http://localhost:9000/greenroom-exports"
+SUPABASE_URL="https://<project-ref>.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"   # server-only, never NEXT_PUBLIC_*
+SUPABASE_STORAGE_BUCKET="greenroom-exports"
+SUPABASE_SIGNED_URL_TTL=600                      # seconds; override per-call if needed
 ```
+
+All four `.env*` files updated. **Critical:** `SUPABASE_SERVICE_ROLE_KEY` must never be prefixed `NEXT_PUBLIC_*` — it bypasses RLS and would expose write access to the entire bucket if it reached the browser.
+
+Local dev uses the same env block pointing at the real (Mumbai) Supabase project — no MinIO container.
 
 ### 4.2 New files
 
-#### `src/core/integrations/r2.ts` — R2 SDK wrapper
-- Reads config from env (`R2_*` vars).
-- Mirrors `src/core/integrations/cloudinary.ts` API surface:
-  - `r2PresignPutUrl(key, contentType, ttlSeconds)` — returns `{ url, key, publicUrl }`.
-  - `r2PutObject(key, buffer, contentType)` — server-side upload (for cron migrations).
-  - `r2DeleteObject(key)` — single-object delete.
-  - `r2ListPrefix(prefix)` — list keys under prefix (for cron sweep).
-- Uses `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` (S3 API).
+#### `src/core/storage/supabase.ts` — lazy server-only client
+- `import "server-only"` (same guard as `src/core/database/client.ts:1`).
+- Lazy-instantiates `@supabase/supabase-js` client on first call so `next build` doesn't throw when env vars are absent — mirrors `database/client.ts:45-62` exactly.
+- Uses `SUPABASE_SERVICE_ROLE_KEY` so server-side uploads/signed-URL issuance bypass RLS.
+- Exports `getSupabaseAdmin()` returning a typed client, plus `db`-style Proxy so call sites read like existing patterns.
+- Registers SIGTERM/SIGINT shutdown only in production (mirroring `client.ts:57-59`).
+- Co-located `src/core/storage/exports.ts` exports `uploadExport(key, buffer, contentType)`, `createSignedUploadUrl(key)`, `getSignedDownloadUrl(key, ttl?)`, `deleteExport(key)` — thin wrappers around `supabase.storage.from(bucket).{...}` so call sites don't import the SDK directly.
 
-#### `src/app/api/v1/exports/sign-r2-upload/route.ts` — signed URL endpoint
-- Mirrors `src/app/api/v1/exports/sign-upload/route.ts` but returns an R2 presigned PUT URL instead of Cloudinary signed params.
-- Auth: same `assertFestivalAccess` check + `festivalExport` status check.
-- Response shape: `{ url, key, publicUrl, expiresIn }`.
+#### `src/app/api/v1/exports/sign-supabase-upload/route.ts` — signed upload endpoint
+- Mirrors `src/app/api/v1/exports/sign-upload/route.ts` (Cloudinary) but returns `{ url, key, publicUrl: null }` from `supabase.storage.from(bucket).createSignedUploadUrl(key)`.
+- Auth: same `assertFestivalAccess` check + `festivalExport` `status === "PROCESSING"` check.
+- Response shape: `{ url, key, expiresIn: 300 }`.
+- Used only by the BADGE/CERTIFICATE client-rendered flow (§3 of ISSUE-15).
 
-#### `scripts/migrate-exports-to-r2.ts` — one-time migration
-- Scans `festival_export` rows where `status='COMPLETED'` and `fileData IS NOT NULL`.
-- For each row: decode base64 → upload to R2 with key `greenroom/exports/{exportId}.{pdf|zip}` → write `cloudinaryPublicId` column to R2 key.
-- Skips rows where `expiresAt < now()` (cron already deleted them or will).
-- Idempotent — re-running skips rows where `cloudinaryPublicId` already points to R2.
+#### `scripts/migrate-exports-to-supabase.ts` — one-time (optional)
+- Scans `festival_export` rows where `fileData IS NOT NULL AND exportKey IS NULL AND expiresAt > now()`.
+- Decodes base64 → uploads to Supabase with key `festival/{festivalId}/{exportId}.{ext}` → writes `exportKey`.
+- Idempotent — re-running skips rows where `exportKey` is set.
 - Reports `{ scanned, uploaded, skipped, failed }`.
 
-#### `docker-compose.r2.yml` — local MinIO (optional, dev-only)
-- Single MinIO container with default creds, port 9000.
-- Documented in `scripts/setup-local-r2.md`.
+#### `src/core/storage/__tests__/exports.test.ts` — unit tests
+- Mocks `@supabase/supabase-js`; asserts upload is called with correct `key`/`contentType`, `getSignedDownloadUrl` returns a non-empty URL whose expiry matches `SUPABASE_SIGNED_URL_TTL`.
+
+**No `docker-compose` file** — local dev runs against the real Supabase project (Locked Decision #14).
 
 ### 4.3 File edits
 
+#### `src/core/database/schema.ts`
+- Add `exportKey: text("export_key")` column to `festival_export` (around line 2453, after `cloudinary_public_id`).
+- Keep `cloudinaryPublicId` as nullable for the migration window (delete after migration in a follow-up PR).
+- Keep `fileData` (base64) — it stays as the legacy fallback for rows without `exportKey`.
+
+#### New Drizzle migration: `drizzle/00XX_add_festival_export_export_key.sql`
+```sql
+ALTER TABLE "festival_export" ADD COLUMN "export_key" text;
+```
+Apply via `drizzle-kit migrate` against `DATABASE_URL_UNPOOLED`.
+
 #### `src/features/exports/actions/export-template.actions.ts`
 - New signature for `finalizeTemplateExportAction`:
-  - Old: takes `{ secureUrl, publicId, bytes, itemCount, includeAi }`
-  - New: takes `{ r2Key, r2PublicUrl, bytes, itemCount, includeAi }`
-- Stop fetching and storing base64. Store `r2Key` directly.
+  - Old: takes `{ secureUrl, publicId, bytes, itemCount, includeAi }` (Cloudinary-shaped).
+  - New: takes `{ exportKey, bytes, itemCount, includeAi }`.
+- Stop fetching and storing base64. Store `exportKey` directly when present.
 - `fileName` + `mimeType` derivation unchanged.
 
 #### `src/features/exports/repositories/export.repository.ts`
-- `CompleteExportInput` gains `r2Key: string`.
-- `completeExport()` writes `r2Key` to a new column.
-- Add `listExpiredExportR2Keys()` (replaces `listExpiredExportCloudinaryIds()`).
-
-#### `src/core/database/schema.ts`
-- Add `r2Key: text("r2_key")` column to `festival_export`.
-- Keep `cloudinaryPublicId` as nullable for the migration window (delete after migration).
-- New migration: `drizzle/00XX_add_festival_export_r2_key.sql`.
+- `CompleteExportInput` gains `exportKey?: string` (optional — server-generated exports may not have one if the orchestrator itself uploads first).
+- `completeExport()` writes `exportKey` when provided.
+- Add `listExpiredExportKeys()` (replaces `listExpiredExportCloudinaryIds()`).
 
 #### `src/app/api/v1/exports/sign-upload/route.ts`
-- **Delete** (replaced by `sign-r2-upload`).
+- **Delete** (replaced by `sign-supabase-upload`).
 
 #### `src/app/api/v1/exports/sign-upload/sign-cloudinary-upload.ts`
 - **Delete** (no longer used).
@@ -150,19 +156,26 @@ R2_PUBLIC_BASE_URL="http://localhost:9000/greenroom-exports"
 - **Delete**.
 
 #### `src/app/dashboard/[slug]/exports/_components/ClientTemplateExportRunner.tsx`
-- Replace the three-step Cloudinary flow with two steps:
-  1. `POST /api/v1/exports/sign-r2-upload` → `{ url, key, publicUrl }`
+- Replace the three-step Cloudinary flow with two steps (badge/cert path):
+  1. `POST /api/v1/exports/sign-supabase-upload` → `{ url, key }`
   2. `PUT` the file to `url` directly via XHR (same AbortController + 5-min timeout pattern from `314ead9b`)
-  3. `finalizeTemplateExportAction({ r2Key, r2PublicUrl, bytes, itemCount, includeAi })`
+  3. `finalizeTemplateExportAction({ exportKey, bytes, itemCount, includeAi })`
+
+#### Server-generated exports path — handler-side upload
+- For CALL_LIST / RESULTS / TEAM_RESULT / JUDGE_LIST / VALUATION_SHEET / GREEN_ROOM_SIGN / SCHEDULE_CONFLICTS:
+  - Handler renders the file in-memory (existing pattern).
+  - After status → COMPLETED, handler calls `uploadExport(key, buffer, contentType)` from `src/core/storage/exports.ts` and writes `exportKey` to the row.
+  - Download route returns `NextResponse.json({ url: await getSignedDownloadUrl(exportKey) })` instead of streaming.
+  - Client gets `url`, fetches directly from Supabase CDN — Vercel's 4 MB response-body cap never enters the picture.
 
 #### `src/app/api/v1/exports/[id]/download/route.ts`
-- Stop streaming base64.
-- 302 redirect to `r2PublicUrl` for `COMPLETED` rows where `r2Key IS NOT NULL`.
+- For rows with `exportKey`: return JSON `{ url }` (or 302 redirect if simpler — pick when coding). Else fall back to existing base64 stream path for legacy `fileData` rows.
+- Same `assertFestivalAccess` + `getExportForDownload` lookup; same 404/403/410/409 handling for missing/forbidden/expired/not-ready.
 
 #### `src/inngest/functions/cron-daily.ts`
-- Replace `export-gc-cloudinary` step with `export-gc-r2`:
-  1. `listExpiredExportR2Keys()` → array of `{ id, r2Key }`
-  2. For each: `r2DeleteObject(r2Key)` (failures logged, don't block)
+- Replace `export-gc-cloudinary` step with `export-gc-supabase`:
+  1. `listExpiredExportKeys()` → array of `{ id, exportKey }`
+  2. For each: `deleteExport(exportKey)` (failures logged, don't block)
   3. `deleteExpiredExports()` (unchanged)
 
 #### `src/core/integrations/cloudinary.ts`
@@ -175,18 +188,17 @@ R2_PUBLIC_BASE_URL="http://localhost:9000/greenroom-exports"
 - **Delete** (no longer applicable).
 
 #### `src/features/exports/actions/export.actions.test.ts`
-- Update mocks: `deleteFile` is replaced by `r2DeleteObject` (or remove the Cloudinary call entirely if `deleteExportAction` no longer touches Cloudinary).
+- Update mocks: `deleteFile` is replaced by `deleteExport` (or remove the Cloudinary call entirely if `deleteExportAction` no longer touches Cloudinary).
 
-#### New: `src/app/api/v1/exports/sign-r2-upload/route.test.ts`
-- Mirrors the deleted Cloudinary sign test, but for R2 presigning.
-- Mock `@aws-sdk/s3-request-presigner` to assert presigned URL contains the right bucket + key.
+#### New: `src/app/api/v1/exports/sign-supabase-upload/route.test.ts`
+- Mirrors the deleted Cloudinary sign test, but for `createSignedUploadUrl`.
+- Mock `@supabase/supabase-js` to assert the signed URL contains the right bucket + key prefix.
 
-#### New: `src/core/integrations/r2.test.ts`
-- Pure tests for `r2PresignPutUrl` signature correctness, `r2PutObject` headers, `r2DeleteObject` happy/error paths.
+#### New: `src/core/storage/exports.test.ts`
+- Pure tests for `uploadExport`, `getSignedDownloadUrl`, `deleteExport` happy/error paths, all against a mocked Supabase client.
 
 ### 4.5 Cron-daily Inngest function tests
-
-- Existing `cron-daily.test.ts` (integration test) was already failing due to a pre-existing Inngest API change. This issue does not need to fix that — the unit tests for the R2 cleanup step can go in a separate integration test (or skip if the underlying Inngest mocking is broken).
+- Existing `cron-daily.test.ts` (integration test) was already failing due to a pre-existing Inngest API change. This issue does not need to fix that — the unit tests for the Supabase cleanup step can go in a separate integration test (or skip if the underlying Inngest mocking is broken).
 
 ---
 
@@ -199,57 +211,60 @@ R2_PUBLIC_BASE_URL="http://localhost:9000/greenroom-exports"
 
 ### 5.2 Order of operations
 
-1. **Add R2 columns + env vars** — additive migration, no behavior change.
-2. **Build R2 helpers + sign-r2-upload route** — new code, no existing flows touched.
-3. **Deploy R2 code paths for NEW exports** — runner uses R2 for any new export from now on. Existing Cloudinary flows still work for old exports.
-4. **Run migration script once** — `scripts/migrate-exports-to-r2.ts` scans `festival_export` rows where `status='COMPLETED'` and uploads them to R2. Idempotent.
-5. **Switch download route** — 302 redirect to R2 for rows with `r2Key`. Base64 fallback only for legacy rows that pre-date this migration.
-6. **Update cron cleanup** — sweep R2 instead of Cloudinary for `expiresAt < now` rows.
-7. **Remove Cloudinary flow from runner** — runner no longer calls Cloudinary. Existing Cloudinary assets in `greenroom/exports` folder become orphaned; Cloudinary free tier auto-deletes after some time, or run a one-time cleanup.
-8. **Drop `cloudinaryPublicId` column** — final migration.
+1. **Add `exportKey` column + env vars** — additive migration, no behavior change.
+2. **Build `src/core/storage/{supabase,exports}.ts` + sign-supabase-upload route** — new code, no existing flows touched.
+3. **Deploy server-generated export path** — orchestrator uploads via `uploadExport()` for any new §2 export from now on. `fileData` stays null; `exportKey` populated. Download route returns JSON `{ url }` for `exportKey IS NOT NULL` rows.
+4. **Deploy client-rendered export path (BADGE/CERTIFICATE)** — runner uses `createSignedUploadUrl()` then PUT from browser, then `finalizeTemplateExportAction` writes `exportKey`.
+5. **(Optional) Run migration script once** — `scripts/migrate-exports-to-supabase.ts` scans `festival_export` rows where `fileData IS NOT NULL AND exportKey IS NULL AND expiresAt > now()`, uploads to Supabase, writes `exportKey`. Idempotent. Not required for correctness — base64 fallback keeps legacy downloads working.
+6. **Switch download route to JSON `{ url }` for new rows** — done in step 3 already; no separate hop.
+7. **Update cron cleanup** — sweep Supabase objects + DB rows past `expiresAt`.
+8. **(Follow-up PR) Drop `fileData` column** — once all in-flight downloads have aged out (≥ 1 day post-deploy, with cron sweep having run). Hand-authored `drizzle/00YY_drop_festival_export_file_data.sql`. **Out of scope for this PR.**
+9. **(Follow-up PR) Drop `cloudinaryPublicId` column** — after step 8 and any straggler cleanup.
 
 ### 5.3 Rollback plan
-
 - Each step is reversible via git + migration:
   - Roll back runner to Cloudinary: `git revert <commit>` on the runner edit.
-  - Roll back schema: hand-authored `drizzle/00YY_drop_festival_export_r2_key.sql` (deferred until step 8).
-- R2-stored files persist regardless of code state (downloads still work even if download route is broken — direct R2 URL).
+  - Roll back schema: hand-authored `drizzle/00YY_drop_festival_export_export_key.sql` (deferred until step 8 of the follow-up PR).
+- Supabase-stored files persist regardless of code state — even if the download route breaks, the bucket + signed URL still works.
 
 ---
 
 ## 6. Out of Scope
 
-- **Real-time progress on R2 uploads** — the existing XHR `progress` event still works (PUT to presigned URL has the same body). No code change.
+- **Real-time progress on Supabase uploads** — the existing XHR `progress` event still works (PUT to the signed upload URL has the same body). No code change.
 - **Inngest server-side rendering of badges/certificates** — separate issue (mentioned in earlier planning, ~2-3 week refactor).
 - **Image upload route migration** — `/api/v1/upload` continues using Cloudinary `image/upload` for poster/festival images. Different cap (10 MB image), different endpoint.
 - **Cloudinary CDN migration for image transformations** — out of scope. Cloudinary's image transforms are still useful for `poster-render`.
-- **R2 access via custom domain** — start with `*.r2.dev`, custom domain can come later.
-- **Lifecycle policy / auto-delete on R2** — cron handles it. No native R2 lifecycle needed.
+- **Supabase Storage custom domain** — start with `*.supabase.co`, custom domain can come later.
+- **Lifecycle policy / auto-delete on Supabase** — cron handles it. No native Supabase lifecycle needed.
+- **Direct S3-compatible API access** — start with `@supabase/supabase-js` only.
+- **Dropping `fileData` column** — follow-up PR after legacy rows age out.
+- **Dropping `cloudinaryPublicId` column** — follow-up PR.
 
 ---
 
 ## 7. Testing
 
 ### Unit tests
-- `src/core/integrations/r2.test.ts` — presign URL signature, key naming, error paths.
-- `src/app/api/v1/exports/sign-r2-upload/route.test.ts` — route auth, payload shape.
-- Updated `export.actions.test.ts` — mocks for new R2-based flow.
+- `src/core/storage/exports.test.ts` — `uploadExport`, `getSignedDownloadUrl`, `deleteExport` happy/error paths; mocked `@supabase/supabase-js`.
+- `src/app/api/v1/exports/sign-supabase-upload/route.test.ts` — route auth, payload shape, mocked SDK.
+- Updated `export.actions.test.ts` — mocks for new Supabase-based flow.
 
 ### Manual verification
-- Local dev with MinIO:
-  1. `docker compose -f docker-compose.r2.yml up -d`
-  2. Trigger badge export from `/dashboard/[slug]/exports`
-  3. Watch Network tab — should see `POST /api/v1/exports/sign-r2-upload` (200, fast) then `PUT https://...r2.cloudflarestorage.com/...` (200, with XHR progress)
-  4. After completion, `curl {publicUrl}` returns the PDF
-  5. Download from the table redirects to R2 (302) and streams the file
-- Production deploy: same flow against real R2 bucket.
-- Cron sweep: set `expiresAt` to a past timestamp, wait for next 00:00 UTC tick, verify R2 objects are deleted and DB rows removed.
+- Local dev against the real Mumbai Supabase project:
+  1. Trigger badge export from `/dashboard/[slug]/exports`
+  2. Watch Network tab — should see `POST /api/v1/exports/sign-supabase-upload` (200, fast), then `PUT https://<project-ref>.supabase.co/storage/v1/object/...` (200, with XHR progress), then `finalizeTemplateExportAction` writing `exportKey`.
+  3. After completion, `curl "{signedUrl}"` returns the PDF.
+  4. Download from the table returns `{ url }` (or 302) and the file streams from Supabase.
+- Production deploy: same flow against the production Supabase project.
+- Cron sweep: set `expiresAt` to a past timestamp, wait for next 00:00 UTC tick, verify Supabase objects are deleted and DB rows removed.
 
 ### Edge cases
-- R2 credentials missing → runner shows clear error, doesn't crash.
-- R2 endpoint unreachable → 5-min timeout fires, banner shows timeout hint.
-- Concurrent exports → unique `r2Key` per `exportId` (deterministic); no collisions since `exportId` is UUID.
+- Supabase credentials missing → runner shows clear error, doesn't crash.
+- Supabase endpoint unreachable → 5-min timeout fires, banner shows timeout hint.
+- Concurrent exports → unique `exportKey` per `festival_export.id` (deterministic UUID); no collisions.
 - Cron partial failure → logged, retried next run.
+- Signed URL expiry while user holds the page → next download click re-issues a fresh signed URL on demand.
 
 ---
 
@@ -257,23 +272,24 @@ R2_PUBLIC_BASE_URL="http://localhost:9000/greenroom-exports"
 
 | Step | Effort |
 |---|---|
-| R2 helpers (`r2.ts`) | 1 day |
-| Sign-r2-upload route | 0.5 day |
-| Schema + migration | 0.5 day |
-| Action + repo + runner swap | 1.5 days |
-| Download route redirect | 0.5 day |
+| `src/core/storage/{supabase,exports}.ts` | 0.75 day |
+| Sign-supabase-upload route | 0.5 day |
+| Schema + migration | 0.25 day |
+| Server-generated path (handler upload + JSON download) | 1 day |
+| Client-rendered path (sign-upload + PUT + finalize) | 1 day |
+| Migration script (optional) | 0.5 day |
 | Cron sweep update | 0.5 day |
-| Migration script | 1 day |
-| Tests (unit + manual) | 1 day |
-| Deploy + smoke test in prod | 1 day |
-| **Total** | **~7.5 days** |
+| Tests (unit + manual) | 0.75 day |
+| Deploy + smoke test in prod | 0.25 day |
+| **Total** | **~5.5 days** |
 
 ---
 
 ## 9. Success Criteria
 
-- Badge export at PRINT quality for a 200-participant festival works end-to-end (would be ~50 MB PDF on Cloudinary Free; ~50 MB PDF on R2 within the 5 GB cap).
-- `cloudinaryPublicId` column dropped after migration.
+- Badge export at PRINT quality for a 200-participant festival works end-to-end (would be ~50 MB PDF on Cloudinary Free; ~50 MB PDF on Supabase Storage, well within the 5 GB cap).
+- `cloudinaryPublicId` and `fileData` columns dropped in follow-up PRs once legacy rows have aged out.
 - No regression in non-template exports (call lists, results, etc. — these never touched Cloudinary for exports).
-- Cron GC cleans both R2 objects and DB rows within 24 hours of `expiresAt`.
-- Local dev works with MinIO via Docker compose.
+- Cron GC cleans both Supabase objects and DB rows within 24 hours of `expiresAt`.
+- Local dev works against the real (Mumbai) Supabase project — no docker-compose changes required.
+- Download route JSON response body stays under 1 KB (a few hundred bytes for the signed URL), so Vercel Hobby's 4 MB response-body cap never constrains exports regardless of file size.

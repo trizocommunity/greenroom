@@ -94,12 +94,12 @@ export function useExportBlob({
   enabled,
 }: {
   exportId: string | null;
-  format: "PDF" | "CSV" | "AI";
+  format: "PDF" | "CSV" | "AI" | "ZIP";
   enabled: boolean;
 }) {
   return useQuery<Blob | null>({
     queryKey: ["export-blob", exportId, format],
-    enabled: !!exportId && enabled,
+    enabled: !!exportId && enabled && format !== "ZIP",
     queryFn: async () => {
       const res = await fetch(`/api/exports/${exportId}/download`);
       if (!res.ok) throw new Error("Failed to fetch export");

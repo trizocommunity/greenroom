@@ -14,6 +14,18 @@ export const certificatePageSize = z.enum(["A3", "A4"]);
 export const pageOrientation = z.enum(["PORTRAIT", "LANDSCAPE"]);
 export const exportFit = z.enum(["FIT", "FILL"]);
 /**
+ * Output format for template exports (BADGE / CERTIFICATE).
+ * - PDF: printable PDF on its own (no zip wrapper).
+ * - AI:  same PDF bytes under a `.ai` extension (`.ai` is a PDF wrapper;
+ *       Adobe Illustrator opens it as a multi-artboard PDF).
+ * - BOTH: a single `.zip` containing both `name.pdf` and `name.ai`.
+ *
+ * Selected at the export footer (the final "Export" button row in the
+ * NewExportDrawer), not in the filter panel — this lets the user choose
+ * per-export without having to re-open the filters.
+ */
+export const templateOutputFormat = z.enum(["PDF", "AI", "BOTH"]);
+/**
  * Multi-per-page grid preset. "AUTO" picks a layout from page orientation
  * (portrait → 2×2 = 4 per page; landscape → 4×2 = 8 per page). Anything else
  * uses the explicit "COLSxROWS" pair as cols × rows on the page.
@@ -160,11 +172,12 @@ export const badgeConfig = z.object({
   drawCropMarks: z.boolean().default(false),
   onlyWithChestNumber: z.boolean().default(true),
   /**
-   * Bundle the printable PDF with an editable `.ai` (Adobe Illustrator)
-   * source inside a single `.zip`. When `false`, the export ships as a
-   * standalone PDF (no zip wrapper).
+   * Output format. Set by the export footer in NewExportDrawer; the
+   * filter panel does not surface this. "PDF" is the standalone
+   * printable, "AI" is the same PDF under a `.ai` extension (`.ai` is
+   * a PDF wrapper), "BOTH" produces a `.zip` with both files.
    */
-  includeAi: z.boolean().default(false),
+  outputFormat: templateOutputFormat.default("PDF"),
   categoryIds: idList,
   teamIds: idList,
 });
@@ -194,11 +207,12 @@ export const certificateConfig = z.object({
     )
     .default(["PARTICIPATION"]),
   /**
-   * Bundle the printable PDF with an editable `.ai` (Adobe Illustrator)
-   * source inside a single `.zip`. When `false`, the export ships as a
-   * standalone PDF (no zip wrapper).
+   * Output format. Set by the export footer in NewExportDrawer; the
+   * filter panel does not surface this. "PDF" is the standalone
+   * printable, "AI" is the same PDF under a `.ai` extension (`.ai` is
+   * a PDF wrapper), "BOTH" produces a `.zip` with both files.
    */
-  includeAi: z.boolean().default(false),
+  outputFormat: templateOutputFormat.default("PDF"),
   categoryIds: idList,
   programmeIds: idList,
 });

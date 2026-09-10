@@ -1,6 +1,13 @@
 "use client";
 
-import { CheckCircle2, Download, Loader2, Trash2, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  Loader2,
+  RotateCw,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +24,7 @@ import { formatRelative } from "@/core/datetime";
 import { cn } from "@/core/utils/cn";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 import { toast } from "@/lib/toast";
+import { summarizeIssue } from "./export-issues-banner.logic";
 import { getExportTypeMeta } from "./export-types";
 
 interface ProgressEntry {
@@ -59,12 +67,6 @@ function NameChips({
       )}
     </>
   );
-}
-
-function progressLabel(prog: ProgressEntry): string {
-  const pct =
-    prog.total > 0 ? Math.round((prog.current / prog.total) * 100) : 0;
-  return `Processing (${pct}%)`;
 }
 
 function downloadUrl(id: string): string {
@@ -168,6 +170,7 @@ function CircularProgress({
 interface DownloadButtonProps {
   disabled: boolean;
   downloading: boolean;
+  downloaded: boolean;
   percent: number;
   fileName: string | null;
   onStart: () => void;
@@ -176,11 +179,19 @@ interface DownloadButtonProps {
 function DownloadButton({
   disabled,
   downloading,
+  downloaded,
   percent,
   fileName,
   onStart,
 }: DownloadButtonProps) {
-  const label = fileName ? `Download ${fileName}` : "Download";
+  // Once the file has been downloaded in this session, switch to the
+  // redownload (rotate-cw) icon so the user knows the artifact is local
+  // — clicking again just refreshes the bytes from the server.
+  const label = downloaded
+    ? `Re-download ${fileName ?? "file"}`
+    : fileName
+      ? `Download ${fileName}`
+      : "Download";
 
   return (
     <Button
@@ -198,6 +209,8 @@ function DownloadButton({
             {Math.round(percent)}
           </span>
         </>
+      ) : downloaded ? (
+        <RotateCw className="h-4 w-4 text-primary" />
       ) : (
         <Download className="h-4 w-4" />
       )}
@@ -244,6 +257,7 @@ export function ExportsTable({
 
   const [downloads, setDownloads] = useState<Record<string, number>>({});
   const [activeDownload, setActiveDownload] = useState<string | null>(null);
+  const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set());
 
   const handleStartDownload = useCallback(
     async (id: string, fileName: string | null) => {
@@ -253,6 +267,15 @@ export function ExportsTable({
       try {
         await startDownload(id, fileName, (percent) => {
           setDownloads((prev) => ({ ...prev, [id]: percent }));
+        });
+        // Mark as downloaded so the icon flips to "re-download" until
+        // the page reloads. localStorage would survive reloads but we keep
+        // it session-scoped to avoid showing stale "downloaded" state
+        // for an export whose bytes the server may have since changed.
+        setDownloadedIds((prev) => {
+          const next = new Set(prev);
+          next.add(id);
+          return next;
         });
       } catch (err) {
         console.error("Export download failed", err);
@@ -286,7 +309,7 @@ export function ExportsTable({
               <div
                 key={e.id}
                 className={cn(
-                  "rounded-lg border p-4 flex flex-col bg-card gap-3",
+                  "rounded-lg border px-3 py-2 flex flex-col bg-card gap-1.5",
                   onRowClick &&
                     "cursor-pointer transition-colors hover:bg-muted/30",
                 )}
@@ -304,12 +327,44 @@ export function ExportsTable({
                     : undefined
                 }
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 font-medium">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-wrap text-sm">
                     <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                    {meta.title}
+                    <span className="font-medium">{meta.title}</span>
+                    {firstBadge && (
+                      <Badge
+                        variant="outline"
+                        className="font-normal text-[10px] py-0"
+                      >
+                        {firstBadge}
+                      </Badge>
+                    )}
+                    {extra > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="font-normal text-[10px] py-0"
+                      >
+                        +{extra}
+                      </Badge>
+                    )}
+                    {e.selectedTeamNames.length > 0 && (
+                      <span className="text-muted-foreground">·</span>
+                    )}
+                    {e.selectedTeamNames.length > 0 && (
+                      <NameChips names={e.selectedTeamNames} max={1} />
+                    )}
+                    {e.selectedCategoryNames.length > 0 && (
+                      <span className="text-muted-foreground">·</span>
+                    )}
+                    {e.selectedCategoryNames.length > 0 && (
+                      <NameChips
+                        names={e.selectedCategoryNames}
+                        max={1}
+                        variant="secondary"
+                      />
+                    )}
                   </div>
-                  <div>
+                  <div className="shrink-0">
                     {e.status === "COMPLETED" && (
                       <Badge variant="success" className="gap-1">
                         <CheckCircle2 className="h-3 w-3" />
@@ -319,14 +374,20 @@ export function ExportsTable({
                     {e.status === "PROCESSING" && (
                       <Badge variant="warning" className="gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        {prog ? progressLabel(prog) : "Processing"}
+                        {prog
+                          ? `Processing ${Math.min(99, Math.round((prog.current / prog.total) * 100))}%`
+                          : "Processing"}
                       </Badge>
                     )}
                     {e.status === "FAILED" && (
                       <Badge
                         variant="destructive"
                         className="gap-1"
-                        title={e.errorMessage ?? undefined}
+                        title={
+                          e.errorMessage
+                            ? (summarizeIssue(e.errorMessage) ?? e.errorMessage)
+                            : undefined
+                        }
                       >
                         <XCircle className="h-3 w-3" />
                         Failed
@@ -335,93 +396,55 @@ export function ExportsTable({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm">{e.summary}</span>
-                    {firstBadge && (
-                      <Badge variant="outline" className="font-normal">
-                        {firstBadge}
-                      </Badge>
-                    )}
-                    {extra > 0 && (
-                      <Badge variant="secondary" className="font-normal">
-                        +{extra}
-                      </Badge>
-                    )}
-                  </div>
-                  {(e.selectedTeamNames.length > 0 ||
-                    e.selectedCategoryNames.length > 0) && (
-                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                      {e.selectedTeamNames.length > 0 && (
-                        <>
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                            Team
-                          </span>
-                          <NameChips names={e.selectedTeamNames} max={2} />
-                        </>
+                {(e.status === "COMPLETED" &&
+                  metaLine(e.itemCount, e.fileSizeBytes)) ||
+                e.status === "FAILED" ? (
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                    <span className="truncate">
+                      {e.status === "COMPLETED" &&
+                        metaLine(e.itemCount, e.fileSizeBytes)}
+                      {e.status === "FAILED" && e.errorMessage && (
+                        <span
+                          className="text-destructive line-clamp-1"
+                          title={e.errorMessage}
+                        >
+                          {summarizeIssue(e.errorMessage) ?? e.errorMessage}
+                        </span>
                       )}
-                      {e.selectedCategoryNames.length > 0 && (
-                        <>
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                            Category
-                          </span>
-                          <NameChips
-                            names={e.selectedCategoryNames}
-                            max={2}
-                            variant="secondary"
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {e.status === "COMPLETED" &&
-                    metaLine(e.itemCount, e.fileSizeBytes) && (
-                      <div className="text-xs text-muted-foreground">
-                        {metaLine(e.itemCount, e.fileSizeBytes)}
-                      </div>
-                    )}
-                  {e.status === "FAILED" && e.errorMessage && (
-                    <div className="text-xs text-destructive line-clamp-2">
-                      {e.errorMessage}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between gap-4 mt-2">
-                  <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-                    <span>Queued: {relative(e.queuedAt)}</span>
-                    {e.status === "COMPLETED" && e.completedInMs && (
-                      <span>Done in: {formatDuration(e.completedInMs)}</span>
-                    )}
-                  </div>
-                  {/* biome-ignore lint/a11y/noStaticElementInteractions: nested action buttons inside a clickable card; we stop propagation so the card's onClick doesn't fire on Download/Delete. */}
-                  <div
-                    className="flex items-center gap-1 shrink-0"
-                    onClick={(ev) => ev.stopPropagation()}
-                  >
-                    <DownloadButton
-                      disabled={e.status !== "COMPLETED"}
-                      downloading={activeDownload === e.id}
-                      percent={downloads[e.id] ?? 0}
-                      fileName={e.fileName}
-                      onStart={() => handleStartDownload(e.id, e.fileName)}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      disabled={deletingId === e.id}
-                      onClick={() => onDelete(e.id)}
-                      aria-label="Delete"
+                      <span className="ml-2">
+                        · Queued {relative(e.queuedAt)}
+                      </span>
+                    </span>
+                    {/* biome-ignore lint/a11y/noStaticElementInteractions: nested action buttons inside a clickable card; we stop propagation so the card's onClick doesn't fire on Download/Delete. */}
+                    <div
+                      className="flex items-center gap-0.5 shrink-0"
+                      onClick={(ev) => ev.stopPropagation()}
                     >
-                      {deletingId === e.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
+                      <DownloadButton
+                        disabled={e.status !== "COMPLETED"}
+                        downloading={activeDownload === e.id}
+                        downloaded={downloadedIds.has(e.id)}
+                        percent={downloads[e.id] ?? 0}
+                        fileName={e.fileName}
+                        onStart={() => handleStartDownload(e.id, e.fileName)}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        disabled={deletingId === e.id}
+                        onClick={() => onDelete(e.id)}
+                        aria-label="Delete"
+                      >
+                        {deletingId === e.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             );
           })}
@@ -433,7 +456,6 @@ export function ExportsTable({
               <TableHead>Export Type</TableHead>
               <TableHead>Summary</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Completed In</TableHead>
               <TableHead>Queued At</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -461,53 +483,62 @@ export function ExportsTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm">{e.summary}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge
+                          variant="secondary"
+                          className="font-normal text-[10px] py-0"
+                        >
+                          {meta.title}
+                        </Badge>
                         {firstBadge && (
-                          <Badge variant="outline" className="font-normal">
+                          <Badge
+                            variant="outline"
+                            className="font-normal text-[10px] py-0"
+                          >
                             {firstBadge}
                           </Badge>
                         )}
                         {extra > 0 && (
-                          <Badge variant="secondary" className="font-normal">
+                          <Badge
+                            variant="secondary"
+                            className="font-normal text-[10px] py-0"
+                          >
                             +{extra}
                           </Badge>
                         )}
+                        {e.selectedTeamNames.length > 0 && (
+                          <>
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                              Team
+                            </span>
+                            <NameChips names={e.selectedTeamNames} max={1} />
+                          </>
+                        )}
+                        {e.selectedCategoryNames.length > 0 && (
+                          <>
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
+                              Cat
+                            </span>
+                            <NameChips
+                              names={e.selectedCategoryNames}
+                              max={1}
+                              variant="secondary"
+                            />
+                          </>
+                        )}
                       </div>
-                      {(e.selectedTeamNames.length > 0 ||
-                        e.selectedCategoryNames.length > 0) && (
-                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                          {e.selectedTeamNames.length > 0 && (
-                            <>
-                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                                Team
-                              </span>
-                              <NameChips names={e.selectedTeamNames} max={2} />
-                            </>
-                          )}
-                          {e.selectedCategoryNames.length > 0 && (
-                            <>
-                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium">
-                                Category
-                              </span>
-                              <NameChips
-                                names={e.selectedCategoryNames}
-                                max={2}
-                                variant="secondary"
-                              />
-                            </>
-                          )}
-                        </div>
-                      )}
                       {e.status === "COMPLETED" &&
                         metaLine(e.itemCount, e.fileSizeBytes) && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
                             {metaLine(e.itemCount, e.fileSizeBytes)}
                           </div>
                         )}
                       {e.status === "FAILED" && e.errorMessage && (
-                        <div className="text-xs text-destructive mt-0.5 line-clamp-1">
-                          {e.errorMessage}
+                        <div
+                          className="text-xs text-destructive mt-0.5 line-clamp-1"
+                          title={e.errorMessage}
+                        >
+                          {summarizeIssue(e.errorMessage) ?? e.errorMessage}
                         </div>
                       )}
                     </TableCell>
@@ -522,7 +553,7 @@ export function ExportsTable({
                         <Badge variant="warning" className="gap-1">
                           <Loader2 className="h-3 w-3 animate-spin" />
                           {prog
-                            ? `Processing (${Math.round((prog.current / prog.total) * 100)}%)`
+                            ? `Processing ${Math.min(99, Math.round((prog.current / prog.total) * 100))}%`
                             : "Processing"}
                         </Badge>
                       )}
@@ -530,7 +561,12 @@ export function ExportsTable({
                         <Badge
                           variant="destructive"
                           className="gap-1"
-                          title={e.errorMessage ?? undefined}
+                          title={
+                            e.errorMessage
+                              ? (summarizeIssue(e.errorMessage) ??
+                                e.errorMessage)
+                              : undefined
+                          }
                         >
                           <XCircle className="h-3 w-3" />
                           Failed
@@ -538,16 +574,17 @@ export function ExportsTable({
                       )}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {formatDuration(e.completedInMs)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {relative(e.queuedAt)}
                     </TableCell>
-                    <TableCell onClick={(ev) => ev.stopPropagation()}>
+                    <TableCell
+                      className="whitespace-nowrap text-sm text-muted-foreground"
+                      onClick={(ev) => ev.stopPropagation()}
+                    >
                       <div className="flex items-center justify-end gap-1">
                         <DownloadButton
                           disabled={e.status !== "COMPLETED"}
                           downloading={activeDownload === e.id}
+                          downloaded={downloadedIds.has(e.id)}
                           percent={downloads[e.id] ?? 0}
                           fileName={e.fileName}
                           onStart={() => handleStartDownload(e.id, e.fileName)}
@@ -555,7 +592,7 @@ export function ExportsTable({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="text-destructive hover:text-destructive"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           disabled={deletingId === e.id}
                           onClick={() => onDelete(e.id)}
                           aria-label="Delete"

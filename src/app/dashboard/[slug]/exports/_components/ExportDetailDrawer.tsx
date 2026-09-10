@@ -4,6 +4,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Download,
+  FileImage,
+  FileText,
   Loader2,
   XCircle,
 } from "lucide-react";
@@ -22,7 +24,8 @@ import { cn } from "@/core/utils/cn";
 import type { ExportConfig } from "@/features/exports/schemas/export-config.schema";
 import type { ExportListItem } from "@/features/exports/types/export.types";
 import { toast } from "@/lib/toast";
-import { getExportTypeMeta } from "./export-types";
+import { summarizeIssue } from "./export-issues-banner.logic";
+import { displayFormat, getExportTypeMeta } from "./export-types";
 
 interface ExportDetailDrawerProps {
   open: boolean;
@@ -104,10 +107,49 @@ function DetailRow({
     <div className="flex items-start justify-between gap-3 py-1.5">
       <span className="text-xs text-muted-foreground shrink-0">{label}</span>
       <span className="text-xs font-medium text-right break-words">
-        {value ?? <span className="text-muted-foreground/50">—</span>}
+        {value}
       </span>
     </div>
   );
+}
+
+interface ZipEntry {
+  name: string;
+  kind: "pdf" | "ai";
+  label: string;
+}
+
+/**
+ * The ZIP bundle always ships a printable PDF and an `.ai` (PDF wrapper,
+ * same content under a different extension — Illustrator opens it as a
+ * multi-artboard PDF). We list both here so the export details drawer
+ * doesn't leave the user wondering what they unzipped into.
+ */
+function zipContents(zipName: string, _type: string | undefined): ZipEntry[] {
+  const baseName = zipName.replace(/\.zip$/i, "");
+  return [
+    {
+      name: `${baseName}.pdf`,
+      kind: "pdf",
+      label: "Printable PDF",
+    },
+    {
+      name: `${baseName}.ai`,
+      kind: "ai",
+      label: "Adobe Illustrator (PDF wrapper)",
+    },
+  ];
+}
+
+function FileIcon({
+  kind,
+  className,
+}: {
+  kind: ZipEntry["kind"];
+  className?: string;
+}) {
+  if (kind === "pdf") return <FileText className={className} />;
+  return <FileImage className={className} />;
 }
 
 function Section({
@@ -207,8 +249,13 @@ function ConfigSections({
       value: config.drawCropMarks ? "Yes" : "No",
     });
     lines.push({
-      label: "Include .ai bundle",
-      value: config.includeAi ? "Yes" : "No",
+      label: "Output format",
+      value:
+        config.outputFormat === "AI"
+          ? "AI (PDF wrapper)"
+          : config.outputFormat === "BOTH"
+            ? "PDF + AI (zip)"
+            : "PDF",
     });
   }
 
@@ -583,12 +630,24 @@ export function ExportDetailDrawer({
               {item.status === "FAILED" && item.errorMessage && (
                 <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span className="break-words">{item.errorMessage}</span>
+                  <div className="flex-1 space-y-1">
+                    <p className="font-medium">
+                      {summarizeIssue(item.errorMessage) ?? "Export failed"}
+                    </p>
+                    <details className="text-destructive/80">
+                      <summary className="cursor-pointer select-none text-[11px]">
+                        Technical details
+                      </summary>
+                      <p className="break-words mt-1 font-mono text-[11px]">
+                        {item.errorMessage}
+                      </p>
+                    </details>
+                  </div>
                 </div>
               )}
 
               <Section title="Export">
-                <DetailRow label="Format" value={item.format} />
+                <DetailRow label="Format" value={displayFormat(item)} />
                 <DetailRow
                   label="File name"
                   value={
@@ -599,6 +658,32 @@ export function ExportDetailDrawer({
                     )
                   }
                 />
+                {displayFormat(item) === "ZIP" && item.fileName && (
+                  <DetailRow
+                    label="Contains"
+                    value={
+                      <ul className="space-y-0.5 text-right">
+                        {zipContents(item.fileName, item.config?.type).map(
+                          (entry) => (
+                            <li
+                              key={entry.name}
+                              className="flex items-center justify-end gap-1.5"
+                            >
+                              <FileIcon
+                                kind={entry.kind}
+                                className="h-3 w-3 text-muted-foreground"
+                              />
+                              <span className="font-mono">{entry.name}</span>
+                              <span className="text-muted-foreground/70">
+                                · {entry.label}
+                              </span>
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    }
+                  />
+                )}
                 <DetailRow
                   label="File size"
                   value={formatBytes(item.fileSizeBytes) ?? "—"}

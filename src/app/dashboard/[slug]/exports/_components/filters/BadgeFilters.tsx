@@ -6,10 +6,12 @@ import { useGroups } from "@/api/client/groups";
 import type { BadgeConfig } from "@/features/exports/schemas/export-config.schema";
 import {
   BADGE_PAGE_SIZE_OPTIONS,
+  CheckList,
   FIT_OPTIONS,
   FieldGrid,
   GENDER_OPTIONS,
   GridPicker,
+  GridPreview,
   LANDSCAPE_GRID_OPTIONS,
   NumberInput,
   PAGE_ORIENTATION_OPTIONS,
@@ -21,6 +23,7 @@ import {
   SingleSelect,
   TemplatePicker,
   ToggleRow,
+  toggleId,
 } from "./controls";
 
 interface Props {
@@ -159,6 +162,19 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
                 set({ multiGrid: v as BadgeConfig["multiGrid"] })
               }
             />
+            <GridPreview
+              pageSize={value.pageSize}
+              pageOrientation={value.pageOrientation}
+              templateWidth={
+                (templates ?? []).find((t) => t.id === value.templateId)?.width ??
+                0
+              }
+              templateHeight={
+                (templates ?? []).find((t) => t.id === value.templateId)?.height ??
+                0
+              }
+              multiGrid={value.multiGrid}
+            />
           </div>
           <FieldGrid cols={3}>
             <NumberInput
@@ -205,13 +221,6 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
         />
       </FieldGrid>
 
-      <ToggleRow
-        label="Include editable illustration"
-        hint="Bundle the PDF with an editable .ai source inside a single .zip download."
-        checked={value.includeAi}
-        onChange={(v) => set({ includeAi: v })}
-      />
-
       <SegmentedControl
         label="Gender"
         value={value.gender}
@@ -227,13 +236,14 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           value={value.categoryIds[0] ?? null}
           onChange={(id) => set({ categoryIds: id ? [id] : [] })}
         />
-        <SingleSelect
-          label="Team"
-          hint="Required — one team per export keeps the bundle under the Vercel Hobby upload limit."
-          required
+        <CheckList
+          label="Teams"
+          hint="Leave empty to include all teams."
           options={teams ?? []}
-          value={value.teamIds[0] ?? null}
-          onChange={(id) => set({ teamIds: id ? [id] : [] })}
+          selected={value.teamIds}
+          onToggle={(id, v) =>
+            set({ teamIds: toggleId(value.teamIds, id, v) })
+          }
         />
       </FieldGrid>
     </div>

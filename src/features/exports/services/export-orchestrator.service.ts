@@ -72,10 +72,23 @@ export async function createAndRunExport(
 ): Promise<{ id: string; status: "QUEUED" | "PROCESSING" }> {
   const { summary } = buildExportSummary(request.config);
 
+  // The DB's `format` column stays `"PDF"` for template exports regardless
+  // of the user's footer choice (PDF / AI / BOTH) — the actual on-disk
+  // format comes from `config.outputFormat`, the column is purely for
+  // display and queue-time routing. The display layer derives "AI" from
+  // the row's `fileName` extension after finalize.
+  const persistedFormat: "PDF" | "CSV" | "AI" = isTemplateExport(
+    request.config.type,
+  )
+    ? "PDF"
+    : request.format === "AI"
+      ? "AI"
+      : request.format;
+
   const row = await ExportRepo.createExport({
     festivalId: request.festivalId,
     type: request.config.type,
-    format: request.format,
+    format: persistedFormat,
     summary,
     config: request.config,
     createdBy: request.userId,
