@@ -366,12 +366,9 @@ export function FestivalLiveClient({
       burst(source, angle, particlesPerSource);
     }
     timers.push(
-      window.setTimeout(
-        () => {
-          for (const { source } of sources) source.remove();
-        },
-        particleLifetimeSeconds * 1_000,
-      ),
+      window.setTimeout(() => {
+        for (const { source } of sources) source.remove();
+      }, particleLifetimeSeconds * 1_000),
     );
 
     celebrationCleanup.current = () => {
@@ -697,7 +694,11 @@ export function FestivalLiveClient({
           />
 
           {dnsRows.length > 0 && (
-            <DnsRecordsCard rows={dnsRows} extraRows={extraDnsRows} />
+            <DnsRecordsCard
+              rows={dnsRows}
+              extraRows={extraDnsRows}
+              phase={status.phase}
+            />
           )}
 
           {domainState.isOwner && domainState.customDomain && (

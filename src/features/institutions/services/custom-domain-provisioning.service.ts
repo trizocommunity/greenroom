@@ -92,14 +92,19 @@ export async function probeHttpsReady(
     // (2) Vercel sometimes serves the challenge inline (no redirect). The
     // body is plain HTML with markers our app never emits. Reading the body
     // costs a few KB once every 15s while a cert is in flight — acceptable.
+    //
+    // Vercel's other "not our deploy" pages also terminate TLS at the edge
+    // without redirecting, so they pass the URL guard above:
+    //   * "Verification Required" — ownership not yet proven to Vercel.
+    //   * "DEPLOYMENT_NOT_FOUND" — host is not attached to any deployment
+    //     (the common cause of a permanent 404 at a custom domain).
+    //   * "Domain Misconfigured" — DNS points at Vercel but isn't accepted.
+    // None of these strings appear in our app's HTML, so any match means
+    // the host is NOT serving our deploy and must not be stamped ready.
     const contentType = res.headers.get("content-type") ?? "";
     if (contentType.includes("text/html")) {
       const body = await res.text();
-      if (
-        /verify\s+domain|verification\s+required|add\s+a\s+txt\s+record/i.test(
-          body,
-        )
-      ) {
+      if (isVercelNotOurDeployPage(body)) {
         return false;
       }
     }
@@ -109,6 +114,31 @@ export async function probeHttpsReady(
     // DNS failure, TLS error, timeout, or connection refused — not ready.
     return false;
   }
+}
+
+/** Marker strings Vercel emits in its "this isn't our deploy" pages.
+ *
+ * Kept in one place so `probeHttpsReady` and the test suite can stay in sync.
+ * All phrases must be substrings Vercel actually ships — our own HTML never
+ * contains them, so any match is a reliable "not our app" signal even though
+ * the response URL is still our host and the status code is often 200.
+ */
+const VERCEL_NOT_OUR_DEPLOY_MARKERS: readonly RegExp[] = [
+  // Ownership challenge — Vercel serves it inline when it can't yet verify
+  // the host's DNS is pointed at it.
+  /verify\s+domain/i,
+  /verification\s+required/i,
+  /add\s+a\s+txt\s+record/i,
+  // Host isn't attached to any deployment on the team — the 404 you get when
+  // the apex CNAME points at Vercel but no project claims the subdomain.
+  /deployment[\s_-]*not[\s_-]*found/i,
+  /this\s+deployment\s+cannot\s+be\s+found/i,
+  // DNS is reaching Vercel but the configuration Vercel sees isn't accepted.
+  /domain[\s_-]*misconfigured/i,
+];
+
+function isVercelNotOurDeployPage(body: string): boolean {
+  return VERCEL_NOT_OUR_DEPLOY_MARKERS.some((re) => re.test(body));
 }
 
 function detailForAttach(status: VercelAttachStatus): string | undefined {

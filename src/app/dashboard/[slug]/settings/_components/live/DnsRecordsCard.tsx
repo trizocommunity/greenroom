@@ -1,12 +1,12 @@
 "use client";
 
-import { Copy, ExternalLink } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
 
 import { CopyIconButton } from "./copy";
-import type { DnsRow } from "./types";
+import type { CustomDomainPhase, DnsRow } from "./types";
 
 /** The DNS table the operator must copy into their registrar. Two layouts:
  *   - desktop (lg+): full table with TYPE / HOSTNAME / VALUE / TTL / STATUS.
@@ -19,9 +19,11 @@ import type { DnsRow } from "./types";
 export function DnsRecordsCard({
   rows,
   extraRows,
+  phase,
 }: {
   rows: DnsRow[];
   extraRows: DnsRow[];
+  phase: CustomDomainPhase;
 }) {
   if (rows.length === 0) return null;
 
@@ -104,7 +106,7 @@ export function DnsRecordsCard({
               <span className="text-xs text-muted-foreground">
                 {defaultTtlFor(row.type)}
               </span>
-              <RecordStatus />
+              <RecordStatus phase={phase} />
             </div>
           ))}
         </div>
@@ -186,22 +188,46 @@ function RecordCard({ row }: { row: DnsRow }) {
   );
 }
 
-/** Status pill per record. We currently can't probe DNS ourselves, so this is
- * a static "Pending" hint that matches the phase badge so the two surfaces
- * don't disagree. The orchestrator will pass per-record state once the
- * status endpoint exposes it. */
-function RecordStatus() {
-  // The orchestrator replaces this with real per-record status once the
-  // status endpoint exposes it; for now we render a hint that matches the
-  // phase badge so the two surfaces don't disagree.
-  return (
-    <Badge
-      variant="outline"
-      className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-    >
-      ● Pending
-    </Badge>
-  );
+/** Status pill per record. The DNS rows the table shows are the ones the
+ * operator has to add at the registrar — "verified" means our server-side
+ * ownership probe already matched both, regardless of whether the cert has
+ * come up yet. We don't probe DNS per-row from the browser; the phase badge
+ * (driven by the status endpoint) is the source of truth and we just match
+ * its verdict so the two surfaces don't disagree. */
+function RecordStatus({ phase }: { phase: CustomDomainPhase }) {
+  switch (phase) {
+    case "provisioning":
+    case "manual-attach":
+    case "https-ready":
+      return (
+        <Badge
+          variant="outline"
+          className="border-green-600/30 bg-green-500/15 text-green-700 dark:text-green-400"
+        >
+          <CheckCircle2 className="mr-1 h-3 w-3" />
+          Verified
+        </Badge>
+      );
+    case "error":
+      return (
+        <Badge
+          variant="outline"
+          className="border-destructive/40 bg-destructive/10 text-destructive"
+        >
+          ✗ Issue
+        </Badge>
+      );
+    case "awaiting-dns":
+    default:
+      return (
+        <Badge
+          variant="outline"
+          className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+        >
+          ● Pending
+        </Badge>
+      );
+  }
 }
 
 function defaultTtlFor(type: string): string {
