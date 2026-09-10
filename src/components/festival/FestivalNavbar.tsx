@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -78,25 +77,10 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
       <div
         className={`${PUBLIC_CONTAINER} h-16 flex items-center justify-between gap-4`}
       >
-        {/* Festival mark */}
-        <Link
-          href={linkBase || "/"}
-          className="flex min-w-0 items-center gap-2.5"
-        >
-          {festival.logo ? (
-            <Image
-              src={festival.logo}
-              alt=""
-              width={32}
-              height={32}
-              className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border"
-            />
-          ) : (
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-              {festival.name.charAt(0)}
-            </span>
-          )}
-          <span className="hidden truncate text-[15px] font-semibold tracking-tight text-heading sm:block">
+        {/* Festival mark — text-only now (the avatar chip / logo was visual
+            noise on a 64px navbar); the name carries the brand on its own. */}
+        <Link href={linkBase || "/"} className="flex min-w-0 items-center">
+          <span className="truncate text-[15px] font-bold tracking-tight text-heading">
             {festival.name}
           </span>
         </Link>

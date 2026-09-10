@@ -16,13 +16,6 @@ export type FestivalCountdownProps = {
   location?: string | null;
   logo?: string | null;
   branding?: unknown;
-  /**
-   * Variant selector:
-   * - `page`  — full h-screen offline page; big countdown, hero typography.
-   * - `banner` — compact single-line pill that renders inline above the
-   *              public site when the festival is live.
-   */
-  variant: "page" | "banner";
   className?: string;
 };
 
@@ -64,7 +57,6 @@ export function FestivalCountdown({
   location,
   logo,
   branding,
-  variant,
   className,
 }: FestivalCountdownProps) {
   const { accentColor } = useMemo(() => {
@@ -79,28 +71,13 @@ export function FestivalCountdown({
     [startDate, endDate],
   );
 
-  // Banner variant: don't render anything once the festival is over —
-  // ExpiredFestivalView takes over for that surface.
-  if (variant === "banner" && initial.phase === "ended") return null;
-
-  if (variant === "page") {
-    return (
-      <PageCountdown
-        festivalName={festivalName}
-        tagline={tagline}
-        description={description}
-        location={location}
-        logo={logo}
-        accentColor={accentColor}
-        status={initial}
-        className={className}
-      />
-    );
-  }
-
   return (
-    <BannerCountdown
+    <PageCountdown
       festivalName={festivalName}
+      tagline={tagline}
+      description={description}
+      location={location}
+      logo={logo}
       accentColor={accentColor}
       status={initial}
       className={className}
@@ -203,53 +180,5 @@ function PageCountdown({
         </dl>
       </div>
     </section>
-  );
-}
-
-function BannerCountdown({
-  festivalName,
-  accentColor,
-  status,
-  className,
-}: {
-  festivalName: string;
-  accentColor: string;
-  status: ReturnType<typeof statusForDates>;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "sticky top-16 z-30 w-full border-b backdrop-blur supports-[backdrop-filter]:bg-background/80",
-        "bg-background/95",
-        className,
-      )}
-      // Accent strip — narrow band that ties the banner to the festival brand
-      // without competing with the navbar above it.
-      style={{ borderTopColor: accentColor }}
-    >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2 text-xs sm:text-sm">
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className="inline-block h-2 w-2 shrink-0 rounded-full"
-            style={{ backgroundColor: accentColor }}
-            aria-hidden
-          />
-          <span className="truncate font-medium text-foreground">
-            {festivalName}
-          </span>
-          <span className="hidden text-muted-foreground sm:inline">·</span>
-          <span className="hidden truncate text-muted-foreground sm:inline">
-            {status.label}
-          </span>
-        </div>
-        {status.target && (
-          <DeadlineCountdownLarge
-            target={status.target}
-            className="text-foreground"
-          />
-        )}
-      </div>
-    </div>
   );
 }

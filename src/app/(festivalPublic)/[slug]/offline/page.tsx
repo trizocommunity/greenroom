@@ -34,7 +34,6 @@ export default async function FestivalOfflinePage({
   return (
     <CustomDomainProvider customDomain={customDomain}>
       <FestivalCountdown
-        variant="page"
         festivalName={festival.name}
         tagline={festival.tagline}
         description={festival.description}
