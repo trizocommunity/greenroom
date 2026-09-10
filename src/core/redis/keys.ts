@@ -196,6 +196,10 @@ export const keys = {
   festivalResultsCount(festivalId: string): string {
     return key("festival", festivalId, "results-count");
   },
+  /** `greenroom:festival:<festivalId>:launch-control` — stage controller */
+  festivalLaunchControl(festivalId: string): string {
+    return key("festival", festivalId, "launch-control");
+  },
   /** `greenroom:foodhall:<slotId>:events` — UC9 */
   foodHallEvents(slotId: string): string {
     return key("foodhall", slotId, "events");
@@ -217,6 +221,24 @@ export const keys = {
   /** `greenroom:cloudinary-sig:<userId>` */
   cloudinarySig(userId: string): string {
     return key("cloudinary-sig", userId);
+  },
+
+  // ── Launch control (remote stage controller) ───────────────────────
+  /** `greenroom:launch-pairing:<token>` — JSON payload, TTL = festival life. */
+  launchPairing(token: string): string {
+    return key("launch-pairing", token);
+  },
+  /** `greenroom:launch-pairing:code:<code>` — code→token lookup index. */
+  launchPairingCode(code: string): string {
+    return key("launch-pairing", "code", code);
+  },
+  /** `greenroom:launch-pairing:active:<festivalId>` — current token per festival. */
+  launchPairingActive(festivalId: string): string {
+    return key("launch-pairing", "active", festivalId);
+  },
+  /** `greenroom:launch-trigger:<festivalId>` — idempotency SETNX guard. */
+  launchTriggerGuard(festivalId: string): string {
+    return key("launch-trigger", festivalId);
   },
 } as const;
 

@@ -11,6 +11,7 @@ import { ExternalLink, Rocket } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/core/utils/cn";
+import { useEventSource } from "@/hooks/use-event-source";
 import styles from "./LaunchOverlay.module.css";
 
 /** Fullscreen surface that doubles as the launch buzzer (offline) and the
@@ -25,6 +26,7 @@ export function LaunchOverlay({
   justLaunched,
   publicUrl,
   isReadOnly,
+  festivalId,
   onPreviewReady,
   onClose,
   onLaunch,
@@ -37,13 +39,54 @@ export function LaunchOverlay({
   justLaunched: boolean;
   publicUrl: string;
   isReadOnly: boolean;
+  festivalId?: string;
   onPreviewReady: () => void;
   onClose: () => void;
-  onLaunch: () => Promise<void> | void;
+  /**
+   * Trigger the local launch choreography. `initiatedBy="operator"` is
+   * the default — used when the operator clicks the buzzer / presses
+   * Space. `initiatedBy="remote"` is used by the SSE subscriber so the
+   * parent can apply the post-take-offline cooldown only to remote
+   * triggers (operator clicks always pass through).
+   */
+  onLaunch: (opts?: {
+    initiatedBy?: "operator" | "remote";
+  }) => Promise<void> | void;
   onRevealComplete: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Listen for LAUNCH events from a paired stage controller. Auth uses the
+  // admin session cookie (this tab is already authenticated), so no token
+  // is required on this end. The channel is no-op when no stage controller
+  // has been paired — the existing local Space/click path stays primary.
+  const { data: launchEvent } = useEventSource<{
+    type: "LAUNCH" | "RESET" | string;
+    at?: number;
+  }>({
+    url:
+      open && festivalId
+        ? `/api/v1/festivals/${encodeURIComponent(
+            festivalId,
+          )}/launch-control/stream`
+        : "",
+    withCredentials: true,
+    parse: (raw) => raw as { type: string; at?: number },
+  });
+
+  // When a paired stage controller fires, run the same local launch
+  // choreography the dashboard button would. The server already SETNX'd
+  // the duplicate-guard, so a network retry between this device and the
+  // server can't double-fire `setPublicSiteEnabledAction`. We pass
+  // `initiatedBy: "remote"` so the parent's post-take-offline cooldown
+  // can ignore stale events without blocking real operator clicks.
+  useEffect(() => {
+    if (!launchEvent) return;
+    if (launchEvent.type === "LAUNCH" && !isLive && !isReadOnly) {
+      void onLaunch({ initiatedBy: "remote" });
+    }
+  }, [launchEvent, isLive, isReadOnly, onLaunch]);
 
   // Esc closes the overlay; Space launches the buzzer while it's showing and
   // the preview is ready. Body scroll is locked while the overlay is open so

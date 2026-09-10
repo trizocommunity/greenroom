@@ -158,6 +158,40 @@ describe("probeHttpsReady", () => {
     await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(false);
   });
 
+  it("returns false for Vercel's DEPLOYMENT_NOT_FOUND page (host not attached to any project)", async () => {
+    // The exact body Vercel returns when a custom-domain CNAME reaches the
+    // edge but no deployment on the team claims the hostname. Reproduces the
+    // bug where the probe stamped a host ready even though the page was
+    // Vercel's own 404.
+    const html = `<!doctype html><html><head><title>404: NOT_FOUND</title></head><body><h1>404: NOT_FOUND</h1><p>Code: \`DEPLOYMENT_NOT_FOUND\`</p><p>ID: \`bom1::zs285-1789051121752-f1f63672db5e\`</p><p>This deployment cannot be found.</p></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 404,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      ),
+    );
+
+    await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(false);
+  });
+
+  it("returns false for Vercel's misconfigured-domain page", async () => {
+    const html = `<!doctype html><html><body><h1>Domain Misconfigured</h1><p>DNS for this host is not pointing at Vercel.</p></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      ),
+    );
+
+    await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(false);
+  });
+
   it("returns true for a real Greenroom HTML response", async () => {
     const html = `<!doctype html><html><head><title>Festival</title></head><body>...</body></html>`;
     vi.stubGlobal(
@@ -515,6 +549,8 @@ describe("reconcileFestivalDomain", () => {
     mockFindInstitutionById.mockResolvedValue(institution());
     mockAddDomainToProject.mockRejectedValue(new Error("rate limited"));
 
-    await expect(reconcileFestivalDomain("fest_1", true)).resolves.toBeUndefined();
+    await expect(
+      reconcileFestivalDomain("fest_1", true),
+    ).resolves.toBeUndefined();
   });
 });

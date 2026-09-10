@@ -20,9 +20,10 @@ interface HeroSectionProps {
 }
 
 /**
- * The festival masthead: the name at display size, one line of facts under a
- * hairline, and two links. Everything decorative is driven by the festival's
- * own accent colour so each portal reads as its own brand, not as ours.
+ * The festival masthead: brand mark on the left, name + facts + CTAs on the
+ * right, on a viewport-tall stage. Everything decorative is driven by the
+ * festival's own accent colour so each portal reads as its own brand, not as
+ * ours.
  */
 export function HeroSection({
   festival,
@@ -107,7 +108,7 @@ export function HeroSection({
     // the inner pages) so the accent wash reaches the top of the viewport
     // instead of starting below a blank band. The extra top padding puts the
     // content back where it was.
-    <section className="relative -mt-16 overflow-hidden pb-14 pt-36 md:pb-20 md:pt-44">
+    <section className="relative -mt-16 flex min-h-screen items-center overflow-hidden pt-16">
       {/* One wide wash in the festival's colour, fading down the page */}
       <div
         aria-hidden
@@ -117,85 +118,115 @@ export function HeroSection({
         }}
       />
 
-      <div className={`relative ${PUBLIC_CONTAINER}`}>
+      <div className={`relative w-full ${PUBLIC_CONTAINER}`}>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-3xl"
+          className="grid items-center gap-6 text-center md:grid-cols-[minmax(0,auto)_minmax(0,1fr)] md:gap-12 md:text-left"
         >
-          <div className="mb-7 flex items-center gap-4">
-            {festival.logo && (
-              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full ring-1 ring-border">
+          {/* Brand mark on the left. We render the image with `object-contain`
+              inside a fixed-aspect frame so a 512px upload never crops or
+              stretches to fit — the wrapper absorbs the aspect ratio and the
+              image scales to the longer edge. The hover lift gives the mark a
+              tactile, interactive feel without needing a border. Without a
+              logo we fall back to an initial chip so the layout still
+              balances. */}
+          <div className="flex items-center justify-center md:justify-end">
+            {festival.logo ? (
+              <div
+                className="group/logo relative h-48 w-48 shrink-0 overflow-hidden rounded-3xl transition duration-500 hover:-translate-y-1 sm:h-56 sm:w-56 md:h-72 md:w-72 lg:h-80 lg:w-80"
+                aria-hidden
+              >
                 <Image
                   src={festival.logo}
                   alt=""
-                  width={48}
-                  height={48}
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 20rem, (min-width: 768px) 18rem, 14rem"
+                  className="object-contain p-4 transition duration-500 group-hover/logo:scale-[1.04]"
                 />
               </div>
-            )}
-            {isLive && (
-              <span
-                className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em]"
-                style={{ color: accentColor }}
+            ) : (
+              <div
+                className="flex h-48 w-48 shrink-0 items-center justify-center rounded-3xl text-5xl font-semibold text-white transition duration-500 hover:-translate-y-1 sm:h-56 sm:w-56 md:h-72 md:w-72 lg:h-80 lg:w-80"
+                style={{ backgroundColor: accentColor }}
+                aria-hidden
               >
-                <span
-                  className="animate-pulse-dot h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: accentColor }}
-                />
-                Live now
-              </span>
+                {festival.name.charAt(0)}
+              </div>
             )}
           </div>
 
-          <h1 className="text-balance text-[2.5rem] font-semibold leading-[1.02] tracking-tight text-heading sm:text-6xl md:text-7xl">
-            {festival.name}
-          </h1>
+          {/* Content on the right */}
+          <div className="min-w-0">
+            <div className="mb-5 flex items-center justify-center gap-3 md:justify-start">
+              {isLive && (
+                <span
+                  className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em]"
+                  style={{ color: accentColor }}
+                >
+                  <span
+                    className="animate-pulse-dot h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: accentColor }}
+                  />
+                  Live now
+                </span>
+              )}
+            </div>
 
-          {festival.tagline && (
-            <p className="mt-5 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-              {festival.tagline}
-            </p>
-          )}
+            <h1 className="whitespace-nowrap text-balance text-[1.75rem] font-bold leading-[1.05] tracking-tight text-heading sm:text-4xl md:text-6xl lg:text-7xl">
+              {festival.name}
+            </h1>
 
-          {/* Facts sit under a rule tinted with the festival colour */}
-          {facts.length > 0 && (
-            <>
-              <motion.div
-                aria-hidden
-                className="mt-9 h-px origin-left"
-                style={{
-                  background: `linear-gradient(90deg, ${accentColor}, transparent)`,
-                }}
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.8, delay: 0.25, ease: "easeOut" }}
-              />
-              <dl className="mt-5 flex flex-wrap gap-x-12 gap-y-4">
-                {facts.map((fact) => (
-                  <div key={fact}>
-                    <dd className="text-sm font-medium text-heading">{fact}</dd>
-                  </div>
-                ))}
-              </dl>
-            </>
-          )}
-
-          <div className="mt-9 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm font-medium">
-            <HeroLink
-              href={basicMode ? "#results" : `${basePath}/results`}
-              accentColor={accentColor}
-              primary
-            >
-              View results
-            </HeroLink>
-            {!basicMode && (
-              <HeroLink href={`${basePath}/schedule`} accentColor={accentColor}>
-                Schedule
-              </HeroLink>
+            {festival.tagline && (
+              <p className="mx-auto mt-5 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg md:mx-0">
+                {festival.tagline}
+              </p>
             )}
+
+            {/* Facts sit under a rule tinted with the festival colour */}
+            {facts.length > 0 && (
+              <>
+                <motion.div
+                  aria-hidden
+                  className="mx-auto mt-9 h-px origin-center md:mx-0 md:origin-left"
+                  style={{
+                    background: `linear-gradient(90deg, ${accentColor}, transparent)`,
+                  }}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.8, delay: 0.25, ease: "easeOut" }}
+                />
+                <dl className="mt-5 flex flex-wrap justify-center gap-x-12 gap-y-4 md:justify-start">
+                  {facts.map((fact) => (
+                    <div key={fact}>
+                      <dd className="text-sm font-medium text-heading">
+                        {fact}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
+            )}
+
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3 text-sm font-medium md:justify-start">
+              <HeroLink
+                href={basicMode ? "#results" : `${basePath}/results`}
+                accentColor={accentColor}
+                outline
+              >
+                View results
+              </HeroLink>
+              {!basicMode && (
+                <HeroLink
+                  href={`${basePath}/schedule`}
+                  accentColor={accentColor}
+                  outline
+                >
+                  Schedule
+                </HeroLink>
+              )}
+            </div>
           </div>
         </motion.div>
       </div>
@@ -206,20 +237,26 @@ export function HeroSection({
 function HeroLink({
   href,
   accentColor,
-  primary = false,
+  outline = false,
   children,
 }: {
   href: string;
   accentColor: string;
-  primary?: boolean;
+  /** Outlined pill — used on the home hero so the two CTAs sit at the same
+   *  weight. The original "primary" filled variant is intentionally dropped
+   *  from this surface to match the reference wireframe. */
+  outline?: boolean;
   children: React.ReactNode;
 }) {
-  if (primary) {
+  if (outline) {
     return (
       <Link
         href={href}
-        className="group inline-flex h-11 items-center gap-2 rounded-full px-6 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        style={{ backgroundColor: accentColor }}
+        className="group inline-flex h-11 items-center gap-2 rounded-full border px-6 text-sm font-medium transition-colors hover:bg-foreground hover:text-background"
+        style={{
+          borderColor: accentColor,
+          color: accentColor,
+        }}
       >
         {children}
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />

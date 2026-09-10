@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  isCloudinaryUrl,
+  resizeCloudinaryImage,
+} from "@/core/integrations/cloudinary-transform";
 import { findFestivalBySlugForPublic } from "@/features/festivals/repositories/festival.repository";
 import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
 
@@ -27,7 +31,17 @@ export async function GET(
     initials,
   )}&background=${themeColor.replace("#", "")}&color=fff&size=512`;
 
-  const iconUrl = branding?.logo || fallbackIconUrl;
+  const rawLogo = branding?.logo ?? null;
+  /* PWA manifest needs the logo at exact 192px and 512px square — never
+     serve the raw upload at that size. Rewrite Cloudinary URLs; pass
+     non-Cloudinary sources through (the browser will still render them
+     but they may not satisfy install requirements). */
+  const iconAt = (size: number) =>
+    rawLogo
+      ? isCloudinaryUrl(rawLogo)
+        ? resizeCloudinaryImage(rawLogo, { width: size, height: size })
+        : rawLogo
+      : fallbackIconUrl;
 
   const manifest = {
     name: festival.name,
@@ -42,8 +56,14 @@ export async function GET(
     theme_color: themeColor,
     icons: [
       {
-        src: iconUrl,
-        sizes: "192x192 512x512",
+        src: iconAt(192),
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: iconAt(512),
+        sizes: "512x512",
         type: "image/png",
         purpose: "any maskable",
       },
