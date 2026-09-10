@@ -47,7 +47,7 @@ export default async function ResultsPage({
       : "#000000";
 
   // Only the first page of programmes is rendered server-side; the client
-  // pulls further pages from /api/festivals/[slug]/results on demand.
+  // pulls further pages from /api/v1/festivals/festivals/[slug]/results on demand.
   const initialResults = await getPublicProgrammeResults(festival.id, {
     page: 1,
   });

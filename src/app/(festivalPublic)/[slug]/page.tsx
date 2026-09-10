@@ -54,7 +54,7 @@ export default async function FestivalPage({
     const hasPdf = !!festival.resultPdfUrl || hasResults;
     const downloadPdfUrl = festival.resultPdfUrl
       ? festival.resultPdfUrl
-      : `/api/festivals/${festival.slug}/expired-results-pdf`;
+      : `/api/v1/festivals/festivals/${festival.slug}/expired-results-pdf`;
 
     return (
       <ExpiredFestivalView

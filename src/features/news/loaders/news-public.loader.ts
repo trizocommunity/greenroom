@@ -37,7 +37,7 @@ const PUBLIC_NEWS_TTL_MS = 10 * 60 * 1000;
  *
  * Posts carry their full `content`, so a festival with a busy news feed used
  * to ship every article inside the first HTML payload. The page size caps
- * that; further pages come from `/api/festivals/[slug]/news`.
+ * that; further pages come from `/api/v1/festivals/festivals/[slug]/news`.
  *
  * Page 1 is cached per festivalId for 10 minutes — append-only writes mean
  * stale pages are fine and the cache invalidates on every news write.

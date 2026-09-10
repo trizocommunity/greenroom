@@ -157,6 +157,13 @@ export default async function FestivalLayout({
 
   const branding = getBrandingFromJson(festival.branding);
 
+  // The accent also travels as an `accentColor` prop down to every leaf,
+  // which is fine for a solid fill and useless for `color-mix()` from a
+  // Tailwind class. Setting it once as a custom property lets any descendant
+  // reach it in an arbitrary value, a keyframe or a pseudo-element with no
+  // prop threading. Same fallback as `generateMetadata` above.
+  const accentColor = branding?.colors?.primary || "#d72626";
+
   const festivalData = {
     id: festival.id,
     name: festival.name,
@@ -232,7 +239,10 @@ export default async function FestivalLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <div className="min-h-screen flex flex-col">
+        <div
+          className="min-h-screen flex flex-col"
+          style={{ "--fest": accentColor } as React.CSSProperties}
+        >
           <FestivalNavbar festival={festivalData as any} />
           <main className="flex-1 pt-16">
             {festival.publicSiteEnabled && !expired && (

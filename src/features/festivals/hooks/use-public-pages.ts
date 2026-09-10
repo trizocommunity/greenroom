@@ -51,7 +51,7 @@ export function usePublicPages<T>({
   pageSize,
   initialParams,
 }: {
-  /** e.g. `/api/festivals/noor-fest/news` */
+  /** e.g. `/api/v1/festivals/festivals/noor-fest/news` */
   endpoint: string;
   /** Pulls the array out of the endpoint's payload. */
   select: (data: unknown) => T[];

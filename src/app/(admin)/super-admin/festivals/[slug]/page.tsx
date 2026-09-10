@@ -54,7 +54,7 @@ export default async function AdminFestivalDetailPage({
     isExpired && (!!festival.resultPdfUrl || expiredResults.length > 0);
   const downloadPdfUrl = festival.resultPdfUrl
     ? festival.resultPdfUrl
-    : `/api/festivals/${festival.slug}/expired-results-pdf`;
+    : `/api/v1/festivals/festivals/${festival.slug}/expired-results-pdf`;
 
   return (
     <div className="space-y-6">

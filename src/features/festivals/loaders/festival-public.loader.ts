@@ -24,6 +24,9 @@ export type PublicFestivalData = {
     branding: any;
     status: "READY" | "ONGOING" | "PAST" | "EXPIRED";
     expiresAt: string | null;
+    /** raw organiser-set dates, null when never set — see `event` below */
+    startDate: string | null;
+    endDate: string | null;
     resultPdfUrl: string | null;
     tier: "BASIC" | "STANDARD" | "PRO" | null;
     publicSiteEnabled: boolean;
@@ -70,6 +73,8 @@ async function loadPublicFestivalData(
       isLocked: true,
       createdAt: true,
       expiresAt: true,
+      startDate: true,
+      endDate: true,
       resultPdfUrl: true,
       location: true,
       publicSiteEnabled: true,
@@ -91,8 +96,12 @@ async function loadPublicFestivalData(
     return null;
   }
 
-  const startDate = festival.createdAt;
+  // prefer the organiser's real festival dates. the fallback chain below is the
+  // 90-day SaaS billing window, which the public site used to render as if it
+  // were the event itself — a countdown to an invoice, not to the festival.
+  const startDate = festival.startDate || festival.createdAt;
   const endDate =
+    festival.endDate ||
     festival.expiresAt ||
     new Date(
       new Date(festival.createdAt).getTime() +

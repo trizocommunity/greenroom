@@ -10,6 +10,7 @@ import {
   FestivalLiveClient,
 } from "./FestivalLiveClient";
 import { LimitationPolicyClient } from "./LimitationPolicyClient";
+import { NeedDnsSupportCard } from "./live/NeedDnsSupportCard";
 import { SettingsForm } from "./SettingsForm";
 
 interface SettingsTabsProps {
@@ -139,6 +140,14 @@ export function SettingsTabs({
             );
           })}
         </nav>
+
+        {/* Promo card under the nav — only surfaces on the Launch Website tab
+            because that's the only tab where DNS setup actually happens. */}
+        {currentTab === "festival-live" && (
+          <div className="hidden lg:block mt-3">
+            <NeedDnsSupportCard />
+          </div>
+        )}
       </aside>
 
       <main className="flex-1 min-w-0">
