@@ -207,6 +207,14 @@ export const institution = pgTable(
     ownerId: text().notNull(),
     /** Apex domain for branded festival hosts, e.g. "ahlussuffa.in". */
     customDomain: text(),
+    /**
+     * Owner-controlled switch: when false, the branded URL is hidden from share
+     * links and Overview widgets even though the apex and Vercel host are still
+     * configured. Lets owners pause a custom domain without losing setup state
+     * (verification, attached host, cert). Defaults to true once an apex is
+     * saved — "off" only happens after an explicit Disconnect.
+     */
+    customDomainConnected: boolean().default(true).notNull(),
     /** Set when DNS TXT + wildcard CNAME verify succeeds. */
     verifiedAt: tzTimestamp(),
     /** Set when Vercel wildcard TLS is ready (Phase 2). Null until HTTPS works. */

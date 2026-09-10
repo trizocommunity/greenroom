@@ -156,6 +156,13 @@ export function buildFestivalHost(
 export type InstitutionDomainFields = {
   customDomain: string | null;
   verifiedAt: string | Date | null;
+  /**
+   * Owner-controlled switch. When false, the branded URL is hidden from share
+   * links even if the cert is up. Defaults to true; only Disconnect flips it.
+   * Optional in this type so existing call sites don't need to provide it —
+   * `undefined` is treated as connected (the historical behaviour).
+   */
+  customDomainConnected?: boolean | null;
 };
 
 /**
@@ -198,12 +205,16 @@ export function isCustomDomainPhasePending(phase: CustomDomainPhase): boolean {
 
 /**
  * Public base URL for a festival: the branded host only once *that host* has
- * served a real certificate. Falls back to the Greenroom path URL otherwise.
+ * served a real certificate AND the owner has not paused the custom domain.
+ * Falls back to the Greenroom path URL otherwise.
  *
- * The gate is `domainHttpsReadyAt` on the festival, not on the institution:
- * certificates are issued per host over HTTP-01, so a verified apex says nothing
- * about whether this particular festival's host is serving yet. Advertising a
- * branded URL before then hands out a link that fails to connect.
+ * Three independent gates, all of which must hold to advertise a branded URL:
+ *   1. `institution.customDomain` is set and shaped (apex is configured).
+ *   2. The festival's own `domainHttpsReadyAt` is stamped (cert is live for
+ *      this specific host — not just the institution apex).
+ *   3. `institution.customDomainConnected !== false` (owner hasn't paused the
+ *      custom domain via Disconnect). `null` / `undefined` is treated as
+ *      connected, matching the default.
  */
 export function getPublicFestivalBaseUrl(opts: {
   slug: string;
@@ -215,7 +226,9 @@ export function getPublicFestivalBaseUrl(opts: {
     ? buildFestivalHost(slug, opts.institution.customDomain)
     : null;
 
-  if (host && opts.domainHttpsReadyAt) {
+  const isConnected = opts.institution?.customDomainConnected !== false;
+
+  if (host && opts.domainHttpsReadyAt && isConnected) {
     return `https://${host}`;
   }
 

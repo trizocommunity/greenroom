@@ -106,6 +106,49 @@ describe("custom-domain helpers", () => {
     ).toBe("https://greenroomfestivals.in/zenoraev");
   });
 
+  it("getPublicFestivalBaseUrl falls back to path URL when customDomainConnected is false", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://greenroomfestivals.in";
+    // Owner has Disconnected: apex + verification + cert are all still there,
+    // but the branded URL must NOT be advertised. Share links go to the path.
+    expect(
+      getPublicFestivalBaseUrl({
+        slug: "suffamehil",
+        institution: {
+          customDomain: "ahlussuffa.in",
+          verifiedAt: "2026-01-01T00:00:00.000Z",
+          customDomainConnected: false,
+        },
+        domainHttpsReadyAt: "2026-01-01T00:05:00.000Z",
+      }),
+    ).toBe("https://greenroomfestivals.in/suffamehil");
+
+    // `null` and `undefined` are treated as connected (matches the column
+    // default and existing call sites that don't pass the field).
+    expect(
+      getPublicFestivalBaseUrl({
+        slug: "suffamehil",
+        institution: {
+          customDomain: "ahlussuffa.in",
+          verifiedAt: "2026-01-01T00:00:00.000Z",
+          customDomainConnected: null,
+        },
+        domainHttpsReadyAt: "2026-01-01T00:05:00.000Z",
+      }),
+    ).toBe("https://suffamehil.ahlussuffa.in");
+
+    expect(
+      getPublicFestivalBaseUrl({
+        slug: "suffamehil",
+        institution: {
+          customDomain: "ahlussuffa.in",
+          verifiedAt: "2026-01-01T00:00:00.000Z",
+          customDomainConnected: undefined,
+        },
+        domainHttpsReadyAt: "2026-01-01T00:05:00.000Z",
+      }),
+    ).toBe("https://suffamehil.ahlussuffa.in");
+  });
+
   it("getPublicFestivalBaseUrl falls back when no institution or domain", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://greenroomfestivals.in";
     expect(
