@@ -136,23 +136,20 @@ export async function generateMetadata({
 export default async function FestivalLayout({
   children,
   params,
-  searchParams,
 }: {
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug: festivalSlug } = await params;
+  const hdrs = await headers();
   // `?remote=1` is the launch-control mirror URL the stage device opens
   // after a successful launch. It renders the public site without the
   // navigation chrome (navbar, footer, banner countdown) so the guest's
   // screen reads as a passive monitor of the live reveal — not an
   // interactive surface that could be navigated away.
-  // `searchParams` is `undefined` when the request has no query string,
-  // so default to an empty record before reading keys.
-  const sp = (await searchParams) ?? {};
-  const remote = sp.remote === "1";
-  const hdrs = await headers();
+  // Layouts don't get `searchParams` in Next.js 15+, so the proxy
+  // forwards this flag as `x-festival-remote`.
+  const remote = hdrs.get("x-festival-remote") === "1";
   const institutionId = hdrs.get("x-institution-id");
   // Set by the proxy only on a branded host; links below drop the `/{slug}`
   // prefix when it is present.
