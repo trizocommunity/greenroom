@@ -10,9 +10,10 @@ import {
 import { Rocket } from "lucide-react";
 import party from "party-js";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useEventSource } from "@/hooks/use-event-source";
-import { cn } from "@/core/utils/cn";
 import styles from "@/app/dashboard/[slug]/settings/_components/live/LaunchOverlay.module.css";
+import { LaunchAnimation } from "@/components/festival/launch/LaunchAnimation";
+import { cn } from "@/core/utils/cn";
+import { useEventSource } from "@/hooks/use-event-source";
 
 /**
  * Stage-side launch controller. Mirrors the operator's display laptop
@@ -36,10 +37,17 @@ import styles from "@/app/dashboard/[slug]/settings/_components/live/LaunchOverl
  * Lifecycle:
  *   - SSE connects on mount, authenticated by `?token=` in the URL.
  *   - Space/Enter triggers `fire()` → POST /trigger.
- *   - LAUNCH event → small confetti burst; iframe is refreshed once
- *     (via contentWindow.location.reload) so the now-live site loads.
- *     The iframe's onLoad flips `liveIframeLoaded` so the pill can
- *     show "● Live" — the "active" indicator the operator asked for.
+ *   - LAUNCH event → small confetti burst (behind still-closed curtains);
+ *     iframe is refreshed once (via contentWindow.location.reload) so the
+ *     now-live site loads. Curtains STAY up until the iframe has finished
+ *     reloading — without this the guest sees the offline countdown
+ *     briefly flash between the buzzer vanishing and the live site
+ *     painting (the festival layout renders FestivalCountdown for
+ *     anonymous visitors while publicSiteEnabled is false, so the
+ *     iframe's previous document is the countdown).
+ *   - liveIframeLoaded false→true edge → LaunchAnimation reveal: curtains
+ *     sweep open and confetti bursts to expose the live site. Pill flips
+ *     to "● Live" simultaneously.
  *   - RESET event → state resets, button returns, iframe is hidden.
  *
  * The iframe src is *stable* (always `publicUrl`) — we never append a
@@ -82,6 +90,13 @@ export function StageLaunchController({
    */
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const lastLaunchedRef = useRef(false);
+  /**
+   * Monotonically increasing counter for the post-launch reveal animation.
+   * Bumped once on the false→true `liveIframeLoaded` edge so the
+   * `LaunchAnimation` (which is keyed by an integer, not a boolean) plays
+   * exactly once per launch without replaying on SSE reconnect.
+   */
+  const [revealKey, setRevealKey] = useState(0);
 
   const streamUrl = `/api/v1/festivals/${encodeURIComponent(
     festivalId,
@@ -202,6 +217,23 @@ export function StageLaunchController({
     lastLaunchedRef.current = launched;
   }, [launched]);
 
+  /**
+   * Bump `revealKey` once when the live iframe has actually painted.
+   * Tied to the false→true `liveIframeLoaded` edge (rather than
+   * `launched` directly) so the curtain reveal only fires after the
+   * new document has loaded — which is exactly the moment the
+   * countdown→live transition is complete. Without this gating, the
+   * guest sees the offline countdown flash between the buzzer
+   * vanishing and the live site painting.
+   */
+  const lastLiveLoadedRef = useRef(false);
+  useEffect(() => {
+    if (launched && liveIframeLoaded && !lastLiveLoadedRef.current) {
+      setRevealKey((k) => k + 1);
+    }
+    lastLiveLoadedRef.current = liveIframeLoaded;
+  }, [launched, liveIframeLoaded]);
+
   const connected = status === "open";
   const pillLabel = error
     ? "Error"
@@ -249,10 +281,16 @@ export function StageLaunchController({
 
       {/* Static closed curtains — visible pre-launch so the stage
           device looks like the operator's view: a closed "window" the
-          guest is about to open. After launch, the LaunchAnimation
-          takes over the curtain layer with the actual opening
-          animation. */}
-      {!launched && <ClosedCurtains />}
+          guest is about to open. We also keep them up *during* the
+          post-launch iframe reload: the iframe's previous document is
+          the FestivalCountdown (the public layout renders it for
+          anonymous visitors while `publicSiteEnabled` is false), so if
+          we unmount the curtains the moment `launched` flips true the
+          guest sees a half-second flash of the countdown before the
+          live site paints. The reveal happens via the LaunchAnimation
+          below, gated on `liveIframeLoaded` (i.e. the iframe has
+          finished loading the live content). */}
+      {(!launched || (launched && !liveIframeLoaded)) && <ClosedCurtains />}
 
       {/* The buzzer — pixel-identical to the operator's overlay. Same
           3D base (`styles.buzzerBase`), same red gradient top
@@ -271,6 +309,24 @@ export function StageLaunchController({
         />
       )}
 
+      {/* Curtain reveal — fires exactly once per launch, on the
+          liveIframeLoaded false→true edge, so the guest sees a single
+          coherent "curtains open → live site" moment rather than the
+          previous "buzzer vanishes → countdown flashes → site appears"
+          sequence. Keyed by `revealKey` so it doesn't replay on SSE
+          reconnect (LaunchAnimation no-ops when the key is unchanged). */}
+      {revealKey > 0 && (
+        <LaunchAnimation
+          playKey={revealKey}
+          onComplete={() => {
+            // No-op: the iframe is already painted by the time this
+            // animation completes. Hook left here in case a future
+            // post-reveal step needs to run (e.g. clear a transient
+            // overlay).
+          }}
+        />
+      )}
+
       {error && !launched && (
         <p className="absolute bottom-24 left-1/2 z-20 -translate-x-1/2 text-sm text-red-400 text-center max-w-sm px-4">
           {error}
@@ -279,8 +335,10 @@ export function StageLaunchController({
 
       {/* Minimal launch celebration: a small confetti burst fired
           synchronously from the SSE effect on the false→true `launched`
-          edge. No curtains, no overlay — the iframe refresh happens in
-          parallel and the pill flips to "● Live" once onLoad fires. */}
+          edge. Note that since we now keep the closed curtains up
+          until the iframe has actually repainted with the live site,
+          this burst is hidden behind them — the prominent reveal is
+          done by `LaunchAnimation` above on the `revealKey` edge. */}
       {/* (no JSX here — confetti is DOM-only, see fireLaunchConfetti) */}
 
       {/* Status pill — shown before launch (● Armed) and after
@@ -628,11 +686,16 @@ function fireButtonConfetti(): void {
  * Minimal post-launch celebration. Smaller than the operator's full
  * 5-source reveal — a single upward burst from the button centre, a
  * second smaller burst, ~1.6 s lifetime. Fires synchronously from
- * the SSE effect on the false→true `launched` edge so the guest
- * sees the confetti at the same moment the iframe starts its refresh.
+ * the SSE effect on the false→true `launched` edge.
  *
- * Two emitters (not five) keeps the visual quiet — the iframe + the
- * "● Live" pill are doing most of the work communicating the launch.
+ * With the curtain-stays-up-until-iframe-loads fix in place, this
+ * burst actually plays behind the still-closed curtains (the guest
+ * can't see it). The prominent reveal is handled by `LaunchAnimation`
+ * on the `revealKey` edge. We keep this call as harmless overlap —
+ * particle sources are pinned to the bottom of the viewport and
+ * party-js cleans them up — rather than risk a regression by
+ * removing the immediate tactile feedback the original code wanted
+ * to guarantee.
  */
 function fireLaunchConfetti(): void {
   if (typeof window === "undefined") return;
@@ -684,8 +747,7 @@ function fireLaunchConfetti(): void {
           initialLifetime: 1.6,
           initialSpeed: party.variation.range(v * speed[0], v * speed[1]),
           initialSize: party.variation.skew(1.0, 0.3),
-          initialRotation: () =>
-            party.random.randomUnitVector().scale(180),
+          initialRotation: () => party.random.randomUnitVector().scale(180),
           initialColor: () =>
             party.Color.fromHsl(party.random.randomRange(0, 360), 100, 70),
         },
