@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { FestivalFooter } from "@/components/festival/FestivalFooter";
 import { FestivalNavbar } from "@/components/festival/FestivalNavbar";
+import { FestivalCountdown } from "@/components/festival/landing/FestivalCountdown";
 import { CustomDomainProvider } from "@/components/providers/custom-domain-provider";
 import { getFestivalDurationDays } from "@/config/pricing";
 import { getSession } from "@/core/auth/session";
@@ -101,28 +102,57 @@ export default async function FestivalLayout({
   const expired = isFestivalExpired(festival);
 
   // Expired festivals keep results/standings on the same public URL. While a
-  // site is offline, owners and admins may still render this exact route in the
-  // authenticated settings preview; everyone else continues to receive 404.
-  if (!expired && !festival.publicSiteEnabled) {
-    const session = await getSession();
-    const isOwner = session?.userId === festival.ownerId;
-    const isSuperAdmin = session?.role === "SUPER_ADMIN";
-    const adminMember =
-      session?.userId && !isOwner && !isSuperAdmin
-        ? await db.query.festivalMember.findFirst({
-            where: and(
-              eq(memberTable.festivalId, festival.id),
-              eq(memberTable.userId, session.userId),
-              eq(memberTable.role, "ADMIN"),
-              eq(memberTable.isActive, true),
-            ),
-            columns: { id: true },
-          })
-        : null;
+  // site is offline, anonymous visitors get the countdown page (so the
+  // branded URL stays useful before launch); owners/admins still see the
+  // full chrome via the dashboard preview iframe.
+  const session = await getSession();
+  const isOwner = session?.userId === festival.ownerId;
+  const isSuperAdmin = session?.role === "SUPER_ADMIN";
+  const adminMember =
+    session?.userId && !isOwner && !isSuperAdmin
+      ? await db.query.festivalMember.findFirst({
+          where: and(
+            eq(memberTable.festivalId, festival.id),
+            eq(memberTable.userId, session.userId),
+            eq(memberTable.role, "ADMIN"),
+            eq(memberTable.isActive, true),
+          ),
+          columns: { id: true },
+        })
+      : null;
 
-    if (!isOwner && !isSuperAdmin && !adminMember) {
-      notFound();
-    }
+  const showOfflineToAnonymous =
+    !expired &&
+    !festival.publicSiteEnabled &&
+    !isOwner &&
+    !isSuperAdmin &&
+    !adminMember;
+
+  if (showOfflineToAnonymous) {
+    const branding = getBrandingFromJson(festival.branding);
+    const startDate = festival.createdAt;
+    const endDate =
+      festival.expiresAt ||
+      new Date(
+        new Date(festival.createdAt).getTime() +
+          getFestivalDurationDays() * MS.day,
+      ).toISOString();
+
+    return (
+      <CustomDomainProvider customDomain={customDomain}>
+        <FestivalCountdown
+          variant="page"
+          festivalName={festival.name}
+          tagline={festival.tagline}
+          description={festival.description}
+          startDate={startDate}
+          endDate={endDate}
+          location={festival.orgLocation || ""}
+          logo={branding?.logo ?? null}
+          branding={festival.branding}
+        />
+      </CustomDomainProvider>
+    );
   }
 
   const branding = getBrandingFromJson(festival.branding);
@@ -204,7 +234,18 @@ export default async function FestivalLayout({
         />
         <div className="min-h-screen flex flex-col">
           <FestivalNavbar festival={festivalData as any} />
-          <main className="flex-1 pt-16">{children}</main>
+          <main className="flex-1 pt-16">
+            {festival.publicSiteEnabled && !expired && (
+              <FestivalCountdown
+                variant="banner"
+                festivalName={festival.name}
+                startDate={festivalData.startDate}
+                endDate={festivalData.endDate}
+                branding={festival.branding}
+              />
+            )}
+            {children}
+          </main>
           <FestivalFooter festival={festivalData as any} />
         </div>
       </FestivalProvider>
