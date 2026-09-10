@@ -31,6 +31,7 @@ import { invalidatePublicFestivalCaches } from "@/features/festivals/services/pu
 import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 import { reconcileFestivalDomain } from "@/features/institutions/services/custom-domain-provisioning.service";
 import { resolveInstitutionIdForOwner } from "@/features/institutions/services/festival-institution-link.service";
+import { releaseLaunchTrigger } from "@/features/festivals/services/launch-pairing.service";
 import { ensureOffStageStage } from "@/features/stages/services/off-stage.service";
 
 export async function createFestival(input: CreateFestivalInput) {
@@ -432,6 +433,22 @@ export async function setPublicSiteEnabledAction(
     // Vercel, certified over HTTP-01. Best-effort by contract — never fails this
     // action, and the status poll on Festival Live retries.
     await reconcileFestivalDomain(festivalId, enabled);
+
+    // Notify any paired stage controller that the launch state changed.
+    // Both operator-initiated (Space/click here) and stage-initiated
+    // (POST /trigger) flows converge on this event so the stage device
+    // mirrors the operator's intent without polling. `enabled=false`
+    // publishes RESET, and we also drop the SETNX trigger guard so the
+    // stage can fire again on the next launch without a 409.
+    if (!enabled) {
+      await releaseLaunchTrigger(festivalId);
+    }
+    await publish(keys.festivalLaunchControl(festivalId), {
+      type: enabled ? "LAUNCH" : "RESET",
+      at: Date.now(),
+      source: "dashboard",
+      publicUrl: `/${festival.slug}?remote=1`,
+    });
 
     revalidatePath(`/dashboard/${festival.slug}/festival-live`);
     revalidatePath(`/dashboard/${festival.slug}`);

@@ -7,6 +7,7 @@ import {
   festival as festivalTable,
   programme as programmeTable,
 } from "@/core/database/schema";
+import { verifyPairing } from "@/features/festivals/services/launch-pairing.service";
 
 /**
  * Common authorization helpers for Issue 46 SSE routes.
@@ -82,4 +83,41 @@ export async function requireSuperAdmin(
   if (!session) return jsonError("UNAUTHORIZED", 401);
   if (session.role !== "SUPER_ADMIN") return jsonError("FORBIDDEN", 403);
   return null;
+}
+
+/**
+ * Authenticate a launch-controller SSE connection. The token is supplied via
+ * the `?token=` query parameter (the stage page embeds it in the URL, so the
+ * browser cannot put it in a cookie). We accept either the canonical token
+ * or the 6-digit pairing code — same Redis record either way.
+ *
+ * Returns `{ pairing, denied }`. Callers should use `denied` as the HTTP
+ * response (401) and `pairing.festivalId` to scope the SSE channel.
+ */
+export async function requireLaunchPairing(
+  req: Request,
+): Promise<
+  | {
+      pairing: { festivalId: string; slug: string; name: string };
+      denied: null;
+    }
+  | { pairing: null; denied: Response }
+> {
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token")?.trim() ?? "";
+  if (!token) {
+    return { pairing: null, denied: jsonError("UNAUTHORIZED", 401) };
+  }
+  const record = await verifyPairing(token);
+  if (!record) {
+    return { pairing: null, denied: jsonError("UNAUTHORIZED", 401) };
+  }
+  return {
+    pairing: {
+      festivalId: record.festivalId,
+      slug: record.slug,
+      name: record.name,
+    },
+    denied: null,
+  };
 }

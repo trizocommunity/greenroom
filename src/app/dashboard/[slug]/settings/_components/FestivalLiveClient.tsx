@@ -17,6 +17,7 @@ import {
 } from "@/features/institutions/lib/custom-domain";
 import { toast } from "@/lib/toast";
 
+import { PairCodeCard } from "@/components/dashboard/settings/_components/live/PairCodeCard";
 import { CustomSubdomainCard } from "./live/CustomSubdomainCard";
 import { DeleteSubdomainDialog } from "./live/DeleteSubdomainDialog";
 import { DnsRecordsCard } from "./live/DnsRecordsCard";
@@ -53,6 +54,17 @@ interface FestivalLiveClientProps {
 /** How often to re-check while a certificate is still being issued. */
 const STATUS_POLL_MS = 15_000;
 
+/**
+ * Short cooldown after a successful take-offline during which
+ * `handleLaunch` refuses to fire. Prevents a buffered SSE LAUNCH event
+ * from silently reopening the overlay (and relaunching the site) the
+ * moment the operator takes the festival offline. 3 s is long enough
+ * to clear the in-flight SSE buffer on Vercel/Redis and short enough
+ * that the operator can relaunch from the same session immediately
+ * afterwards if they actually want to.
+ */
+const TAKE_OFFLINE_COOLDOWN_MS = 3_000;
+
 /** Derive the phase from server fields, for first paint before polling. */
 function phaseFromState(state: CustomDomainState): CustomDomainPhase {
   if (!state.customDomain) return "no-domain";
@@ -80,6 +92,12 @@ export function FestivalLiveClient({
   const [justLaunched, setJustLaunched] = useState(false);
   const celebrationCleanup = useRef<(() => void) | null>(null);
   const ownsFullscreen = useRef(false);
+  /**
+   * Timestamp of the most recent successful take-offline. Used by
+   * `handleLaunch` to refuse auto-relaunch during a short cooldown
+   * window after take-offline — see the comment in `handleLaunch`.
+   */
+  const lastTakeOfflineAtRef = useRef(0);
 
   const openOverlay = useCallback(() => {
     setOverlayOpen(true);
@@ -381,8 +399,25 @@ export function FestivalLiveClient({
     };
   }, []);
 
-  const handleLaunch = async () => {
+  const handleLaunch = async (
+    opts?: { initiatedBy?: "operator" | "remote" },
+  ) => {
     if (isReadOnly || enabled || !iframeReady) return;
+    // Block remote (SSE-driven) auto-relaunch for a short cooldown after
+    // `handleTakeOffline`. Without this, a LAUNCH event that was buffered
+    // on the SSE channel before take-offline (or that the stage
+    // controller sent in the same instant) would slip through the
+    // `enabled === false` guard and silently re-open the launch overlay
+    // + re-flip the site live. Operator-initiated clicks on the buzzer
+    // bypass the cooldown — the operator explicitly asked for a
+    // relaunch, so honour it.
+    const initiatedBy = opts?.initiatedBy ?? "operator";
+    if (
+      initiatedBy !== "operator" &&
+      Date.now() - lastTakeOfflineAtRef.current < TAKE_OFFLINE_COOLDOWN_MS
+    ) {
+      return;
+    }
     // The authenticated preview has already painted behind the buzzer, so this
     // state change reveals it synchronously while publishing continues.
     setOverlayOpen(true);
@@ -417,10 +452,16 @@ export function FestivalLiveClient({
     try {
       const result = await setPublicSiteEnabledAction(festivalId, false);
       if (result?.success) {
+        // Mark the take-offline moment *before* flipping any UI state
+        // so a stale SSE LAUNCH event that races in during the
+        // following render is correctly rejected by `handleLaunch`.
+        lastTakeOfflineAtRef.current = Date.now();
         setEnabled(false);
         setOverlayOpen(false);
         setJustLaunched(false);
         setPhase("idle");
+        // setPublicSiteEnabledAction publishes RESET on success — paired
+        // stage controllers re-arm and the trigger guard is released.
         toast.success("Website is now offline.");
       } else {
         setPhase("live");
@@ -628,6 +669,13 @@ export function FestivalLiveClient({
         onLaunch={openOverlay}
       />
 
+      {/* Stage-controller pairing. Visible below the "Ready to go live?"
+          card so the operator can pair the guest's device before they
+          walk on stage. Hidden while the festival is already live — once
+          the site is launched the operator doesn't need a new controller.
+          Hidden in read-only mode since pairing requires admin auth. */}
+      {!enabled && !isReadOnly && <PairCodeCard festivalId={festivalId} />}
+
       <PublicSiteAddressCard
         publicUrl={fullPublicUrl}
         shareLinks={shareLinks}
@@ -738,9 +786,10 @@ export function FestivalLiveClient({
         justLaunched={justLaunched}
         publicUrl={fullPublicUrl}
         isReadOnly={isReadOnly}
+        festivalId={festivalId}
         onPreviewReady={() => setIframeReady(true)}
         onClose={closeOverlay}
-        onLaunch={() => void handleLaunch()}
+        onLaunch={(opts) => void handleLaunch(opts)}
         onRevealComplete={fireConfetti}
       />
     </div>
