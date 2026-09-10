@@ -251,6 +251,13 @@ export async function proxy(request: NextRequest) {
     requestHeaders.set("x-festival-slug", parsed.festivalSlug);
     requestHeaders.set("x-custom-domain", parsed.customDomain);
 
+    // `?remote=1` strips the navbar/footer chrome on the stage-controller
+    // launch mirror. Layouts don't get `searchParams` in Next.js 15+, so
+    // forward the flag as a request header for the layout to read.
+    if (request.nextUrl.searchParams.get("remote") === "1") {
+      requestHeaders.set("x-festival-remote", "1");
+    }
+
     return finalize(
       pathname,
       NextResponse.rewrite(rewriteUrl, {
@@ -285,7 +292,21 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return finalize(pathname, NextResponse.next());
+  return finalize(pathname, nextWithRemoteHeader(request));
+}
+
+function nextWithRemoteHeader(request: NextRequest): NextResponse {
+  // `?remote=1` strips the navbar/footer chrome on the stage-controller
+  // launch mirror. Layouts don't get `searchParams` in Next.js 15+, so
+  // forward the flag as a request header for the layout to read via
+  // `headers()`. Mutating `request.headers` is what makes it visible
+  // downstream; setting on the response headers would not.
+  if (request.nextUrl.searchParams.get("remote") === "1") {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-festival-remote", "1");
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+  return NextResponse.next();
 }
 
 export const config = {
