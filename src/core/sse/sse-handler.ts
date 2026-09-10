@@ -39,8 +39,17 @@ export function sseHandler<C = unknown>(opts: {
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
-        const send = (frame: string) =>
-          controller.enqueue(encoder.encode(frame));
+        // `enqueue` throws "Controller is already closed" when the client
+        // disconnects in the window between the heartbeat/pub-sub tick being
+        // scheduled and the abort/cancel handler tearing things down. Swallow
+        // it — the cleanup paths below will stop further emissions.
+        const send = (frame: string) => {
+          try {
+            controller.enqueue(encoder.encode(frame));
+          } catch {
+            // Controller closed mid-flight; drop the frame.
+          }
+        };
 
         teardown = await subscribe(channel, (payload) => {
           send(`data: ${JSON.stringify(payload)}\n\n`);
