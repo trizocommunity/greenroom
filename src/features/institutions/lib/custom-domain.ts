@@ -258,6 +258,7 @@ export const RESERVED_APP_PATH_SEGMENTS = new Set([
   "features",
   "services",
   "contact",
+  "docs",
   "pricing",
   "auth",
   "manifest.webmanifest",

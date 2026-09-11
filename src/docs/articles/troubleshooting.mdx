@@ -1,0 +1,25 @@
+---
+title: Troubleshooting
+description: Fix common setup, launch, and DNS issues.
+section: Support
+---
+
+# Troubleshooting
+
+Use this page when something does not move to the next state.
+
+## DNS verified but HTTPS is still provisioning
+
+Check whether Greenroom shows an extra `_vercel` TXT record. If yes, add that exact record at the DNS provider and wait for propagation.
+
+## Custom URL returns Vercel 404
+
+If the browser shows `DEPLOYMENT_NOT_FOUND`, DNS is reaching Vercel but the host is not verified or attached correctly. Add any extra `_vercel` verification record shown in Greenroom and refresh the status.
+
+## Public site address did not change
+
+Refresh the Launch Website status. Once HTTPS is ready and the custom domain is connected, Greenroom should display the branded URL. If disconnected or deleted, it should display the Greenroom path URL.
+
+## Still stuck
+
+Use Contact Operators and include the festival slug, apex domain, and a screenshot of the DNS records.

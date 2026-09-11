@@ -253,6 +253,13 @@ describe("custom-domain helpers", () => {
     expect(extractFestivalSlugFromPath("/suffamehil/login")).toBe("suffamehil");
     expect(extractFestivalSlugFromPath("/dashboard/suffamehil")).toBeNull();
     expect(extractFestivalSlugFromPath("/login")).toBeNull();
+
+    // Public docs lives on the app host — a festival slug must never be
+    // extracted from `/docs/...` or the custom-domain redirect would
+    // canonically rewrite it onto a branded host.
+    expect(extractFestivalSlugFromPath("/docs")).toBeNull();
+    expect(extractFestivalSlugFromPath("/docs/dns-setup")).toBeNull();
+    expect(extractFestivalSlugFromPath("/Docs/dns-setup")).toBeNull();
   });
 
   it("isPublicFestivalSurfacePath keeps app-host-only surfaces off branded hosts", () => {

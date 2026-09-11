@@ -55,6 +55,9 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ["pg", "ioredis"],
+  outputFileTracingIncludes: {
+    "/docs/**/*": ["./src/docs/articles/**/*.mdx"],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "250mb",

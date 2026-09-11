@@ -1,0 +1,54 @@
+---
+title: DNS Setup Guide
+description: Connect a custom subdomain to Greenroom with TXT and CNAME records.
+section: Publishing
+---
+
+# DNS Setup Guide
+
+Custom subdomains are available for PRO institutional festivals.
+
+## What you enter in Greenroom
+
+Enter only the apex domain:
+
+```text
+ahlussuffadars.in
+```
+
+Do not enter `www`, `https://`, or a full URL.
+
+## Required DNS records
+
+Add these records in your DNS provider:
+
+| Type | Hostname | Value |
+| --- | --- | --- |
+| TXT | `_greenroom.{apex}` | `greenroom-verify={institutionId}` |
+| CNAME | `*` | `cname.vercel-dns.com` |
+
+The TXT record proves ownership to Greenroom. The wildcard CNAME routes every festival subdomain to Greenroom.
+
+## Extra Vercel verification
+
+Sometimes Vercel asks for one more TXT record when a domain is linked to another Vercel account.
+
+| Type | Hostname | Value |
+| --- | --- | --- |
+| TXT | `_vercel.{apex}` | Value shown in Greenroom or Vercel |
+
+Add the exact value shown in the Launch Website screen.
+
+## After DNS is verified
+
+Greenroom provisions HTTPS for the festival host:
+
+```text
+{festivalSlug}.{apex}
+```
+
+When HTTPS is ready, the public site address switches to the branded URL automatically.
+
+## If provisioning is stuck
+
+Check that the records match exactly, wait for propagation, then use Contact Operators if the domain still shows as provisioning.

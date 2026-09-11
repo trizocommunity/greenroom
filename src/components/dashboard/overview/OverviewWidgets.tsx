@@ -205,7 +205,7 @@ export default async function OverviewWidgets({
     {
       label: "Documentation",
       icon: BookOpen,
-      href: `/dashboard/${slug}/support/docs`,
+      href: "/docs",
       condition: true,
       allowedRoles: ["ADMIN", "OWNER"],
     },

@@ -49,6 +49,7 @@ export const publicRoutes = [
   "/features",
   "/services",
   "/contact",
+  "/docs",
   "/pricing",
 ];
 
