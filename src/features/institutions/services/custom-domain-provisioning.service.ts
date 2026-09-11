@@ -89,6 +89,13 @@ export async function probeHttpsReady(
       return false;
     }
 
+    // A branded host is only ready when it serves our app successfully. Vercel
+    // can terminate TLS for an unclaimed host and still return a 404
+    // DEPLOYMENT_NOT_FOUND page, which must not count as ready.
+    if (!res.ok) {
+      return false;
+    }
+
     // (2) Vercel sometimes serves the challenge inline (no redirect). The
     // body is plain HTML with markers our app never emits. Reading the body
     // costs a few KB once every 15s while a cert is in flight — acceptable.

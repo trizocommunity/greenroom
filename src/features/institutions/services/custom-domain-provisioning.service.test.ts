@@ -83,7 +83,7 @@ describe("probeHttpsReady", () => {
   it("probes the festival's own host, not a sentinel label", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(new Response(null, { status: 404 }));
+      .mockResolvedValue(new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(true);
@@ -170,6 +170,20 @@ describe("probeHttpsReady", () => {
         new Response(html, {
           status: 404,
           headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      ),
+    );
+
+    await expect(probeHttpsReady(SLUG, APEX)).resolves.toBe(false);
+  });
+
+  it("returns false for Vercel's plain-text DEPLOYMENT_NOT_FOUND response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("Code: `DEPLOYMENT_NOT_FOUND`", {
+          status: 404,
+          headers: { "content-type": "text/plain; charset=utf-8" },
         }),
       ),
     );
@@ -303,7 +317,7 @@ describe("syncFestivalDomainStatus", () => {
     vi.stubGlobal(
       "fetch",
       ready
-        ? vi.fn().mockResolvedValue(new Response(null, { status: 404 }))
+        ? vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
         : vi.fn().mockRejectedValue(new Error("ECONNREFUSED")),
     );
   }
