@@ -10,6 +10,7 @@ import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-rea
 import {
   type CustomDomainPhase,
   type CustomDomainStatus,
+  buildFestivalHost,
   getDomainOwnershipToken,
   getDomainOwnershipTxtName,
   isCustomDomainPhasePending,
@@ -579,7 +580,16 @@ export function FestivalLiveClient({
     }
   };
 
-  const fullPublicUrl = publicUrl || `/${festivalSlug}`;
+  const fallbackPublicUrl = publicUrl || `/${festivalSlug}`;
+  const brandedHost = domainState.customDomain
+    ? buildFestivalHost(festivalSlug, domainState.customDomain)
+    : null;
+  const fullPublicUrl =
+    brandedHost &&
+    domainState.httpsReadyAt &&
+    domainState.customDomainConnected !== false
+      ? `https://${brandedHost}`
+      : fallbackPublicUrl;
   const stagePortalUrl = `${fullPublicUrl.replace(/\/$/, "")}/stage-portal`;
   const loginUrl = `${fullPublicUrl.replace(/\/$/, "")}/login`;
   const ownershipToken = domainState.institutionId
