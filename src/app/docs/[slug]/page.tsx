@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { docOrder, getDocArticle } from "@/docs/docs";
 import { DocsLayout } from "../_components/DocsLayout";
-import { MdxArticle } from "../_components/MdxArticle";
 
 export function generateStaticParams() {
   return docOrder.map((slug) => ({ slug }));
@@ -35,11 +34,11 @@ export default async function DocArticlePage({
 
   return (
     <DocsLayout activeSlug={article.slug}>
-      <div className="rounded-lg border bg-card p-6 sm:p-8">
+      <div className="docs-article rounded-lg border bg-card p-6 sm:p-8">
         <p className="mb-3 text-sm font-medium text-primary">
           {article.section}
         </p>
-        <MdxArticle body={article.body} />
+        <article.component />
       </div>
     </DocsLayout>
   );

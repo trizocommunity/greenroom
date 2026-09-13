@@ -1,12 +1,15 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { FestivalProvider } from "@/components/festival/FestivalContext";
 import { ParticipantNavbar } from "@/components/participant/ParticipantNavbar";
 import { CustomDomainProvider } from "@/components/providers/custom-domain-provider";
+import { isCloudinaryUrl, resizeCloudinaryImage } from "@/core/integrations/cloudinary-transform";
 import type { ProgrammeStatus } from "@/core/types/app-enums";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
+import { getBrandingFromJson } from "@/features/festivals/types/festival.types";
 import { getFestivalLinkBase } from "@/features/institutions/lib/custom-domain";
 import { findParticipantByFestivalAndProfileSlug } from "@/features/participants/repositories/participant.repository";
 import { isEnabled } from "@/features/plan-features/services/feature-gate";
@@ -20,6 +23,45 @@ const RESERVED_SLUGS = new Set([
   "sessions",
   "about",
 ]);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const festival = await findFestivalBySlug(slug);
+  if (!festival) return {};
+  
+  const branding = getBrandingFromJson(festival.branding);
+  const fallbackColor = branding?.colors?.primary || "#d72626";
+  const initials = ((festival.name || "GR").substring(0, 2)).toUpperCase();
+  const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="${fallbackColor}"/><text x="50" y="54" font-family="sans-serif" font-weight="bold" font-size="45" fill="white" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
+  const fallbackIcon = `data:image/svg+xml;base64,${Buffer.from(fallbackSvg).toString("base64")}`;
+
+  const rawLogo = branding?.logo ?? null;
+  const resize = (size: number) =>
+    rawLogo
+      ? isCloudinaryUrl(rawLogo)
+        ? resizeCloudinaryImage(rawLogo, { width: size, height: size })
+        : rawLogo
+      : fallbackIcon;
+
+  const favicon32 = resize(32);
+  const favicon180 = resize(180);
+
+  return {
+    title: {
+      default: `Dashboard | ${festival.name}`,
+      template: `%s | ${festival.name}`,
+    },
+    icons: {
+      icon: [{ url: favicon32, sizes: "32x32", type: "image/png" }],
+      apple: [{ url: favicon180, sizes: "180x180", type: "image/png" }],
+      shortcut: favicon32,
+    },
+  };
+}
 
 export default async function ParticipantLayout({
   children,

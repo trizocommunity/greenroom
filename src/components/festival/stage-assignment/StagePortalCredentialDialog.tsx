@@ -56,19 +56,10 @@ export function StagePortalCredentialDialog({
             Portal access{stageName ? ` for ${stageName}` : ""}
           </DialogTitle>
           <DialogDescription>
-            Judges use this access code and PIN to log into the stage's judge
-            portal.
+            Judges use this PIN to log into the stage's judge portal.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="rounded-md border bg-muted/20 px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Access code
-            </p>
-            <p className="mt-1 font-mono text-lg font-bold tracking-widest">
-              {revealed?.accessCode ?? credential.data?.accessCode ?? "—"}
-            </p>
-          </div>
           {revealed ? (
             <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2.5">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">

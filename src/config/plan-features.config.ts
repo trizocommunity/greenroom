@@ -57,6 +57,7 @@ export const PLAN_FEATURE_LABELS: Record<FeaturePath, string> = {
   landingPageBuilder: "Landing Page Builder",
   media: "Media",
   news: "News",
+  downloads: "Downloads",
   customUrl: "Custom URL",
   customDomain: "Custom Domain",
   logoUpload: "Logo Upload",

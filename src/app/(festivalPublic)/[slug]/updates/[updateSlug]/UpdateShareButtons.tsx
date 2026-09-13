@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-export function NewsShareButtons({ title }: { title: string }) {
+export function UpdateShareButtons({ title }: { title: string }) {
   const [url, setUrl] = useState("");
   const [canNativeShare, setCanNativeShare] = useState(false);
 

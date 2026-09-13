@@ -69,6 +69,7 @@ export interface TierFeatures {
   landingPageBuilder: boolean;
   media: boolean;
   news: boolean;
+  downloads: boolean;
 
   // Branding
   customUrl: boolean;
@@ -199,6 +200,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       landingPageBuilder: false,
       media: false,
       news: false,
+      downloads: false,
 
       // Branding
       customUrl: false,
@@ -299,6 +301,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       landingPageBuilder: true,
       media: true,
       news: true,
+      downloads: true,
 
       // Branding — custom URL/colors; wildcard custom domain is PRO-only
       customUrl: true,
@@ -399,6 +402,7 @@ export const TIER_CONFIG: Record<Tier, TierConfig> = {
       landingPageBuilder: true,
       media: true,
       news: true,
+      downloads: true,
 
       // Branding — white-label + custom domain (PRO)
       customUrl: true,

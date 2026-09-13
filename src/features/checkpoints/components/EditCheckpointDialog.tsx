@@ -30,7 +30,9 @@ export function EditCheckpointDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(checkpoint.name);
-  const [requiresWindow, setRequiresWindow] = useState(checkpoint.requiresWindow);
+  const [requiresWindow, setRequiresWindow] = useState(
+    checkpoint.requiresWindow,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

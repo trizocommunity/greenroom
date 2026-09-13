@@ -51,7 +51,7 @@ import { cn } from "@/core/utils/cn";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import { toast } from "@/lib/toast";
 
-type NewsPost = {
+type UpdatePost = {
   id: string;
   title: string;
   excerpt: string | null;
@@ -62,10 +62,10 @@ type NewsPost = {
   updatedAt: string;
 };
 
-interface NewsClientProps {
+interface UpdatesClientProps {
   festivalId: string;
   festivalSlug: string;
-  initialPosts: NewsPost[];
+  initialPosts: UpdatePost[];
 }
 
 const emptyForm = {
@@ -76,16 +76,16 @@ const emptyForm = {
   published: false,
 };
 
-export function NewsClient({
+export function UpdatesClient({
   festivalId,
   festivalSlug: _festivalSlug,
   initialPosts,
-}: NewsClientProps) {
+}: UpdatesClientProps) {
   const dirtySourceId = `news:${festivalId}`;
   const { registerDirtySource, unregisterDirtySource, setDirty } =
     useUnsavedChanges();
   const { isReadOnly } = useFestivalReadOnly();
-  const [posts, setPosts] = useState<NewsPost[]>(initialPosts);
+  const [posts, setPosts] = useState<UpdatePost[]>(initialPosts);
   const {
     data: newsData,
     isLoading,
@@ -103,7 +103,9 @@ export function NewsClient({
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = 10;
   const [saving, setSaving] = useState(false);
-  const [viewDetailsPost, setViewDetailsPost] = useState<NewsPost | null>(null);
+  const [viewDetailsPost, setViewDetailsPost] = useState<UpdatePost | null>(
+    null,
+  );
   const uploadMutation = useCloudinaryUpload();
   const deleteFileMutation = useDeleteFile();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -137,7 +139,7 @@ export function NewsClient({
     setDialogOpen(true);
   };
 
-  const openEdit = (post: NewsPost) => {
+  const openEdit = (post: UpdatePost) => {
     if (isReadOnly) return;
     setEditingId(post.id);
     setForm({
@@ -179,7 +181,7 @@ export function NewsClient({
             publishedAt: form.published ? new Date().toISOString() : null,
           },
         });
-        toast.success("News updated.");
+        toast.success("Update updated.");
         setDirty(dirtySourceId, false);
         setDialogOpen(false);
         refetchNews();
@@ -194,7 +196,7 @@ export function NewsClient({
             publishedAt: form.published ? new Date().toISOString() : null,
           },
         });
-        toast.success("News post created.");
+        toast.success("Update created.");
         setDirty(dirtySourceId, false);
         setDialogOpen(false);
         refetchNews();
@@ -225,14 +227,14 @@ export function NewsClient({
       await deleteNews.mutateAsync({ festivalId, postId: id });
       setDeleteConfirmId(null);
       setPosts((p) => p.filter((x) => x.id !== id));
-      toast.success("News post deleted.");
+      toast.success("Update deleted.");
       refetchNews();
     } catch {
       toast.error("Failed to delete.");
     }
   };
 
-  const handleTogglePublish = async (post: NewsPost) => {
+  const handleTogglePublish = async (post: UpdatePost) => {
     try {
       await updateNews.mutateAsync({
         festivalId,
@@ -241,7 +243,9 @@ export function NewsClient({
           publishedAt: post.publishedAt ? null : new Date().toISOString(),
         },
       });
-      toast.success(post.publishedAt ? "News unpublished" : "News published");
+      toast.success(
+        post.publishedAt ? "Update unpublished" : "Update published",
+      );
     } catch (err) {
       // error handled by mutation
     }
@@ -270,10 +274,10 @@ export function NewsClient({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              News
+              Updates
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Posts appear on your public news page.
+              Posts appear on your public updates page.
             </p>
           </div>
         </div>
@@ -300,10 +304,10 @@ export function NewsClient({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              News
+              Updates
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Posts appear on your public news page.
+              Posts appear on your public updates page.
             </p>
           </div>
         </div>
@@ -322,18 +326,18 @@ export function NewsClient({
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">News</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Posts appear on your public news page.
+            Posts appear on your public updates page.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <HowItWorksButton
-            title="How News works"
-            description="News posts show on your festival's public news page."
+            title="How Updates work"
+            description="Updates show on your festival's public updates page."
           >
             <p className="text-sm text-muted-foreground">
               Create posts with a title, content, and optional image. They
-              appear on your festival&apos;s public news page for visitors and
-              participants.
+              appear on your festival&apos;s public updates page for visitors
+              and participants.
             </p>
             <p className="text-sm text-muted-foreground">
               You can publish immediately or save as draft, and edit or delete
@@ -343,7 +347,7 @@ export function NewsClient({
           </HowItWorksButton>
           <Button size="sm" onClick={openCreate} disabled={isReadOnly}>
             <Plus className="h-4 w-4 sm:mr-2" />
-            Create news
+            Create update
           </Button>
         </div>
       </div>
@@ -459,7 +463,7 @@ export function NewsClient({
       )}
 
       <DeleteDialog
-        title="Delete news post"
+        title="Delete update"
         description="This cannot be undone."
         open={!!deleteConfirmId}
         onOpenChange={(open) => !open && setDeleteConfirmId(null)}
@@ -474,9 +478,9 @@ export function NewsClient({
             <div className="rounded-full bg-muted p-4 mb-4">
               <Newspaper className="h-10 w-10 text-muted-foreground" />
             </div>
-            <p className="font-medium text-foreground">No news posts yet</p>
+            <p className="font-medium text-foreground">No updates yet</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              Create a post to show on your public news page. Add a title,
+              Create a post to show on your public updates page. Add a title,
               content, and optional image.
             </p>
             <Button
@@ -487,7 +491,7 @@ export function NewsClient({
               disabled={isReadOnly}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Create news
+              Create update
             </Button>
           </CardContent>
         </Card>
@@ -560,10 +564,10 @@ export function NewsClient({
           <div className="flex-1 overflow-y-auto p-6">
             <SheetHeader>
               <SheetTitle>
-                {editingId ? "Edit news post" : "Create news post"}
+                {editingId ? "Edit update" : "Create update"}
               </SheetTitle>
               <SheetDescription>
-                Title and content are shown on your public news page. Add an
+                Title and content are shown on your public updates page. Add an
                 excerpt for meta and social sharing.
               </SheetDescription>
             </SheetHeader>

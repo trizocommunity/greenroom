@@ -630,11 +630,7 @@ export function ClientTemplateExportRunner({
                 MAX_BLOB_BYTES_INCLUDE_SOURCE / 2 / (1024 * 1024),
               );
               const message = `Export bundle is ${mb} MB (the ZIP contains the PDF and the .ai — both are the same multi-page PDF, just named differently). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.`;
-              await failTemplateExportAction(
-                festivalId,
-                job.exportId,
-                message,
-              );
+              await failTemplateExportAction(festivalId, job.exportId, message);
               pdfRef.current = null;
               setJob(null);
               busy.current = false;
@@ -842,7 +838,10 @@ export function ClientTemplateExportRunner({
             // Re-render at lower quality. Re-init the PDF context (the
             // existing one already has items appended) and reset index to
             // 0. The render useEffect re-runs because `job` changed.
-            pdfRef.current = { kind: "raster", ...initPdf({ ...job.payload, quality: nextQuality }) };
+            pdfRef.current = {
+              kind: "raster",
+              ...initPdf({ ...job.payload, quality: nextQuality }),
+            };
             setJob({
               ...job,
               payload: { ...job.payload, quality: nextQuality },
@@ -899,7 +898,10 @@ export function ClientTemplateExportRunner({
           ) {
             const nextQuality = nextQualityDown(job.payload.quality);
             if (nextQuality) {
-              pdfRef.current = { kind: "raster", ...initPdf({ ...job.payload, quality: nextQuality }) };
+              pdfRef.current = {
+                kind: "raster",
+                ...initPdf({ ...job.payload, quality: nextQuality }),
+              };
               setJob({
                 ...job,
                 payload: { ...job.payload, quality: nextQuality },
@@ -913,11 +915,7 @@ export function ClientTemplateExportRunner({
               MAX_BLOB_BYTES_INCLUDE_SOURCE / 2 / (1024 * 1024),
             );
             const message = `Export bundle is ${mb} MB (the ZIP contains the PDF and the .ai — both are the same multi-page PDF, just named differently). Lower Export Quality (PRINT → STANDARD → SCREEN) or split the export into smaller batches by category or team.`;
-            await failTemplateExportAction(
-              festivalId,
-              job.exportId,
-              message,
-            );
+            await failTemplateExportAction(festivalId, job.exportId, message);
             pdfRef.current = null;
             setJob(null);
             busy.current = false;

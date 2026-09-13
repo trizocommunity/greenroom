@@ -2,16 +2,18 @@ import { eq, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { DownloadsPreview } from "@/components/festival/landing/DownloadsPreview";
 import { ExploreNav } from "@/components/festival/landing/ExploreNav";
 import { HeroSection } from "@/components/festival/landing/HeroSection";
 import { LatestWinners } from "@/components/festival/landing/LatestWinners";
 import { MediaPreview } from "@/components/festival/landing/MediaPreview";
-import { NewsPreview } from "@/components/festival/landing/NewsPreview";
 import { ResultsList } from "@/components/festival/landing/ResultsList";
 import { TeamStandingsSection } from "@/components/festival/landing/TeamStandingsSection";
+import { UpdatesPreview } from "@/components/festival/landing/UpdatesPreview";
 import { ExpiredFestivalView } from "@/components/festival/public/ExpiredFestivalView";
 import { db } from "@/core/database/client";
 import { result as resultTable } from "@/core/database/schema";
+import { getPublicDownloadsData } from "@/features/downloads/loaders/downloads-public.loader";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { getPublicFestivalData } from "@/features/festivals/loaders/festival-public.loader";
 import {
@@ -78,18 +80,24 @@ export default async function FestivalPage({
     );
   }
 
-  const [latestResults, mediaData, newsData, basicResults] = await Promise.all([
-    getPublicTopResults(festival.id, { limit: 3 }),
-    fullLandingPage
-      ? getPublicMediaData(festival.slug, { page: 1, pageSize: 8 })
-      : Promise.resolve(null),
-    fullLandingPage
-      ? getPublicNewsData(festival.slug, { page: 1, pageSize: 3 })
-      : Promise.resolve(null),
-    fullLandingPage
-      ? Promise.resolve(null)
-      : getPublicProgrammeResults(festival.id, { page: 1 }),
-  ]);
+  const downloadsEnabled = isEnabled(festival.tier, "downloads");
+
+  const [latestResults, mediaData, newsData, downloadsData, basicResults] =
+    await Promise.all([
+      getPublicTopResults(festival.id, { limit: 3 }),
+      fullLandingPage
+        ? getPublicMediaData(festival.slug, { page: 1, pageSize: 8 })
+        : Promise.resolve(null),
+      fullLandingPage
+        ? getPublicNewsData(festival.slug, { page: 1, pageSize: 3 })
+        : Promise.resolve(null),
+      fullLandingPage && downloadsEnabled
+        ? getPublicDownloadsData(festival.slug)
+        : Promise.resolve(null),
+      fullLandingPage
+        ? Promise.resolve(null)
+        : getPublicProgrammeResults(festival.id, { page: 1 }),
+    ]);
 
   const accentColor =
     festival.branding &&
@@ -153,9 +161,17 @@ export default async function FestivalPage({
           />
 
           {newsData && (
-            <NewsPreview
+            <UpdatesPreview
               slug={displayData.slug}
               posts={newsData.posts}
+              accentColor={accentColor}
+            />
+          )}
+
+          {downloadsData && downloadsData.groups.length > 0 && (
+            <DownloadsPreview
+              slug={displayData.slug}
+              downloads={downloadsData.groups.flatMap((g) => g.downloads)}
               accentColor={accentColor}
             />
           )}

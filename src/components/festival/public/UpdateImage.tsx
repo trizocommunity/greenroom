@@ -2,14 +2,14 @@ import Image from "next/image";
 import { cn } from "@/core/utils/cn";
 
 /**
- * A news thumbnail that always renders something.
+ * An update thumbnail that always renders something.
  *
  * Posts are frequently published without a picture, and an image-less row
  * next to an illustrated one made the list look broken. When `src` is
  * missing this falls back to a generated tile — the festival's accent colour
  * plus the post's initial — so every row keeps the same shape.
  */
-export function NewsImage({
+export function UpdateImage({
   src,
   title,
   accentColor = "var(--primary)",

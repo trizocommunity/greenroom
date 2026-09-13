@@ -27,11 +27,11 @@ import {
 } from "@/features/festivals/schemas/festival.schema";
 import { assertFestivalMutationAllowed } from "@/features/festivals/services/festival-lifecycle-policy.service";
 import { validatePublicSiteRequirements } from "@/features/festivals/services/festival-public-validation.service";
+import { releaseLaunchTrigger } from "@/features/festivals/services/launch-pairing.service";
 import { invalidatePublicFestivalCaches } from "@/features/festivals/services/public-cache-invalidation";
 import { StorageBackedFieldService } from "@/features/festivals/services/storage-backed-field.service";
 import { reconcileFestivalDomain } from "@/features/institutions/services/custom-domain-provisioning.service";
 import { resolveInstitutionIdForOwner } from "@/features/institutions/services/festival-institution-link.service";
-import { releaseLaunchTrigger } from "@/features/festivals/services/launch-pairing.service";
 import { ensureOffStageStage } from "@/features/stages/services/off-stage.service";
 
 export async function createFestival(input: CreateFestivalInput) {
@@ -502,14 +502,11 @@ export async function updateFestivalBrandingAction(data: {
 
     const nextBranding = {
       ...current,
-      logo: data.logo ?? current.logo ?? null,
+      logo: data.logo !== undefined ? data.logo : current.logo,
     };
 
     const previousLogo = typeof current.logo === "string" ? current.logo : null;
-    const nextLogo =
-      typeof (data.logo ?? current.logo) === "string"
-        ? String(data.logo ?? current.logo)
-        : null;
+    const nextLogo = typeof nextBranding.logo === "string" ? nextBranding.logo : null;
 
     await StorageBackedFieldService.mutateSingleUrl({
       festivalId: festival.id,

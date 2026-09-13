@@ -13,7 +13,7 @@ import {
   type CheckpointSessionView,
 } from "./CheckpointScanner";
 import { DeleteSessionDialog } from "./DeleteSessionDialog";
-import { StartSessionDialog, type StartedSession } from "./StartSessionDialog";
+import { type StartedSession, StartSessionDialog } from "./StartSessionDialog";
 
 interface SessionRow {
   id: string;

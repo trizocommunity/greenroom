@@ -28,8 +28,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { TimePicker } from "@/components/ui/time-picker";
-import { createCheckpointAction } from "../actions/checkpoint.actions";
-import { startSessionAction } from "../actions/checkpoint.actions";
+import {
+  createCheckpointAction,
+  startSessionAction,
+} from "../actions/checkpoint.actions";
 
 export interface StartedSession {
   id: string;

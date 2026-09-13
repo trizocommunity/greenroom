@@ -95,6 +95,9 @@ export const queryKeys = {
     paginated: (festivalId: string, params: unknown) =>
       ["news", festivalId, "paginated", params] as const,
   },
+  downloads: {
+    all: (festivalId: string) => ["downloads", festivalId] as const,
+  },
   exports: {
     all: (festivalId: string) => ["exports", festivalId] as const,
   },

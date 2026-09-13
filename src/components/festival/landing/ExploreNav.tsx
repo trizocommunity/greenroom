@@ -26,7 +26,12 @@ export function ExploreNav({
     ...(hideExtras
       ? []
       : [
-          { name: "News", href: `${base}/news`, note: "Announcements" },
+          { name: "Updates", href: `${base}/updates`, note: "Announcements" },
+          {
+            name: "Downloads",
+            href: `${base}/downloads`,
+            note: "Schedules, rules, brochures",
+          },
           {
             name: "Media",
             href: `${base}/media`,

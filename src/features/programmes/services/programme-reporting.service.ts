@@ -140,11 +140,7 @@ export const ProgrammeReportingService = {
     return this.reopenClosedSession(latestClosedSession.id, actorName);
   },
 
-  async reopenClosedSession(
-    reportingSessionId: string,
-    actorName: string,
-    opts?: { keepProgrammeInResetStatus?: boolean },
-  ) {
+  async reopenClosedSession(reportingSessionId: string, actorName: string) {
     const session =
       await ReportingSessionRepository.loadById(reportingSessionId);
     session.reopen(actorName);
@@ -161,15 +157,12 @@ export const ProgrammeReportingService = {
     await db
       .update(programmeTable)
       .set({
-        status: opts?.keepProgrammeInResetStatus ? "CANCELLED" : "SCHEDULED",
         publishedAt: null,
         updatedAt: serverNowIso(),
       })
       .where(eq(programmeTable.id, session.programmeId));
 
-    if (!opts?.keepProgrammeInResetStatus) {
-      await updateProgrammeStatus(session.programmeId);
-    }
+    await updateProgrammeStatus(session.programmeId);
 
     return {
       success: true,
@@ -379,13 +372,7 @@ export const ProgrammeReportingService = {
     const events = await ReportingSessionRepository.save(session);
     await ReportingEventAdapter.dispatch(events);
 
-    await db
-      .update(programmeTable)
-      .set({
-        status: "CANCELLED",
-        updatedAt: serverNowIso(),
-      })
-      .where(eq(programmeTable.id, session.programmeId));
+    await updateProgrammeStatus(session.programmeId);
 
     return {
       success: true,
@@ -660,9 +647,7 @@ export const ProgrammeReportingService = {
       (dbSession.status === "CLOSED" || dbSession.status === "COMPLETED") &&
       dbSession.isLocked
     ) {
-      await this.reopenClosedSession(dbSession.id, "Schedule update", {
-        keepProgrammeInResetStatus: false,
-      });
+      await this.reopenClosedSession(dbSession.id, "Schedule update");
       return;
     }
 

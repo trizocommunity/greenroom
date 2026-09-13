@@ -1,12 +1,42 @@
-import fs from "node:fs";
-import path from "node:path";
+import type { ComponentType } from "react";
+import ContactOperators, {
+  docMeta as contactOperatorsMeta,
+} from "./articles/contact-operators.mdx";
+import CustomSubdomain, {
+  docMeta as customSubdomainMeta,
+} from "./articles/custom-subdomain.mdx";
+import DnsSetup, { docMeta as dnsSetupMeta } from "./articles/dns-setup.mdx";
+import FestivalSetup, {
+  docMeta as festivalSetupMeta,
+} from "./articles/festival-setup.mdx";
+import GettingStarted, {
+  docMeta as gettingStartedMeta,
+} from "./articles/getting-started.mdx";
+import LaunchWebsite, {
+  docMeta as launchWebsiteMeta,
+} from "./articles/launch-website.mdx";
+import Participants, {
+  docMeta as participantsMeta,
+} from "./articles/participants.mdx";
+import Payments, { docMeta as paymentsMeta } from "./articles/payments.mdx";
+import Programmes, {
+  docMeta as programmesMeta,
+} from "./articles/programmes.mdx";
+import Results, { docMeta as resultsMeta } from "./articles/results.mdx";
+import Schedule, { docMeta as scheduleMeta } from "./articles/schedule.mdx";
+import StagePortal, {
+  docMeta as stagePortalMeta,
+} from "./articles/stage-portal.mdx";
+import Troubleshooting, {
+  docMeta as troubleshootingMeta,
+} from "./articles/troubleshooting.mdx";
 
 export type DocArticle = {
   slug: string;
   title: string;
   description: string;
   section: string;
-  body: string;
+  component: ComponentType;
 };
 
 export const docOrder = [
@@ -25,37 +55,82 @@ export const docOrder = [
   "contact-operators",
 ] as const;
 
-const articlesDir = path.join(process.cwd(), "src", "docs", "articles");
-
-function parseFrontmatter(raw: string) {
-  const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!match) {
-    return { data: {}, body: raw };
+const articles = {
+  "getting-started": {
+    component: GettingStarted,
+    meta: gettingStartedMeta,
+  },
+  "festival-setup": {
+    component: FestivalSetup,
+    meta: festivalSetupMeta,
+  },
+  "launch-website": {
+    component: LaunchWebsite,
+    meta: launchWebsiteMeta,
+  },
+  "dns-setup": {
+    component: DnsSetup,
+    meta: dnsSetupMeta,
+  },
+  "custom-subdomain": {
+    component: CustomSubdomain,
+    meta: customSubdomainMeta,
+  },
+  participants: {
+    component: Participants,
+    meta: participantsMeta,
+  },
+  programmes: {
+    component: Programmes,
+    meta: programmesMeta,
+  },
+  schedule: {
+    component: Schedule,
+    meta: scheduleMeta,
+  },
+  "stage-portal": {
+    component: StagePortal,
+    meta: stagePortalMeta,
+  },
+  results: {
+    component: Results,
+    meta: resultsMeta,
+  },
+  payments: {
+    component: Payments,
+    meta: paymentsMeta,
+  },
+  troubleshooting: {
+    component: Troubleshooting,
+    meta: troubleshootingMeta,
+  },
+  "contact-operators": {
+    component: ContactOperators,
+    meta: contactOperatorsMeta,
+  },
+} satisfies Record<
+  (typeof docOrder)[number],
+  {
+    component: ComponentType;
+    meta?: {
+      title?: string;
+      description?: string;
+      section?: string;
+    };
   }
-
-  const data: Record<string, string> = {};
-  for (const line of match[1].split("\n")) {
-    const [key, ...value] = line.split(":");
-    if (!key || value.length === 0) continue;
-    data[key.trim()] = value.join(":").trim();
-  }
-
-  return { data, body: match[2].trim() };
-}
+>;
 
 export function getDocArticle(slug: string): DocArticle | null {
   if (!docOrder.includes(slug as (typeof docOrder)[number])) return null;
+  const article = articles[slug as (typeof docOrder)[number]];
 
-  const filePath = path.join(articlesDir, `${slug}.mdx`);
-  const raw = fs.readFileSync(filePath, "utf8");
-  const { data, body } = parseFrontmatter(raw);
-
+  if (!article) return null;
   return {
     slug,
-    title: data.title ?? slug,
-    description: data.description ?? "",
-    section: data.section ?? "Guide",
-    body,
+    title: article.meta?.title ?? slug,
+    description: article.meta?.description ?? "",
+    section: article.meta?.section ?? "Guide",
+    component: article.component,
   };
 }
 

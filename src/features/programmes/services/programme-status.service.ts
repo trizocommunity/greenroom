@@ -385,11 +385,6 @@ export async function updateProgrammeStatus(
 
     if (activeReportingSession?.status === "IN_PROGRESS") {
       status = "REPORTING";
-    } else if (
-      activeReportingSession?.status === "RESET" &&
-      programme.status === "CANCELLED"
-    ) {
-      status = "CANCELLED";
     } else {
       status = computePreWorksStatus({
         hasAssignments,

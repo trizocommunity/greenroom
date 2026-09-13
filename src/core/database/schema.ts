@@ -155,6 +155,23 @@ export const exportStatus = pgEnum("ExportStatus", [
   "COMPLETED",
   "FAILED",
 ]);
+export const downloadFileType = pgEnum("DownloadFileType", [
+  "PDF",
+  "DOC",
+  "XLS",
+  "JPG",
+  "PNG",
+  "ZIP",
+  "OTHER",
+]);
+export const downloadCategory = pgEnum("DownloadCategory", [
+  "SCHEDULE",
+  "RULES",
+  "FORMS",
+  "BROCHURE",
+  "RESULTS",
+  "OTHER",
+]);
 
 // ─── Utility / standalone tables ─────────────────────────────────────────────
 
@@ -1887,6 +1904,36 @@ export const festivalNews = pgTable(
   ],
 );
 
+// ─── 18b. festival_download (depends on: festival) ──────────────────────────
+
+export const festivalDownload = pgTable(
+  "festival_download",
+  {
+    id: text().primaryKey().notNull(),
+    festivalId: text().notNull(),
+    title: text().notNull(),
+    description: text(),
+    fileUrl: text().notNull(),
+    fileType: downloadFileType().notNull(),
+    category: downloadCategory().notNull(),
+    publishedAt: tzTimestamp(),
+    createdAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    updatedAt: tzTimestamp().default(currentTimestampSql()).notNull(),
+    createdByName: text("created_by_name"),
+    createdByEmail: text("created_by_email"),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.festivalId],
+      foreignColumns: [festival.id],
+      name: "festival_download_festivalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    index("festival_download_festival_idx").on(table.festivalId),
+  ],
+);
+
 // ─── 19. festival_media_image (depends on: festival) ───────────────────────
 
 export const festivalMediaImage = pgTable(
@@ -2623,7 +2670,6 @@ export const generalEntryAward = pgTable(
 // Replaced by the generic Checkpoints feature below (checkpoint /
 // checkpointSession / checkpointScan). The food_hall_* tables are dropped via
 // db:push once existing data has been migrated into the built-in "Food" checkpoint.
-
 
 // ─── Checkpoints ─────────────────────────────────────────────────────────────
 // Generalises Food Hall entry into named scan checkpoints (Attendance, Food, …).

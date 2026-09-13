@@ -17,6 +17,7 @@ export async function invalidatePublicFestivalCaches(opts: {
     cache.del(keys.slugFestival(slug)),
     cache.del(`${keys.slugFestival(slug)}:id`),
     cache.del(keys.newsList(festivalId)),
+    cache.del(keys.downloadsList(festivalId)),
     cache.del(keys.mediaList(festivalId)),
     cache.del(keys.trialCountdown(festivalId)),
   ]);

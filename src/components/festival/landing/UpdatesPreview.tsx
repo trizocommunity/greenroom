@@ -4,15 +4,16 @@ import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { NewsImage } from "@/components/festival/public/NewsImage";
 import {
   PublicSection,
   SectionHeader,
 } from "@/components/festival/public/PublicSection";
+import { UpdateImage } from "@/components/festival/public/UpdateImage";
 import { useFestivalLinkBase } from "@/components/providers/custom-domain-provider";
 
-interface NewsPost {
+interface UpdatePost {
   id: string;
+  slug?: string | null;
   title: string;
   excerpt: string | null;
   content: string;
@@ -20,9 +21,9 @@ interface NewsPost {
   publishedAt: string | null;
 }
 
-interface NewsPreviewProps {
+interface UpdatesPreviewProps {
   slug: string;
-  posts: NewsPost[];
+  posts: UpdatePost[];
   accentColor?: string;
 }
 
@@ -30,11 +31,11 @@ interface NewsPreviewProps {
  * Three most recent posts as hairline-separated rows with a small square
  * thumbnail — roughly a third of the height the old card grid needed.
  */
-export function NewsPreview({
+export function UpdatesPreview({
   slug,
   posts,
   accentColor = "var(--primary)",
-}: NewsPreviewProps) {
+}: UpdatesPreviewProps) {
   const linkBase = useFestivalLinkBase(slug);
   const preview = posts.slice(0, 3);
 
@@ -42,7 +43,7 @@ export function NewsPreview({
 
   return (
     <PublicSection bordered>
-      <SectionHeader eyebrow="Updates" title="News" className="mb-8" />
+      <SectionHeader title="Updates" className="mb-8" />
 
       <ul className="divide-y divide-border border-y border-border">
         {preview.map((post, i) => (
@@ -54,10 +55,10 @@ export function NewsPreview({
             transition={{ duration: 0.4, delay: i * 0.06 }}
           >
             <Link
-              href={`${linkBase}/news`}
+              href={`${linkBase}/updates/${post.slug || post.id}`}
               className="group flex items-start gap-4 py-5"
             >
-              <NewsImage
+              <UpdateImage
                 src={post.imageUrl}
                 title={post.title}
                 accentColor={accentColor}
@@ -83,11 +84,11 @@ export function NewsPreview({
       </ul>
 
       <Link
-        href={`${linkBase}/news`}
+        href={`${linkBase}/updates`}
         className="group mt-5 inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
         style={{ color: accentColor }}
       >
-        All news
+        All updates
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </Link>
     </PublicSection>

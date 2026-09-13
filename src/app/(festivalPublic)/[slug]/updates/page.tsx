@@ -7,7 +7,7 @@ import {
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import { getPublicNewsData } from "@/features/news/loaders/news-public.loader";
-import { PublicNewsView } from "./PublicNewsView";
+import { PublicUpdatesView } from "./PublicUpdatesView";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -15,15 +15,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival || isFestivalExpired(festival)) {
-    return { title: "News Not Found" };
+    return { title: "Updates Not Found" };
   }
   const data = await getPublicNewsData(slug);
-  if (!data) return { title: "News Not Found" };
-  const title = `News - ${data.festival.name}`;
+  if (!data) return { title: "Updates Not Found" };
+  const title = `Updates - ${data.festival.name}`;
   const description =
     data.posts[0]?.excerpt ||
     data.posts[0]?.content?.slice(0, 160) ||
-    `Latest news and updates from ${data.festival.name}.`;
+    `Latest updates from ${data.festival.name}.`;
   const image = data.posts[0]?.imageUrl;
   return {
     title,
@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function NewsPage({ params }: Props) {
+export default async function UpdatesPage({ params }: Props) {
   const { slug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival || isFestivalExpired(festival)) return notFound();
@@ -70,12 +70,11 @@ export default async function NewsPage({ params }: Props) {
     <PublicSection>
       <SectionHeader
         as="h1"
-        eyebrow="Updates"
-        title="News & updates"
+        title="Updates"
         subtitle={`Announcements and stories from ${data.festival.name}.`}
         className="mb-10"
       />
-      <PublicNewsView
+      <PublicUpdatesView
         posts={data.posts}
         total={data.total}
         hasMore={data.hasMore}

@@ -134,8 +134,8 @@ export function ExportPreviewOverlay({ exportId, exports, onClose }: Props) {
                 </p>
                 <p className="mt-1 max-w-md">
                   This export was bundled with both PDF and AI (the same
-                  multi-page PDF under a `.ai` extension). Use Download to
-                  save the .zip and extract the .pdf and .ai files.
+                  multi-page PDF under a `.ai` extension). Use Download to save
+                  the .zip and extract the .pdf and .ai files.
                 </p>
               </div>
             </div>

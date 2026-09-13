@@ -174,7 +174,8 @@ export function NewExportDrawer({
     // inside the config (`outputFormat`). For data-driven exports the
     // choice stays in the top-level `format` field.
     if (finalConfig.type === "BADGE" || finalConfig.type === "CERTIFICATE") {
-      finalConfig.outputFormat = format === "AI" || format === "BOTH" ? format : "PDF";
+      finalConfig.outputFormat =
+        format === "AI" || format === "BOTH" ? format : "PDF";
     }
 
     const result = await createExport.mutateAsync({
@@ -353,11 +354,7 @@ export function NewExportDrawer({
               {meta.formats.map((f) => {
                 const enabled = true;
                 const label =
-                  f === "BOTH"
-                    ? "Both (PDF + AI)"
-                    : f === "AI"
-                      ? "AI"
-                      : f;
+                  f === "BOTH" ? "Both (PDF + AI)" : f === "AI" ? "AI" : f;
                 return (
                   <button
                     key={f}

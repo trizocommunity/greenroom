@@ -342,7 +342,9 @@ export function CheckpointScanner({
 
           {view === "absent" && !loading && roster.length > 0 && (
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{presentCount}</span>{" "}
+              <span className="font-medium text-foreground">
+                {presentCount}
+              </span>{" "}
               present ·{" "}
               <span className="font-medium text-foreground">
                 {absentList.length}

@@ -1,3 +1,4 @@
+import createMDX from "@next/mdx";
 import withSerwistInit from "@serwist/next";
 import type { NextConfig } from "next";
 
@@ -18,9 +19,11 @@ const withSerwist = withSerwistInit({
     },
   ],
 });
+const withMDX = createMDX({});
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["ahlussuffa.test", "*.ahlussuffa.test"],
+  pageExtensions: ["ts", "tsx", "md", "mdx"],
   async headers() {
     return [
       {
@@ -55,9 +58,6 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ["pg", "ioredis"],
-  outputFileTracingIncludes: {
-    "/docs/**/*": ["./src/docs/articles/**/*.mdx"],
-  },
   experimental: {
     serverActions: {
       bodySizeLimit: "250mb",
@@ -76,4 +76,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSerwist(nextConfig);
+export default withSerwist(withMDX(nextConfig));

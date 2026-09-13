@@ -111,9 +111,10 @@ export function getExportTypeMeta(id: ExportTypeId): ExportTypeMeta {
  * `.pdf` at finalize time. Read the extension so the row reflects what's
  * on disk, not what was queued.
  */
-export function displayFormat(
-  item: { format: ExportFormat; fileName: string | null },
-): "PDF" | "CSV" | "AI" | "ZIP" {
+export function displayFormat(item: {
+  format: ExportFormat;
+  fileName: string | null;
+}): "PDF" | "CSV" | "AI" | "ZIP" {
   if (item.fileName?.toLowerCase().endsWith(".zip")) return "ZIP";
   if (item.fileName?.toLowerCase().endsWith(".ai")) return "AI";
   if (item.fileName?.toLowerCase().endsWith(".csv")) return "CSV";

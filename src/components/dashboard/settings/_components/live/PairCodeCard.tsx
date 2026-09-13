@@ -62,7 +62,9 @@ export function PairCodeCard({ festivalId }: PairCodeCardProps) {
         setPairing(json.data);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Network error generating pairing.",
+          err instanceof Error
+            ? err.message
+            : "Network error generating pairing.",
         );
       } finally {
         setLoading(false);
@@ -94,9 +96,9 @@ export function PairCodeCard({ festivalId }: PairCodeCardProps) {
         <div className="min-w-0 flex-1">
           <h4 className="text-sm font-semibold">Stage controller</h4>
           <p className="text-xs text-muted-foreground">
-            Open this URL on the device the guest will hold on stage. They
-            press <kbd className="font-mono">Space</kbd> to launch the
-            website on this display.
+            Open this URL on the device the guest will hold on stage. They press{" "}
+            <kbd className="font-mono">Space</kbd> to launch the website on this
+            display.
           </p>
         </div>
         <Button
@@ -108,7 +110,9 @@ export function PairCodeCard({ festivalId }: PairCodeCardProps) {
           aria-label="Rotate pairing"
           className="h-8 shrink-0 gap-1.5"
         >
-          <RefreshCw className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+          <RefreshCw
+            className={loading ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"}
+          />
           Rotate
         </Button>
       </div>
@@ -185,8 +189,6 @@ function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
   }
   const mins = Math.floor(ms / 60_000);
   return (
-    <p className="text-[10px] text-muted-foreground">
-      Expires in {mins} min
-    </p>
+    <p className="text-[10px] text-muted-foreground">Expires in {mins} min</p>
   );
 }

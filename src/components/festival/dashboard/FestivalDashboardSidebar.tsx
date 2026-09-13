@@ -111,7 +111,9 @@ export function FestivalDashboardSidebar({
 
         // Content
         if (item.title === "Media" && !features.canManageMedia) return false;
-        if (item.title === "News" && !features.canManageNews) return false;
+        if (item.title === "Updates" && !features.canManageNews) return false;
+        if (item.title === "Downloads" && !features.canManageDownloads)
+          return false;
         if (item.title === "Exports" && !features.canExport) return false;
         if (item.title === "Sessions" && !features.canManageSchedule)
           return false;

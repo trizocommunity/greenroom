@@ -89,7 +89,9 @@ export const toggleSessionStatusSchema = z.object({
   status: z.enum(["OPEN", "CLOSED"]),
 });
 
-export type ToggleSessionStatusInput = z.infer<typeof toggleSessionStatusSchema>;
+export type ToggleSessionStatusInput = z.infer<
+  typeof toggleSessionStatusSchema
+>;
 
 export const getSessionStatusSchema = z.object({
   festivalId: z.string().uuid(),

@@ -74,7 +74,6 @@ export function useStagePortalLogin() {
   return useInlineErrorMutation({
     mutationFn: async (input: {
       festivalSlug: string;
-      accessCode: string;
       pin: string;
     }) => {
       return getStagePortalLoginAction(input);

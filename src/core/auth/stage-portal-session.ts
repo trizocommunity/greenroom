@@ -8,7 +8,7 @@ export const STAGE_PORTAL_SESSION_COOKIE = "stage_portal_session";
 
 const session = createDbBackedCookieSession({
   cookieName: STAGE_PORTAL_SESSION_COOKIE,
-  getExpiryDate: () => nowPlus(24 * MS.hour),
+  getExpiryDate: () => nowPlus(48 * MS.hour),
   async loadSession(tokenHash) {
     const sessionData = await db.query.stagePortalSession.findFirst({
       where: and(

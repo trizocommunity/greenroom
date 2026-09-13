@@ -94,9 +94,7 @@ export async function requireSuperAdmin(
  * Returns `{ pairing, denied }`. Callers should use `denied` as the HTTP
  * response (401) and `pairing.festivalId` to scope the SSE channel.
  */
-export async function requireLaunchPairing(
-  req: Request,
-): Promise<
+export async function requireLaunchPairing(req: Request): Promise<
   | {
       pairing: { festivalId: string; slug: string; name: string };
       denied: null;

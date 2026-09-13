@@ -3,8 +3,8 @@
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { NewsImage } from "@/components/festival/public/NewsImage";
 import { EmptyState } from "@/components/festival/public/PublicSection";
+import { UpdateImage } from "@/components/festival/public/UpdateImage";
 import {
   Pagination,
   PaginationContent,
@@ -27,7 +27,7 @@ type Post = {
   createdAt: string;
 };
 
-interface PublicNewsViewProps {
+interface PublicUpdatesViewProps {
   /** Server-rendered first page. */
   posts: Post[];
   total: number;
@@ -41,11 +41,11 @@ interface PublicNewsViewProps {
 const selectPosts = (data: unknown) => (data as { posts: Post[] }).posts;
 
 /**
- * News as an expandable list. The old grid truncated every post to four
+ * Updates as an expandable list. The old grid truncated every post to four
  * lines with no way to read the rest; here the full post opens in place,
  * which is both more compact when closed and actually complete when open.
  */
-export function PublicNewsView({
+export function PublicUpdatesView({
   posts: initialPosts,
   total: initialTotal,
   hasMore: initialHasMore,
@@ -53,7 +53,7 @@ export function PublicNewsView({
   festivalSlug,
   linkBase,
   accentColor = "var(--primary)",
-}: PublicNewsViewProps) {
+}: PublicUpdatesViewProps) {
   const {
     items: posts,
     total,
@@ -76,14 +76,14 @@ export function PublicNewsView({
   });
 
   if (posts.length === 0) {
-    return <EmptyState>No news posts yet.</EmptyState>;
+    return <EmptyState>No updates yet.</EmptyState>;
   }
 
   return (
     <>
       <ul className="flex flex-col gap-6 sm:gap-4 sm:divide-y sm:divide-border sm:border-y sm:border-border">
         {posts.map((post, i) => {
-          const detailUrl = `${linkBase ?? `/${festivalSlug}`}/news/${post.slug || post.id}`;
+          const detailUrl = `${linkBase ?? `/${festivalSlug}`}/updates/${post.slug || post.id}`;
 
           return (
             <motion.li
@@ -103,7 +103,7 @@ export function PublicNewsView({
                 className="group flex flex-col sm:flex-row w-full items-start gap-4 text-left transition-colors sm:hover:bg-muted/30 sm:rounded-lg sm:p-2 bg-card sm:bg-transparent rounded-xl border sm:border-none shadow-sm sm:shadow-none overflow-hidden"
               >
                 <div className="w-full sm:w-auto overflow-hidden">
-                  <NewsImage
+                  <UpdateImage
                     src={post.imageUrl}
                     title={post.title}
                     accentColor={accentColor}

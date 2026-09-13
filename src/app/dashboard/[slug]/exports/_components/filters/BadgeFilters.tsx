@@ -166,12 +166,12 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
               pageSize={value.pageSize}
               pageOrientation={value.pageOrientation}
               templateWidth={
-                (templates ?? []).find((t) => t.id === value.templateId)?.width ??
-                0
+                (templates ?? []).find((t) => t.id === value.templateId)
+                  ?.width ?? 0
               }
               templateHeight={
-                (templates ?? []).find((t) => t.id === value.templateId)?.height ??
-                0
+                (templates ?? []).find((t) => t.id === value.templateId)
+                  ?.height ?? 0
               }
               multiGrid={value.multiGrid}
             />
@@ -241,9 +241,7 @@ export function BadgeFilters({ festivalId, value, onChange }: Props) {
           hint="Leave empty to include all teams."
           options={teams ?? []}
           selected={value.teamIds}
-          onToggle={(id, v) =>
-            set({ teamIds: toggleId(value.teamIds, id, v) })
-          }
+          onToggle={(id, v) => set({ teamIds: toggleId(value.teamIds, id, v) })}
         />
       </FieldGrid>
     </div>

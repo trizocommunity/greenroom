@@ -160,6 +160,7 @@ function getFeatureLabel(feature: BooleanFeaturePath): string {
     landingPageBuilder: "Landing Page Builder",
     media: "Media",
     news: "News",
+    downloads: "Downloads",
 
     // Branding
     customUrl: "Custom URL",

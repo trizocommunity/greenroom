@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  CheckCircle,
   ClipboardList,
   Crown,
   Loader2,
@@ -235,12 +236,100 @@ export function AssignmentModal({
     [groups, selectedGroupId],
   );
 
-  // Filtered Lists
-  const filteredProgrammes = useMemo(() => {
-    if (!selectedCategoryId) return [];
-    if (hasGroupStep && !selectedGroupId) return [];
-    return programmes.filter((p: any) => p.categoryId === selectedCategoryId);
-  }, [programmes, selectedCategoryId, selectedGroupId, hasGroupStep]);
+  // Filtered Lists — includes per-programme assignment progress for the cards.
+  const { filteredProgrammes, programmeProgress } = useMemo(() => {
+    if (!selectedCategoryId)
+      return {
+        filteredProgrammes: [] as any[],
+        programmeProgress: new Map<
+          string,
+          { assigned: number; target: number; isComplete: boolean }
+        >(),
+      };
+    if (hasGroupStep && !selectedGroupId)
+      return {
+        filteredProgrammes: [] as any[],
+        programmeProgress: new Map<
+          string,
+          { assigned: number; target: number; isComplete: boolean }
+        >(),
+      };
+
+    const matching = programmes.filter(
+      (p: any) => p.categoryId === selectedCategoryId,
+    );
+
+    // Compute progress per programme
+    const progress = new Map<
+      string,
+      { assigned: number; target: number; isComplete: boolean }
+    >();
+
+    // Determine which groups to count against.
+    // When a specific group is selected (hasGroupStep), scope to that group;
+    // otherwise count all groups.
+    const scopedGroups =
+      hasGroupStep && selectedGroupId
+        ? groups.filter((g) => g.id === selectedGroupId)
+        : groups;
+    const groupCount = scopedGroups.length;
+
+    for (const p of matching) {
+      // Count existing assignments for this programme (scoped to group if applicable)
+      const progAssignments = assignments.filter((a: any) => {
+        if (a.programmeId !== p.id) return false;
+        if (hasGroupStep && selectedGroupId) {
+          const gid = a.groupId || a.group?.id || a.participant?.groupId;
+          return gid === selectedGroupId;
+        }
+        return true;
+      });
+
+      let assigned: number;
+      let target: number;
+
+      if (p.type === "INDIVIDUAL") {
+        assigned = progAssignments.length;
+        target = groupCount * (p.maxParticipantsPerGroup ?? 1);
+      } else {
+        // GROUP — count distinct teams
+        const teamKeys = new Set(
+          progAssignments.map((a: any) => {
+            const gid =
+              a.groupId || a.group?.id || a.participant?.groupId || "_";
+            return `${gid}:${a.teamNumber ?? 1}`;
+          }),
+        );
+        assigned = teamKeys.size;
+        target = groupCount * (p.maxTeamsPerGroup ?? 1);
+      }
+
+      progress.set(p.id, {
+        assigned,
+        target,
+        isComplete: target > 0 && assigned >= target,
+      });
+    }
+
+    // Sort: uncompleted first (alphabetical), then completed (alphabetical)
+    const sorted = [...matching].sort((a: any, b: any) => {
+      const aComplete = progress.get(a.id)?.isComplete ?? false;
+      const bComplete = progress.get(b.id)?.isComplete ?? false;
+      if (aComplete !== bComplete) return aComplete ? 1 : -1;
+      return (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+        sensitivity: "base",
+      });
+    });
+
+    return { filteredProgrammes: sorted, programmeProgress: progress };
+  }, [
+    programmes,
+    selectedCategoryId,
+    selectedGroupId,
+    hasGroupStep,
+    groups,
+    assignments,
+  ]);
 
   const filteredParticipants = useMemo(() => {
     if (!selectedGroupId) return [];
@@ -870,47 +959,82 @@ export function AssignmentModal({
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {filteredProgrammes.map((p: any) => (
-                        <button
-                          type="button"
-                          key={p.id}
-                          disabled={isReadOnly}
-                          onClick={() => {
-                            if (isReadOnly) return;
-                            setSelectedProgrammeId(p.id);
-                            setSelectedParticipantIds(new Set());
-                            setParticipantSearch("");
-                          }}
-                          className={cn(
-                            "flex flex-col items-start gap-2 text-left p-3 rounded-lg border transition-all hover:shadow-md",
-                            selectedProgrammeId === p.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary/50"
-                              : "bg-card hover:bg-accent/50",
-                            isReadOnly
-                              ? "cursor-not-allowed opacity-60 hover:shadow-none"
-                              : "",
-                          )}
-                        >
-                          <div className="flex w-full items-start justify-between gap-2">
-                            <span className="font-semibold text-sm">
-                              {p.name}
+                      {filteredProgrammes.map((p: any) => {
+                        const prog = programmeProgress.get(p.id);
+                        const isComplete = prog?.isComplete ?? false;
+                        const progressText = `${prog?.assigned ?? 0}/${prog?.target ?? 0} ${p.type === "INDIVIDUAL" ? "Participants" : "Teams"}`;
+                        return (
+                          <button
+                            type="button"
+                            key={p.id}
+                            disabled={isReadOnly}
+                            onClick={() => {
+                              if (isReadOnly) return;
+                              setSelectedProgrammeId(p.id);
+                              setSelectedParticipantIds(new Set());
+                              setParticipantSearch("");
+                            }}
+                            className={cn(
+                              "flex flex-col items-start gap-2 text-left p-3 rounded-lg border transition-all hover:shadow-md",
+                              selectedProgrammeId === p.id
+                                ? "border-primary bg-primary/5 ring-1 ring-primary/50"
+                                : isComplete
+                                  ? "bg-card/80 hover:bg-accent/30 border-l-4 border-l-green-500 opacity-75"
+                                  : "bg-card hover:bg-accent/50",
+                              isReadOnly
+                                ? "cursor-not-allowed opacity-60 hover:shadow-none"
+                                : "",
+                            )}
+                          >
+                            <div className="flex w-full items-start justify-between gap-2">
+                              <span
+                                className={cn(
+                                  "font-semibold text-sm",
+                                  isComplete && "text-muted-foreground",
+                                )}
+                              >
+                                {p.name}
+                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isComplete && (
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-500" />
+                                )}
+                                <Badge
+                                  variant={
+                                    p.type === "INDIVIDUAL"
+                                      ? "outline"
+                                      : "secondary"
+                                  }
+                                  className="text-[10px] h-5"
+                                >
+                                  {p.type === "INDIVIDUAL" ? "Solo" : "Team"}
+                                </Badge>
+                              </div>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground">
+                              {stageTypeLabel(p.stageType)} ·{" "}
+                              {describeLimits(p)}
                             </span>
-                            <Badge
-                              variant={
-                                p.type === "INDIVIDUAL"
-                                  ? "outline"
-                                  : "secondary"
-                              }
-                              className="shrink-0 text-[10px] h-5"
-                            >
-                              {p.type === "INDIVIDUAL" ? "Solo" : "Team"}
-                            </Badge>
-                          </div>
-                          <span className="text-[11px] text-muted-foreground">
-                            {stageTypeLabel(p.stageType)} · {describeLimits(p)}
-                          </span>
-                        </button>
-                      ))}
+                            <div className="flex w-full items-center justify-between gap-2">
+                              <span
+                                className={cn(
+                                  "text-[10px] font-semibold tabular-nums",
+                                  isComplete
+                                    ? "text-green-600 dark:text-green-500"
+                                    : "text-muted-foreground",
+                                )}
+                              >
+                                {progressText}
+                              </span>
+                              {isComplete && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-green-600 dark:text-green-500">
+                                  Complete
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </ScrollArea>

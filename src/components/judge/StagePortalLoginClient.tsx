@@ -17,18 +17,17 @@ export function StagePortalLoginClient({
 }) {
   const router = useRouter();
   const login = useStagePortalLogin();
-  const [accessCode, setAccessCode] = useState("");
   const [pin, setPin] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
 
   const submit = () => {
     setFieldError(null);
-    if (!accessCode.trim() || !pin.trim()) {
-      setFieldError("Enter the stage access code and PIN.");
+    if (!pin.trim()) {
+      setFieldError("Enter the stage PIN.");
       return;
     }
     login.mutate(
-      { festivalSlug, accessCode, pin },
+      { festivalSlug, pin },
       {
         onSuccess: () => {
           toast.success("Stage portal unlocked.");
@@ -41,7 +40,7 @@ export function StagePortalLoginClient({
   return (
     <AuthLayout
       title="Stage judge portal"
-      description="Enter the access code and PIN from your stage manager."
+      description="Enter the PIN from your stage manager."
       variant="centered"
       showLogo={false}
     >
@@ -66,22 +65,7 @@ export function StagePortalLoginClient({
           ) : null}
 
           <div className="space-y-2">
-            <Label htmlFor="accessCode">Access code</Label>
-            <Input
-              id="accessCode"
-              value={accessCode}
-              onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-              placeholder="AB12CD"
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="next"
-              className="h-12 rounded-xl text-center font-mono text-lg tracking-[0.3em]"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="pin">PIN</Label>
+            <Label htmlFor="pin">Stage PIN</Label>
             <Input
               id="pin"
               value={pin}

@@ -70,8 +70,8 @@ export async function createNewsPostAction(
     },
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/content/news`);
-  revalidatePath(`/${festival.slug}/news`);
+  revalidatePath(`/dashboard/${festival.slug}/content/updates`);
+  revalidatePath(`/${festival.slug}/updates`);
   await invalidatePublicFestivalCaches({
     festivalId,
     slug: festival.slug,
@@ -131,8 +131,8 @@ export async function updateNewsPostAction(
     },
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/content/news`);
-  revalidatePath(`/${festival.slug}/news`);
+  revalidatePath(`/dashboard/${festival.slug}/content/updates`);
+  revalidatePath(`/${festival.slug}/updates`);
   await invalidatePublicFestivalCaches({
     festivalId,
     slug: festival.slug,
@@ -163,8 +163,8 @@ export async function deleteNewsPostAction(festivalId: string, postId: string) {
     },
   });
 
-  revalidatePath(`/dashboard/${festival.slug}/content/news`);
-  revalidatePath(`/${festival.slug}/news`);
+  revalidatePath(`/dashboard/${festival.slug}/content/updates`);
+  revalidatePath(`/${festival.slug}/updates`);
   await invalidatePublicFestivalCaches({
     festivalId,
     slug: festival.slug,

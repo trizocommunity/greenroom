@@ -5,6 +5,7 @@ import {
   categoryProgrammeLimit,
   festival,
   festivalCategoryPreference,
+  festivalDownload,
   festivalLifecycleEvent,
   festivalMediaImage,
   festivalMediaVideo,
@@ -85,6 +86,7 @@ export const festivalRelations = relations(festival, ({ one, many }) => ({
   festivalNews: many(festivalNews),
   festivalMediaImages: many(festivalMediaImage),
   festivalMediaVideos: many(festivalMediaVideo),
+  festivalDownloads: many(festivalDownload),
   assignments: many(programmeAssignment),
   user: one(user, {
     fields: [festival.ownerId],
@@ -584,6 +586,16 @@ export const festivalNewsRelations = relations(festivalNews, ({ one }) => ({
   }),
 }));
 
+export const festivalDownloadRelations = relations(
+  festivalDownload,
+  ({ one }) => ({
+    festival: one(festival, {
+      fields: [festivalDownload.festivalId],
+      references: [festival.id],
+    }),
+  }),
+);
+
 export const festivalMediaImageRelations = relations(
   festivalMediaImage,
   ({ one }) => ({
@@ -760,4 +772,3 @@ export const generalEntryAwardRelations = relations(
 // ─── Food Hall Entry Relations ─────────────────────────────────────────────────────────
 // Removed: Food Hall was replaced by the generic Checkpoints feature. See
 // checkpoint / checkpointSession / checkpointScan and their relations.
-

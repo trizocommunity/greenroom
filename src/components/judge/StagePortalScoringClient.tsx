@@ -8,8 +8,10 @@ import {
   UserRound,
   Users2,
   UserX,
+  Maximize,
+  Minimize,
 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useMarkCodeLetterAbsence } from "@/api/client/server-actions";
 import { StatusPill } from "@/components/app/AppSection";
 import { Button } from "@/components/ui/button";
@@ -538,6 +540,24 @@ export function StagePortalScoringClient({
     "complete",
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
+  
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
   const [reviewPolicyRows, setReviewPolicyRows] = useState<PolicyResultRow[]>(
     [],
   );
@@ -1267,6 +1287,19 @@ export function StagePortalScoringClient({
           )}
 
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 shrink-0 rounded-full"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? (
+                <Minimize className="h-5 w-5" />
+              ) : (
+                <Maximize className="h-5 w-5" />
+              )}
+            </Button>
             <Button
               variant="outline"
               className="h-11 shrink-0 rounded-full px-5"

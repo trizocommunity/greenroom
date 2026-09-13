@@ -14,7 +14,7 @@ import type { FestivalPublicData } from "./FestivalContext";
 
 const navItems = [
   { name: "Home", href: "/" },
-  { name: "News", href: "/news" },
+  { name: "Updates", href: "/updates" },
   { name: "Media", href: "/media" },
   { name: "Schedule", href: "/schedule" },
   { name: "Results", href: "/results" },
@@ -22,9 +22,15 @@ const navItems = [
 
 interface FestivalNavbarProps {
   festival: FestivalPublicData;
+  hasParticipantSession?: boolean;
+  participantSlug?: string | null;
 }
 
-export function FestivalNavbar({ festival }: FestivalNavbarProps) {
+export function FestivalNavbar({
+  festival,
+  hasParticipantSession,
+  participantSlug,
+}: FestivalNavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
@@ -121,10 +127,10 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
         <div className="hidden shrink-0 items-center md:flex">
           {!expired && (
             <Link
-              href={`${linkBase}/login`}
+              href={hasParticipantSession && participantSlug ? `${linkBase}/${participantSlug}/dashboard` : `${linkBase}/login`}
               className="text-sm font-medium text-primary transition-opacity hover:opacity-70"
             >
-              Participant login
+              {hasParticipantSession && participantSlug ? "Dashboard" : "Participant login"}
             </Link>
           )}
         </div>
@@ -174,11 +180,11 @@ export function FestivalNavbar({ festival }: FestivalNavbarProps) {
                 })}
                 {!expired && (
                   <Link
-                    href={`${linkBase}/login`}
+                    href={hasParticipantSession && participantSlug ? `${linkBase}/${participantSlug}/dashboard` : `${linkBase}/login`}
                     onClick={() => setIsOpen(false)}
                     className="block py-3 text-[15px] font-medium text-primary"
                   >
-                    Participant login
+                    {hasParticipantSession && participantSlug ? "Dashboard" : "Participant login"}
                   </Link>
                 )}
               </nav>

@@ -101,12 +101,7 @@ export function LaunchOverlay({
       // to the iframe during a pointer interaction). preventDefault stops the
       // default page-scroll behaviour and also suppresses the button's own
       // native Space-click so we don't double-fire onLaunch.
-      if (
-        e.code === "Space" &&
-        !isLive &&
-        previewReady &&
-        !isReadOnly
-      ) {
+      if (e.code === "Space" && !isLive && previewReady && !isReadOnly) {
         e.preventDefault();
         void onLaunch();
       }

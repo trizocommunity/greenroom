@@ -68,6 +68,10 @@ export const keys = {
   newsList(festivalId: string): string {
     return key("festival", festivalId, "news");
   },
+  /** `greenroom:festival:<festivalId>:downloads` */
+  downloadsList(festivalId: string): string {
+    return key("festival", festivalId, "downloads");
+  },
 
   // ── Leaderboards (ZSETs) ───────────────────────────────────────────
   /** `greenroom:lb:top:<festivalId>` — top-scorers participants */

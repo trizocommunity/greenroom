@@ -163,6 +163,7 @@ export function useFeatures() {
     canUseCustomColors: useFeature("customColors"),
     canManageMedia: useFeature("media"),
     canManageNews: useFeature("news"),
+    canManageDownloads: useFeature("downloads"),
     canExport: useFeature("exports"),
     // Support
     supportLevel: useFeatureValue<string>("supportLevel"),

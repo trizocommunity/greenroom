@@ -1028,17 +1028,19 @@ async function insertLiveJudgementConfig(input: {
         .where(eq(reportingSessionTable.id, input.reportingSessionId));
     }
 
-    if (liveConfigsOnStage.length > 0) {
-      await tx
-        .update(judgementConfigTable)
-        .set({ status: "ARCHIVED", updatedAt: now } as any)
-        .where(
-          inArray(
-            judgementConfigTable.id,
-            liveConfigsOnStage.map((c) => c.id),
-          ),
-        );
-    }
+    await tx
+      .update(judgementConfigTable)
+      .set({ status: "ARCHIVED", updatedAt: now } as any)
+      .where(eq(judgementConfigTable.programmeId, input.programmeId));
+
+    await tx
+      .delete(resultTable)
+      .where(eq(resultTable.programmeId, input.programmeId));
+
+    await tx
+      .update(programmeTable)
+      .set({ status: "PENDING_JUDGMENT", updatedAt: now } as any)
+      .where(eq(programmeTable.id, input.programmeId));
 
     const actorUser = input.startedBy
       ? await tx.query.user.findFirst({
@@ -1282,9 +1284,10 @@ export async function cancelJudgementAction(input: {
   const liveConfig = await db.query.judgementConfig.findFirst({
     where: and(
       eq(judgementConfigTable.programmeId, input.programmeId),
-      eq(judgementConfigTable.status, "LIVE"),
+      inArray(judgementConfigTable.status, ["LIVE", "SUBMITTED", "COMPLETED"]),
     ),
-    columns: { id: true, reportingSessionId: true },
+    orderBy: [desc(judgementConfigTable.updatedAt)],
+    columns: { id: true, reportingSessionId: true, status: true },
   });
 
   if (!liveConfig) {
@@ -1303,21 +1306,27 @@ export async function cancelJudgementAction(input: {
 
   await assertStageManagerAccessForStage(input.festivalId, stageId);
 
-  await db
-    .update(judgementConfigTable)
-    .set({
-      status: "CANCELLED",
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(judgementConfigTable.id, liveConfig.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(judgementConfigTable)
+      .set({
+        status: "CANCELLED",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(judgementConfigTable.id, liveConfig.id));
 
-  await db
-    .update(programmeTable)
-    .set({
-      status: "PENDING_JUDGMENT",
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(programmeTable.id, input.programmeId));
+    await tx
+      .delete(resultTable)
+      .where(eq(resultTable.programmeId, input.programmeId));
+
+    await tx
+      .update(programmeTable)
+      .set({
+        status: "PENDING_JUDGMENT",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(programmeTable.id, input.programmeId));
+  });
 
   await createAuditLog({
     action: "CANCEL_JUDGEMENT",

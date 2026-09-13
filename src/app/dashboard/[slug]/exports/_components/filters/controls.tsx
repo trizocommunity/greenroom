@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { resolveMultiGrid } from "@/features/exports/lib/multi-grid";
 import { cn } from "@/core/utils/cn";
+import { resolveMultiGrid } from "@/features/exports/lib/multi-grid";
 
 export function SegmentedControl<T extends string>({
   label,

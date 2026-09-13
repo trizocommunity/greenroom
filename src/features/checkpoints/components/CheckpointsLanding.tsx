@@ -95,7 +95,10 @@ export function CheckpointsLanding({
                 </Link>
                 {!c.isBuiltIn && (
                   <div className="absolute right-3 top-3 flex items-center gap-1">
-                    <EditCheckpointDialog festivalId={festivalId} checkpoint={c} />
+                    <EditCheckpointDialog
+                      festivalId={festivalId}
+                      checkpoint={c}
+                    />
                     <DeleteCheckpointDialog
                       festivalId={festivalId}
                       checkpoint={c}

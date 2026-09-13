@@ -3,22 +3,21 @@
 import { Building2, Gavel, UserRound } from "lucide-react";
 import party from "party-js";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PairCodeCard } from "@/components/dashboard/settings/_components/live/PairCodeCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { setPublicSiteEnabledAction } from "@/features/festivals/actions/festival-crud.actions";
 import { useFestivalReadOnly } from "@/features/festivals/hooks/use-festival-read-only";
 import {
+  buildFestivalHost,
   type CustomDomainPhase,
   type CustomDomainStatus,
-  buildFestivalHost,
   getDomainOwnershipToken,
   getDomainOwnershipTxtName,
   isCustomDomainPhasePending,
   VERCEL_DNS_CNAME_TARGET,
 } from "@/features/institutions/lib/custom-domain";
 import { toast } from "@/lib/toast";
-
-import { PairCodeCard } from "@/components/dashboard/settings/_components/live/PairCodeCard";
 import { CustomSubdomainCard } from "./live/CustomSubdomainCard";
 import { DeleteSubdomainDialog } from "./live/DeleteSubdomainDialog";
 import { DnsRecordsCard } from "./live/DnsRecordsCard";
@@ -400,9 +399,9 @@ export function FestivalLiveClient({
     };
   }, []);
 
-  const handleLaunch = async (
-    opts?: { initiatedBy?: "operator" | "remote" },
-  ) => {
+  const handleLaunch = async (opts?: {
+    initiatedBy?: "operator" | "remote";
+  }) => {
     if (isReadOnly || enabled || !iframeReady) return;
     // Block remote (SSE-driven) auto-relaunch for a short cooldown after
     // `handleTakeOffline`. Without this, a LAUNCH event that was buffered

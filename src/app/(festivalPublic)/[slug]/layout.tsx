@@ -361,6 +361,11 @@ export default async function FestivalLayout({
     "@graph": jsonLdGraph,
   };
 
+  const { getParticipantSessionFromCookie } = await import("@/core/auth/participant-session");
+  const participantSession = await getParticipantSessionFromCookie();
+  const hasParticipantSession = !!participantSession && participantSession.festivalId === festival.id;
+  const participantSlug = hasParticipantSession ? participantSession.participant.profileSlug : null;
+
   return (
     <CustomDomainProvider customDomain={customDomain}>
       <FestivalProvider festival={festivalData as any}>
@@ -383,7 +388,11 @@ export default async function FestivalLayout({
             <main className="flex-1">{children}</main>
           ) : (
             <>
-              <FestivalNavbar festival={festivalData as any} />
+              <FestivalNavbar
+                festival={festivalData as any}
+                hasParticipantSession={hasParticipantSession}
+                participantSlug={participantSlug}
+              />
               <main className="flex-1 pt-16">{children}</main>
               <FestivalFooter festival={festivalData as any} />
             </>

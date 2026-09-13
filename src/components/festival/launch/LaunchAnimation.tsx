@@ -207,11 +207,7 @@ function fireConfetti(): () => void {
     return { source, angle };
   });
 
-  const burst = (
-    source: HTMLElement,
-    angle: number,
-    count: number,
-  ) => {
+  const burst = (source: HTMLElement, angle: number, count: number) => {
     const speed = Math.sqrt(2 * party.settings.gravity * window.innerHeight);
     emitters.push(
       party.scene.current.createEmitter({

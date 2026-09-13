@@ -18,6 +18,12 @@ export {
   useUpdateCategory,
 } from "./categories";
 export {
+  useCreateDownload,
+  useDeleteDownload,
+  useDownloads,
+  useUpdateDownload,
+} from "./downloads";
+export {
   useCreateFestival,
   useDeleteFestival,
   useFestival,

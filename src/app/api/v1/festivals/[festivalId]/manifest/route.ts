@@ -43,6 +43,9 @@ export async function GET(
         : rawLogo
       : fallbackIconUrl;
 
+  const customDomain = request.headers.get("x-custom-domain");
+  const startUrl = customDomain ? "/" : `/${slug}`;
+
   const manifest = {
     name: festival.name,
     short_name: festival.name,
@@ -50,7 +53,7 @@ export async function GET(
       festival.tagline ||
       festival.description ||
       `Official app for ${festival.name}`,
-    start_url: "/",
+    start_url: startUrl,
     display: "standalone",
     background_color: "#f7f8fa",
     theme_color: themeColor,

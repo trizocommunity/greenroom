@@ -23,6 +23,7 @@ import {
 import { cn } from "@/core/utils/cn";
 import { updateFestivalBrandingAction } from "@/features/festivals/actions/festival-crud.actions";
 import { toast } from "@/lib/toast";
+import { ImageCropperDialog } from "@/components/ui/image-cropper-dialog";
 
 interface VisualIdentityDialogProps {
   festival: {
@@ -44,6 +45,7 @@ export function VisualIdentityDialog({
   const [logo, setLogo] = useState<string>(festival.branding?.logo || "");
   const [logoError, setLogoError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useCloudinaryUpload();
@@ -63,19 +65,6 @@ export function VisualIdentityDialog({
 
   const uploadToCloudinary = async (file: File) => {
     setLogoError(null);
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/svg+xml",
-    ];
-    if (!allowedTypes.includes(file.type)) {
-      const msg = "Invalid file type. Please upload a PNG, JPG, or SVG.";
-      setLogoError(msg);
-      toast.error(msg);
-      return null;
-    }
 
     const maxSizeBytes = 1 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
@@ -97,16 +86,36 @@ export function VisualIdentityDialog({
     }
   };
 
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const result = await uploadToCloudinary(file);
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/svg+xml",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      const msg = "Invalid file type. Please upload a PNG, JPG, or SVG.";
+      setLogoError(msg);
+      toast.error(msg);
+      return;
+    }
+    
+    // For SVG, we might not want to crop, but assuming we do or it's rasterized.
+    const url = URL.createObjectURL(file);
+    setCropImageSrc(url);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
+
+  const handleCropSubmit = async (croppedFile: File) => {
+    setCropImageSrc(null);
+    const result = await uploadToCloudinary(croppedFile);
     if (result) {
       setLogo(result.url);
       toast.success("Logo uploaded successfully");
     }
-    if (logoInputRef.current) logoInputRef.current.value = "";
   };
 
   const removeLogo = () => {
@@ -154,13 +163,13 @@ export function VisualIdentityDialog({
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="flex flex-col items-center gap-6 py-4">
-          <div className="relative group">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 py-4">
+          <div className="relative group shrink-0">
             <div
               className={cn(
-                "w-32 h-32 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all duration-300",
+                "w-40 h-40 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all duration-300",
                 logo
-                  ? "border-primary/20"
+                  ? "border-primary/20 bg-white"
                   : "border-muted-foreground/20 bg-muted/50",
               )}
             >
@@ -169,7 +178,7 @@ export function VisualIdentityDialog({
                   src={logo}
                   alt="Festival Logo"
                   fill
-                  className="object-cover"
+                  className="object-contain"
                 />
               ) : (
                 <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
@@ -186,29 +195,29 @@ export function VisualIdentityDialog({
               <button
                 type="button"
                 onClick={removeLogo}
-                className="absolute -top-2 -right-2 p-1.5 rounded-full bg-destructive text-destructive-foreground shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove logo"
+                className="absolute -top-2 -right-2 p-1.5 rounded-full bg-destructive text-destructive-foreground shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
-          <div className="space-y-2 text-center">
-            <div className="space-y-1">
-              <h4 className="font-semibold text-foreground">Festival Logo</h4>
+          <div className="space-y-4 text-center sm:text-left flex-1 py-2">
+            <div className="space-y-1.5">
+              <h4 className="font-semibold text-foreground text-lg">Festival Logo</h4>
               <p className="text-sm text-muted-foreground">
-                Recommended: Square image (512x512px). Supports PNG, JPG, or SVG
-                up to 1MB.
+                Recommended: Square image (512x512px).<br className="hidden sm:block" /> Supports PNG, JPG, or SVG up to 1MB.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
               <Button
                 type="button"
-                variant="outline"
+                variant={logo ? "outline" : "default"}
                 size="sm"
                 className={cn(
-                  "gap-2 border-primary/20 hover:bg-primary/5",
+                  "gap-2",
                   logoError && "border-destructive text-destructive",
                 )}
                 onClick={() => logoInputRef.current?.click()}
@@ -217,6 +226,20 @@ export function VisualIdentityDialog({
                 <Upload className="h-4 w-4" />
                 {logo ? "Change Logo" : "Upload Logo"}
               </Button>
+
+              {logo && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setCropImageSrc(logo)}
+                  disabled={uploadMutation.isPending}
+                >
+                  <ImageIcon className="h-4 w-4" />
+                  Recrop
+                </Button>
+              )}
 
               <input
                 type="file"
@@ -228,7 +251,7 @@ export function VisualIdentityDialog({
             </div>
 
             {logoError && (
-              <p className="text-sm font-medium text-destructive">
+              <p className="text-sm font-medium text-destructive mt-2">
                 {logoError}
               </p>
             )}
@@ -245,6 +268,13 @@ export function VisualIdentityDialog({
           </Button>
         </DrawerFooter>
       </DrawerContent>
+      {cropImageSrc && (
+        <ImageCropperDialog
+          imageSrc={cropImageSrc}
+          onClose={() => setCropImageSrc(null)}
+          onCropSubmit={handleCropSubmit}
+        />
+      )}
     </Drawer>
   );
 }

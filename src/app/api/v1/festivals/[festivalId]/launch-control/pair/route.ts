@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { getAppBaseUrl } from "@/config/routes";
 import { ok, unauthorized } from "@/api/lib";
+import { getAppBaseUrl } from "@/config/routes";
 import { getSession } from "@/core/auth/session";
 import { db } from "@/core/database/client";
 import { festival as festivalTable } from "@/core/database/schema";

@@ -2,32 +2,32 @@ import { format } from "date-fns";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { NewsImage } from "@/components/festival/public/NewsImage";
 import { PublicSection } from "@/components/festival/public/PublicSection";
+import { UpdateImage } from "@/components/festival/public/UpdateImage";
 import { isFestivalExpired } from "@/features/festivals/lib/festival-expiry";
 import { findFestivalBySlug } from "@/features/festivals/repositories/festival.repository";
 import {
   getPublicNewsPostBySlugString,
   getRelatedNews,
 } from "@/features/news/loaders/news-public.loader";
-import { NewsShareButtons } from "./NewsShareButtons";
+import { UpdateShareButtons } from "./UpdateShareButtons";
 
-type Props = { params: Promise<{ slug: string; newsSlug: string }> };
+type Props = { params: Promise<{ slug: string; updateSlug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug, newsSlug } = await params;
+  const { slug, updateSlug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival || isFestivalExpired(festival)) {
-    return { title: "News Not Found" };
+    return { title: "Updates Not Found" };
   }
-  const data = await getPublicNewsPostBySlugString(slug, newsSlug);
-  if (!data) return { title: "News Not Found" };
+  const data = await getPublicNewsPostBySlugString(slug, updateSlug);
+  if (!data) return { title: "Updates Not Found" };
 
   const title = `${data.post.title} | ${data.festival.name}`;
   const description =
     data.post.excerpt ||
     data.post.content?.slice(0, 160) ||
-    `Latest news and updates from ${data.festival.name}.`;
+    `Latest updates from ${data.festival.name}.`;
   const image = data.post.imageUrl;
 
   return {
@@ -48,15 +48,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function NewsDetailsPage({ params }: Props) {
-  const { slug, newsSlug } = await params;
+export default async function UpdatesDetailsPage({ params }: Props) {
+  const { slug, updateSlug } = await params;
   const festival = await findFestivalBySlug(slug);
   if (!festival || isFestivalExpired(festival)) return notFound();
 
-  const data = await getPublicNewsPostBySlugString(slug, newsSlug);
+  const data = await getPublicNewsPostBySlugString(slug, updateSlug);
   if (!data) return notFound();
 
-  const relatedNews = await getRelatedNews(slug, newsSlug, 3);
+  const relatedUpdates = await getRelatedNews(slug, updateSlug, 3);
 
   const post = data.post;
 
@@ -70,10 +70,10 @@ export default async function NewsDetailsPage({ params }: Props) {
   return (
     <PublicSection>
       <Link
-        href={`/${slug}/news`}
+        href={`/${slug}/updates`}
         className="text-sm hover:underline mb-8 inline-block opacity-70"
       >
-        &larr; Back to News
+        &larr; Back to Updates
       </Link>
       <article className="mb-16">
         <h1 className="text-4xl md:text-5xl font-display font-semibold mb-6">
@@ -87,7 +87,7 @@ export default async function NewsDetailsPage({ params }: Props) {
 
         {post.imageUrl && (
           <div className="w-full aspect-video relative rounded-xl overflow-hidden mb-10">
-            <NewsImage
+            <UpdateImage
               src={post.imageUrl}
               title={post.title}
               accentColor={accentColor}
@@ -96,7 +96,6 @@ export default async function NewsDetailsPage({ params }: Props) {
           </div>
         )}
 
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: Content is from rich text editor */}
         <div
           className="prose prose-lg dark:prose-invert max-w-none mb-12"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: Content is from rich text editor
@@ -105,25 +104,25 @@ export default async function NewsDetailsPage({ params }: Props) {
 
         <div className="border-t pt-8">
           <h3 className="font-semibold mb-4">Share this article</h3>
-          <NewsShareButtons title={post.title} />
+          <UpdateShareButtons title={post.title} />
         </div>
       </article>
 
-      {relatedNews.length > 0 && (
+      {relatedUpdates.length > 0 && (
         <div className="border-t pt-12">
           <h2 className="text-2xl font-display font-semibold mb-8">
-            Related News
+            Related updates
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {relatedNews.map((relatedPost) => (
+            {relatedUpdates.map((relatedPost) => (
               <Link
                 key={relatedPost.id}
-                href={`/${slug}/news/${relatedPost.slug || relatedPost.id}`}
+                href={`/${slug}/updates/${relatedPost.slug || relatedPost.id}`}
                 className="group block"
               >
                 <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-3 relative">
                   {relatedPost.imageUrl ? (
-                    <NewsImage
+                    <UpdateImage
                       src={relatedPost.imageUrl}
                       title={relatedPost.title}
                       accentColor={accentColor}

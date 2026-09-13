@@ -8,12 +8,12 @@ import type {
 } from "@/components/editor/poster-editor-types";
 import { imageCache } from "@/components/editor/poster-image-loader";
 import {
-  resolveBindingText,
   type PosterBindings,
+  resolveBindingText,
 } from "@/features/posters/services/poster-bindings.service";
 import {
-  parseMultiGrid,
   autoMultiGrid,
+  parseMultiGrid,
   type TemplateExportPayload,
 } from "./multi-grid";
 
